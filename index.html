@@ -61,6 +61,7 @@
   .tag.e{background:rgba(120,220,255,.14);color:#9fe6ff;border:1px solid rgba(120,220,255,.4)}
   .tag.d{background:rgba(190,160,255,.14);color:#d9c8ff;border:1px solid rgba(190,160,255,.4)}
   .tag.x{background:rgba(120,255,222,.13);color:#8ff5dd;border:1px solid rgba(120,255,222,.36)}
+  .tag.q{background:rgba(255,150,200,.14);color:#ffc2dc;border:1px solid rgba(255,150,200,.42)}
   .card h2{margin:0 0 6px;font-size:21px;letter-spacing:-.01em;display:flex;align-items:baseline;gap:8px}
   .card h2 small{font-size:12px;font-weight:600;color:#8fa6d0;letter-spacing:0}
   .card p{margin:0;font-size:13.5px;line-height:1.65;color:#9fb2d6}
@@ -256,6 +257,14 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       <div class="spec">발판 92개 · 구역 5개 · 위험/행운 이벤트 9종 · 단일 파일 316KB</div>
       <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
     </a>
+
+    <a class="card" href="./qwen/" data-ai="qwen">
+      <div class="tag q">Qwen 버전</div>
+      <h2>Qwen <small>단일 HTML 캔버스</small></h2>
+      <p>충전 점프와 3% 태초 귀환을 담은 단일 HTML 버전. 버튼 배치를 세 가지 중에서 고를 수 있고 최고 기록은 브라우저에 저장됩니다.</p>
+      <div class="spec">발판 90개 · 구역 5개 · 위험/행운 이벤트 9종 · 단일 파일 34KB</div>
+      <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
+    </a>
   </div>
 
   <footer>
@@ -397,6 +406,22 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
             '도트 그래픽·9종 위험/행운 이벤트·조작 설정까지 단일 HTML에 담았습니다',
             '가시가 발판을 다 덮어 다음 발판으로 넘어갈 수 없던 4곳 수정(안전한 발 디딤 자리 확보)',
             '게임 시작 때마다 \'태초 귀환\' 연출이 뜨던 문제, 일시정지 중 플레이 시간이 흐르던 문제 수정'
+          ]
+        }
+      ]
+    },
+    qwen: {
+      name: 'Qwen', tag: 'Qwen 버전', tagClass: 'q',
+      versions: [
+        {
+          ver: 'v1.0', label: '단일 HTML 캔버스 버전', href: './qwen/',
+          date: '2026.11.17', latest: true,
+          spec: '발판 90개 · 구역 5개 · 이벤트 9종 · 단일 파일 34KB',
+          notes: [
+            '충전 점프·3% 태초 귀환·위험 5종/행운 4종 이벤트를 담은 단일 HTML 버전',
+            '시작 발판을 뚫고 계속 떨어지던 문제와, 폰에서 터치로 게임을 시작할 수 없던 문제 수정',
+            '390px 폰 화면에서 발판이 화면 밖에 생기던 문제 수정 — 월드를 화면 폭에 맞춰 그립니다',
+            '버튼 배치 3종 모두 터치 반응, 공중 점프, 안전 발판이 움직이던 문제, 최고 기록 표시 갱신 수정'
           ]
         }
       ]
