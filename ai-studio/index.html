@@ -2813,9 +2813,11 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       // 2) 좌우 경계 성벽 / 절벽 기둥
       const wallTop = Math.floor((runState.cameraY - 60) / 32) * 32;
       const wallBot = runState.cameraY + visH + 64;
+      // 넓은 PC 화면에서는 플레이 영역 밖으로 배경 풍경이 이어지도록 절벽 띠를 좁게 그린다
+      const wallSpan = 70;
       ctx.fillStyle = '#1b2038';
-      ctx.fillRect(-400, wallTop, 400 + WALL_L, wallBot - wallTop);
-      ctx.fillRect(WALL_R, wallTop, 400, wallBot - wallTop);
+      ctx.fillRect(WALL_L - wallSpan, wallTop, wallSpan, wallBot - wallTop);
+      ctx.fillRect(WALL_R, wallTop, wallSpan, wallBot - wallTop);
       for (let wy = wallTop; wy < wallBot; wy += 32) {
         ctx.fillStyle = '#2d375c';
         ctx.fillRect(WALL_L - 12, wy + 2, 10, 26);
