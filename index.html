@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1024">
+<title>성공하고싶은 재우</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    background:
+      radial-gradient(1200px 700px at 50% -10%, #263a6b 0%, rgba(38,58,107,0) 60%),
+      linear-gradient(180deg,#0b1024 0%,#070a18 100%);
+    color:#eaf1ff;
+    font-family:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,-apple-system,sans-serif;
+    display:flex;justify-content:center;
+    padding:max(28px,6vh) 18px 40px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{width:100%;max-width:620px}
+  header{text-align:center;margin-bottom:28px}
+  .kicker{
+    display:inline-block;font-size:12px;letter-spacing:.18em;
+    color:#9db6e8;border:1px solid #2c3f6d;border-radius:999px;
+    padding:6px 14px;margin-bottom:18px;background:rgba(28,44,84,.5)
+  }
+  h1{
+    margin:0;font-size:clamp(28px,9vw,42px);line-height:1.18;letter-spacing:-.02em;
+    color:#ffe7a5;
+    text-shadow:0 2px 0 #6b4d12,0 0 26px rgba(255,205,110,.28)
+  }
+  .sub{margin:12px 0 0;color:#a8bade;font-size:15px;line-height:1.6}
+  .cards{display:grid;gap:16px;margin-top:30px}
+  @media(min-width:640px){.cards{grid-template-columns:1fr 1fr}}
+  a.card{
+    display:block;text-decoration:none;color:inherit;position:relative;
+    border-radius:20px;padding:22px 20px 20px;
+    background:linear-gradient(180deg,rgba(36,52,94,.92),rgba(18,26,52,.92));
+    border:1px solid #2f3f6b;
+    box-shadow:0 10px 24px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06);
+    transition:transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+  }
+  a.card:hover,a.card:focus-visible{
+    transform:translateY(-3px);border-color:#5c79c4;outline:none;
+    box-shadow:0 16px 30px rgba(0,0,0,.45),0 0 0 3px rgba(92,121,196,.22)
+  }
+  a.card:active{transform:translateY(0)}
+  .tag{
+    display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;
+    padding:4px 10px;border-radius:999px;margin-bottom:14px
+  }
+  .tag.p{background:rgba(255,205,110,.16);color:#ffd98a;border:1px solid rgba(255,205,110,.4)}
+  .tag.g{background:rgba(126,224,168,.14);color:#8ff0bd;border:1px solid rgba(126,224,168,.38)}
+  .card h2{margin:0 0 6px;font-size:21px;letter-spacing:-.01em}
+  .card p{margin:0;font-size:13.5px;line-height:1.65;color:#9fb2d6}
+  .spec{margin-top:14px;font-size:12px;color:#7f93bb;line-height:1.7}
+  .go{
+    margin-top:18px;font-size:14px;font-weight:700;color:#cfe0ff;
+    display:flex;align-items:center;gap:6px
+  }
+  .go span{transition:transform .16s ease}
+  a.card:hover .go span{transform:translateX(4px)}
+  footer{margin-top:30px;text-align:center;font-size:12px;color:#6f82a8;line-height:1.8}
+  footer code{background:#151d38;border:1px solid #28365c;border-radius:6px;padding:1px 6px;font-size:11.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">JUMP TO THE SUMMIT</div>
+    <h1>성공하고싶은 재우</h1>
+    <p class="sub">한 번 더, 정상까지.<br>버전을 골라 바로 플레이하세요.</p>
+  </header>
+
+  <div class="cards">
+    <a class="card" href="./pickle/">
+      <div class="tag p">피클 버전</div>
+      <h2>Godot 4 플랫포머</h2>
+      <p>16비트 픽셀아트로 만든 정밀 점프 플랫포머. 충전 점프로 정상까지 올라가세요.</p>
+      <div class="spec">발판 122개 · 구역 6개 · 위험/행운 이벤트 9종</div>
+      <div class="go">플레이하기 <span>→</span></div>
+    </a>
+
+    <a class="card" href="./gpt/">
+      <div class="tag g">GPT 버전</div>
+      <h2>HTML5 캔버스 버전</h2>
+      <p>가볍게 바로 켜지는 브라우저 캔버스 버전. 설치 없이 즉시 시작됩니다.</p>
+      <div class="spec">발판 90개 · 구역 5개 · 위험/행운 이벤트 9종</div>
+      <div class="go">플레이하기 <span>→</span></div>
+    </a>
+  </div>
+
+  <footer>
+    <div>피클 버전은 첫 실행 시 엔진 파일(약 40MB)을 내려받느라 잠깐 로딩될 수 있습니다.</div>
+    <div>모바일은 세로 화면에 맞춰 주세요 · PC는 <code>←</code> <code>→</code> 이동, <code>Space</code>/<code>↑</code> 점프</div>
+  </footer>
+</div>
+</body>
+</html>
