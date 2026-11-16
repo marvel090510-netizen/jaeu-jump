@@ -1,0 +1,3297 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#090b16" />
+  <title>성공하고싶은 재우</title>
+  <style>
+    :root {
+      --font-kr: 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Dotum', sans-serif;
+      --gold: #ffd45a;
+      --gold-deep: #d4891c;
+      --blue-gem: #44b8ff;
+      --crimson: #ff5566;
+      --emerald: #4de08a;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #090b16;
+      color: #f4f7ff;
+      font-family: var(--font-kr);
+      touch-action: none;
+    }
+    #app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #090b16;
+    }
+    canvas#gameCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    /* 로딩 오버레이 */
+    #loadingScreen {
+      position: absolute;
+      inset: 0;
+      z-index: 90;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: radial-gradient(circle at center, #1b2240 0%, #090b16 75%);
+      text-align: center;
+      padding: 24px;
+    }
+    .loading-bar-wrap {
+      width: min(300px, 78vw);
+      height: 18px;
+      background: #13172b;
+      border: 3px solid #59699e;
+      padding: 2px;
+    }
+    .loading-bar-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #43b5ff, #ffd45a);
+      transition: width 0.15s ease;
+    }
+    /* 메인 화면 */
+    #titleScreen {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      overflow: hidden;
+    }
+    #titleBgImg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: 65% center;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      z-index: 1;
+    }
+    /* 왼쪽 어두운 안전 영역 */
+    .title-safe-vignette {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      background: linear-gradient(
+        90deg,
+        rgba(8, 10, 22, 0.92) 0%,
+        rgba(10, 13, 28, 0.84) 36%,
+        rgba(12, 16, 34, 0.45) 56%,
+        rgba(12, 16, 34, 0.08) 100%
+      );
+      pointer-events: none;
+    }
+    .title-layout {
+      position: relative;
+      z-index: 3;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: clamp(16px, 4vw, 56px);
+      padding-bottom: calc(clamp(16px, 4vw, 56px) + env(safe-area-inset-bottom));
+    }
+    .title-panel {
+      width: min(420px, 92vw);
+      max-height: 92vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 2vh, 18px);
+      padding: clamp(16px, 3vw, 28px);
+      background: rgba(11, 14, 29, 0.72);
+      border: 3px solid rgba(114, 140, 212, 0.55);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), inset 0 0 0 2px rgba(255, 212, 90, 0.16);
+      backdrop-filter: blur(3px);
+    }
+    .title-badge {
+      display: inline-block;
+      align-self: flex-start;
+      padding: 4px 10px;
+      font-size: clamp(11px, 1.5vw, 13px);
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: #161006;
+      background: #ffd45a;
+      border: 2px solid #fff0b3;
+      box-shadow: 0 3px 0 #9f6012;
+    }
+    .title-main {
+      margin: 0;
+      font-size: clamp(28px, 5vw, 44px);
+      line-height: 1.15;
+      font-weight: 900;
+      color: #ffffff;
+      text-shadow: 0 3px 0 #1f2b54, 0 6px 14px rgba(0, 0, 0, 0.85);
+      word-break: keep-all;
+    }
+    .title-sub {
+      margin: 0;
+      font-size: clamp(15px, 2.3vw, 20px);
+      font-weight: 700;
+      color: #ffd45a;
+      text-shadow: 0 2px 0 #3f2205;
+    }
+    .title-record-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 10px 12px;
+      background: rgba(18, 24, 48, 0.86);
+      border: 2px solid #415188;
+      font-size: clamp(12px, 1.8vw, 14px);
+    }
+    .record-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .record-label {
+      color: #9cb2e6;
+      font-size: 12px;
+    }
+    .record-value {
+      color: #fff;
+      font-weight: 800;
+      font-size: clamp(14px, 2vw, 17px);
+    }
+    .title-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .px-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 52px;
+      padding: 10px 18px;
+      border: none;
+      background: transparent;
+      color: #ffffff;
+      font-family: var(--font-kr);
+      font-size: clamp(16px, 2.2vw, 19px);
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      text-shadow: 0 2px 0 rgba(0, 0, 0, 0.85);
+      transition: transform 0.08s ease, filter 0.12s ease;
+    }
+    .px-btn img.btn-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .px-btn span {
+      position: relative;
+      z-index: 1;
+    }
+    .px-btn:hover {
+      filter: brightness(1.08);
+    }
+    .px-btn:active {
+      transform: translateY(2px) scale(0.99);
+    }
+    .px-btn.primary span {
+      color: #fff6d1;
+    }
+    .title-tip {
+      margin: 0;
+      font-size: clamp(11px, 1.6vw, 13px);
+      line-height: 1.5;
+      color: #b7c5eb;
+    }
+    @media (max-width: 720px) {
+      .title-safe-vignette {
+        background: linear-gradient(
+          180deg,
+          rgba(10, 13, 28, 0.25) 0%,
+          rgba(10, 13, 28, 0.55) 38%,
+          rgba(8, 10, 22, 0.92) 72%,
+          rgba(8, 10, 22, 0.96) 100%
+        );
+      }
+      .title-layout {
+        align-items: flex-end;
+        justify-content: center;
+        padding: 14px;
+        padding-bottom: calc(14px + env(safe-area-inset-bottom));
+      }
+      .title-panel {
+        width: min(440px, 100%);
+        padding: 16px;
+        gap: 10px;
+      }
+      #titleBgImg {
+        object-position: 75% 30%;
+      }
+    }
+    @media (max-height: 540px) {
+      .title-panel {
+        gap: 7px;
+        padding: 12px 16px;
+      }
+      .px-btn {
+        min-height: 42px;
+      }
+      .title-tip {
+        display: none;
+      }
+    }
+    /* 인게임 HUD */
+    #hudLayer {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+      display: none;
+    }
+    .hud-top-bar {
+      position: absolute;
+      top: max(8px, env(safe-area-inset-top));
+      left: max(8px, env(safe-area-inset-left));
+      right: max(8px, env(safe-area-inset-right));
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .hud-stats-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px 12px;
+      padding: 7px 12px;
+      max-width: calc(100% - 62px);
+      background: rgba(11, 15, 32, 0.84);
+      border: 2px solid #596fa8;
+      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
+      font-size: clamp(11px, 1.8vw, 13px);
+      line-height: 1.25;
+    }
+    .hud-zone {
+      font-weight: 900;
+      color: #ffd45a;
+      width: 100%;
+      font-size: clamp(12px, 2vw, 14px);
+    }
+    .hud-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #dbe6ff;
+      font-weight: 700;
+    }
+    .hud-chip b {
+      color: #ffffff;
+    }
+    .hud-shield-tag {
+      display: none;
+      padding: 2px 7px;
+      background: rgba(45, 168, 108, 0.35);
+      border: 1px solid #67f0a5;
+      color: #a9ffd0;
+      font-weight: 800;
+      font-size: 12px;
+    }
+    #pauseBtn {
+      pointer-events: auto;
+      position: relative;
+      flex-shrink: 0;
+      width: 48px;
+      height: 48px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    #pauseBtn img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    #pauseBtn:active {
+      transform: translateY(2px);
+    }
+    /* 중앙 상단 대형 픽셀아트 이벤트 카드 */
+    #eventCardWrap {
+      position: absolute;
+      top: max(76px, calc(env(safe-area-inset-top) + 66px));
+      left: 50%;
+      transform: translateX(-50%) scale(0.95);
+      width: min(356px, 92vw);
+      min-height: 92px;
+      opacity: 0;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      pointer-events: none;
+      z-index: 25;
+    }
+    #eventCardWrap.visible {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+    #eventCardBg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .event-card-content {
+      position: relative;
+      z-index: 1;
+      padding: 12px 18px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .event-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .event-type-badge {
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 900;
+      border-radius: 2px;
+      letter-spacing: 0.03em;
+    }
+    .event-type-badge.danger {
+      background: #8f1626;
+      color: #ffd7dc;
+      border: 1px solid #ff7b8a;
+    }
+    .event-type-badge.luck {
+      background: #17693a;
+      color: #fff4b8;
+      border: 1px solid #ffd45a;
+    }
+    .event-timer-text {
+      font-size: 13px;
+      font-weight: 900;
+      color: #fff6d6;
+      text-shadow: 0 2px 0 rgba(0, 0, 0, 0.85);
+    }
+    .event-title-text {
+      font-size: clamp(17px, 2.8vw, 21px);
+      font-weight: 900;
+      color: #ffffff;
+      text-shadow: 0 2px 0 rgba(0, 0, 0, 0.9);
+      line-height: 1.15;
+    }
+    .event-desc-text {
+      font-size: clamp(12px, 2vw, 13.5px);
+      font-weight: 700;
+      color: #eef4ff;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, 0.85);
+      line-height: 1.25;
+    }
+    .event-progress-track {
+      width: 100%;
+      height: 6px;
+      margin-top: 2px;
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+    .event-progress-fill {
+      width: 100%;
+      height: 100%;
+      background: #ffd45a;
+      transition: width 0.1s linear;
+    }
+    .event-progress-fill.danger {
+      background: linear-gradient(90deg, #ff4f64, #ff9966);
+    }
+    .event-progress-fill.luck {
+      background: linear-gradient(90deg, #4ae890, #ffd45a);
+    }
+    /* 알림 토스트 (복귀 등) */
+    #toastMessage {
+      position: absolute;
+      bottom: calc(136px + env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 16px;
+      background: rgba(12, 16, 36, 0.92);
+      border: 2px solid #7fa3ff;
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+      max-width: 92vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+      z-index: 26;
+    }
+    #toastMessage.visible {
+      opacity: 1;
+    }
+    /* 모바일 / 이미지 기반 터치 컨트롤 */
+    #touchControls {
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      pointer-events: none;
+      display: none;
+    }
+    .touch-btn {
+      position: absolute;
+      pointer-events: auto;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      touch-action: none;
+      transition: transform 0.05s linear, filter 0.08s ease;
+    }
+    .touch-btn img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      pointer-events: none;
+    }
+    .touch-btn .touch-label {
+      position: absolute;
+      left: 50%;
+      bottom: -18px;
+      transform: translateX(-50%);
+      font-size: 11px;
+      font-weight: 800;
+      color: #e9f1ff;
+      text-shadow: 0 1px 2px #000, 0 0 4px #000;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .touch-btn.pressed {
+      transform: scale(0.93) translateY(2px);
+      filter: brightness(1.18);
+    }
+    /* 모달 공통 (조작 설정, 일시정지, 클리어) */
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 60;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      padding-bottom: calc(14px + env(safe-area-inset-bottom));
+      background: rgba(6, 8, 18, 0.78);
+      backdrop-filter: blur(4px);
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+    /* 조작 설정은 일시정지 위에 겹쳐 열리므로 항상 맨 위에 그린다 */
+    #settingsModal {
+      z-index: 70;
+    }
+    .modal-box {
+      width: min(460px, 96vw);
+      max-height: 92vh;
+      overflow-y: auto;
+      background: #12172e;
+      border: 3px solid #637bc2;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), inset 0 0 0 2px #26315e;
+      padding: clamp(16px, 3vw, 24px);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .modal-title {
+      margin: 0;
+      font-size: clamp(20px, 3.2vw, 25px);
+      font-weight: 900;
+      color: #ffd45a;
+      text-align: center;
+      text-shadow: 0 2px 0 #3a2204;
+    }
+    .modal-subtitle {
+      margin: 0;
+      font-size: 13px;
+      color: #b7c5eb;
+      text-align: center;
+      line-height: 1.45;
+    }
+    .setting-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px;
+      background: rgba(20, 27, 56, 0.85);
+      border: 2px solid #35457c;
+    }
+    .setting-label {
+      font-size: 13px;
+      font-weight: 800;
+      color: #e4ecff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .layout-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .seg-btn {
+      padding: 9px 6px;
+      border: 2px solid #485b9b;
+      background: #192248;
+      color: #cedbff;
+      font-family: var(--font-kr);
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .seg-btn.active {
+      background: #2f57b8;
+      border-color: #ffd45a;
+      color: #ffffff;
+      box-shadow: inset 0 0 0 1px rgba(255, 212, 90, 0.45);
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: #ffd45a;
+      cursor: pointer;
+    }
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .victory-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 12px;
+      background: #182042;
+      border: 2px solid #d4982a;
+    }
+    .victory-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      text-align: center;
+    }
+    .victory-stat span {
+      font-size: 12px;
+      color: #b7c5eb;
+    }
+    .victory-stat b {
+      font-size: 18px;
+      color: #ffd45a;
+    }
+  </style>
+<!-- LP-GUARD:START --><style>
+/* 꾹 누르기(롱프레스) 방지: iOS/iPadOS Safari 텍스트 선택·콜아웃·확대 차단 */
+html, body, body * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html, body {
+  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
+  touch-action: none;
+}
+/* 복사가 필요한 코드/입력 필드만 선택 허용(게임 조작부 보호에는 영향 없음) */
+pre, code, textarea, input {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
+#leftBtn, #rightBtn, #jumpBtn, #touchBtnLeft, #touchBtnRight, #touchBtnJump {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+</style><!-- LP-GUARD:END -->
+</head>
+<body>
+  <div id="app">
+    <canvas id="gameCanvas"></canvas>
+    <!-- 리소스 생성 로딩 -->
+    <div id="loadingScreen">
+      <div style="font-size:22px;font-weight:900;color:#ffd45a;">성공하고싶은 재우</div>
+      <div id="loadingText" style="font-size:14px;color:#b7c5eb;">16비트 픽셀아트 PNG 자산 생성 중...</div>
+      <div class="loading-bar-wrap">
+        <div id="loadingBarFill" class="loading-bar-fill"></div>
+      </div>
+    </div>
+    <!-- 메인 화면 -->
+    <section id="titleScreen" aria-label="메인 화면">
+      <img id="titleBgImg" alt="" />
+      <div class="title-safe-vignette"></div>
+      <div class="title-layout">
+        <div class="title-panel">
+          <span class="title-badge">정밀 수직 플랫포머 · 90+ 발판</span>
+          <h1 class="title-main">성공하고싶은 재우</h1>
+          <p class="title-sub">한 번 더, 정상까지!</p>
+          <div class="title-record-box">
+            <div class="record-item">
+              <span class="record-label">최고 도달 높이</span>
+              <span class="record-value" id="titleBestHeight">0m</span>
+            </div>
+            <div class="record-item">
+              <span class="record-label">최고 도달 발판</span>
+              <span class="record-value" id="titleBestPlat">0 / 90</span>
+            </div>
+          </div>
+          <div class="title-buttons">
+            <button id="btnStartChallenge" class="px-btn primary" type="button">
+              <img class="btn-bg" alt="" />
+              <span>도전 시작하기</span>
+            </button>
+            <button id="btnOpenSettingsFromTitle" class="px-btn" type="button">
+              <img class="btn-bg" alt="" />
+              <span>조작 설정</span>
+            </button>
+          </div>
+          <p class="title-tip">
+            조작: ← → (또는 A/D) 이동 · Space / ↑ / 점프 버튼 길게 눌러 충전 후 놓아서 점프!<br />
+            주의: 점프할 때마다 3% 확률로 <b>태초 귀환</b>이 발동합니다.
+          </p>
+        </div>
+      </div>
+    </section>
+    <!-- 인게임 HUD -->
+    <div id="hudLayer">
+      <div class="hud-top-bar">
+        <div class="hud-stats-card">
+          <div class="hud-zone" id="hudZoneName">1구간 · 초록 초원과 부유섬</div>
+          <span class="hud-chip">높이 <b id="hudHeight">0m</b></span>
+          <span class="hud-chip">최고 <b id="hudBestHeight">0m</b></span>
+          <span class="hud-chip">발판 <b id="hudPlatProgress">0 / 90</b></span>
+          <span class="hud-shield-tag" id="hudShieldTag">별빛 보호막 x2</span>
+        </div>
+        <button id="pauseBtn" type="button" aria-label="일시정지">
+          <img id="pauseBtnImg" alt="일시정지" />
+        </button>
+      </div>
+      <!-- 중앙 상단 대형 픽셀아트 이벤트 카드 -->
+      <div id="eventCardWrap" aria-live="polite">
+        <img id="eventCardBg" alt="" />
+        <div class="event-card-content">
+          <div class="event-card-head">
+            <span id="eventTypeBadge" class="event-type-badge danger">위험 이벤트</span>
+            <span id="eventTimerText" class="event-timer-text">10.0초</span>
+          </div>
+          <div id="eventTitleText" class="event-title-text">돌풍</div>
+          <div id="eventDescText" class="event-desc-text">강한 바람이 플레이어를 옆으로 밀어냅니다!</div>
+          <div class="event-progress-track">
+            <div id="eventProgressFill" class="event-progress-fill danger"></div>
+          </div>
+        </div>
+      </div>
+      <div id="toastMessage"></div>
+    </div>
+    <!-- 이미지 기반 터치 컨트롤 -->
+    <div id="touchControls">
+      <button id="touchLeft" class="touch-btn" type="button" aria-label="왼쪽 이동">
+        <img id="touchLeftImg" alt="" />
+      </button>
+      <button id="touchRight" class="touch-btn" type="button" aria-label="오른쪽 이동">
+        <img id="touchRightImg" alt="" />
+      </button>
+      <button id="touchJump" class="touch-btn" type="button" aria-label="점프 충전">
+        <img id="touchJumpImg" alt="" />
+        <span class="touch-label">점프</span>
+      </button>
+    </div>
+    <!-- 조작 설정 모달 -->
+    <div id="settingsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="조작 설정">
+      <div class="modal-box">
+        <h2 class="modal-title">조작 설정</h2>
+        <p class="modal-subtitle">모바일 터치 버튼 배치, 위치, 크기를 조절하면 바로 저장됩니다.</p>
+        <div class="setting-group">
+          <div class="setting-label">
+            <span>터치 버튼 표시</span>
+            <button id="toggleTouchVisibleBtn" class="seg-btn active" type="button" style="padding:5px 12px;">표시함</button>
+          </div>
+          <div class="setting-label" style="margin-top:4px;">
+            <span>효과음 (8비트 사운드)</span>
+            <button id="toggleSoundBtn" class="seg-btn active" type="button" style="padding:5px 12px;">켜짐</button>
+          </div>
+        </div>
+        <div class="setting-group">
+          <div class="setting-label"><span>조작 배치 선택</span></div>
+          <div class="layout-options">
+            <button class="seg-btn layout-opt" data-layout="split" type="button">양쪽 분리</button>
+            <button class="seg-btn layout-opt" data-layout="left" type="button">왼쪽 집중</button>
+            <button class="seg-btn layout-opt" data-layout="right" type="button">오른쪽 집중</button>
+          </div>
+        </div>
+        <div class="setting-group">
+          <div class="setting-label"><span>버튼 크기 확대/축소</span><span id="valScale">100%</span></div>
+          <input id="rngScale" type="range" min="0.75" max="1.5" step="0.05" value="1" />
+          <div class="setting-label"><span>방향키 X 위치 이동</span><span id="valDpadX">0px</span></div>
+          <input id="rngDpadX" type="range" min="-100" max="140" step="4" value="0" />
+          <div class="setting-label"><span>방향키 Y 위치 이동</span><span id="valDpadY">0px</span></div>
+          <input id="rngDpadY" type="range" min="-180" max="40" step="4" value="0" />
+          <div class="setting-label"><span>점프키 X 위치 이동</span><span id="valJumpX">0px</span></div>
+          <input id="rngJumpX" type="range" min="-140" max="100" step="4" value="0" />
+          <div class="setting-label"><span>점프키 Y 위치 이동</span><span id="valJumpY">0px</span></div>
+          <input id="rngJumpY" type="range" min="-180" max="40" step="4" value="0" />
+        </div>
+        <div class="btn-row">
+          <button id="btnResetControls" class="px-btn" type="button">
+            <img class="btn-bg" alt="" />
+            <span>기본값 복원</span>
+          </button>
+          <button id="btnCloseSettings" class="px-btn primary" type="button">
+            <img class="btn-bg" alt="" />
+            <span>저장 후 닫기</span>
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- 일시정지 모달 -->
+    <div id="pauseModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="일시정지">
+      <div class="modal-box">
+        <h2 class="modal-title">일시정지</h2>
+        <p class="modal-subtitle" id="pauseProgressInfo">현재 높이 0m · 발판 0 / 90</p>
+        <button id="btnResumeGame" class="px-btn primary" type="button">
+          <img class="btn-bg" alt="" />
+          <span>계속 도전하기</span>
+        </button>
+        <button id="btnOpenSettingsFromPause" class="px-btn" type="button">
+          <img class="btn-bg" alt="" />
+          <span>조작 설정</span>
+        </button>
+        <button id="btnRestartRun" class="px-btn" type="button">
+          <img class="btn-bg" alt="" />
+          <span>처음부터 다시하기</span>
+        </button>
+        <button id="btnBackToTitle" class="px-btn" type="button">
+          <img class="btn-bg" alt="" />
+          <span>메인 화면으로</span>
+        </button>
+      </div>
+    </div>
+    <!-- 성공(클리어) 모달 -->
+    <div id="victoryModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="정상 도착 성공">
+      <div class="modal-box">
+        <h2 class="modal-title">정상 정복 성공!</h2>
+        <p class="modal-subtitle">수많은 시련과 추락을 딛고 마침내 재우가 별빛 정상에 올랐습니다!</p>
+        <div class="victory-stats">
+          <div class="victory-stat">
+            <span>소요 시간</span>
+            <b id="vicTime">00:00</b>
+          </div>
+          <div class="victory-stat">
+            <span>총 점프 횟수</span>
+            <b id="vicJumps">0회</b>
+          </div>
+          <div class="victory-stat">
+            <span>태초 귀환 횟수</span>
+            <b id="vicReturns">0회</b>
+          </div>
+          <div class="victory-stat">
+            <span>최고 도달 높이</span>
+            <b id="vicHeight">0m</b>
+          </div>
+        </div>
+        <button id="btnVictoryRestart" class="px-btn primary" type="button">
+          <img class="btn-bg" alt="" />
+          <span>한 번 더 도전하기</span>
+        </button>
+        <button id="btnVictoryTitle" class="px-btn" type="button">
+          <img class="btn-bg" alt="" />
+          <span>메인 화면으로</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  <script>
+  (() => {
+    'use strict';
+    /* ============================================================
+       1. 기본 상수 및 저장소 키
+    ============================================================ */
+    const STORAGE_RECORDS = 'jaewoo_platformer_records_v1';
+    const STORAGE_CONTROLS = 'jaewoo_platformer_controls_v1';
+    const PLAY_W = 480;
+    const WALL_L = 16;
+    const WALL_R = 464;
+    const GRAVITY = 1350;
+    const MAX_FALL_SPEED = 920;
+    const WALK_SPEED = 152;
+    const MAX_CHARGE_TIME = 0.78;
+    const MIN_CHARGE = 0.24;
+    const MIN_JUMP_VY = 325;
+    const MAX_JUMP_VY = 760;
+    const MIN_JUMP_VX = 115;
+    const MAX_JUMP_VX = 325;
+    const RETURN_TO_ORIGIN_CHANCE = 0.03; // 점프할 때마다 정확히 3%
+    const ZONES = [
+      { id: 0, name: '깊은 구름 계곡', yTop: 0, yBottom: 1200 },
+      { id: 1, name: '1구간 · 초록 초원과 부유섬', yTop: -1750, yBottom: 0 },
+      { id: 2, name: '2구간 · 붉은 협곡과 낙석 지대', yTop: -3750, yBottom: -1750 },
+      { id: 3, name: '3구간 · 얼음 산맥과 빙벽', yTop: -5850, yBottom: -3750 },
+      { id: 4, name: '4구간 · 보라색 폭풍의 밤', yTop: -8050, yBottom: -5850 },
+      { id: 5, name: '5구간 · 별빛이 비치는 최종 정상', yTop: -10600, yBottom: -8050 }
+    ];
+    /* ============================================================
+       2. 결정론적 난수 & 16비트 픽셀아트 PNG 생성 엔진
+    ============================================================ */
+    function mulberry32(seed) {
+      let a = seed >>> 0;
+      return function () {
+        a |= 0;
+        a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    function hexToRgb(hex) {
+      const n = parseInt(hex.slice(1), 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+    function lerpColor(c1, c2, t) {
+      const k = Math.max(0, Math.min(1, t));
+      return [
+        Math.round(c1[0] + (c2[0] - c1[0]) * k),
+        Math.round(c1[1] + (c2[1] - c1[1]) * k),
+        Math.round(c1[2] + (c2[2] - c1[2]) * k)
+      ];
+    }
+    function createPixelCanvas(w, h) {
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      return { canvas: c, ctx };
+    }
+    function canvasToPngImage(canvas) {
+      return new Promise((resolve, reject) => {
+        const dataUrl = canvas.toDataURL('image/png');
+        const img = new Image();
+        img.onload = () => resolve({ img, dataUrl });
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+    }
+    // 4x4 Bayer 디더링 행렬 (고품질 16비트 그라데이션)
+    const BAYER4 = [
+      [0, 8, 2, 10],
+      [12, 4, 14, 6],
+      [3, 11, 1, 9],
+      [15, 7, 13, 5]
+    ];
+    function drawDitheredSky(imgData, w, h, stops) {
+      const data = imgData.data;
+      for (let y = 0; y < h; y++) {
+        const ny = y / (h - 1);
+        let seg = 0;
+        while (seg < stops.length - 2 && ny > stops[seg + 1].pos) seg++;
+        const s0 = stops[seg];
+        const s1 = stops[seg + 1];
+        const localT = (ny - s0.pos) / Math.max(0.0001, s1.pos - s0.pos);
+        const c0 = hexToRgb(s0.color);
+        const c1 = hexToRgb(s1.color);
+        for (let x = 0; x < w; x++) {
+          const threshold = (BAYER4[y & 3][x & 3] + 0.5) / 16;
+          const chooseNext = localT > threshold;
+          const col = chooseNext ? c1 : c0;
+          const idx = (y * w + x) * 4;
+          data[idx] = col[0];
+          data[idx + 1] = col[1];
+          data[idx + 2] = col[2];
+          data[idx + 3] = 255;
+        }
+      }
+    }
+    function pxRect(ctx, x, y, w, h, color) {
+      ctx.fillStyle = color;
+      ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+    }
+    function drawPixelCloud(ctx, cx, cy, rx, ry, pal, rand) {
+      for (let dy = -ry; dy <= ry; dy++) {
+        for (let dx = -rx; dx <= rx; dx++) {
+          const d = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry);
+          const wobble = Math.sin(dx * 0.25) * 0.14 + (rand() - 0.5) * 0.08;
+          if (d + wobble <= 1) {
+            let col = pal.mid;
+            if (dy < -ry * 0.35) col = pal.light;
+            else if (dy > ry * 0.45) col = pal.dark;
+            pxRect(ctx, cx + dx, cy + dy, 1, 1, col);
+          }
+        }
+      }
+    }
+    function drawPixelFloatingIsland(ctx, cx, cy, w, h, topCol, grassCol, rockLight, rockDark, hasWaterfall, waterfallLen, rand) {
+      const hw = Math.floor(w / 2);
+      // 암석 하단 역삼각 실루엣
+      for (let row = 0; row < h; row++) {
+        const t = row / h;
+        const rowHalf = Math.max(2, Math.floor(hw * (1 - t * 0.88 + Math.sin(row * 0.4) * 0.08)));
+        for (let dx = -rowHalf; dx <= rowHalf; dx++) {
+          const isEdge = Math.abs(dx) >= rowHalf - 1 || row === h - 1;
+          const shade = dx > rowHalf * 0.25 || isEdge ? rockDark : (rand() < 0.22 ? rockDark : rockLight);
+          pxRect(ctx, cx + dx, cy + row, 1, 1, shade);
+        }
+      }
+      // 상단 잔디/표면
+      for (let dx = -hw - 1; dx <= hw + 1; dx++) {
+        const drop = (Math.abs(dx * 7) % 3) + 2;
+        pxRect(ctx, cx + dx, cy - 2, 1, drop, grassCol);
+        pxRect(ctx, cx + dx, cy - 3, 1, 1, topCol);
+      }
+      // 덩굴
+      for (let v = -hw + 4; v < hw - 4; v += 9) {
+        if (rand() < 0.6) {
+          const vl = 5 + Math.floor(rand() * 10);
+          pxRect(ctx, cx + v, cy + 3, 1, vl, grassCol);
+        }
+      }
+      // 폭포
+      if (hasWaterfall) {
+        const wx = cx - 3;
+        for (let wy = 0; wy < waterfallLen; wy++) {
+          const shimmer = (wy + Math.floor(rand() * 3)) % 4 === 0;
+          pxRect(ctx, wx, cy - 1 + wy, 5, 1, shimmer ? '#dff8ff' : '#5bc0ff');
+          pxRect(ctx, wx + 1, cy - 1 + wy, 2, 1, '#9de5ff');
+        }
+        // 물보라
+        for (let s = -5; s <= 9; s++) {
+          if (rand() < 0.7) pxRect(ctx, wx + s, cy + waterfallLen - 1 + (rand() < 0.5 ? 1 : 0), 2, 2, '#eefcff');
+        }
+      }
+    }
+    function buildZoneBackground(zoneId) {
+      const W = 360;
+      const H = 800;
+      const { canvas, ctx } = createPixelCanvas(W, H);
+      const rand = mulberry32(9000 + zoneId * 1337);
+      const imgData = ctx.createImageData(W, H);
+      if (zoneId === 0) {
+        // 시작 아래: 깊은 구름 계곡 (부유섬 밑면, 폭포, 안개, 어두운 구름 계곡)
+        drawDitheredSky(imgData, W, H, [
+          { pos: 0.0, color: '#5b8cc4' }, // 1구간 하단과 자연 연결
+          { pos: 0.25, color: '#395585' },
+          { pos: 0.6, color: '#1e2b4f' },
+          { pos: 1.0, color: '#0c1022' }
+        ]);
+        ctx.putImageData(imgData, 0, 0);
+        // 상단에 매달린 거대한 부유섬 밑면과 뿌리/바위
+        for (let x = 0; x < W; x++) {
+          const depth = 36 + Math.floor(Math.sin(x * 0.045) * 18 + Math.cos(x * 0.12) * 10);
+          for (let y = 0; y < depth; y++) {
+            const c = y < 8 ? '#3e5e32' : (y > depth - 5 || x % 7 === 0 ? '#2b2434' : '#4d3e4a');
+            pxRect(ctx, x, y, 1, 1, c);
+          }
+          if (x % 14 === 0 && rand() < 0.7) {
+            pxRect(ctx, x, depth, 1, 10 + Math.floor(rand() * 20), '#2b4d31');
+          }
+        }
+        // 좌우로 쏟아지는 큰 픽셀 폭포들
+        [68, 282].forEach((wx) => {
+          for (let y = 12; y < 560; y++) {
+            const wWidth = 10 + Math.floor(Math.sin(y * 0.05) * 2);
+            pxRect(ctx, wx, y, wWidth, 1, '#3991d6');
+            pxRect(ctx, wx + 2, y, wWidth - 5, 1, '#79d2ff');
+            if ((y + Math.floor(rand() * 5)) % 5 === 0) {
+              pxRect(ctx, wx + 3, y, 3, 2, '#e8fbff');
+            }
+          }
+          drawPixelCloud(ctx, wx + 5, 565, 32, 12, { light: '#eaf7ff', mid: '#a7cde8', dark: '#5e7da6' }, rand);
+        });
+        // 중간 부유 바위 파편 & 안개층
+        for (let i = 0; i < 6; i++) {
+          drawPixelFloatingIsland(
+            ctx,
+            40 + rand() * 280,
+            150 + i * 70,
+            28 + rand() * 34,
+            18 + rand() * 14,
+            '#547a44',
+            '#345232',
+            '#554754',
+            '#29202e',
+            i % 2 === 0,
+            48,
+            rand
+          );
+        }
+        // 구름 계곡 안개층 (중~하단)
+        for (let i = 0; i < 18; i++) {
+          drawPixelCloud(
+            ctx,
+            rand() * W,
+            280 + rand() * 440,
+            34 + rand() * 45,
+            11 + rand() * 12,
+            i > 10
+              ? { light: '#3b4a78', mid: '#253054', dark: '#131830' }
+              : { light: '#99b8d9', mid: '#6380a8', dark: '#374c73' },
+            rand
+          );
+        }
+        // 최하단 어두운 계곡 절벽 & 은은한 심연 빛
+        for (let x = 0; x < W; x++) {
+          const peak = 690 + Math.floor(Math.sin(x * 0.03) * 24 + Math.cos(x * 0.08) * 12);
+          pxRect(ctx, x, peak, 1, H - peak, '#0a0d1c');
+          if (x % 19 === 0 && rand() < 0.4) {
+            pxRect(ctx, x, peak + 20, 2, 16, '#28457a');
+          }
+        }
+      } else if (zoneId === 1) {
+        // 1구간: 초록 초원과 부유섬 (하단: 초원/기둥, 중단: 부유섬과 폭포, 상단: 햇살 구름과 붉은 협곡 예고)
+        drawDitheredSky(imgData, W, H, [
+          { pos: 0.0, color: '#9c5f58' }, // 2구간 하단과 연결
+          { pos: 0.16, color: '#6999d6' },
+          { pos: 0.52, color: '#58b4e8' },
+          { pos: 0.85, color: '#7ad0f5' },
+          { pos: 1.0, color: '#5b8cc4' }  // 0구간 상단과 연결
+        ]);
+        ctx.putImageData(imgData, 0, 0);
+        // 상단 햇살 구름
+        for (let i = 0; i < 10; i++) {
+          drawPixelCloud(ctx, rand() * W, 60 + rand() * 220, 32 + rand() * 42, 11 + rand() * 10,
+            { light: '#fff6e0', mid: '#e8d8ce', dark: '#b39da6' }, rand);
+        }
+        // 중단 원경 부유섬들 + 폭포
+        drawPixelFloatingIsland(ctx, 84, 340, 74, 38, '#8be063', '#4da841', '#8a6b52', '#523b32', true, 120, rand);
+        drawPixelFloatingIsland(ctx, 276, 260, 82, 42, '#8be063', '#4da841', '#8a6b52', '#523b32', true, 145, rand);
+        drawPixelFloatingIsland(ctx, 185, 470, 56, 28, '#7ad156', '#419438', '#7d614b', '#47332c', false, 0, rand);
+        // 하단 원경 푸른 산과 고대 유적 기둥, 초원 언덕
+        for (let x = 0; x < W; x++) {
+          const hill1 = 620 + Math.floor(Math.sin(x * 0.02) * 26 + Math.cos(x * 0.05) * 10);
+          pxRect(ctx, x, hill1, 1, H - hill1, '#3c8549');
+          const hill2 = 685 + Math.floor(Math.cos(x * 0.025) * 20);
+          pxRect(ctx, x, hill2, 1, H - hill2, '#2b6b3b');
+          pxRect(ctx, x, hill2, 1, 3, '#72cf5b');
+        }
+        // 고대 석조 아치/기둥 실루엣
+        [44, 300].forEach((px) => {
+          pxRect(ctx, px, 645, 16, 120, '#69788f');
+          pxRect(ctx, px + 11, 645, 5, 120, '#445066');
+          pxRect(ctx, px - 3, 641, 22, 6, '#8da0ba');
+        });
+        // 구름 띠
+        for (let i = 0; i < 9; i++) {
+          drawPixelCloud(ctx, rand() * W, 380 + rand() * 250, 30 + rand() * 32, 10 + rand() * 8,
+            { light: '#ffffff', mid: '#cde9ff', dark: '#8fb9e6' }, rand);
+        }
+      } else if (zoneId === 2) {
+        // 2구간: 붉은 협곡과 낙석 지대 (하단 사암/현수교, 중단 붉은 절벽 첨탑, 상단 붉은 노을과 얼음빛 전환)
+        drawDitheredSky(imgData, W, H, [
+          { pos: 0.0, color: '#3b648f' }, // 3구간 하단 연결
+          { pos: 0.2, color: '#8f4759' },
+          { pos: 0.55, color: '#c45b43' },
+          { pos: 0.85, color: '#d97c4a' },
+          { pos: 1.0, color: '#9c5f58' }  // 1구간 상단 연결
+        ]);
+        ctx.putImageData(imgData, 0, 0);
+        // 먼지/재 불티
+        for (let i = 0; i < 65; i++) {
+          pxRect(ctx, rand() * W, rand() * H, 2, 2, rand() < 0.5 ? '#ffb978' : '#ff7b54');
+        }
+        // 협곡 바위 기둥들 (좌/우)
+        for (let x = 0; x < W; x++) {
+          const canyonL = x < 95 ? 240 + Math.floor(Math.sin(x * 0.08) * 35) : 999;
+          const canyonR = x > 265 ? 210 + Math.floor(Math.cos(x * 0.07) * 38) : 999;
+          if (canyonL < H) {
+            pxRect(ctx, x, canyonL, 1, H - canyonL, x % 6 === 0 ? '#6e2b27' : '#9c4034');
+            for (let sy = canyonL + 12; sy < H; sy += 24) {
+              pxRect(ctx, x, sy, 1, 3, '#c45b41');
+            }
+          }
+          if (canyonR < H) {
+            pxRect(ctx, x, canyonR, 1, H - canyonR, x % 6 === 0 ? '#5c2321' : '#8a352c');
+            for (let sy = canyonR + 18; sy < H; sy += 26) {
+              pxRect(ctx, x, sy, 1, 3, '#b55039');
+            }
+          }
+        }
+        // 중단 붉은 메사 & 바위 아치 + 원경 현수교
+        drawPixelFloatingIsland(ctx, 180, 390, 96, 36, '#d97648', '#a64632', '#7a2f29', '#4a1b1b', false, 0, rand);
+        for (let bx = 92; bx <= 268; bx++) {
+          const sag = Math.floor(Math.sin(((bx - 92) / 176) * Math.PI) * 16);
+          pxRect(ctx, bx, 615 + sag, 1, 2, '#42231c');
+          if (bx % 8 === 0) pxRect(ctx, bx, 610 + sag, 2, 7, '#69392c');
+        }
+        // 상단 불타는 구름
+        for (let i = 0; i < 8; i++) {
+          drawPixelCloud(ctx, rand() * W, 55 + rand() * 180, 34 + rand() * 30, 9 + rand() * 7,
+            { light: '#ffd4a3', mid: '#cf7461', dark: '#7a3c4a' }, rand);
+        }
+      } else if (zoneId === 3) {
+        // 3구간: 얼음 산맥과 빙벽 (하단 침엽수 설원, 중단 거대 빙벽/고드름, 상단 오로라 설산)
+        drawDitheredSky(imgData, W, H, [
+          { pos: 0.0, color: '#2b1e4a' }, // 4구간 하단 연결
+          { pos: 0.25, color: '#1b355c' },
+          { pos: 0.65, color: '#29507d' },
+          { pos: 1.0, color: '#3b648f' }  // 2구간 상단 연결
+        ]);
+        ctx.putImageData(imgData, 0, 0);
+        // 상단 오로라 픽셀 리본
+        for (let x = 0; x < W; x++) {
+          const ay = 95 + Math.floor(Math.sin(x * 0.025) * 28 + Math.cos(x * 0.06) * 10);
+          for (let h = 0; h < 34; h++) {
+            if ((x + h) % 3 !== 0) {
+              const col = h < 12 ? '#6bffcf' : (h < 24 ? '#36c9a8' : '#2a789e');
+              pxRect(ctx, x, ay + h, 1, 1, col);
+            }
+          }
+        }
+        // 거대 빙산/빙벽 실루엣 (중단)
+        for (let x = 0; x < W; x++) {
+          const ridge = 350 + Math.floor(Math.abs(((x * 1.4) % 120) - 60) * 1.9);
+          for (let y = ridge; y < H; y++) {
+            const facet = (Math.floor(x / 18) + Math.floor(y / 28)) % 3;
+            const c = facet === 0 ? '#9de4ff' : (facet === 1 ? '#5cb3e0' : '#326ea3');
+            pxRect(ctx, x, y, 1, 1, c);
+          }
+          if (ridge < 460) {
+            pxRect(ctx, x, ridge, 1, 4, '#ffffff');
+          }
+        }
+        // 하단 눈 덮인 침엽수 실루엣
+        for (let tx = 14; tx < W; tx += 22) {
+          const th = 28 + Math.floor(rand() * 24);
+          const baseY = 760;
+          for (let row = 0; row < th; row++) {
+            const wRow = Math.floor((row / th) * 12);
+            pxRect(ctx, tx - wRow, baseY - th + row, wRow * 2 + 1, 1, row % 5 === 0 ? '#d8f4ff' : '#1b3e59');
+          }
+        }
+        // 눈보라 입자
+        for (let i = 0; i < 95; i++) {
+          pxRect(ctx, rand() * W, rand() * H, 2, 2, rand() < 0.6 ? '#ffffff' : '#b8eaff');
+        }
+      } else if (zoneId === 4) {
+        // 4구간: 보라색 폭풍의 밤 (하단 어두운 첨탑, 중단 폭풍 소용돌이/번개, 상단 보랏빛 달)
+        drawDitheredSky(imgData, W, H, [
+          { pos: 0.0, color: '#0f1233' }, // 5구간 하단 연결
+          { pos: 0.3, color: '#221547' },
+          { pos: 0.68, color: '#391b5c' },
+          { pos: 1.0, color: '#2b1e4a' }  // 3구간 상단 연결
+        ]);
+        ctx.putImageData(imgData, 0, 0);
+        // 상단 보라빛 보름달
+        const mx = 270, my = 115, mr = 32;
+        for (let dy = -mr; dy <= mr; dy++) {
+          for (let dx = -mr; dx <= mr; dx++) {
+            if (dx * dx + dy * dy <= mr * mr) {
+              const crater = ((dx + 8) * (dx + 8) + (dy - 4) * (dy - 4) < 38) || ((dx - 11) * (dx - 11) + (dy + 9) * (dy + 9) < 25);
+              pxRect(ctx, mx + dx, my + dy, 1, 1, crater ? '#bda8f0' : '#efe3ff');
+            }
+          }
+        }
+        // 원경 번개 줄기들
+        [72, 290].forEach((lx) => {
+          let cx = lx;
+          for (let ly = 210; ly < 530; ly += 6) {
+            cx += Math.floor((rand() - 0.5) * 14);
+            pxRect(ctx, cx, ly, 2, 7, '#f0d6ff');
+            pxRect(ctx, cx - 1, ly + 1, 1, 5, '#b66dff');
+          }
+        });
+        // 폭풍 구름 소용돌이
+        for (let i = 0; i < 20; i++) {
+          drawPixelCloud(ctx, rand() * W, 160 + rand() * 520, 36 + rand() * 44, 10 + rand() * 10,
+            { light: '#7a45a8', mid: '#4b2673', dark: '#211038' }, rand);
+        }
+        // 하단 번개 맞은 고딕 첨탑 실루엣
+        [52, 175, 305].forEach((sx, idx) => {
+          const sh = 110 + idx * 18;
+          for (let r = 0; r < sh; r++) {
+            const wRow = Math.max(1, Math.floor((r / sh) * 20));
+            pxRect(ctx, sx - wRow, H - sh + r, wRow * 2, 1, '#120a24');
+          }
+          pxRect(ctx, sx - 2, H - sh + 28, 4, 8, '#a65cff');
+        });
+      } else {
+        // 5구간: 별빛이 비치는 최종 정상 (하단 은빛 구름바다/신전, 중단 은하수, 상단 황금 별빛 정상)
+        drawDitheredSky(imgData, W, H, [
+          { pos: 0.0, color: '#1b1642' },
+          { pos: 0.3, color: '#141747' },
+          { pos: 0.7, color: '#12153d' },
+          { pos: 1.0, color: '#0f1233' }
+        ]);
+        ctx.putImageData(imgData, 0, 0);
+        // 중단 사선 은하수 성운
+        for (let i = 0; i < 650; i++) {
+          const t = rand();
+          const gx = t * W + (rand() - 0.5) * 95;
+          const gy = 640 - t * 520 + (rand() - 0.5) * 70;
+          const cols = ['#5d68d6', '#9b82ff', '#d5c7ff', '#ffeaa3'];
+          pxRect(ctx, gx, gy, rand() < 0.25 ? 2 : 1, rand() < 0.25 ? 2 : 1, cols[Math.floor(rand() * cols.length)]);
+        }
+        // 반짝이는 십자 별들
+        for (let i = 0; i < 90; i++) {
+          const sx = Math.floor(rand() * W);
+          const sy = Math.floor(rand() * H);
+          const gold = rand() < 0.35;
+          pxRect(ctx, sx, sy, 1, 1, gold ? '#ffe27a' : '#ffffff');
+          if (rand() < 0.28) {
+            pxRect(ctx, sx - 2, sy, 5, 1, gold ? '#ffd45a' : '#bfe3ff');
+            pxRect(ctx, sx, sy - 2, 1, 5, gold ? '#ffd45a' : '#bfe3ff');
+          }
+        }
+        // 최상단 천상의 황금 게이트/제단 실루엣
+        pxRect(ctx, 118, 44, 124, 6, '#ffd45a');
+        pxRect(ctx, 130, 50, 14, 90, '#8d7ad6');
+        pxRect(ctx, 216, 50, 14, 90, '#8d7ad6');
+        pxRect(ctx, 174, 24, 12, 12, '#fff5bd');
+        // 하단 은빛 구름 바다
+        for (let i = 0; i < 14; i++) {
+          drawPixelCloud(ctx, rand() * W, 680 + rand() * 100, 38 + rand() * 35, 12 + rand() * 8,
+            { light: '#e8efff', mid: '#8fa4e0', dark: '#3e4c85' }, rand);
+        }
+      }
+      return canvasToPngImage(canvas);
+    }
+    function buildTitleBackground() {
+      const W = 480;
+      const H = 270;
+      const { canvas, ctx } = createPixelCanvas(W, H);
+      const rand = mulberry32(202505);
+      const imgData = ctx.createImageData(W, H);
+      drawDitheredSky(imgData, W, H, [
+        { pos: 0.0, color: '#141738' },
+        { pos: 0.35, color: '#273a6e' },
+        { pos: 0.72, color: '#4f7fc2' },
+        { pos: 1.0, color: '#8ac8eb' }
+      ]);
+      ctx.putImageData(imgData, 0, 0);
+      // 별빛
+      for (let i = 0; i < 65; i++) {
+        pxRect(ctx, rand() * W, rand() * 140, 1, 1, rand() < 0.4 ? '#ffe280' : '#ffffff');
+      }
+      // 오른쪽 배경 구름과 빛나는 정상 봉우리
+      for (let i = 0; i < 10; i++) {
+        drawPixelCloud(ctx, 210 + rand() * 260, 45 + rand() * 165, 26 + rand() * 35, 9 + rand() * 8,
+          { light: '#fff6e6', mid: '#c4dbf5', dark: '#7aa0cf' }, rand);
+      }
+      // 오른쪽 거대한 부유섬 (폭포 + 성 + 정상 봉우리)
+      // 정상 빛나는 봉우리
+      for (let r = 0; r < 68; r++) {
+        const half = Math.floor(r * 0.65);
+        pxRect(ctx, 355 - half, 26 + r, half * 2, 1, r < 22 ? '#e8f4ff' : '#65789c');
+        pxRect(ctx, 355, 26 + r, half, 1, r < 22 ? '#b8d7f5' : '#445275');
+      }
+      // 정상 황금 첨탑/성
+      pxRect(ctx, 310, 74, 92, 40, '#5a668a');
+      pxRect(ctx, 322, 54, 16, 40, '#6c7ba3');
+      pxRect(ctx, 374, 54, 16, 40, '#495475');
+      pxRect(ctx, 344, 44, 24, 52, '#7d8db8');
+      // 성 지붕
+      for (let r = 0; r < 14; r++) {
+        pxRect(ctx, 322 + r * 0.5, 54 - r, 16 - r, 1, '#d9534f');
+        pxRect(ctx, 374 + r * 0.5, 54 - r, 16 - r, 1, '#b53d3a');
+        pxRect(ctx, 344 + r * 0.7, 44 - r, 24 - r * 1.4, 1, '#ffd45a');
+      }
+      // 성 창문 빛
+      pxRect(ctx, 353, 62, 6, 9, '#ffe985');
+      pxRect(ctx, 328, 66, 4, 6, '#ffe985');
+      pxRect(ctx, 380, 66, 4, 6, '#ffe985');
+      // 거대 부유섬 몸체 & 잔디 & 폭포
+      drawPixelFloatingIsland(ctx, 352, 114, 186, 88, '#95eb6a', '#48a642', '#7d5a47', '#422c28', true, 140, rand);
+      // 좌측 어두운 안전 영역용 안개 절벽/나무 프레임 (왼쪽 0..195 어둡게 감쌈)
+      for (let x = 0; x < 185; x++) {
+        const edge = 250 - Math.floor(x * 0.4);
+        for (let y = 0; y < H; y++) {
+          if (x < 120 || y > edge) {
+            // 반투명 어두운 픽셀 음영으로 왼쪽 가독성 강화
+            if ((x + y) % 2 === 0 || x < 85) {
+              pxRect(ctx, x, y, 1, 1, 'rgba(9, 11, 24, 0.55)');
+            }
+          }
+        }
+      }
+      // 하단 짙은 구름 계곡
+      for (let i = 0; i < 14; i++) {
+        drawPixelCloud(ctx, rand() * W, 242 + rand() * 30, 34 + rand() * 38, 12 + rand() * 8,
+          { light: '#475f91', mid: '#253257', dark: '#11162b' }, rand);
+      }
+      return canvasToPngImage(canvas);
+    }
+    function buildJewelButton(type) {
+      // type: 'left', 'right', 'jump', 'pause', 'menuPrimary', 'menuNormal'
+      if (type === 'menuPrimary' || type === 'menuNormal') {
+        const W = 160, H = 36;
+        const { canvas, ctx } = createPixelCanvas(W, H);
+        const primary = type === 'menuPrimary';
+        const outer = primary ? '#fff2b2' : '#9eb8ff';
+        const border = primary ? '#e69b24' : '#4f6bc4';
+        const darkBorder = primary ? '#6e3a0a' : '#202b59';
+        const bodyTop = primary ? '#b85b18' : '#2c3d7a';
+        const bodyBot = primary ? '#80340c' : '#1b2652';
+        pxRect(ctx, 1, 1, W - 2, H - 2, darkBorder);
+        pxRect(ctx, 2, 2, W - 4, H - 4, border);
+        pxRect(ctx, 4, 4, W - 8, H - 8, bodyBot);
+        pxRect(ctx, 4, 4, W - 8, (H - 8) / 2, bodyTop);
+        pxRect(ctx, 3, 2, W - 6, 1, outer);
+        pxRect(ctx, 2, 3, 1, H - 6, outer);
+        // 모서리 보석 장식
+        const gem = primary ? '#ffd45a' : '#58c4ff';
+        [[4, 4], [W - 7, 4], [4, H - 7], [W - 7, H - 7]].forEach(([gx, gy]) => {
+          pxRect(ctx, gx, gy, 3, 3, gem);
+          pxRect(ctx, gx, gy, 1, 1, '#ffffff');
+        });
+        return canvasToPngImage(canvas);
+      }
+      const S = 48;
+      const { canvas, ctx } = createPixelCanvas(S, S);
+      let rimLight, rimMid, rimDark, innerTop, innerBot, gemCol;
+      if (type === 'left' || type === 'right') {
+        // 파란색 보석 프레임
+        rimLight = '#bdf0ff';
+        rimMid = '#3aa4ff';
+        rimDark = '#153a7a';
+        innerTop = '#1f59b8';
+        innerBot = '#12316e';
+        gemCol = '#7be6ff';
+      } else if (type === 'jump') {
+        // 금색·주황색 보석 프레임
+        rimLight = '#fff6b8';
+        rimMid = '#ffaa2b';
+        rimDark = '#7d3408';
+        innerTop = '#e06b14';
+        innerBot = '#96380a';
+        gemCol = '#ffe96b';
+      } else {
+        // 일시정지: 어두운 보라색과 파란색 픽셀아트 버튼
+        rimLight = '#b79cff';
+        rimMid = '#5852a8';
+        rimDark = '#18143b';
+        innerTop = '#302969';
+        innerBot = '#1b1847';
+        gemCol = '#66b5ff';
+      }
+      // 팔각형 보석 프레임 외곽
+      pxRect(ctx, 4, 1, S - 8, S - 2, '#080b18');
+      pxRect(ctx, 1, 4, S - 2, S - 8, '#080b18');
+      pxRect(ctx, 2, 2, S - 4, S - 4, '#080b18');
+      pxRect(ctx, 5, 2, S - 10, S - 4, rimDark);
+      pxRect(ctx, 2, 5, S - 4, S - 10, rimDark);
+      pxRect(ctx, 4, 3, S - 8, S - 6, rimMid);
+      pxRect(ctx, 3, 4, S - 6, S - 8, rimMid);
+      // 베벨 하이라이트
+      pxRect(ctx, 5, 3, S - 10, 2, rimLight);
+      pxRect(ctx, 3, 5, 2, S - 10, rimLight);
+      // 내부 보석 패널
+      pxRect(ctx, 7, 7, S - 14, S - 14, innerBot);
+      pxRect(ctx, 7, 7, S - 14, (S - 14) / 2, innerTop);
+      pxRect(ctx, 7, 7, S - 14, 1, rimLight);
+      // 모서리 4개 보석 포인트
+      [[5, 5], [S - 8, 5], [5, S - 8], [S - 8, S - 8]].forEach(([gx, gy]) => {
+        pxRect(ctx, gx, gy, 3, 3, gemCol);
+        pxRect(ctx, gx, gy, 1, 1, '#ffffff');
+      });
+      // 중앙 아이콘 (글자 없이 순수 픽셀 화살표/바)
+      if (type === 'left') {
+        // 큰 왼쪽 화살표
+        for (let i = 0; i < 11; i++) {
+          const h = i * 2 + 2;
+          const x = 12 + i;
+          const y = 24 - Math.floor(h / 2);
+          pxRect(ctx, x, y + 1, 1, h, '#0b1e4a'); // 그림자
+          pxRect(ctx, x, y, 1, h, i < 4 ? '#ffffff' : '#c9eeff');
+        }
+        pxRect(ctx, 23, 19, 13, 10, '#0b1e4a');
+        pxRect(ctx, 23, 18, 13, 10, '#e8f9ff');
+        pxRect(ctx, 23, 18, 13, 3, '#ffffff');
+      } else if (type === 'right') {
+        // 큰 오른쪽 화살표
+        for (let i = 0; i < 11; i++) {
+          const h = i * 2 + 2;
+          const x = 35 - i;
+          const y = 24 - Math.floor(h / 2);
+          pxRect(ctx, x, y + 1, 1, h, '#0b1e4a');
+          pxRect(ctx, x, y, 1, h, i < 4 ? '#ffffff' : '#c9eeff');
+        }
+        pxRect(ctx, 12, 19, 13, 10, '#0b1e4a');
+        pxRect(ctx, 12, 18, 13, 10, '#e8f9ff');
+        pxRect(ctx, 12, 18, 13, 3, '#ffffff');
+      } else if (type === 'jump') {
+        // 위쪽 점프 화살표 + 에너지 링
+        for (let i = 0; i < 11; i++) {
+          const w = i * 2 + 2;
+          const y = 10 + i;
+          const x = 24 - Math.floor(w / 2);
+          pxRect(ctx, x, y + 1, w, 1, '#4f1800');
+          pxRect(ctx, x, y, w, 1, i < 4 ? '#ffffff' : '#fff2a6');
+        }
+        pxRect(ctx, 19, 21, 10, 12, '#4f1800');
+        pxRect(ctx, 19, 20, 10, 12, '#fff5bd');
+        // 하단 도약 반짝임 바
+        pxRect(ctx, 13, 35, 22, 3, '#ffe97d');
+      } else if (type === 'pause') {
+        pxRect(ctx, 15, 14, 6, 20, '#0c0a24');
+        pxRect(ctx, 27, 14, 6, 20, '#0c0a24');
+        pxRect(ctx, 15, 13, 6, 20, '#b5d6ff');
+        pxRect(ctx, 27, 13, 6, 20, '#b5d6ff');
+        pxRect(ctx, 15, 13, 6, 4, '#ffffff');
+        pxRect(ctx, 27, 13, 6, 4, '#ffffff');
+      }
+      return canvasToPngImage(canvas);
+    }
+    function buildEventCardFrame(kind) {
+      // kind: 'danger' (붉은 계열) | 'luck' (초록·금색 계열)
+      const W = 280, H = 84;
+      const { canvas, ctx } = createPixelCanvas(W, H);
+      const isDanger = kind === 'danger';
+      const outerDark = isDanger ? '#26060b' : '#0b2416';
+      const rimMain = isDanger ? '#c92a42' : '#d6a429';
+      const rimBright = isDanger ? '#ff8a9b' : '#fff099';
+      const panelTop = isDanger ? '#4a101d' : '#15472d';
+      const panelBot = isDanger ? '#2b0912' : '#0d2e1e';
+      const gem = isDanger ? '#ff425b' : '#58f09c';
+      pxRect(ctx, 2, 0, W - 4, H, outerDark);
+      pxRect(ctx, 0, 2, W, H - 4, outerDark);
+      pxRect(ctx, 2, 2, W - 4, H - 4, rimMain);
+      pxRect(ctx, 4, 4, W - 8, H - 8, outerDark);
+      pxRect(ctx, 5, 5, W - 10, H - 10, panelBot);
+      pxRect(ctx, 5, 5, W - 10, 34, panelTop);
+      // 상단/좌측 하이라이트
+      pxRect(ctx, 4, 2, W - 8, 1, rimBright);
+      pxRect(ctx, 2, 4, 1, H - 8, rimBright);
+      // 모서리 보석/장식
+      [[5, 5], [W - 11, 5], [5, H - 11], [W - 11, H - 11]].forEach(([gx, gy]) => {
+        pxRect(ctx, gx, gy, 6, 6, rimBright);
+        pxRect(ctx, gx + 1, gy + 1, 4, 4, gem);
+        pxRect(ctx, gx + 1, gy + 1, 2, 2, '#ffffff');
+      });
+      // 측면 픽셀 장식선
+      pxRect(ctx, 16, 4, W - 32, 1, rimBright);
+      pxRect(ctx, 16, H - 5, W - 32, 1, rimMain);
+      return canvasToPngImage(canvas);
+    }
+    function buildCharacterSpriteSheet() {
+      // 7 frames of 24x32 pixel art: 0:idle, 1:walk1, 2:walk2, 3:charge, 4:jumpUp, 5:fallDown, 6:hurt
+      const FW = 24, FH = 32, COUNT = 7;
+      const { canvas, ctx } = createPixelCanvas(FW * COUNT, FH);
+      for (let f = 0; f < COUNT; f++) {
+        const ox = f * FW;
+        const squash = f === 3 ? 5 : 0;
+        const bob = (f === 1 ? -1 : f === 2 ? 1 : 0) + squash;
+        // 머리띠 꼬리 (바람 느낌)
+        const scarfY = 8 + bob;
+        pxRect(ctx, ox + 2, scarfY + (f === 4 ? 2 : 0), 5, 3, '#e83b4d');
+        pxRect(ctx, ox + 1, scarfY + 2, 3, 2, '#b82538');
+        // 머리카락 & 두건
+        pxRect(ctx, ox + 6, 3 + bob, 12, 5, '#2d2336');
+        pxRect(ctx, ox + 6, 7 + bob, 12, 3, '#ff4558'); // 붉은 결의의 머리띠
+        pxRect(ctx, ox + 8, 7 + bob, 8, 1, '#ff99a3');
+        // 얼굴
+        pxRect(ctx, ox + 7, 10 + bob, 10, 7, '#ffd5b3');
+        pxRect(ctx, ox + 7, 15 + bob, 10, 2, '#ebb08a');
+        // 눈 (오른쪽 방향 기본)
+        if (f === 6) {
+          // 피격 X 눈
+          pxRect(ctx, ox + 13, 12 + bob, 3, 1, '#241a2b');
+          pxRect(ctx, ox + 14, 11 + bob, 1, 3, '#241a2b');
+        } else {
+          pxRect(ctx, ox + 13, 11 + bob, 2, 3, '#1b1d33');
+          pxRect(ctx, ox + 14, 11 + bob, 1, 1, '#ffffff');
+        }
+        // 상의 (푸른 모험가 튜닉 + 황금 버클)
+        const bodyH = f === 3 ? 7 : 9;
+        pxRect(ctx, ox + 6, 17 + bob, 12, bodyH, '#2e6de0');
+        pxRect(ctx, ox + 7, 17 + bob, 10, 3, '#5497ff');
+        pxRect(ctx, ox + 6, 17 + bob + bodyH - 2, 12, 2, '#5c3c24');
+        pxRect(ctx, ox + 12, 17 + bob + bodyH - 2, 3, 2, '#ffd45a');
+        // 팔
+        if (f === 4) {
+          pxRect(ctx, ox + 4, 14 + bob, 3, 6, '#3978eb');
+          pxRect(ctx, ox + 17, 13 + bob, 3, 6, '#5497ff');
+        } else if (f === 5) {
+          pxRect(ctx, ox + 3, 15 + bob, 3, 5, '#3978eb');
+          pxRect(ctx, ox + 18, 15 + bob, 3, 5, '#5497ff');
+        } else {
+          pxRect(ctx, ox + 4, 18 + bob, 2, 6, '#2356b8');
+          pxRect(ctx, ox + 18, 18 + bob, 2, 6, '#5497ff');
+        }
+        // 다리 & 부츠
+        if (f === 1) {
+          pxRect(ctx, ox + 6, 26, 4, 4, '#243154');
+          pxRect(ctx, ox + 13, 25, 4, 4, '#324473');
+          pxRect(ctx, ox + 5, 29, 5, 3, '#7a4829');
+          pxRect(ctx, ox + 13, 28, 5, 3, '#9c5f38');
+        } else if (f === 2) {
+          pxRect(ctx, ox + 7, 25, 4, 4, '#243154');
+          pxRect(ctx, ox + 14, 26, 4, 4, '#324473');
+          pxRect(ctx, ox + 7, 28, 5, 3, '#7a4829');
+          pxRect(ctx, ox + 14, 29, 5, 3, '#9c5f38');
+        } else if (f === 3) {
+          // 웅크림
+          pxRect(ctx, ox + 6, 28, 5, 2, '#243154');
+          pxRect(ctx, ox + 13, 28, 5, 2, '#324473');
+          pxRect(ctx, ox + 5, 29, 6, 3, '#9c5f38');
+          pxRect(ctx, ox + 13, 29, 6, 3, '#9c5f38');
+        } else if (f === 4) {
+          pxRect(ctx, ox + 7, 25, 4, 4, '#243154');
+          pxRect(ctx, ox + 13, 24, 4, 4, '#324473');
+          pxRect(ctx, ox + 7, 28, 5, 3, '#9c5f38');
+          pxRect(ctx, ox + 13, 26, 5, 3, '#9c5f38');
+        } else {
+          pxRect(ctx, ox + 7, 26, 4, 3, '#243154');
+          pxRect(ctx, ox + 13, 26, 4, 3, '#324473');
+          pxRect(ctx, ox + 7, 29, 4, 3, '#9c5f38');
+          pxRect(ctx, ox + 13, 29, 4, 3, '#9c5f38');
+        }
+      }
+      return canvasToPngImage(canvas);
+    }
+    const Assets = {};
+    async function generateAllAssets(onProgress) {
+      const tasks = [
+        ['bg0', () => buildZoneBackground(0)],
+        ['bg1', () => buildZoneBackground(1)],
+        ['bg2', () => buildZoneBackground(2)],
+        ['bg3', () => buildZoneBackground(3)],
+        ['bg4', () => buildZoneBackground(4)],
+        ['bg5', () => buildZoneBackground(5)],
+        ['titleBg', () => buildTitleBackground()],
+        ['btnLeft', () => buildJewelButton('left')],
+        ['btnRight', () => buildJewelButton('right')],
+        ['btnJump', () => buildJewelButton('jump')],
+        ['btnPause', () => buildJewelButton('pause')],
+        ['btnMenuPrimary', () => buildJewelButton('menuPrimary')],
+        ['btnMenuNormal', () => buildJewelButton('menuNormal')],
+        ['cardDanger', () => buildEventCardFrame('danger')],
+        ['cardLuck', () => buildEventCardFrame('luck')],
+        ['playerSheet', () => buildCharacterSpriteSheet()]
+      ];
+      for (let i = 0; i < tasks.length; i++) {
+        const [key, fn] = tasks[i];
+        Assets[key] = await fn();
+        if (onProgress) onProgress((i + 1) / tasks.length);
+      }
+    }
+    /* ============================================================
+       3. 간단한 8비트 Web Audio 효과음
+    ============================================================ */
+    const Sound = (() => {
+      let ctx = null;
+      let enabled = true;
+      function ensure() {
+        if (!enabled) return null;
+        if (!ctx && (window.AudioContext || window.webkitAudioContext)) {
+          ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (ctx && ctx.state === 'suspended') {
+          ctx.resume().catch(() => {});
+        }
+        return ctx;
+      }
+      function tone(freqStart, freqEnd, dur, type = 'square', gainVal = 0.08, delay = 0) {
+        const ac = ensure();
+        if (!ac) return;
+        const now = ac.currentTime + delay;
+        const osc = ac.createOscillator();
+        const g = ac.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freqStart, now);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(40, freqEnd), now + dur);
+        g.gain.setValueAtTime(gainVal, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+        osc.connect(g);
+        g.connect(ac.destination);
+        osc.start(now);
+        osc.stop(now + dur);
+      }
+      return {
+        setEnabled(v) { enabled = !!v; },
+        isEnabled() { return enabled; },
+        jump(charge) {
+          const f = 220 + charge * 260;
+          tone(f, f * 1.75, 0.14, 'square', 0.07);
+        },
+        land() { tone(140, 75, 0.07, 'triangle', 0.08); },
+        hit() {
+          tone(260, 80, 0.22, 'sawtooth', 0.1);
+          tone(180, 65, 0.25, 'square', 0.07, 0.03);
+        },
+        shieldBlock() {
+          tone(520, 980, 0.16, 'triangle', 0.09);
+        },
+        crumble() { tone(160, 55, 0.18, 'sawtooth', 0.07); },
+        eventLuck() {
+          tone(440, 554, 0.1, 'triangle', 0.08, 0);
+          tone(554, 659, 0.1, 'triangle', 0.08, 0.09);
+          tone(659, 880, 0.18, 'triangle', 0.09, 0.18);
+        },
+        eventDanger() {
+          tone(300, 190, 0.15, 'sawtooth', 0.08, 0);
+          tone(250, 140, 0.2, 'sawtooth', 0.08, 0.14);
+        },
+        originReset() {
+          tone(520, 90, 0.45, 'sawtooth', 0.11, 0);
+          tone(410, 65, 0.55, 'square', 0.09, 0.08);
+        },
+        victory() {
+          [523, 659, 784, 1046].forEach((f, idx) => {
+            tone(f, f * 1.02, 0.18, 'triangle', 0.09, idx * 0.12);
+          });
+        }
+      };
+    })();
+    /* ============================================================
+       4. 발판 및 월드 생성 (총 98개 발판 · 메인 90단계 · 물리 도달 검증 포함)
+    ============================================================ */
+    function getZoneForY(y) {
+      if (y > 0) return ZONES[0];
+      for (let i = 1; i < ZONES.length; i++) {
+        if (y >= ZONES[i].yTop) return ZONES[i];
+      }
+      return ZONES[ZONES.length - 1];
+    }
+    function createPlatformObj(opts) {
+      return {
+        id: opts.id,
+        mainIndex: opts.mainIndex ?? -1,
+        baseX: opts.x,
+        baseY: opts.y,
+        x: opts.x,
+        y: opts.y,
+        w: opts.w,
+        h: opts.h || 18,
+        type: opts.type || 'normal', // normal, ice, moving, crumble, spike, spinner, summit
+        zoneId: opts.zoneId ?? 1,
+        // 움직이는 발판
+        moveAxis: opts.moveAxis || 'x',
+        moveRange: opts.moveRange || 0,
+        moveSpeed: opts.moveSpeed || 1.4,
+        movePhase: opts.movePhase || 0,
+        prevX: opts.x,
+        prevY: opts.y,
+        // 무너지는 발판
+        crumbleState: 'solid', // solid, shaking, broken
+        crumbleTimer: 0,
+        // 가시 위치 (safe 구간 >= 48px 보장)
+        spikeSide: opts.spikeSide || 'none', // left, right
+        spikeW: opts.spikeW || 0,
+        // 회전 장애물
+        hasSpinner: !!opts.hasSpinner,
+        spinnerAngle: opts.spinnerPhase || 0,
+        spinnerSpeed: opts.spinnerSpeed || 2.1,
+        spinnerRadius: opts.spinnerRadius || 46,
+        reset() {
+          this.x = this.baseX;
+          this.y = this.baseY;
+          this.prevX = this.baseX;
+          this.prevY = this.baseY;
+          this.crumbleState = 'solid';
+          this.crumbleTimer = 0;
+          this.spinnerAngle = opts.spinnerPhase || 0;
+        }
+      };
+    }
+    function buildWorldPlatforms() {
+      const rand = mulberry32(771234);
+      const mainPlats = [];
+      const extraPlats = [];
+      // 0번: 시작 부유섬 대지 (좌우 70px 틈을 남겨 추락 시 깊은 구름 계곡 체험 가능)
+      mainPlats.push(createPlatformObj({
+        id: 0,
+        mainIndex: 0,
+        x: 70,
+        y: 0,
+        w: 340,
+        h: 26,
+        type: 'normal',
+        zoneId: 1
+      }));
+      let curY = 0;
+      let curCenter = 240;
+      // 1번 ~ 90번 메인 등반 발판
+      for (let idx = 1; idx <= 90; idx++) {
+        let zoneId = 1;
+        if (idx >= 19 && idx <= 36) zoneId = 2;
+        else if (idx >= 37 && idx <= 54) zoneId = 3;
+        else if (idx >= 55 && idx <= 72) zoneId = 4;
+        else if (idx >= 73) zoneId = 5;
+        const prog = idx / 90;
+        // 수직 간격: 58 ~ 132px (암흑 안개 최대 점프 ~147px 이하, 일반 최대 점프 214px로 2단 건너뛰기 가능)
+        const minDy = 66 + prog * 30;
+        const maxDy = 96 + prog * 34;
+        const dy = Math.round(minDy + rand() * (maxDy - minDy));
+        curY -= dy;
+        // 발판 너비
+        let w = Math.round(98 - prog * 32 + (rand() - 0.5) * 14);
+        w = Math.max(60, Math.min(112, w));
+        // 쉼터(안전) 발판은 주기적으로 넓게 배치
+        if (idx % 15 === 0 || idx === 18 || idx === 36 || idx === 54 || idx === 72) {
+          w = Math.max(w, 108);
+        }
+        // 정상 발판(90번)
+        if (idx === 90) {
+          curCenter = 240;
+          w = 220;
+          mainPlats.push(createPlatformObj({
+            id: idx,
+            mainIndex: idx,
+            x: 240 - w / 2,
+            y: curY,
+            w,
+            h: 24,
+            type: 'summit',
+            zoneId: 5
+          }));
+          break;
+        }
+        // 좌우 지그재그 + 난이도별 수평 이동폭 (반드시 점프 도달 범위 <= 180px 이내 유지)
+        const minShift = 65;
+        const maxShift = 158;
+        let dir = rand() < 0.5 ? -1 : 1;
+        if (curCenter < 115) dir = 1;
+        else if (curCenter > 365) dir = -1;
+        const shift = minShift + rand() * (maxShift - minShift);
+        let nextCenter = curCenter + dir * shift;
+        nextCenter = Math.max(WALL_L + w / 2 + 10, Math.min(WALL_R - w / 2 - 10, nextCenter));
+        // 발판 유형 결정 (구간별 특성)
+        let type = 'normal';
+        let moveRange = 0;
+        let moveSpeed = 1.3;
+        let spikeSide = 'none';
+        let spikeW = 0;
+        let hasSpinner = false;
+        const isRestPad = (idx % 15 === 0 || idx === 18 || idx === 36 || idx === 54 || idx === 72 || idx <= 3 || idx === 89);
+        if (!isRestPad) {
+          const r = rand();
+          if (zoneId === 1) {
+            if (idx >= 10 && r < 0.25) {
+              type = 'moving';
+              moveRange = 36;
+              moveSpeed = 1.25;
+            }
+          } else if (zoneId === 2) {
+            if (r < 0.24) type = 'crumble';
+            else if (r < 0.46) {
+              type = 'spike';
+              w = Math.max(w, 84);
+              spikeW = 24;
+              spikeSide = rand() < 0.5 ? 'left' : 'right';
+            } else if (r < 0.64) {
+              type = 'moving';
+              moveRange = 42;
+              moveSpeed = 1.45;
+            }
+          } else if (zoneId === 3) {
+            if (r < 0.36) type = 'ice';
+            else if (r < 0.56) {
+              type = 'moving';
+              moveRange = 46;
+              moveSpeed = 1.55;
+            } else if (r < 0.74) type = 'crumble';
+            else if (r < 0.88) {
+              type = 'spike';
+              w = Math.max(w, 82);
+              spikeW = 24;
+              spikeSide = rand() < 0.5 ? 'left' : 'right';
+            }
+          } else if (zoneId === 4) {
+            if (r < 0.26) {
+              type = 'spinner';
+              hasSpinner = true;
+            } else if (r < 0.48) {
+              type = 'moving';
+              moveRange = 48;
+              moveSpeed = 1.7;
+            } else if (r < 0.68) type = 'crumble';
+            else if (r < 0.84) {
+              type = 'spike';
+              w = Math.max(w, 80);
+              spikeW = 24;
+              spikeSide = rand() < 0.5 ? 'left' : 'right';
+            }
+          } else {
+            if (r < 0.25) type = 'ice';
+            else if (r < 0.48) {
+              type = 'spinner';
+              hasSpinner = true;
+            } else if (r < 0.68) {
+              type = 'moving';
+              moveRange = 46;
+              moveSpeed = 1.8;
+            } else if (r < 0.84) type = 'crumble';
+            else {
+              type = 'spike';
+              w = Math.max(w, 80);
+              spikeW = 24;
+              spikeSide = rand() < 0.5 ? 'left' : 'right';
+            }
+          }
+        }
+        // 움직이는 발판이 벽을 넘지 않도록 범위 보정
+        let baseX = Math.round(nextCenter - w / 2);
+        if (type === 'moving') {
+          const minAllowed = WALL_L + 8 + moveRange;
+          const maxAllowed = WALL_R - 8 - w - moveRange;
+          if (maxAllowed > minAllowed) {
+            baseX = Math.max(minAllowed, Math.min(maxAllowed, baseX));
+          } else {
+            moveRange = 28;
+          }
+          nextCenter = baseX + w / 2;
+        }
+        mainPlats.push(createPlatformObj({
+          id: idx,
+          mainIndex: idx,
+          x: baseX,
+          y: curY,
+          w,
+          h: 18,
+          type,
+          zoneId,
+          moveAxis: 'x',
+          moveRange,
+          moveSpeed,
+          movePhase: rand() * Math.PI * 2,
+          spikeSide,
+          spikeW,
+          hasSpinner,
+          spinnerPhase: rand() * Math.PI * 2,
+          spinnerSpeed: (rand() < 0.5 ? 1 : -1) * (1.8 + prog * 0.8),
+          spinnerRadius: 42
+        }));
+        // 보조 안전/지름길 발판 추가 (총 발판 수 98개 이상 확보 + 일부 안전 경로 보장)
+        if (idx % 11 === 4 && idx < 86) {
+          const altSideX = nextCenter > 240 ? WALL_L + 18 : WALL_R - 86;
+          extraPlats.push(createPlatformObj({
+            id: 100 + idx,
+            mainIndex: -1,
+            x: altSideX,
+            y: curY + 34,
+            w: 66,
+            h: 16,
+            type: 'normal',
+            zoneId
+          }));
+        }
+        curCenter = nextCenter;
+      }
+      const allPlats = [...mainPlats, ...extraPlats];
+      // 물리 도달 가능성 최종 자동 보정기 (mainPlats[i] -> mainPlats[i+1])
+      for (let i = 0; i < mainPlats.length - 1; i++) {
+        const a = mainPlats[i];
+        const b = mainPlats[i + 1];
+        const dy = a.baseY - b.baseY;
+        if (dy > 134) {
+          b.baseY = a.baseY - 130;
+          b.y = b.baseY;
+        }
+        const aCenter = a.baseX + a.w / 2;
+        const bCenter = b.baseX + b.w / 2;
+        if (Math.abs(bCenter - aCenter) > 190) {
+          const clampedCenter = aCenter + Math.sign(bCenter - aCenter) * 170;
+          b.baseX = Math.max(WALL_L + 8, Math.min(WALL_R - 8 - b.w, Math.round(clampedCenter - b.w / 2)));
+          b.x = b.baseX;
+        }
+      }
+      return { allPlats, mainCount: 90 };
+    }
+    /* ============================================================
+       5. 이벤트 정의 (위험 5종 / 행운 4종 + 태초 귀환)
+    ============================================================ */
+    const DANGER_EVENTS = [
+      {
+        id: 'wind',
+        title: '돌풍',
+        desc: '거센 바람이 재우를 좌우로 밀어냅니다!',
+        duration: 9.5
+      },
+      {
+        id: 'rockfall',
+        title: '낙석',
+        desc: '위에서 바위가 떨어집니다! 맞으면 강하게 튕겨납니다.',
+        duration: 10.5
+      },
+      {
+        id: 'lightning',
+        title: '번개 폭풍',
+        desc: '경고 후 번개가 내리칩니다! 맞으면 멀리 날아갑니다.',
+        duration: 10.5
+      },
+      {
+        id: 'quake',
+        title: '지진 균열',
+        desc: '발판이 심하게 흔들리며 주기적인 충격이 옵니다!',
+        duration: 9.0
+      },
+      {
+        id: 'fog',
+        title: '암흑 안개',
+        desc: '짙은 안개가 시야를 감싸고 점프 힘이 약해집니다.',
+        duration: 8.0
+      }
+    ];
+    const LUCK_EVENTS = [
+      {
+        id: 'moonGravity',
+        title: '달빛 저중력',
+        desc: '중력이 감소하고 점프 높이가 상승합니다!',
+        duration: 12.0
+      },
+      {
+        id: 'shield',
+        title: '별빛 보호막',
+        desc: '가시·장애물·낙석·번개 피해를 2회 막아줍니다!',
+        duration: 32.0
+      },
+      {
+        id: 'cloudBoost',
+        title: '구름 가속',
+        desc: '점프 충전 속도와 도약 높·거리가 크게 증가합니다!',
+        duration: 12.0
+      },
+      {
+        id: 'celestial',
+        title: '천상의 발판',
+        desc: '저중력 + 별빛 보호막(2회) 축복을 동시에 얻습니다!',
+        duration: 14.0
+      }
+    ];
+    /* ============================================================
+       6. DOM 참조 & 저장된 설정/기록 관리
+    ============================================================ */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const loadingScreen = document.getElementById('loadingScreen');
+    const loadingBarFill = document.getElementById('loadingBarFill');
+    const titleScreen = document.getElementById('titleScreen');
+    const hudLayer = document.getElementById('hudLayer');
+    const touchControls = document.getElementById('touchControls');
+    const settingsModal = document.getElementById('settingsModal');
+    const pauseModal = document.getElementById('pauseModal');
+    const victoryModal = document.getElementById('victoryModal');
+    const eventCardWrap = document.getElementById('eventCardWrap');
+    const eventCardBg = document.getElementById('eventCardBg');
+    const eventTypeBadge = document.getElementById('eventTypeBadge');
+    const eventTimerText = document.getElementById('eventTimerText');
+    const eventTitleText = document.getElementById('eventTitleText');
+    const eventDescText = document.getElementById('eventDescText');
+    const eventProgressFill = document.getElementById('eventProgressFill');
+    const toastEl = document.getElementById('toastMessage');
+    const DEFAULT_CONTROLS = {
+      layout: 'split', // split | left | right
+      scale: 1.0,
+      dpadX: 0,
+      dpadY: 0,
+      jumpX: 0,
+      jumpY: 0,
+      touchVisible: true,
+      soundEnabled: true
+    };
+    function loadJSON(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? { ...fallback, ...JSON.parse(raw) } : { ...fallback };
+      } catch {
+        return { ...fallback };
+      }
+    }
+    function saveJSON(key, obj) {
+      try {
+        localStorage.setItem(key, JSON.stringify(obj));
+      } catch {
+        // private browsing 등 무시
+      }
+    }
+    let records = loadJSON(STORAGE_RECORDS, { bestHeightM: 0, bestPlat: 0 });
+    let controlCfg = loadJSON(STORAGE_CONTROLS, DEFAULT_CONTROLS);
+    Sound.setEnabled(controlCfg.soundEnabled);
+    /* ============================================================
+       7. 게임 상태 변수
+    ============================================================ */
+    let screenMode = 'loading'; // loading | title | playing | paused | victory
+    const { allPlats: platforms, mainCount } = buildWorldPlatforms();
+    const player = {
+      x: 240,
+      y: 0, // 발 아래 바닥 기준 Y (위로 갈수록 음수)
+      w: 24,
+      h: 32,
+      vx: 0,
+      vy: 0,
+      facing: 1,
+      onGround: true,
+      groundPlat: platforms[0],
+      charging: false,
+      charge: 0,
+      invuln: 0,
+      shield: 0,
+      walkAnim: 0,
+      hurtFlash: 0
+    };
+    const runState = {
+      cameraY: -470,
+      currentPlatIndex: 0,
+      heightM: 0,
+      jumps: 0,
+      returns: 0,
+      elapsed: 0,
+      activeEvent: null, // { kind, id, title, desc, total, remain, windDir, hazardTimer }
+      originBannerTimer: 0,
+      eventCooldown: 9.0,
+      ambientRockTimer: 3.5,
+      hazards: [], // { type: 'rock'|'lightningWarn'|'lightningBolt', ... }
+      particles: [],
+      shakeTimer: 0,
+      shakePower: 0,
+      flashAlpha: 0,
+      flashColor: '#ffffff'
+    };
+    const input = {
+      left: false,
+      right: false,
+      jumpHeld: false
+    };
+    let toastTimeout = null;
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('visible');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => toastEl.classList.remove('visible'), 2500);
+    }
+    function formatTime(sec) {
+      const s = Math.max(0, Math.floor(sec));
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+    }
+    function updateTitleRecordsUI() {
+      document.getElementById('titleBestHeight').textContent = `${records.bestHeightM}m`;
+      document.getElementById('titleBestPlat').textContent = `${records.bestPlat} / ${mainCount}`;
+    }
+    /* ============================================================
+       8. 터치 버튼 레이아웃 적용 및 커스터마이즈
+    ============================================================ */
+    const touchLeftBtn = document.getElementById('touchLeft');
+    const touchRightBtn = document.getElementById('touchRight');
+    const touchJumpBtn = document.getElementById('touchJump');
+    function getSafeBottom() {
+      // env(safe-area-inset-bottom) 값을 JS에서 px로 읽는다(아이폰 홈 인디케이터 영역)
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none;';
+      document.body.appendChild(probe);
+      const h = probe.getBoundingClientRect().height || 0;
+      probe.remove();
+      return h;
+    }
+    function applyControlLayout() {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const safeB = getSafeBottom();
+      const baseSmall = vw < 520 ? 68 : 76;
+      const dSize = Math.round(baseSmall * controlCfg.scale);
+      const jSize = Math.round((baseSmall + 14) * controlCfg.scale);
+      const gap = Math.round(12 * controlCfg.scale);
+      const margin = 16;
+      const bottomBase = Math.max(22, vh < 540 ? 14 : 26) + safeB;
+      let dLeftX, dBottom, jRightOrLeftX, jBottom, jUsesRight = false;
+      if (controlCfg.layout === 'split') {
+        dLeftX = margin + controlCfg.dpadX;
+        dBottom = bottomBase - controlCfg.dpadY;
+        jUsesRight = true;
+        jRightOrLeftX = margin - controlCfg.jumpX;
+        jBottom = bottomBase - controlCfg.jumpY;
+      } else if (controlCfg.layout === 'left') {
+        dLeftX = margin + controlCfg.dpadX;
+        dBottom = bottomBase - controlCfg.dpadY;
+        jUsesRight = false;
+        jRightOrLeftX = margin + dSize * 2 + gap * 2 + 12 + controlCfg.jumpX;
+        jBottom = bottomBase - controlCfg.jumpY;
+      } else {
+        // right 집중
+        const groupW = dSize * 2 + gap;
+        dLeftX = vw - margin - groupW - jSize - 18 + controlCfg.dpadX;
+        dBottom = bottomBase - controlCfg.dpadY;
+        jUsesRight = true;
+        jRightOrLeftX = margin - controlCfg.jumpX;
+        jBottom = bottomBase - controlCfg.jumpY;
+      }
+      // 화면 밖 이탈 방지
+      const clampX = (x, size) => Math.max(6, Math.min(vw - size - 6, x));
+      const clampBot = (b, size) => Math.max(10 + safeB, Math.min(vh - size - 70 - safeB, b));
+      const lx = clampX(dLeftX, dSize * 2 + gap);
+      const lb = clampBot(dBottom, dSize);
+      touchLeftBtn.style.width = `${dSize}px`;
+      touchLeftBtn.style.height = `${dSize}px`;
+      touchLeftBtn.style.left = `${lx}px`;
+      touchLeftBtn.style.right = 'auto';
+      touchLeftBtn.style.bottom = `${lb}px`;
+      touchRightBtn.style.width = `${dSize}px`;
+      touchRightBtn.style.height = `${dSize}px`;
+      touchRightBtn.style.left = `${lx + dSize + gap}px`;
+      touchRightBtn.style.right = 'auto';
+      touchRightBtn.style.bottom = `${lb}px`;
+      touchJumpBtn.style.width = `${jSize}px`;
+      touchJumpBtn.style.height = `${jSize}px`;
+      const jb = clampBot(jBottom, jSize);
+      touchJumpBtn.style.bottom = `${jb}px`;
+      if (jUsesRight) {
+        const rx = Math.max(6, Math.min(vw - jSize - 6, jRightOrLeftX));
+        touchJumpBtn.style.left = 'auto';
+        touchJumpBtn.style.right = `${rx}px`;
+      } else {
+        const jx = clampX(jRightOrLeftX, jSize);
+        touchJumpBtn.style.right = 'auto';
+        touchJumpBtn.style.left = `${jx}px`;
+      }
+      touchControls.style.display = (screenMode === 'playing' && controlCfg.touchVisible) ? 'block' : 'none';
+    }
+    function syncSettingsModalUI() {
+      document.querySelectorAll('.layout-opt').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.layout === controlCfg.layout);
+      });
+      document.getElementById('rngScale').value = controlCfg.scale;
+      document.getElementById('valScale').textContent = `${Math.round(controlCfg.scale * 100)}%`;
+      document.getElementById('rngDpadX').value = controlCfg.dpadX;
+      document.getElementById('valDpadX').textContent = `${controlCfg.dpadX}px`;
+      document.getElementById('rngDpadY').value = controlCfg.dpadY;
+      document.getElementById('valDpadY').textContent = `${controlCfg.dpadY}px`;
+      document.getElementById('rngJumpX').value = controlCfg.jumpX;
+      document.getElementById('valJumpX').textContent = `${controlCfg.jumpX}px`;
+      document.getElementById('rngJumpY').value = controlCfg.jumpY;
+      document.getElementById('valJumpY').textContent = `${controlCfg.jumpY}px`;
+      const tvBtn = document.getElementById('toggleTouchVisibleBtn');
+      tvBtn.classList.toggle('active', controlCfg.touchVisible);
+      tvBtn.textContent = controlCfg.touchVisible ? '표시함' : '숨김';
+      const sndBtn = document.getElementById('toggleSoundBtn');
+      sndBtn.classList.toggle('active', controlCfg.soundEnabled);
+      sndBtn.textContent = controlCfg.soundEnabled ? '켜짐' : '꺼짐';
+    }
+    /* ============================================================
+       9. 이벤트 카드 & 태초 귀환 & 리셋 로직
+    ============================================================ */
+    function updateEventCardUI() {
+      if (runState.originBannerTimer > 0) {
+        eventCardBg.src = Assets.cardDanger.dataUrl;
+        eventTypeBadge.className = 'event-type-badge danger';
+        eventTypeBadge.textContent = '위험 · 태초 귀환 (3%)';
+        eventTitleText.textContent = '태초 귀환 발동!';
+        eventDescText.textContent = '모든 위치·발판·이벤트가 처음부터 완전히 초기화되었습니다!';
+        eventTimerText.textContent = `${runState.originBannerTimer.toFixed(1)}초`;
+        eventProgressFill.className = 'event-progress-fill danger';
+        eventProgressFill.style.width = `${Math.max(0, Math.min(100, (runState.originBannerTimer / 3.6) * 100))}%`;
+        eventCardWrap.classList.add('visible');
+        return;
+      }
+      const ev = runState.activeEvent;
+      if (!ev) {
+        eventCardWrap.classList.remove('visible');
+        return;
+      }
+      const isDanger = ev.kind === 'danger';
+      eventCardBg.src = isDanger ? Assets.cardDanger.dataUrl : Assets.cardLuck.dataUrl;
+      eventTypeBadge.className = `event-type-badge ${isDanger ? 'danger' : 'luck'}`;
+      eventTypeBadge.textContent = isDanger ? '위험 이벤트' : '행운 이벤트';
+      eventTitleText.textContent = ev.title;
+      let extra = '';
+      if ((ev.id === 'shield' || ev.id === 'celestial') && player.shield > 0) {
+        extra = ` (남은 보호막 ${player.shield}회)`;
+      } else if (ev.id === 'wind') {
+        extra = ev.windDir > 0 ? ' (오른쪽 강풍 →)' : ' (← 왼쪽 강풍)';
+      }
+      eventDescText.textContent = ev.desc + extra;
+      eventTimerText.textContent = `${Math.max(0, ev.remain).toFixed(1)}초`;
+      eventProgressFill.className = `event-progress-fill ${isDanger ? 'danger' : 'luck'}`;
+      eventProgressFill.style.width = `${Math.max(0, Math.min(100, (ev.remain / ev.total) * 100))}%`;
+      eventCardWrap.classList.add('visible');
+    }
+    function triggerRandomEvent() {
+      // 위험 52% / 행운 48% 균형 확률
+      const isDanger = Math.random() < 0.52;
+      const pool = isDanger ? DANGER_EVENTS : LUCK_EVENTS;
+      const tpl = pool[Math.floor(Math.random() * pool.length)];
+      runState.activeEvent = {
+        kind: isDanger ? 'danger' : 'luck',
+        id: tpl.id,
+        title: tpl.title,
+        desc: tpl.desc,
+        total: tpl.duration,
+        remain: tpl.duration,
+        windDir: Math.random() < 0.5 ? -1 : 1,
+        hazardTimer: 1.0
+      };
+      if (tpl.id === 'shield' || tpl.id === 'celestial') {
+        player.shield = 2;
+      }
+      if (isDanger) Sound.eventDanger();
+      else Sound.eventLuck();
+      updateEventCardUI();
+    }
+    function resetWorldCompletely(isOriginReturn = false) {
+      platforms.forEach((p) => p.reset());
+      player.x = 240;
+      player.y = 0;
+      player.vx = 0;
+      player.vy = 0;
+      player.facing = 1;
+      player.onGround = true;
+      player.groundPlat = platforms[0];
+      player.charging = false;
+      player.charge = 0;
+      player.invuln = 0;
+      player.shield = 0;
+      player.hurtFlash = 0;
+      runState.cameraY = -470;
+      runState.currentPlatIndex = 0;
+      runState.heightM = 0;
+      runState.jumps = 0;
+      runState.elapsed = 0;
+      runState.activeEvent = null;
+      runState.eventCooldown = 10.0;
+      runState.ambientRockTimer = 3.5;
+      runState.hazards = [];
+      runState.particles = [];
+      runState.shakeTimer = 0;
+      if (isOriginReturn) {
+        runState.returns += 1;
+        runState.originBannerTimer = 3.6;
+        runState.flashAlpha = 0.85;
+        runState.flashColor = '#ff4268';
+        runState.shakeTimer = 0.5;
+        runState.shakePower = 8;
+        Sound.originReset();
+      } else {
+        runState.originBannerTimer = 0;
+        runState.flashAlpha = 0;
+      }
+      updateEventCardUI();
+    }
+    /* ============================================================
+       10. 파티클 & 피격 반동 처리
+    ============================================================ */
+    function spawnParticles(x, y, count, color, speed = 130) {
+      for (let i = 0; i < count; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const sp = (0.3 + Math.random() * 0.7) * speed;
+        runState.particles.push({
+          x,
+          y,
+          vx: Math.cos(ang) * sp,
+          vy: Math.sin(ang) * sp - 40,
+          life: 0.35 + Math.random() * 0.35,
+          maxLife: 0.7,
+          size: 2 + Math.floor(Math.random() * 3),
+          color
+        });
+      }
+    }
+    function applyKnockbackHit(sourceX, strong = true) {
+      if (player.invuln > 0) return;
+      // 별빛 보호막 방어 처리
+      if (player.shield > 0) {
+        player.shield -= 1;
+        player.invuln = 0.85;
+        player.vy = -220;
+        player.onGround = false;
+        player.groundPlat = null;
+        spawnParticles(player.x, player.y - 16, 16, '#8effbe', 160);
+        Sound.shieldBlock();
+        showToast(player.shield > 0 ? `별빛 보호막으로 방어! (남은 횟수 ${player.shield}회)` : '별빛 보호막이 모두 소모되었습니다!');
+        if (player.shield === 0 && runState.activeEvent && runState.activeEvent.id === 'shield') {
+          runState.activeEvent = null;
+          runState.eventCooldown = 9.0;
+        }
+        updateEventCardUI();
+        return;
+      }
+      // 강한 반동 + 무적 시간 (멈추지 않음!)
+      const dir = player.x >= sourceX ? 1 : -1;
+      player.vx = dir * (strong ? 315 : 225);
+      player.vy = strong ? -430 : -290;
+      player.onGround = false;
+      player.groundPlat = null;
+      player.charging = false;
+      player.charge = 0;
+      player.invuln = 1.0;
+      player.hurtFlash = 0.45;
+      runState.shakeTimer = 0.28;
+      runState.shakePower = 6;
+      spawnParticles(player.x, player.y - 16, 18, '#ff5972', 190);
+      Sound.hit();
+    }
+    /* ============================================================
+       11. 점프 & 물리 시뮬레이션 (고정 타임스텝 dt = 1/60)
+    ============================================================ */
+    function executeJump() {
+      if (!player.onGround) return;
+      player.charging = false;
+      // 3% 확률 태초 귀환 체크 (모든 상태 완전 초기화)
+      if (Math.random() < RETURN_TO_ORIGIN_CHANCE) {
+        resetWorldCompletely(true);
+        return;
+      }
+      const ev = runState.activeEvent;
+      let jumpMult = 1.0;
+      if (ev && ev.id === 'fog') jumpMult = 0.84;
+      else if (ev && ev.id === 'cloudBoost') jumpMult = 1.18;
+      const chargeAmt = Math.max(MIN_CHARGE, Math.min(1, player.charge));
+      const vy = -(MIN_JUMP_VY + (MAX_JUMP_VY - MIN_JUMP_VY) * chargeAmt) * jumpMult;
+      let dir = 0;
+      if (input.left && !input.right) dir = -1;
+      else if (input.right && !input.left) dir = 1;
+      if (dir !== 0) player.facing = dir;
+      const vx = dir * (MIN_JUMP_VX + (MAX_JUMP_VX - MIN_JUMP_VX) * chargeAmt) * (ev && ev.id === 'cloudBoost' ? 1.12 : 1.0);
+      player.vx = vx;
+      player.vy = vy;
+      player.onGround = false;
+      player.groundPlat = null;
+      player.charge = 0;
+      runState.jumps += 1;
+      spawnParticles(player.x, player.y, 8, '#dcecff', 90);
+      Sound.jump(chargeAmt);
+    }
+    function updatePhysics(dt) {
+      runState.elapsed += dt;
+      if (runState.originBannerTimer > 0) {
+        runState.originBannerTimer = Math.max(0, runState.originBannerTimer - dt);
+        if (runState.originBannerTimer === 0) updateEventCardUI();
+      }
+      if (runState.flashAlpha > 0) runState.flashAlpha = Math.max(0, runState.flashAlpha - dt * 1.4);
+      if (runState.shakeTimer > 0) runState.shakeTimer = Math.max(0, runState.shakeTimer - dt);
+      if (player.invuln > 0) player.invuln = Math.max(0, player.invuln - dt);
+      if (player.hurtFlash > 0) player.hurtFlash = Math.max(0, player.hurtFlash - dt);
+      // 발판 이동 / 붕괴 / 회전 장애물 업데이트
+      for (const p of platforms) {
+        p.prevX = p.x;
+        p.prevY = p.y;
+        if (p.type === 'moving' && p.moveRange > 0) {
+          p.movePhase += p.moveSpeed * dt;
+          p.x = p.baseX + Math.sin(p.movePhase) * p.moveRange;
+        }
+        if (p.type === 'crumble') {
+          if (p.crumbleState === 'shaking') {
+            p.crumbleTimer -= dt;
+            if (p.crumbleTimer <= 0) {
+              p.crumbleState = 'broken';
+              p.crumbleTimer = 3.2; // 3.2초 뒤 복구 (태초 귀환 시 즉시 복구)
+              Sound.crumble();
+              spawnParticles(p.x + p.w / 2, p.y + 6, 12, '#a38979', 110);
+              if (player.groundPlat === p) {
+                player.onGround = false;
+                player.groundPlat = null;
+              }
+            }
+          } else if (p.crumbleState === 'broken') {
+            p.crumbleTimer -= dt;
+            if (p.crumbleTimer <= 0) {
+              p.crumbleState = 'solid';
+            }
+          }
+        }
+        if (p.hasSpinner) {
+          p.spinnerAngle += p.spinnerSpeed * dt;
+        }
+      }
+      // 이벤트 타이머 및 신규 이벤트 롤링 (발판 2개 이상 오른 후 작동)
+      if (runState.activeEvent) {
+        const ev = runState.activeEvent;
+        ev.remain -= dt;
+        if (ev.id === 'rockfall') {
+          ev.hazardTimer -= dt;
+          if (ev.hazardTimer <= 0) {
+            ev.hazardTimer = 1.25;
+            const rx = Math.max(WALL_L + 18, Math.min(WALL_R - 18, player.x + (Math.random() - 0.5) * 180));
+            runState.hazards.push({
+              type: 'rock',
+              x: rx,
+              y: runState.cameraY - 30,
+              vy: 330 + Math.random() * 80,
+              r: 12
+            });
+          }
+        } else if (ev.id === 'lightning') {
+          ev.hazardTimer -= dt;
+          if (ev.hazardTimer <= 0) {
+            ev.hazardTimer = 2.1;
+            const lx = Math.max(WALL_L + 24, Math.min(WALL_R - 24, player.x + (Math.random() - 0.5) * 130));
+            runState.hazards.push({
+              type: 'lightningWarn',
+              x: lx,
+              timer: 0.85
+            });
+          }
+        } else if (ev.id === 'quake') {
+          runState.shakeTimer = Math.max(runState.shakeTimer, 0.12);
+          runState.shakePower = 3.2;
+          ev.hazardTimer -= dt;
+          if (ev.hazardTimer <= 0) {
+            ev.hazardTimer = 2.4;
+            if (player.onGround) {
+              applyKnockbackHit(player.x + (Math.random() < 0.5 ? -20 : 20), false);
+            }
+          }
+        }
+        if (ev.remain <= 0) {
+          if (ev.id === 'shield' || ev.id === 'celestial') {
+            player.shield = 0;
+          }
+          runState.activeEvent = null;
+          runState.eventCooldown = 9.0 + Math.random() * 4.5;
+        }
+        updateEventCardUI();
+      } else if (runState.currentPlatIndex >= 2) {
+        runState.eventCooldown -= dt;
+        if (runState.eventCooldown <= 0) {
+          if (Math.random() < 0.7) {
+            triggerRandomEvent();
+          } else {
+            runState.eventCooldown = 3.0;
+          }
+        }
+      }
+      // 2구간(붉은 협곡) 고유 환경 낙석 (이벤트와 별개로 협곡 지대 감각 부여)
+      const curZone = getZoneForY(player.y);
+      if (curZone.id === 2 && !runState.activeEvent) {
+        runState.ambientRockTimer -= dt;
+        if (runState.ambientRockTimer <= 0) {
+          runState.ambientRockTimer = 3.6 + Math.random() * 2.0;
+          const rx = WALL_L + 24 + Math.random() * (WALL_R - WALL_L - 48);
+          runState.hazards.push({
+            type: 'rock',
+            x: rx,
+            y: runState.cameraY - 25,
+            vy: 300,
+            r: 11
+          });
+        }
+      }
+      // 플레이어 입력 & 충전 & 이동
+      const ev = runState.activeEvent;
+      if (player.onGround && player.groundPlat) {
+        // 움직이는 발판 위에 서 있으면 발판과 함께 이동
+        player.x += player.groundPlat.x - player.groundPlat.prevX;
+        if (input.jumpHeld) {
+          player.charging = true;
+          const chargeSpeed = (ev && ev.id === 'cloudBoost') ? 1.28 / MAX_CHARGE_TIME : 1 / MAX_CHARGE_TIME;
+          player.charge = Math.min(1, player.charge + chargeSpeed * dt);
+          if (input.left && !input.right) player.facing = -1;
+          else if (input.right && !input.left) player.facing = 1;
+          player.vx *= 0.72;
+        } else if (player.charging) {
+          executeJump();
+        } else {
+          // 지상 이동 (얼음 발판은 미끄러짐 + 관성)
+          const onIce = player.groundPlat.type === 'ice';
+          let targetVx = 0;
+          if (input.left && !input.right) {
+            targetVx = -WALK_SPEED;
+            player.facing = -1;
+          } else if (input.right && !input.left) {
+            targetVx = WALK_SPEED;
+            player.facing = 1;
+          }
+          if (onIce) {
+            const accel = targetVx !== 0 ? 310 : 75;
+            if (player.vx < targetVx) player.vx = Math.min(targetVx * 1.2, player.vx + accel * dt);
+            else if (player.vx > targetVx) player.vx = Math.max(targetVx * 1.2, player.vx - accel * dt);
+          } else {
+            player.vx = targetVx;
+          }
+          // 돌풍 지상 약한 밀림
+          if (ev && ev.id === 'wind') {
+            player.vx += ev.windDir * 58 * dt;
+          }
+          if (Math.abs(player.vx) > 15) player.walkAnim += dt * 9;
+          else player.walkAnim = 0;
+        }
+        // 방금 점프했으면(executeJump 가 onGround=false 로 만든다) 이번 프레임 지상 처리는 건너뛴다
+        if (player.onGround && player.groundPlat) {
+          player.x += player.vx * dt;
+          // 벽 제한
+          if (player.x - player.w / 2 < WALL_L) {
+            player.x = WALL_L + player.w / 2;
+            player.vx = 0;
+          } else if (player.x + player.w / 2 > WALL_R) {
+            player.x = WALL_R - player.w / 2;
+            player.vx = 0;
+          }
+          // 발판에서 벗어났는지 체크
+          const gp = player.groundPlat;
+          if (gp.crumbleState === 'broken' || player.x + player.w * 0.38 < gp.x || player.x - player.w * 0.38 > gp.x + gp.w) {
+            player.onGround = false;
+            player.groundPlat = null;
+            player.charging = false;
+            player.charge = 0;
+          } else {
+            player.y = gp.y;
+            // 가시 발판 위 가시 영역 접촉 체크
+            if (gp.type === 'spike' && gp.spikeW > 0) {
+              const sx1 = gp.spikeSide === 'left' ? gp.x : gp.x + gp.w - gp.spikeW;
+              const sx2 = sx1 + gp.spikeW;
+              if (player.x + player.w * 0.35 > sx1 && player.x - player.w * 0.35 < sx2) {
+                applyKnockbackHit((sx1 + sx2) / 2, true);
+              }
+            }
+          }
+        }
+      } else {
+        // 공중 상태 (Jump King 스타일: 공중 제어 극도로 제한!)
+        if (input.left && !input.right) {
+          player.vx = Math.max(player.vx - 55 * dt, -350);
+        } else if (input.right && !input.left) {
+          player.vx = Math.min(player.vx + 55 * dt, 350);
+        }
+        if (ev && ev.id === 'wind') {
+          player.vx += ev.windDir * 195 * dt;
+        }
+        let g = GRAVITY;
+        if (ev && (ev.id === 'moonGravity' || ev.id === 'celestial')) {
+          g *= 0.74;
+        }
+        player.vy = Math.min(MAX_FALL_SPEED, player.vy + g * dt);
+        const prevY = player.y;
+        player.x += player.vx * dt;
+        player.y += player.vy * dt;
+        // 좌우 벽 충돌 시 반동 (Jump King 핵심 손맛!)
+        if (player.x - player.w / 2 < WALL_L) {
+          player.x = WALL_L + player.w / 2;
+          player.vx = Math.abs(player.vx) * 0.65;
+          player.facing = 1;
+          Sound.land();
+        } else if (player.x + player.w / 2 > WALL_R) {
+          player.x = WALL_R - player.w / 2;
+          player.vx = -Math.abs(player.vx) * 0.65;
+          player.facing = -1;
+          Sound.land();
+        }
+        // 하강 중 발판 상단 착지 판정
+        if (player.vy >= 0) {
+          for (const p of platforms) {
+            if (p.crumbleState === 'broken') continue;
+            if (prevY <= p.y + 4 && player.y >= p.y) {
+              const half = player.w * 0.38;
+              if (player.x + half > p.x && player.x - half < p.x + p.w) {
+                player.y = p.y;
+                player.vy = 0;
+                player.onGround = true;
+                player.groundPlat = p;
+                if (p.type !== 'ice') player.vx *= 0.25;
+                Sound.land();
+                spawnParticles(player.x, player.y, 6, '#e6f2ff', 65);
+                if (p.type === 'crumble' && p.crumbleState === 'solid') {
+                  p.crumbleState = 'shaking';
+                  p.crumbleTimer = 1.0;
+                }
+                // 가시 위에 직접 착지 시 즉시 멀리 날려보냄
+                if (p.type === 'spike' && p.spikeW > 0) {
+                  const sx1 = p.spikeSide === 'left' ? p.x : p.x + p.w - p.spikeW;
+                  const sx2 = sx1 + p.spikeW;
+                  if (player.x + half > sx1 && player.x - half < sx2) {
+                    applyKnockbackHit((sx1 + sx2) / 2, true);
+                    break;
+                  }
+                }
+                if (p.mainIndex > runState.currentPlatIndex) {
+                  runState.currentPlatIndex = p.mainIndex;
+                }
+                // 마지막 정상 발판 도착 체크!
+                if (p.type === 'summit' || p.mainIndex === mainCount) {
+                  triggerVictory();
+                  return;
+                }
+                break;
+              }
+            }
+          }
+        }
+      }
+      // 회전 장애물 충돌 판정
+      for (const p of platforms) {
+        if (!p.hasSpinner) continue;
+        const cx = p.x + p.w / 2 + Math.cos(p.spinnerAngle) * p.spinnerRadius;
+        const cy = p.y - 12 + Math.sin(p.spinnerAngle) * p.spinnerRadius;
+        const dx = player.x - cx;
+        const dy = (player.y - player.h / 2) - cy;
+        if (dx * dx + dy * dy < 19 * 19) {
+          applyKnockbackHit(cx, true);
+        }
+      }
+      // 낙석 / 번개 장애물 업데이트 & 충돌 판정
+      for (let i = runState.hazards.length - 1; i >= 0; i--) {
+        const h = runState.hazards[i];
+        if (h.type === 'rock') {
+          h.y += h.vy * dt;
+          const dx = player.x - h.x;
+          const dy = (player.y - player.h / 2) - h.y;
+          if (dx * dx + dy * dy < (h.r + 12) * (h.r + 12)) {
+            applyKnockbackHit(h.x, true);
+            runState.hazards.splice(i, 1);
+            continue;
+          }
+          if (h.y > runState.cameraY + 950) {
+            runState.hazards.splice(i, 1);
+          }
+        } else if (h.type === 'lightningWarn') {
+          h.timer -= dt;
+          if (h.timer <= 0) {
+            runState.hazards[i] = { type: 'lightningBolt', x: h.x, timer: 0.28 };
+            runState.shakeTimer = 0.22;
+            runState.shakePower = 5;
+            if (Math.abs(player.x - h.x) < 26) {
+              applyKnockbackHit(h.x, true);
+            }
+          }
+        } else if (h.type === 'lightningBolt') {
+          h.timer -= dt;
+          if (h.timer <= 0) {
+            runState.hazards.splice(i, 1);
+          }
+        }
+      }
+      // 깊은 구름 계곡 최하단 추락 시 시작 지점 복귀
+      if (player.y > 1060) {
+        player.x = 240;
+        player.y = 0;
+        player.vx = 0;
+        player.vy = 0;
+        player.onGround = true;
+        player.groundPlat = platforms[0];
+        player.charging = false;
+        player.charge = 0;
+        runState.flashAlpha = 0.45;
+        runState.flashColor = '#9ee8ff';
+        spawnParticles(240, 0, 16, '#c7f2ff', 130);
+        showToast('구름 계곡에서 시작 지점으로 돌아왔습니다. 다시 도전!');
+      }
+      // 높이 & 최고 기록 갱신
+      const curH = Math.max(0, Math.round(-player.y / 10));
+      runState.heightM = curH;
+      if (curH > records.bestHeightM || runState.currentPlatIndex > records.bestPlat) {
+        records.bestHeightM = Math.max(records.bestHeightM, curH);
+        records.bestPlat = Math.max(records.bestPlat, runState.currentPlatIndex);
+        saveJSON(STORAGE_RECORDS, records);
+      }
+      // 카메라 스크롤 (플레이어를 자연스럽게 추적, 시작 지점에선 아래 구름 계곡도 살짝 보이게)
+      const targetCamY = player.y <= 30 ? Math.min(-450, player.y - 470) : player.y - 430;
+      runState.cameraY += (targetCamY - runState.cameraY) * Math.min(1, dt * 7.5);
+      // 파티클 업데이트
+      for (let i = runState.particles.length - 1; i >= 0; i--) {
+        const pt = runState.particles[i];
+        pt.x += pt.vx * dt;
+        pt.y += pt.vy * dt;
+        pt.vy += 260 * dt;
+        pt.life -= dt;
+        if (pt.life <= 0) runState.particles.splice(i, 1);
+      }
+      updateHudValues();
+    }
+    function updateHudValues() {
+      const z = getZoneForY(player.y);
+      document.getElementById('hudZoneName').textContent = z.name;
+      document.getElementById('hudHeight').textContent = `${runState.heightM}m`;
+      document.getElementById('hudBestHeight').textContent = `${records.bestHeightM}m`;
+      document.getElementById('hudPlatProgress').textContent = `${runState.currentPlatIndex} / ${mainCount}`;
+      const shieldTag = document.getElementById('hudShieldTag');
+      if (player.shield > 0) {
+        shieldTag.style.display = 'inline-block';
+        shieldTag.textContent = `별빛 보호막 x${player.shield}`;
+      } else {
+        shieldTag.style.display = 'none';
+      }
+    }
+    function triggerVictory() {
+      screenMode = 'victory';
+      player.charging = false;
+      player.charge = 0;
+      resetTouchInputs();
+      touchControls.style.display = 'none';
+      Sound.victory();
+      records.bestPlat = mainCount;
+      records.bestHeightM = Math.max(records.bestHeightM, runState.heightM);
+      saveJSON(STORAGE_RECORDS, records);
+      updateTitleRecordsUI();
+      document.getElementById('vicTime').textContent = formatTime(runState.elapsed);
+      document.getElementById('vicJumps').textContent = `${runState.jumps}회`;
+      document.getElementById('vicReturns').textContent = `${runState.returns}회`;
+      document.getElementById('vicHeight').textContent = `${records.bestHeightM}m`;
+      victoryModal.classList.add('open');
+    }
+    /* ============================================================
+       12. 16비트 픽셀아트 월드 & 배경 렌더링
+    ============================================================ */
+    function renderGame() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const cw = canvas.clientWidth;
+      const ch = canvas.clientHeight;
+      if (canvas.width !== Math.floor(cw * dpr) || canvas.height !== Math.floor(ch * dpr)) {
+        canvas.width = Math.floor(cw * dpr);
+        canvas.height = Math.floor(ch * dpr);
+      }
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.imageSmoothingEnabled = false;
+      // 뷰포트 스케일: 480 플레이 영역이 모바일과 PC 모두에서 잘리지 않게 반응형 맞춤
+      const scale = Math.min(cw / PLAY_W, ch / 740);
+      const visW = cw / scale;
+      const visH = ch / scale;
+      const playOffsetX = (visW - PLAY_W) / 2;
+      const shakeX = runState.shakeTimer > 0 ? (Math.random() - 0.5) * runState.shakePower * 2 : 0;
+      const shakeY = runState.shakeTimer > 0 ? (Math.random() - 0.5) * runState.shakePower * 2 : 0;
+      ctx.fillStyle = '#090b16';
+      ctx.fillRect(0, 0, cw, ch);
+      ctx.save();
+      ctx.scale(scale, scale);
+      ctx.translate(playOffsetX + shakeX, -runState.cameraY + shakeY);
+      // 1) 월드 좌표 고정 세로 픽셀아트 PNG 배경 스크롤 (0구간~5구간 자연 연결)
+      const bgKeys = ['bg0', 'bg1', 'bg2', 'bg3', 'bg4', 'bg5'];
+      const bgWorldW = Math.max(visW + 40, 720);
+      const bgLeft = 240 - bgWorldW / 2;
+      for (let i = 0; i < ZONES.length; i++) {
+        const z = ZONES[i];
+        const spanH = z.yBottom - z.yTop;
+        if (z.yBottom < runState.cameraY - 40 || z.yTop > runState.cameraY + visH + 40) continue;
+        const asset = Assets[bgKeys[i]];
+        if (asset && asset.img) {
+          ctx.drawImage(asset.img, bgLeft, z.yTop, bgWorldW, spanH + 2);
+        }
+      }
+      // 시작 섬(y=0) 아래의 장식 폭포/뿌리 디테일 (월드 전경)
+      const p0 = platforms[0];
+      if (p0.y > runState.cameraY - 100 && p0.y < runState.cameraY + visH + 200) {
+        // 부유섬 암석 밑면
+        ctx.fillStyle = '#4e3937';
+        ctx.beginPath();
+        ctx.moveTo(p0.x + 8, p0.y + p0.h);
+        ctx.lineTo(p0.x + p0.w - 8, p0.y + p0.h);
+        ctx.lineTo(p0.x + p0.w * 0.72, p0.y + 84);
+        ctx.lineTo(p0.x + p0.w * 0.48, p0.y + 108);
+        ctx.lineTo(p0.x + p0.w * 0.24, p0.y + 76);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // 2) 좌우 경계 성벽 / 절벽 기둥
+      const wallTop = Math.floor((runState.cameraY - 60) / 32) * 32;
+      const wallBot = runState.cameraY + visH + 64;
+      ctx.fillStyle = '#1b2038';
+      ctx.fillRect(-400, wallTop, 400 + WALL_L, wallBot - wallTop);
+      ctx.fillRect(WALL_R, wallTop, 400, wallBot - wallTop);
+      for (let wy = wallTop; wy < wallBot; wy += 32) {
+        ctx.fillStyle = '#2d375c';
+        ctx.fillRect(WALL_L - 12, wy + 2, 10, 26);
+        ctx.fillRect(WALL_R + 2, wy + 2, 10, 26);
+        ctx.fillStyle = '#4f629c';
+        ctx.fillRect(WALL_L - 3, wy + 2, 3, 26);
+        ctx.fillRect(WALL_R, wy + 2, 3, 26);
+      }
+      // 3) 발판 & 장애물 렌더링
+      for (const p of platforms) {
+        if (p.y + 60 < runState.cameraY || p.y - 60 > runState.cameraY + visH) continue;
+        if (p.crumbleState === 'broken') {
+          ctx.strokeStyle = 'rgba(200, 170, 150, 0.28)';
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(p.x, p.y, p.w, p.h);
+          ctx.setLineDash([]);
+          continue;
+        }
+        const shakePx = p.crumbleState === 'shaking' ? (Math.random() - 0.5) * 4 : 0;
+        const px = Math.round(p.x + shakePx);
+        const py = Math.round(p.y);
+        drawPixelPlatform(ctx, p, px, py);
+        // 가시 렌더링
+        if (p.type === 'spike' && p.spikeW > 0) {
+          const sx = p.spikeSide === 'left' ? px : px + p.w - p.spikeW;
+          for (let tx = sx; tx < sx + p.spikeW - 3; tx += 6) {
+            ctx.fillStyle = '#ff4b63';
+            ctx.beginPath();
+            ctx.moveTo(tx, py);
+            ctx.lineTo(tx + 3, py - 9);
+            ctx.lineTo(tx + 6, py);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#ffd1d8';
+            ctx.fillRect(tx + 2, py - 7, 1, 4);
+          }
+        }
+        // 회전 장애물 렌더링
+        if (p.hasSpinner) {
+          const cx = px + p.w / 2 + Math.cos(p.spinnerAngle) * p.spinnerRadius;
+          const cy = py - 12 + Math.sin(p.spinnerAngle) * p.spinnerRadius;
+          ctx.strokeStyle = 'rgba(180, 120, 255, 0.45)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(px + p.w / 2, py - 12);
+          ctx.lineTo(cx, cy);
+          ctx.stroke();
+          ctx.fillStyle = '#33124d';
+          ctx.fillRect(cx - 10, cy - 10, 20, 20);
+          ctx.fillStyle = '#ff477e';
+          ctx.fillRect(cx - 7, cy - 7, 14, 14);
+          ctx.fillStyle = '#ffe5f0';
+          ctx.fillRect(cx - 3, cy - 3, 6, 6);
+        }
+      }
+      // 4) 낙석 / 번개 위험 장애물 렌더링
+      for (const h of runState.hazards) {
+        if (h.type === 'rock') {
+          ctx.fillStyle = '#4a241f';
+          ctx.fillRect(h.x - 11, h.y - 11, 22, 22);
+          ctx.fillStyle = '#8f4638';
+          ctx.fillRect(h.x - 9, h.y - 9, 16, 16);
+          ctx.fillStyle = '#d1785a';
+          ctx.fillRect(h.x - 7, h.y - 7, 7, 6);
+        } else if (h.type === 'lightningWarn') {
+          ctx.fillStyle = `rgba(255, 225, 90, ${0.2 + Math.sin(runState.elapsed * 30) * 0.15})`;
+          ctx.fillRect(h.x - 12, runState.cameraY, 24, visH);
+          ctx.fillStyle = '#ffeb6b';
+          ctx.fillRect(h.x - 2, runState.cameraY, 4, visH);
+        } else if (h.type === 'lightningBolt') {
+          ctx.fillStyle = 'rgba(220, 180, 255, 0.45)';
+          ctx.fillRect(h.x - 16, runState.cameraY, 32, visH);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(h.x - 4, runState.cameraY, 8, visH);
+        }
+      }
+      // 5) 플레이어(재우) 픽셀아트 스프라이트 + 충전 게이지 + 보호막 오라
+      drawPlayerSprite(ctx);
+      // 6) 파티클
+      for (const pt of runState.particles) {
+        ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
+        ctx.fillStyle = pt.color;
+        ctx.fillRect(Math.round(pt.x), Math.round(pt.y), pt.size, pt.size);
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      // 암흑 안개 효과 (화면 가장자리 비네트)
+      if (runState.activeEvent && runState.activeEvent.id === 'fog') {
+        const grad = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.22, cw / 2, ch / 2, Math.max(cw, ch) * 0.68);
+        grad.addColorStop(0, 'rgba(10, 6, 20, 0.08)');
+        grad.addColorStop(1, 'rgba(8, 4, 18, 0.78)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, cw, ch);
+      }
+      // 돌풍 바람 입자 효과
+      if (runState.activeEvent && runState.activeEvent.id === 'wind') {
+        const dir = runState.activeEvent.windDir;
+        ctx.fillStyle = 'rgba(215, 244, 255, 0.5)';
+        for (let i = 0; i < 14; i++) {
+          const t = (runState.elapsed * 420 * dir + i * 97) % cw;
+          const wx = t < 0 ? t + cw : t;
+          const wy = (i * 73 + runState.elapsed * 40) % ch;
+          ctx.fillRect(wx, wy, 28, 2);
+        }
+      }
+      // 태초 귀환/피격 화면 플래시
+      if (runState.flashAlpha > 0) {
+        ctx.globalAlpha = runState.flashAlpha;
+        ctx.fillStyle = runState.flashColor;
+        ctx.fillRect(0, 0, cw, ch);
+        ctx.globalAlpha = 1;
+      }
+      ctx.restore();
+    }
+    function drawPixelPlatform(ctx, p, x, y) {
+      let topCol = '#75db58';
+      let bodyCol = '#6b4f3d';
+      let shadeCol = '#422d26';
+      if (p.type === 'ice') {
+        topCol = '#d6f7ff';
+        bodyCol = '#53b7e8';
+        shadeCol = '#2a6ea3';
+      } else if (p.type === 'moving') {
+        topCol = '#7df2ff';
+        bodyCol = '#3b5eb8';
+        shadeCol = '#20326e';
+      } else if (p.type === 'crumble') {
+        topCol = '#d4b394';
+        bodyCol = '#85624e';
+        shadeCol = '#4f372d';
+      } else if (p.type === 'summit') {
+        topCol = '#fff194';
+        bodyCol = '#c98824';
+        shadeCol = '#6e3d0c';
+      } else if (p.zoneId === 2) {
+        topCol = '#e67d4c';
+        bodyCol = '#8f392c';
+        shadeCol = '#521e1b';
+      } else if (p.zoneId === 3) {
+        topCol = '#b8ebff';
+        bodyCol = '#4c7ba6';
+        shadeCol = '#29456b';
+      } else if (p.zoneId === 4) {
+        topCol = '#b578ff';
+        bodyCol = '#4f327a';
+        shadeCol = '#291745';
+      } else if (p.zoneId === 5) {
+        topCol = '#ffe585';
+        bodyCol = '#4e5aa6';
+        shadeCol = '#282d63';
+      }
+      // 외곽 어두운 테두리
+      ctx.fillStyle = '#0e1121';
+      ctx.fillRect(x - 1, y - 1, p.w + 2, p.h + 2);
+      // 몸통
+      ctx.fillStyle = bodyCol;
+      ctx.fillRect(x, y, p.w, p.h);
+      ctx.fillStyle = shadeCol;
+      ctx.fillRect(x, y + p.h - 5, p.w, 5);
+      // 상단 표면
+      ctx.fillStyle = topCol;
+      ctx.fillRect(x, y, p.w, 5);
+      // 유형별 픽셀 디테일
+      if (p.type === 'crumble') {
+        ctx.fillStyle = '#2e1d18';
+        for (let cx = x + 10; cx < x + p.w - 8; cx += 14) {
+          ctx.fillRect(cx, y + 4, 2, 7);
+          ctx.fillRect(cx + 2, y + 9, 2, 4);
+        }
+      } else if (p.type === 'moving') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x + 6, y + 8, 6, 4);
+        ctx.fillRect(x + p.w - 12, y + 8, 6, 4);
+      } else if (p.type === 'ice') {
+        ctx.fillStyle = '#ffffff';
+        for (let ix = x + 6; ix < x + p.w - 8; ix += 14) {
+          ctx.fillRect(ix, y + 2, 6, 2);
+        }
+      } else if (p.type === 'summit') {
+        // 정상 깃발 / 빛나는 제단 기둥
+        const cx = x + p.w / 2;
+        ctx.fillStyle = '#fff8c9';
+        ctx.fillRect(cx - 2, y - 48, 4, 48);
+        ctx.fillStyle = '#ffd45a';
+        ctx.fillRect(cx + 2, y - 46, 24, 14);
+        ctx.fillStyle = '#ff6b6b';
+        ctx.fillRect(cx + 6, y - 43, 14, 8);
+      }
+      // 이정표 발판 번호 표식 (10단위 쉼터)
+      if (p.mainIndex > 0 && p.mainIndex % 10 === 0 && p.mainIndex < mainCount) {
+        ctx.fillStyle = 'rgba(12, 16, 36, 0.78)';
+        ctx.fillRect(x + p.w / 2 - 14, y - 16, 28, 13);
+        ctx.fillStyle = '#ffd45a';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${p.mainIndex}`, x + p.w / 2, y - 6);
+      }
+    }
+    function drawPlayerSprite(ctx) {
+      if (player.invuln > 0 && Math.floor(player.invuln * 18) % 2 === 0) {
+        ctx.globalAlpha = 0.45;
+      }
+      let frame = 0;
+      if (player.hurtFlash > 0) frame = 6;
+      else if (player.charging) frame = 3;
+      else if (!player.onGround) frame = player.vy < 0 ? 4 : 5;
+      else if (Math.abs(player.vx) > 15) frame = Math.floor(player.walkAnim) % 2 === 0 ? 1 : 2;
+      const sheet = Assets.playerSheet && Assets.playerSheet.img;
+      if (sheet) {
+        ctx.save();
+        ctx.translate(Math.round(player.x), Math.round(player.y));
+        ctx.scale(player.facing, 1);
+        ctx.drawImage(sheet, frame * 24, 0, 24, 32, -12, -32, 24, 32);
+        ctx.restore();
+      }
+      ctx.globalAlpha = 1;
+      // 별빛 보호막 오라
+      if (player.shield > 0) {
+        const t = runState.elapsed * 4;
+        ctx.strokeStyle = 'rgba(110, 255, 178, 0.72)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y - 16, 20, 0, Math.PI * 2);
+        ctx.stroke();
+        for (let s = 0; s < player.shield; s++) {
+          const ang = t + s * Math.PI;
+          const sx = player.x + Math.cos(ang) * 21;
+          const sy = (player.y - 16) + Math.sin(ang) * 21;
+          ctx.fillStyle = '#fff5a6';
+          ctx.fillRect(sx - 2, sy - 2, 4, 4);
+        }
+      }
+      // 충전식 점프 게이지 바 (플레이어 머리 위)
+      if (player.charging) {
+        const bw = 36;
+        const bh = 7;
+        const bx = Math.round(player.x - bw / 2);
+        const by = Math.round(player.y - 44);
+        ctx.fillStyle = '#0c1024';
+        ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+        const col = player.charge < 0.45 ? '#4ce88a' : (player.charge < 0.8 ? '#ffd45a' : '#ff5555');
+        ctx.fillStyle = col;
+        ctx.fillRect(bx, by, Math.round(bw * player.charge), bh);
+      }
+    }
+    /* ============================================================
+       13. 입력 처리 (키보드 + 멀티터치 Pointer Events)
+    ============================================================ */
+    window.addEventListener('keydown', (e) => {
+      if (screenMode !== 'playing') {
+        if (e.code === 'Escape' && screenMode === 'paused') resumeGame();
+        return;
+      }
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') input.left = true;
+      else if (e.code === 'ArrowRight' || e.code === 'KeyD') input.right = true;
+      else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+        e.preventDefault();
+        input.jumpHeld = true;
+      } else if (e.code === 'Escape' || e.code === 'KeyP') {
+        pauseGame();
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') input.left = false;
+      else if (e.code === 'ArrowRight' || e.code === 'KeyD') input.right = false;
+      else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+        input.jumpHeld = false;
+      }
+    });
+    window.addEventListener('blur', resetTouchInputs);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) resetTouchInputs();
+    });
+    const touchBindings = [];
+    function resetTouchInputs() {
+      input.left = false;
+      input.right = false;
+      input.jumpHeld = false;
+      touchBindings.forEach((b) => {
+        b.activeIds.clear();
+        b.btn.classList.remove('pressed');
+      });
+    }
+    function bindTouchControl(btn, keyName) {
+      const activeIds = new Set();
+      const update = () => {
+        const down = activeIds.size > 0;
+        input[keyName] = down;
+        btn.classList.toggle('pressed', down);
+      };
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        try { btn.setPointerCapture(e.pointerId); } catch {}
+        activeIds.add(e.pointerId);
+        update();
+      });
+      const release = (e) => {
+        activeIds.delete(e.pointerId);
+        update();
+      };
+      btn.addEventListener('pointerup', release);
+      btn.addEventListener('pointercancel', release);
+      btn.addEventListener('lostpointercapture', release);
+      touchBindings.push({ btn, keyName, activeIds });
+    }
+    bindTouchControl(touchLeftBtn, 'left');
+    bindTouchControl(touchRightBtn, 'right');
+    bindTouchControl(touchJumpBtn, 'jumpHeld');
+    /* ============================================================
+       14. 화면 전환 & UI 이벤트 연결
+    ============================================================ */
+    function showTitleScreen() {
+      screenMode = 'title';
+      resetTouchInputs();
+      titleScreen.style.display = 'block';
+      hudLayer.style.display = 'none';
+      touchControls.style.display = 'none';
+      pauseModal.classList.remove('open');
+      victoryModal.classList.remove('open');
+      updateTitleRecordsUI();
+    }
+    function startNewRun() {
+      resetTouchInputs();
+      resetWorldCompletely(false);
+      screenMode = 'playing';
+      titleScreen.style.display = 'none';
+      pauseModal.classList.remove('open');
+      victoryModal.classList.remove('open');
+      hudLayer.style.display = 'block';
+      applyControlLayout();
+      updateHudValues();
+      showToast('정상까지 도전 시작! (점프마다 3% 태초 귀환 주의)');
+    }
+    function pauseGame() {
+      if (screenMode !== 'playing') return;
+      screenMode = 'paused';
+      // 충전 도중 일시정지하면 재개 프레임에서 '손을 뗀 것'으로 판정되어
+      // 의도치 않은 점프가 나가므로 충전을 취소한다
+      player.charging = false;
+      player.charge = 0;
+      resetTouchInputs();
+      touchControls.style.display = 'none';
+      document.getElementById('pauseProgressInfo').textContent =
+        `현재 높이 ${runState.heightM}m · 발판 ${runState.currentPlatIndex} / ${mainCount}`;
+      pauseModal.classList.add('open');
+    }
+    function resumeGame() {
+      if (screenMode !== 'paused') return;
+      pauseModal.classList.remove('open');
+      screenMode = 'playing';
+      applyControlLayout();
+    }
+    document.getElementById('btnStartChallenge').addEventListener('click', startNewRun);
+    document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+    document.getElementById('btnResumeGame').addEventListener('click', resumeGame);
+    document.getElementById('btnRestartRun').addEventListener('click', startNewRun);
+    document.getElementById('btnBackToTitle').addEventListener('click', showTitleScreen);
+    document.getElementById('btnVictoryRestart').addEventListener('click', startNewRun);
+    document.getElementById('btnVictoryTitle').addEventListener('click', showTitleScreen);
+    function openSettings() {
+      syncSettingsModalUI();
+      settingsModal.classList.add('open');
+    }
+    document.getElementById('btnOpenSettingsFromTitle').addEventListener('click', openSettings);
+    document.getElementById('btnOpenSettingsFromPause').addEventListener('click', openSettings);
+    document.getElementById('btnCloseSettings').addEventListener('click', () => {
+      saveJSON(STORAGE_CONTROLS, controlCfg);
+      settingsModal.classList.remove('open');
+      applyControlLayout();
+    });
+    document.getElementById('btnResetControls').addEventListener('click', () => {
+      controlCfg = { ...DEFAULT_CONTROLS };
+      Sound.setEnabled(controlCfg.soundEnabled);
+      saveJSON(STORAGE_CONTROLS, controlCfg);
+      syncSettingsModalUI();
+      applyControlLayout();
+    });
+    document.querySelectorAll('.layout-opt').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        controlCfg.layout = btn.dataset.layout;
+        saveJSON(STORAGE_CONTROLS, controlCfg);
+        syncSettingsModalUI();
+        applyControlLayout();
+      });
+    });
+    document.getElementById('toggleTouchVisibleBtn').addEventListener('click', () => {
+      controlCfg.touchVisible = !controlCfg.touchVisible;
+      saveJSON(STORAGE_CONTROLS, controlCfg);
+      syncSettingsModalUI();
+      applyControlLayout();
+    });
+    document.getElementById('toggleSoundBtn').addEventListener('click', () => {
+      controlCfg.soundEnabled = !controlCfg.soundEnabled;
+      Sound.setEnabled(controlCfg.soundEnabled);
+      saveJSON(STORAGE_CONTROLS, controlCfg);
+      syncSettingsModalUI();
+    });
+    [
+      ['rngScale', 'scale', (v) => parseFloat(v)],
+      ['rngDpadX', 'dpadX', (v) => parseInt(v, 10)],
+      ['rngDpadY', 'dpadY', (v) => parseInt(v, 10)],
+      ['rngJumpX', 'jumpX', (v) => parseInt(v, 10)],
+      ['rngJumpY', 'jumpY', (v) => parseInt(v, 10)]
+    ].forEach(([elId, prop, parser]) => {
+      document.getElementById(elId).addEventListener('input', (e) => {
+        controlCfg[prop] = parser(e.target.value);
+        saveJSON(STORAGE_CONTROLS, controlCfg);
+        syncSettingsModalUI();
+        applyControlLayout();
+      });
+    });
+    window.addEventListener('resize', applyControlLayout);
+    /* ============================================================
+       15. 메인 루프 & 부트스트랩
+    ============================================================ */
+    let lastTs = performance.now();
+    let acc = 0;
+    const FIXED_DT = 1 / 60;
+    function mainLoop(ts) {
+      const frameDt = Math.min(0.05, (ts - lastTs) / 1000);
+      lastTs = ts;
+      if (screenMode === 'playing') {
+        acc += frameDt;
+        while (acc >= FIXED_DT) {
+          updatePhysics(FIXED_DT);
+          if (screenMode !== 'playing') break;
+          acc -= FIXED_DT;
+        }
+        renderGame();
+      } else if (screenMode === 'paused' || screenMode === 'victory') {
+        renderGame();
+      }
+      requestAnimationFrame(mainLoop);
+    }
+    async function boot() {
+      await generateAllAssets((p) => {
+        loadingBarFill.style.width = `${Math.round(p * 100)}%`;
+      });
+      // 생성된 실제 PNG 이미지를 DOM UI에 바인딩
+      document.getElementById('titleBgImg').src = Assets.titleBg.dataUrl;
+      document.getElementById('pauseBtnImg').src = Assets.btnPause.dataUrl;
+      document.getElementById('touchLeftImg').src = Assets.btnLeft.dataUrl;
+      document.getElementById('touchRightImg').src = Assets.btnRight.dataUrl;
+      document.getElementById('touchJumpImg').src = Assets.btnJump.dataUrl;
+      document.querySelectorAll('.px-btn').forEach((btn) => {
+        const bg = btn.querySelector('img.btn-bg');
+        if (!bg) return;
+        bg.src = btn.classList.contains('primary') ? Assets.btnMenuPrimary.dataUrl : Assets.btnMenuNormal.dataUrl;
+      });
+      loadingScreen.style.display = 'none';
+      showTitleScreen();
+      requestAnimationFrame(mainLoop);
+    }
+    boot();
+  })();
+  </script>
+<!-- LP-GUARD-JS:START -->
+<script>
+/* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
+(function () {
+  if (window.__lpGuard) { return; }
+  window.__lpGuard = true;
+  var stop = function (e) { if (e && e.cancelable !== false) { e.preventDefault(); } };
+  document.addEventListener('contextmenu', stop, { passive: false });
+  document.addEventListener('selectstart', stop, { passive: false });
+  document.addEventListener('dragstart', stop, { passive: false });
+  document.addEventListener('gesturestart', stop, { passive: false });
+  document.addEventListener('gesturechange', stop, { passive: false });
+  document.addEventListener('gestureend', stop, { passive: false });
+  document.addEventListener('dblclick', stop, { passive: false });
+  /* 두 손가락 이상일 때만 스크롤/확대 제스처를 막는다(한 손가락 스크롤은 그대로). */
+  document.addEventListener('touchmove', function (e) {
+    if (e.touches && e.touches.length > 1) { stop(e); }
+  }, { passive: false });
+})();
+</script>
+<!-- LP-GUARD-JS:END -->
+</body>
+</html>
