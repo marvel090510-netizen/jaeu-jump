@@ -18,7 +18,7 @@
     padding:max(28px,6vh) 18px 40px;
     -webkit-font-smoothing:antialiased;
   }
-  .wrap{width:100%;max-width:620px}
+  .wrap{width:100%;max-width:960px}
   header{text-align:center;margin-bottom:28px}
   .kicker{
     display:inline-block;font-size:12px;letter-spacing:.18em;
@@ -32,9 +32,10 @@
   }
   .sub{margin:12px 0 0;color:#a8bade;font-size:15px;line-height:1.6}
   .cards{display:grid;gap:16px;margin-top:30px}
-  @media(min-width:640px){.cards{grid-template-columns:1fr 1fr}}
+  @media(min-width:620px){.cards{grid-template-columns:1fr 1fr}}
+  @media(min-width:900px){.cards{grid-template-columns:repeat(3,1fr)}}
   a.card{
-    display:block;text-decoration:none;color:inherit;position:relative;
+    display:flex;flex-direction:column;text-decoration:none;color:inherit;position:relative;
     border-radius:20px;padding:22px 20px 20px;
     background:linear-gradient(180deg,rgba(36,52,94,.92),rgba(18,26,52,.92));
     border:1px solid #2f3f6b;
@@ -47,16 +48,17 @@
   }
   a.card:active{transform:translateY(0)}
   .tag{
-    display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;
+    display:inline-block;align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.06em;
     padding:4px 10px;border-radius:999px;margin-bottom:14px
   }
   .tag.p{background:rgba(255,205,110,.16);color:#ffd98a;border:1px solid rgba(255,205,110,.4)}
   .tag.g{background:rgba(126,224,168,.14);color:#8ff0bd;border:1px solid rgba(126,224,168,.38)}
+  .tag.k{background:rgba(160,186,255,.16);color:#bcd2ff;border:1px solid rgba(160,186,255,.42)}
   .card h2{margin:0 0 6px;font-size:21px;letter-spacing:-.01em}
   .card p{margin:0;font-size:13.5px;line-height:1.65;color:#9fb2d6}
-  .spec{margin-top:14px;font-size:12px;color:#7f93bb;line-height:1.7}
+  .spec{margin-top:14px;margin-bottom:18px;font-size:12px;color:#7f93bb;line-height:1.7}
   .go{
-    margin-top:18px;font-size:14px;font-weight:700;color:#cfe0ff;
+    margin-top:auto;font-size:14px;font-weight:700;color:#cfe0ff;
     display:flex;align-items:center;gap:6px
   }
   .go span{transition:transform .16s ease}
@@ -87,6 +89,14 @@
       <h2>HTML5 캔버스 버전</h2>
       <p>가볍게 바로 켜지는 브라우저 캔버스 버전. 설치 없이 즉시 시작됩니다.</p>
       <div class="spec">발판 90개 · 구역 5개 · 위험/행운 이벤트 9종</div>
+      <div class="go">플레이하기 <span>→</span></div>
+    </a>
+
+    <a class="card" href="./grok/">
+      <div class="tag k">그록 버전</div>
+      <h2>에셋 내장 캔버스 버전</h2>
+      <p>배경·캐릭터·발판 이미지를 모두 담은 단일 HTML 버전. 모바일 터치 버튼까지 준비되어 있습니다.</p>
+      <div class="spec">발판 90개 · 구역 5개 · 위험/행운 이벤트 8종</div>
       <div class="go">플레이하기 <span>→</span></div>
     </a>
   </div>

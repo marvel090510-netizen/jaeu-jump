@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>성공하고싶은 재우</title>
+<style>
+body { margin:0; background:#000; overflow:hidden; font-family: sans-serif; touch-action: none; }
+canvas { display:block; margin:0 auto; background:#111; }
+#ui { position:absolute; top:10px; left:10px; color:white; font-size:18px; text-shadow:1px 1px 2px black; pointer-events:none; }
+#eventCard { position:absolute; top:60px; left:50%; transform:translateX(-50%); width:400px; max-width:90%; display:none; z-index:10; }
+#eventCard img { width:100%; border-radius:12px; box-shadow:0 0 20px rgba(0,0,0,0.8); }
+#eventLabel { position:absolute; bottom:20px; left:0; right:0; text-align:center; font-size:28px; font-weight:bold; text-shadow:2px 2px 4px black; }
+.danger { color:#ff4444; }
+.lucky { color:#44ff88; }
+#controls { position:absolute; bottom:20px; left:0; right:0; display:flex; justify-content:space-between; pointer-events:none; }
+#controls img { width:120px; height:auto; pointer-events:auto; opacity:0.85; }
+#titleScreen { position:absolute; inset:0; background:#000 url('assets/backgrounds/title_screen.png') center/cover; display:flex; flex-direction:column; align-items:flex-start; justify-content:center; padding:40px; color:white; }
+#titleScreen h1 { font-size:48px; margin:0 0 10px 0; text-shadow:3px 3px 6px black; }
+#titleScreen h2 { font-size:24px; margin:0 0 40px 0; opacity:0.9; }
+button { font-size:22px; padding:15px 30px; margin:10px 0; background:#333; color:white; border:2px solid #666; border-radius:8px; cursor:pointer; }
+button:hover { background:#555; }
+</style>
+</head>
+<body>
+<canvas id="game" width="720" height="1280"></canvas>
+<div id="ui">
+  <div id="height">높이: 0 m</div>
+  <div id="best">최고: 0 m</div>
+  <div id="section">구간: 초록 초원</div>
+  <div id="progress">발판: 0 / 90</div>
+  <div id="eventStatus"></div>
+</div>
+<div id="eventCard">
+  <img id="eventImg" src="">
+  <div id="eventLabel"></div>
+</div>
+<div id="controls">
+  <img id="leftBtn" src="assets/ui/left_arrow.png" alt="left">
+  <img id="rightBtn" src="assets/ui/right_arrow.png" alt="right">
+  <img id="jumpBtn" src="assets/ui/jump_button.png" alt="jump">
+</div>
+<div id="titleScreen">
+  <h1>성공하고싶은 재우</h1>
+  <h2>한 번 더, 정상까지!</h2>
+  <button id="startBtn">도전 시작하기</button>
+  <button id="settingsBtn">조작 설정</button>
+</div>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const ui = {
+  height: document.getElementById('height'),
+  best: document.getElementById('best'),
+  section: document.getElementById('section'),
+  progress: document.getElementById('progress'),
+  eventStatus: document.getElementById('eventStatus')
+};
+const eventCard = document.getElementById('eventCard');
+const eventImg = document.getElementById('eventImg');
+const eventLabel = document.getElementById('eventLabel');
+const titleScreen = document.getElementById('titleScreen');
+
+let bestHeight = parseFloat(localStorage.getItem('bestHeight') || '0');
+let currentHeight = 0;
+let platformProgress = 0;
+const TOTAL_PLATFORMS = 90;
+
+const images = {};
+const imageList = [
+  'assets/backgrounds/deep_valley.png',
+  'assets/backgrounds/green_islands.png',
+  'assets/backgrounds/red_canyon.png',
+  'assets/backgrounds/ice_mountains.png',
+  'assets/backgrounds/purple_storm.png',
+  'assets/backgrounds/star_summit.png',
+  'assets/player/player.png',
+  'assets/platforms/normal.png',
+  'assets/platforms/ice.png',
+  'assets/platforms/crumbling.png',
+  'assets/platforms/spikes.png',
+  'assets/events/danger_wind.png',
+  'assets/events/danger_rocks.png',
+  'assets/events/danger_lightning.png',
+  'assets/events/lucky_moon.png',
+  'assets/events/lucky_cloud.png',
+  'assets/events/lucky_shield.png'
+];
+
+function loadImages(callback) {
+  let loaded = 0;
+  imageList.forEach(src => {
+    const img = new Image();
+    img.onload = () => { loaded++; if (loaded === imageList.length) callback(); };
+    img.src = src;
+    images[src] = img;
+  });
+}
+
+const player = {
+  x: 360, y: 0, vx: 0, vy: 0,
+  width: 40, height: 60,
+  charge: 0, isCharging: false, onGround: false,
+  invincible: 0
+};
+
+let platforms = [];
+let cameraY = 0;
+let keys = { left: false, right: false, jump: false };
+let currentEvent = null;
+let eventTimer = 0;
+let nextEvent = 25;
+let shield = 0;
+let lowGravity = false;
+let jumpBoost = false;
+let weakJump = false;
+
+function generatePlatforms() {
+  platforms = [];
+  let y = 0;
+  let spacing = 160;
+  for (let i = 0; i < TOTAL_PLATFORMS; i++) {
+    const type = chooseType(i);
+    platforms.push({
+      x: 360 + (Math.random()-0.5)*300,
+      y: y,
+      width: 180 + Math.random()*80,
+      height: 28,
+      type: type,
+      crumbling: false,
+      crumbleTime: 0,
+      moveOffset: Math.random()*Math.PI*2
+    });
+    if (i % 6 === 0) platforms[platforms.length-1].x = 360;
+    y -= spacing;
+    spacing = Math.min(spacing + 1.8, 320);
+  }
+}
+
+function chooseType(i) {
+  const p = i / TOTAL_PLATFORMS;
+  if (p < 0.25) return Math.random() < 0.7 ? 'normal' : 'moving';
+  if (p < 0.45) return Math.random() < 0.4 ? 'ice' : 'normal';
+  if (p < 0.65) return Math.random() < 0.35 ? 'crumbling' : 'spikes';
+  return ['normal','ice','moving','crumbling','spikes'][Math.floor(Math.random()*5)];
+}
+
+function resetGame() {
+  player.x = 360; player.y = 0; player.vx = 0; player.vy = 0;
+  player.charge = 0; player.isCharging = false; player.invincible = 0;
+  currentHeight = 0; platformProgress = 0;
+  currentEvent = null; eventTimer = 0; shield = 0;
+  lowGravity = false; jumpBoost = false; weakJump = false;
+  generatePlatforms();
+  cameraY = 0;
+  showEvent('태초 귀환!', 'assets/events/danger_wind.png', 'danger');
+}
+
+function showEvent(name, imgSrc, type) {
+  eventImg.src = imgSrc;
+  eventLabel.textContent = name;
+  eventLabel.className = type;
+  eventCard.style.display = 'block';
+  setTimeout(() => { if (eventTimer <= 0) eventCard.style.display = 'none'; }, 3500);
+}
+
+function triggerEvent() {
+  const events = [
+    {name:'돌풍', img:'assets/events/danger_wind.png', type:'danger', dur:8},
+    {name:'낙석', img:'assets/events/danger_rocks.png', type:'danger', dur:10},
+    {name:'번개 폭풍', img:'assets/events/danger_lightning.png', type:'danger', dur:12},
+    {name:'암흑 안개', img:'assets/events/danger_rocks.png', type:'danger', dur:9},
+    {name:'달빛 저중력', img:'assets/events/lucky_moon.png', type:'lucky', dur:15},
+    {name:'별빛 보호막', img:'assets/events/lucky_shield.png', type:'lucky', dur:20},
+    {name:'구름 가속', img:'assets/events/lucky_cloud.png', type:'lucky', dur:12},
+    {name:'천상의 발판', img:'assets/events/lucky_moon.png', type:'lucky', dur:18}
+  ];
+  const ev = events[Math.floor(Math.random()*events.length)];
+  currentEvent = ev;
+  eventTimer = ev.dur;
+  if (ev.name.includes('저중력') || ev.name.includes('천상')) lowGravity = true;
+  if (ev.name.includes('가속') || ev.name.includes('천상')) jumpBoost = true;
+  if (ev.name.includes('보호막') || ev.name.includes('천상')) shield = 2;
+  if (ev.name.includes('안개')) weakJump = true;
+  showEvent(ev.name, ev.img, ev.type);
+}
+
+function update(dt) {
+  // Input
+  let dir = 0;
+  if (keys.left) dir -= 1;
+  if (keys.right) dir += 1;
+
+  // Charge
+  if (keys.jump && player.onGround && !player.isCharging) {
+    player.isCharging = true;
+  }
+  if (player.isCharging) {
+    player.charge = Math.min(player.charge + 1.8 * dt, 1);
+    if (!keys.jump) {
+      // Jump
+      let force = 400 + player.charge * 800;
+      if (jumpBoost) force *= 1.6;
+      if (weakJump) force *= 0.6;
+      player.vy = -force;
+      player.vx += dir * force * 0.35;
+      player.isCharging = false;
+      player.charge = 0;
+      player.onGround = false;
+      // 3% 태초 귀환
+      if (Math.random() < 0.03) {
+        resetGame();
+        return;
+      }
+    }
+  }
+
+  // Physics
+  let g = 1400;
+  if (lowGravity) g *= 0.5;
+  if (!player.onGround) {
+    player.vy += g * dt;
+    player.vy = Math.min(player.vy, 1600);
+    player.vx += dir * 180 * dt;
+    player.vx = Math.max(-420, Math.min(420, player.vx));
+  } else {
+    player.vx = dir * 280;
+    player.vy = 0;
+  }
+
+  player.x += player.vx * dt;
+  player.y += player.vy * dt;
+
+  // Bounds
+  if (player.x < 40) player.x = 40;
+  if (player.x > 680) player.x = 680;
+
+  // Platforms collision
+  player.onGround = false;
+  for (let p of platforms) {
+    let px = p.x;
+    if (p.type === 'moving') px += Math.sin(Date.now()/1000 + p.moveOffset) * 120;
+    if (player.vy >= 0 &&
+        player.x + player.width/2 > px - p.width/2 &&
+        player.x - player.width/2 < px + p.width/2 &&
+        player.y + player.height/2 > p.y - p.height/2 &&
+        player.y - player.height/2 < p.y + 10) {
+      player.y = p.y - player.height/2 - p.height/2;
+      player.vy = 0;
+      player.onGround = true;
+      platformProgress = Math.max(platformProgress, platforms.indexOf(p) + 1);
+      if (p.type === 'crumbling' && !p.crumbling) {
+        p.crumbling = true;
+        p.crumbleTime = 1.4;
+      }
+      if (p.type === 'spikes') {
+        takeHit(dir * -700, -500);
+      }
+      if (p.type === 'ice') {
+        player.vx *= 1.4;
+      }
+    }
+    if (p.crumbling) {
+      p.crumbleTime -= dt;
+      if (p.crumbleTime <= 0) p.y = 99999; // remove
+    }
+  }
+
+  // Fall far = soft reset feel (but keep position for background)
+  if (player.y > 800) {
+    // just fall, camera follows
+  }
+
+  // Camera
+  cameraY = player.y - 300;
+
+  // Height
+  currentHeight = Math.max(currentHeight, -player.y / 10);
+  if (currentHeight > bestHeight) {
+    bestHeight = currentHeight;
+    localStorage.setItem('bestHeight', bestHeight);
+  }
+
+  // Event timer
+  if (eventTimer > 0) {
+    eventTimer -= dt;
+    if (eventTimer <= 0) {
+      lowGravity = jumpBoost = weakJump = false;
+      currentEvent = null;
+      eventCard.style.display = 'none';
+    }
+  }
+  nextEvent -= dt;
+  if (nextEvent <= 0) {
+    triggerEvent();
+    nextEvent = 28 + Math.random()*20;
+  }
+
+  // Invincibility
+  if (player.invincible > 0) player.invincible -= dt;
+
+  updateUI();
+}
+
+function takeHit(kx, ky) {
+  if (player.invincible > 0) return;
+  if (shield > 0) { shield--; return; }
+  player.vx = kx;
+  player.vy = ky;
+  player.invincible = 1.4;
+}
+
+function updateUI() {
+  ui.height.textContent = `높이: ${Math.floor(currentHeight)} m`;
+  ui.best.textContent = `최고: ${Math.floor(bestHeight)} m`;
+  ui.progress.textContent = `발판: ${platformProgress} / ${TOTAL_PLATFORMS}`;
+  const secNames = ['초록 초원','붉은 협곡','얼음 산맥','보라색 폭풍','별빛 정상'];
+  const sec = Math.min(4, Math.floor(platformProgress / 18));
+  ui.section.textContent = `구간: ${secNames[sec]}`;
+  if (currentEvent) {
+    ui.eventStatus.textContent = `${currentEvent.name} (${eventTimer.toFixed(1)}s)`;
+    ui.eventStatus.style.color = currentEvent.type === 'danger' ? '#ff6666' : '#66ff99';
+  } else {
+    ui.eventStatus.textContent = '';
+  }
+}
+
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Backgrounds based on height
+  const bgIndex = Math.max(0, Math.min(5, Math.floor(-cameraY / 1200)));
+  const bgKeys = [
+    'assets/backgrounds/deep_valley.png',
+    'assets/backgrounds/green_islands.png',
+    'assets/backgrounds/red_canyon.png',
+    'assets/backgrounds/ice_mountains.png',
+    'assets/backgrounds/purple_storm.png',
+    'assets/backgrounds/star_summit.png'
+  ];
+  const bg = images[bgKeys[bgIndex]] || images[bgKeys[1]];
+  if (bg) {
+    ctx.drawImage(bg, 0, cameraY % 1200 - 200, canvas.width, canvas.height + 400);
+  }
+
+  ctx.save();
+  ctx.translate(0, -cameraY);
+
+  // Platforms
+  for (let p of platforms) {
+    if (p.y > 90000) continue;
+    let px = p.x;
+    if (p.type === 'moving') px += Math.sin(Date.now()/1000 + p.moveOffset)*120;
+    let tex = images['assets/platforms/normal.png'];
+    if (p.type === 'ice') tex = images['assets/platforms/ice.png'];
+    if (p.type === 'crumbling') tex = images['assets/platforms/crumbling.png'];
+    if (p.type === 'spikes') tex = images['assets/platforms/spikes.png'];
+    if (tex) {
+      ctx.drawImage(tex, px - p.width/2, p.y - p.height/2, p.width, p.height + 20);
+    } else {
+      ctx.fillStyle = p.type === 'spikes' ? '#a44' : '#6a4';
+      ctx.fillRect(px - p.width/2, p.y - p.height/2, p.width, p.height);
+    }
+  }
+
+  // Player
+  const pImg = images['assets/player/player.png'];
+  if (pImg) {
+    ctx.globalAlpha = player.invincible > 0 && Math.floor(Date.now()/100)%2 ? 0.5 : 1;
+    ctx.drawImage(pImg, player.x - 30, player.y - 50, 60, 90);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+
+  // Charge indicator
+  if (player.isCharging) {
+    ctx.fillStyle = 'rgba(255,200,0,0.8)';
+    ctx.fillRect(player.x - 30, player.y - cameraY - 70, 60 * player.charge, 8);
+  }
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min((now - last)/1000, 0.05);
+  last = now;
+  if (titleScreen.style.display !== 'none') {
+    requestAnimationFrame(loop);
+    return;
+  }
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// Controls
+document.getElementById('leftBtn').addEventListener('touchstart', e => { e.preventDefault(); keys.left = true; });
+document.getElementById('leftBtn').addEventListener('touchend', e => { e.preventDefault(); keys.left = false; });
+document.getElementById('rightBtn').addEventListener('touchstart', e => { e.preventDefault(); keys.right = true; });
+document.getElementById('rightBtn').addEventListener('touchend', e => { e.preventDefault(); keys.right = false; });
+document.getElementById('jumpBtn').addEventListener('touchstart', e => { e.preventDefault(); keys.jump = true; });
+document.getElementById('jumpBtn').addEventListener('touchend', e => { e.preventDefault(); keys.jump = false; });
+
+window.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+  if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+  if (e.key === ' ' || e.key === 'ArrowUp') keys.jump = true;
+});
+window.addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+  if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+  if (e.key === ' ' || e.key === 'ArrowUp') keys.jump = false;
+});
+
+document.getElementById('startBtn').onclick = () => {
+  titleScreen.style.display = 'none';
+  document.getElementById('controls').style.display = 'flex';
+  generatePlatforms();
+  resetGame();
+  last = performance.now();
+  requestAnimationFrame(loop);
+};
+
+document.getElementById('settingsBtn').onclick = () => {
+  alert('조작 설정은 추후 추가 예정입니다.\n현재: 키보드 ←→ / A D + Space\n모바일: 화면 버튼');
+};
+
+loadImages(() => {
+  console.log('Images loaded');
+  document.getElementById('controls').style.display = 'none';
+});
+</script>
+</body>
+</html>
