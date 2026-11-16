@@ -33,7 +33,7 @@
   .sub{margin:12px 0 0;color:#a8bade;font-size:15px;line-height:1.6}
   .cards{display:grid;gap:16px;margin-top:30px;max-width:840px;margin-left:auto;margin-right:auto}
   @media(min-width:680px){.cards{grid-template-columns:1fr 1fr}}
-  @media(min-width:680px){a.card.wide{grid-column:1/-1}}
+  @media(min-width:900px){.cards{grid-template-columns:repeat(3,1fr);max-width:1000px}}
   a.card{
     display:flex;flex-direction:column;text-decoration:none;color:inherit;position:relative;
     border-radius:20px;padding:22px 20px 20px;
@@ -56,6 +56,7 @@
   .tag.k{background:rgba(160,186,255,.16);color:#bcd2ff;border:1px solid rgba(160,186,255,.42)}
   .tag.m{background:rgba(198,166,255,.16);color:#d8c4ff;border:1px solid rgba(198,166,255,.42)}
   .tag.c{background:rgba(255,176,146,.14);color:#ffc3a8;border:1px solid rgba(255,176,146,.4)}
+  .tag.e{background:rgba(120,220,255,.14);color:#9fe6ff;border:1px solid rgba(120,220,255,.4)}
   .card h2{margin:0 0 6px;font-size:21px;letter-spacing:-.01em}
   .card p{margin:0;font-size:13.5px;line-height:1.65;color:#9fb2d6}
   .spec{margin-top:14px;margin-bottom:18px;font-size:12px;color:#7f93bb;line-height:1.7}
@@ -74,8 +75,7 @@
   <header>
     <div class="kicker">JUMP TO THE SUMMIT</div>
     <h1>성공하고싶은 재우</h1>
-    <p class="sub">한 번 더, 정상까지.<br>버전을 골라 바로 플레이하세요.</p>
-  </header>
+    <p class="sub">한 번 더, 정상까지.<br>버전을 골라 바로 플레이하세요.</p>  </header>
 
   <div class="cards">
     <a class="card" href="./pickle/">
@@ -110,11 +110,19 @@
       <div class="go">플레이하기 <span>→</span></div>
     </a>
 
-    <a class="card wide" href="./claude/">
+    <a class="card" href="./claude/">
       <div class="tag c">클로드 버전</div>
       <h2>단일 HTML 버전</h2>
       <p>배경 그림까지 HTML 파일 하나에 다 담아, 파일 하나만 있어도 그대로 돌아가는 버전. 최고 기록은 브라우저에 저장됩니다.</p>
       <div class="spec">단일 파일 1.8MB · 구역 6개 · 발판 86개 · 위험/행운 이벤트 9종</div>
+      <div class="go">플레이하기 <span>→</span></div>
+    </a>
+
+    <a class="card" href="./gemini/">
+      <div class="tag e">제미나이 버전</div>
+      <h2>조작 커스텀 캔버스 버전</h2>
+      <p>모바일 버튼 위치·크기와 카메라 방식을 직접 맞출 수 있는 버전. Godot 4 코드와 도트 에셋 추출 도구도 들어 있습니다.</p>
+      <div class="spec">발판 88개 · 구역 6개 · 태초 귀환 3%</div>
       <div class="go">플레이하기 <span>→</span></div>
     </a>
   </div>
