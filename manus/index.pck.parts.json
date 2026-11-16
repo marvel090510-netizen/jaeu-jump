@@ -1,0 +1,21 @@
+{
+  "pack": "index.pck",
+  "total": 90837392,
+  "parts": [
+    {
+      "name": "index.pck.part1",
+      "size": 30279130,
+      "sha256": "c226cae64f0617619d35c3cdc1847b3afc6075c7676bfae86eea8c587db9de94"
+    },
+    {
+      "name": "index.pck.part2",
+      "size": 30279130,
+      "sha256": "6f5dc9a25452312317cb4051c44ee0d0574594ef34c3338f1e922f3c70dc0d06"
+    },
+    {
+      "name": "index.pck.part3",
+      "size": 30279132,
+      "sha256": "da4a47374835ef21b924a5e8a6b8d32dabf439af2a2861a616256a5faa0dec38"
+    }
+  ]
+}

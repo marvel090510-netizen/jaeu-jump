@@ -60,12 +60,67 @@
           status.textContent = current >= total ? '게임을 시작하는 중...' : `불러오는 중 ${Math.floor(current / total * 100)}%`;
         } else { progress.removeAttribute('value'); status.textContent = '게임을 불러오는 중...'; }
       };
+      // 게임 데이터(index.pck)는 GitHub 쪽 전송 한도 때문에 조각(index.pck.part1~3)으로 나뉘어 있습니다.
+      // 매니패스트가 없으면 예전처럼 index.pck 한 파일을 그대로 받습니다.
+      const PACK = 'index.pck';
+      const PACK_PARTS = 'index.pck.parts.json';
+      const wasmSize = config.fileSizes['index.wasm'] || 0;
+      const packSize = config.fileSizes[PACK] || 0;
+      const fetchBuffer = async (url, onBytes, target, targetOffset) => {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
+        if (res.body && res.body.getReader) {
+          const reader = res.body.getReader();
+          const chunks = [];
+          let length = 0;
+          for (;;) {
+            const step = await reader.read();
+            if (step.done) break;
+            if (target) { target.set(step.value, targetOffset + length); }
+            else { chunks.push(step.value); }
+            length += step.value.length;
+            if (onBytes) onBytes(step.value.length);
+          }
+          if (target) return length;
+          const out = new Uint8Array(length);
+          let offset = 0;
+          for (const chunk of chunks) { out.set(chunk, offset); offset += chunk.length; }
+          return out;
+        }
+        const buf = new Uint8Array(await res.arrayBuffer());
+        if (target) { target.set(buf, targetOffset); if (onBytes) onBytes(buf.length); return buf.length; }
+        if (onBytes) onBytes(buf.length);
+        return buf;
+      };
+      const loadPack = async () => {
+        let manifest = null;
+        try {
+          const res = await fetch(PACK_PARTS, {cache: 'no-cache'});
+          if (res.ok) manifest = await res.json();
+        } catch (error) { manifest = null; }
+        const total = (manifest && manifest.total) || packSize;
+        let loaded = 0;
+        const report = (add) => { loaded += add; onProgress(wasmSize + loaded, wasmSize + total); };
+        if (manifest && Array.isArray(manifest.parts) && manifest.parts.length && total) {
+          const out = new Uint8Array(total);
+          let offset = 0;
+          for (const part of manifest.parts) {
+            offset += await fetchBuffer(part.name, report, out, offset);
+          }
+          if (offset !== total) throw new Error('게임 데이터 크기가 맞지 않습니다');
+          return out;
+        }
+        return fetchBuffer(PACK, report);
+      };
       const start = async () => {
         try {
           const missing = Engine.getMissingFeatures({threads});
           if (missing.length) throw new Error(missing.join(', '));
-          const engine = new Engine({...config, canvas});
-          await engine.startGame({onProgress});
+          const engine = new Engine({...config, canvas, args: ['--main-pack', PACK], onProgress});
+          await engine.init(config.executable);
+          const pack = await loadPack();
+          await engine.preloadFile(pack, PACK);
+          await engine.start();
           if (failed) return;
           ready = true; clearInterval(watch);
           requestAnimationFrame(() => requestAnimationFrame(() => { loading.hidden = true; if (config.focusCanvas) canvas.focus(); }));
