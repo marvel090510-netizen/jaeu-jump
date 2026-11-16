@@ -65,7 +65,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
   </section>
   <script>
     (() => {
-      const config = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":90837392,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+      const config = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":24122335,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
       const threads = false;
       const canvas = document.getElementById('canvas');
       const loading = document.getElementById('loading');
@@ -85,7 +85,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       const watch = setInterval(() => {
         if (!failed && !ready && performance.now() - lastProgress > 20000) {
           notice.textContent = isIOS
-            ? '불러오는 데 시간이 걸리고 있어요. (약 130MB · Wi-Fi 권장) 기다리거나 다시 시도해 주세요.'
+            ? '불러오는 데 시간이 걸리고 있어요. (약 64MB · Wi-Fi 권장) 기다리거나 다시 시도해 주세요.'
             : '불러오는 데 시간이 걸리고 있어요. 기다리거나 다시 시도해 주세요.';
           notice.hidden = false; retry.hidden = false;
         }
@@ -134,10 +134,10 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
         } else { progress.removeAttribute('value'); status.textContent = '게임을 불러오는 중...'; }
       };
 
-      // 게임 데이터(index.pck)는 GitHub 쪽 전송 한도 때문에 조각(index.pck.part1~3)으로 나뉘어 있습니다.
-      // 매니패스트가 없으면 예전처럼 index.pck 한 파일을 그대로 받습니다.
+      // 게임 데이터는 index.pck 한 파일로 내려받습니다.
+      // (예전에는 GitHub 전송 한도 때문에 조각 3개를 받아 한 덩어리로 합쳤는데,
+      //  그 방식은 조각 + 합친 배열이 동시에 메모리에 남아 아이패드 사파리에서 Out of memory가 났습니다.)
       const PACK = 'index.pck';
-      const PACK_PARTS = 'index.pck.parts.json';
       const wasmSize = config.fileSizes['index.wasm'] || 0;
       const packSize = config.fileSizes[PACK] || 0;
 
@@ -157,6 +157,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
         throw lastErr || new Error('네트워크 오류: ' + url);
       };
 
+      // target을 주면 그 배열에 바로 채워 넣습니다(사본을 만들지 않음).
       const fetchBuffer = async (url, onBytes, target, targetOffset) => {
         const res = await fetchOk(url);
         if (res.body && res.body.getReader) {
@@ -175,6 +176,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
           const out = new Uint8Array(length);
           let offset = 0;
           for (const chunk of chunks) { out.set(chunk, offset); offset += chunk.length; }
+          chunks.length = 0;
           return out;
         }
         const buf = new Uint8Array(await res.arrayBuffer());
@@ -185,29 +187,28 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
 
       const loadPack = async () => {
         stage = '게임 데이터 내려받기';
-        let manifest = null;
-        try {
-          const res = await fetch(PACK_PARTS, { cache: 'no-cache' });
-          if (res.ok) manifest = await res.json();
-        } catch (error) { manifest = null; }
-        const total = (manifest && manifest.total) || packSize;
         let loaded = 0;
-        const report = (add) => { loaded += add; onProgress(wasmSize + loaded, wasmSize + total); };
-        if (manifest && Array.isArray(manifest.parts) && manifest.parts.length && total) {
-          let out;
+        let lastPaint = 0;
+        const report = (add) => {
+          loaded += add;
+          const now = performance.now();
+          if (now - lastPaint > 120) { lastPaint = now; onProgress(wasmSize + loaded, wasmSize + packSize); }
+        };
+        let out = null;
+        if (packSize > 0) {
           try {
-            out = new Uint8Array(total);
+            out = new Uint8Array(packSize);
           } catch (err) {
-            throw new Error('메모리 부족: 게임 데이터(' + mb(total) + ')를 담을 공간을 확보하지 못했습니다');
+            throw new Error('메모리 부족: 게임 데이터(' + mb(packSize) + ')를 담을 공간을 확보하지 못했습니다');
           }
-          let offset = 0;
-          for (const part of manifest.parts) {
-            offset += await fetchBuffer(part.name, report, out, offset);
-          }
-          if (offset !== total) throw new Error('게임 데이터 크기가 맞지 않습니다 (' + offset + '/' + total + ')');
+        }
+        const got = await fetchBuffer(PACK, report, out, 0);
+        onProgress(wasmSize + packSize, wasmSize + packSize);
+        if (out) {
+          if (got !== packSize) throw new Error('게임 데이터 크기가 맞지 않습니다 (' + got + '/' + packSize + ')');
           return out;
         }
-        return fetchBuffer(PACK, report);
+        return got;
       };
 
       const start = async () => {
