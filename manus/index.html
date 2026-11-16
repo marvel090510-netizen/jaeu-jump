@@ -15,6 +15,9 @@
     [hidden]{display:none!important} h1{margin:0;color:#fff6d7;font-size:clamp(24px,5vw,40px)} p{margin:0;line-height:1.5}
     progress{width:min(320px,75vw);height:10px;accent-color:#ffcb71} button{padding:11px 24px;border:0;border-radius:12px;background:#ffcb71;color:#172b48;font:inherit;font-weight:bold;cursor:pointer}
     .star{font-size:42px;color:#ffcb71} #loading-notice{max-width:400px}
+    #loading-error{max-width:min(560px,92vw);font-size:12px;line-height:1.5;opacity:.9;background:rgba(0,0,0,.28);border:1px solid rgba(255,203,113,.35);border-radius:10px;padding:9px 12px;word-break:break-word;text-align:left}
+    #loading-error b{color:#ffcb71;font-weight:700}
+    #loading-error .d{display:block;margin-top:6px;font-size:11px;opacity:.7}
   </style>
 </head>
 <body>
@@ -25,6 +28,7 @@
     <p id="loading-status">게임을 불러오는 중...</p>
     <progress id="loading-progress" aria-label="불러오기 진행률"></progress>
     <p id="loading-notice" hidden></p>
+    <p id="loading-error" hidden></p>
     <button id="loading-retry" type="button" hidden>다시 시도</button>
     <noscript>게임을 실행하려면 자바스크립트가 필요합니다.</noscript>
   </section>
@@ -37,38 +41,93 @@
       const status = document.getElementById('loading-status');
       const progress = document.getElementById('loading-progress');
       const notice = document.getElementById('loading-notice');
+      const errorBox = document.getElementById('loading-error');
       const retry = document.getElementById('loading-retry');
       retry.addEventListener('click', () => window.location.reload());
       let failed = false, ready = false, lastProgress = performance.now(), bytes = 0;
+      let stage = '엔진 준비';
+
+      const mb = (n) => (Math.round(n / 1048576 * 10) / 10) + 'MB';
+      const webgl2 = (() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch (e) { return false; } })();
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
       const watch = setInterval(() => {
-        if (!failed && !ready && performance.now() - lastProgress > 30000) {
-          notice.textContent = '불러오는 데 시간이 걸리고 있어요. 기다리거나 다시 시도해 주세요.';
+        if (!failed && !ready && performance.now() - lastProgress > 20000) {
+          notice.textContent = isIOS
+            ? '불러오는 데 시간이 걸리고 있어요. (약 130MB · Wi-Fi 권장) 기다리거나 다시 시도해 주세요.'
+            : '불러오는 데 시간이 걸리고 있어요. 기다리거나 다시 시도해 주세요.';
           notice.hidden = false; retry.hidden = false;
         }
       }, 1000);
+
+      const describe = (error) => {
+        let msg = '';
+        try { msg = (error && (error.message || error.reason && error.reason.message || error.reason || error)) || ''; } catch (e) { msg = ''; }
+        msg = String(msg || '알 수 없는 오류').trim();
+        if (msg === 'startup error' || msg === 'Script error.') msg = '브라우저에서 오류가 발생했습니다 (상세 정보 없음)';
+        let hint = '';
+        if (/WebGL2|WebGL/i.test(msg)) hint = isIOS ? 'iPadOS/iOS 15 이상에서 WebGL2가 필요합니다. 사파리를 최신으로 업데이트해 주세요.' : 'WebGL2를 지원하는 브라우저가 필요합니다.';
+        else if (/Array buffer|memory|Allocation|out of memory|RangeError|OOM/i.test(msg)) hint = isIOS ? '기기 메모리가 부족했을 수 있어요. 다른 탭을 모두 닫고 사파리를 새로 켠 뒤 다시 시도해 주세요.' : '메모리가 부족했을 수 있어요. 다른 탭을 닫고 다시 시도해 주세요.';
+        else if (/HTTP|NetworkError|Load failed|Failed to fetch|network/i.test(msg)) hint = isIOS ? '내려받는 중 연결이 끊겼어요. Wi-Fi에서 다시 시도해 주세요.' : '네트워크 연결을 확인하고 다시 시도해 주세요.';
+        else if (/SharedArrayBuffer|Cross-Origin Isolation/i.test(msg)) hint = '서버 헤더 문제로 스레드 기능을 쓸 수 없습니다.';
+        return { msg, hint };
+      };
+
       const fail = (error) => {
         if (failed || ready) return;
-        failed = true; clearInterval(watch); console.error('[game-loading]', error);
-        status.textContent = '게임을 불러오지 못했어요.'; progress.hidden = true; retry.hidden = false;
+        failed = true; clearInterval(watch);
+        try { console.error('[game-loading]', stage, error); } catch (e) { }
+        const { msg, hint } = describe(error);
+        status.textContent = '게임을 불러오지 못했어요.';
+        progress.hidden = true; retry.hidden = false;
+        errorBox.innerHTML = '';
+        const b = document.createElement('b'); b.textContent = '[' + stage + '] '; errorBox.appendChild(b);
+        errorBox.appendChild(document.createTextNode(msg));
+        if (hint) {
+          const h = document.createElement('span'); h.className = 'd'; h.textContent = '▸ ' + hint; errorBox.appendChild(h);
+        }
+        const d = document.createElement('span'); d.className = 'd';
+        d.textContent = '기기: ' + (isIOS ? 'iOS/iPadOS' : '기타') + ' · WebGL2: ' + (webgl2 ? '지원' : '미지원') + ' · 스크린: ' + screen.width + 'x' + screen.height;
+        errorBox.appendChild(d);
+        errorBox.hidden = false;
       };
       window.addEventListener('error', e => fail(e.error || new Error('startup error')));
       window.addEventListener('unhandledrejection', e => fail(e.reason));
+
       const onProgress = (current, total) => {
         if (current > bytes) { bytes = current; lastProgress = performance.now(); }
         if (Number.isFinite(total) && total > 0 && Number.isFinite(current)) {
           progress.max = total; progress.value = Math.min(current, total);
-          status.textContent = current >= total ? '게임을 시작하는 중...' : `불러오는 중 ${Math.floor(current / total * 100)}%`;
+          const pct = Math.floor(current / total * 100);
+          status.textContent = current >= total ? '게임을 시작하는 중...' : `불러오는 중 ${pct}%  (${mb(current)} / ${mb(total)})`;
         } else { progress.removeAttribute('value'); status.textContent = '게임을 불러오는 중...'; }
       };
+
       // 게임 데이터(index.pck)는 GitHub 쪽 전송 한도 때문에 조각(index.pck.part1~3)으로 나뉘어 있습니다.
       // 매니패스트가 없으면 예전처럼 index.pck 한 파일을 그대로 받습니다.
       const PACK = 'index.pck';
       const PACK_PARTS = 'index.pck.parts.json';
       const wasmSize = config.fileSizes['index.wasm'] || 0;
       const packSize = config.fileSizes[PACK] || 0;
+
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      const fetchOk = async (url, opt) => {
+        let lastErr = null;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            const res = await fetch(url, opt);
+            if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
+            return res;
+          } catch (err) {
+            lastErr = err;
+            if (attempt < 3) await sleep(1200 * attempt);
+          }
+        }
+        throw lastErr || new Error('네트워크 오류: ' + url);
+      };
+
       const fetchBuffer = async (url, onBytes, target, targetOffset) => {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
+        const res = await fetchOk(url);
         if (res.body && res.body.getReader) {
           const reader = res.body.getReader();
           const chunks = [];
@@ -92,44 +151,64 @@
         if (onBytes) onBytes(buf.length);
         return buf;
       };
+
       const loadPack = async () => {
+        stage = '게임 데이터 내려받기';
         let manifest = null;
         try {
-          const res = await fetch(PACK_PARTS, {cache: 'no-cache'});
+          const res = await fetch(PACK_PARTS, { cache: 'no-cache' });
           if (res.ok) manifest = await res.json();
         } catch (error) { manifest = null; }
         const total = (manifest && manifest.total) || packSize;
         let loaded = 0;
         const report = (add) => { loaded += add; onProgress(wasmSize + loaded, wasmSize + total); };
         if (manifest && Array.isArray(manifest.parts) && manifest.parts.length && total) {
-          const out = new Uint8Array(total);
+          let out;
+          try {
+            out = new Uint8Array(total);
+          } catch (err) {
+            throw new Error('메모리 부족: 게임 데이터(' + mb(total) + ')를 담을 공간을 확보하지 못했습니다');
+          }
           let offset = 0;
           for (const part of manifest.parts) {
             offset += await fetchBuffer(part.name, report, out, offset);
           }
-          if (offset !== total) throw new Error('게임 데이터 크기가 맞지 않습니다');
+          if (offset !== total) throw new Error('게임 데이터 크기가 맞지 않습니다 (' + offset + '/' + total + ')');
           return out;
         }
         return fetchBuffer(PACK, report);
       };
+
       const start = async () => {
         try {
-          const missing = Engine.getMissingFeatures({threads});
+          stage = '브라우저 확인';
+          const missing = Engine.getMissingFeatures({ threads });
           if (missing.length) throw new Error(missing.join(', '));
-          const engine = new Engine({...config, canvas, args: ['--main-pack', PACK], onProgress});
+
+          stage = '엔진(약 40MB) 내려받기';
+          const engine = new Engine({ ...config, canvas, args: ['--main-pack', PACK], onProgress });
           await engine.init(config.executable);
-          const pack = await loadPack();
+
+          let pack = await loadPack();
+
+          stage = '게임 데이터 적용';
           await engine.preloadFile(pack, PACK);
+          pack = null;
+
+          stage = '게임 시작';
+          notice.textContent = '게임을 시작하는 중이에요...';
+          notice.hidden = false;
           await engine.start();
           if (failed) return;
-          ready = true; clearInterval(watch);
+          ready = true; clearInterval(watch); notice.hidden = true;
           requestAnimationFrame(() => requestAnimationFrame(() => { loading.hidden = true; if (config.focusCanvas) canvas.focus(); }));
         } catch (error) { fail(error); }
       };
+
       const script = document.createElement('script');
       script.src = 'index.js';
-      script.addEventListener('load', start, {once:true});
-      script.addEventListener('error', () => fail(new Error('engine script failed')), {once:true});
+      script.addEventListener('load', start, { once: true });
+      script.addEventListener('error', () => { stage = '엔진 스크립트'; fail(new Error('engine script failed (index.js) ')); }, { once: true });
       document.head.appendChild(script);
     })();
   </script>
