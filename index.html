@@ -31,9 +31,8 @@
     text-shadow:0 2px 0 #6b4d12,0 0 26px rgba(255,205,110,.28)
   }
   .sub{margin:12px 0 0;color:#a8bade;font-size:15px;line-height:1.6}
-  .cards{display:grid;gap:16px;margin-top:30px}
-  @media(min-width:620px){.cards{grid-template-columns:1fr 1fr}}
-  @media(min-width:900px){.cards{grid-template-columns:repeat(3,1fr)}}
+  .cards{display:grid;gap:16px;margin-top:30px;max-width:840px;margin-left:auto;margin-right:auto}
+  @media(min-width:680px){.cards{grid-template-columns:1fr 1fr}}
   a.card{
     display:flex;flex-direction:column;text-decoration:none;color:inherit;position:relative;
     border-radius:20px;padding:22px 20px 20px;
@@ -54,6 +53,7 @@
   .tag.p{background:rgba(255,205,110,.16);color:#ffd98a;border:1px solid rgba(255,205,110,.4)}
   .tag.g{background:rgba(126,224,168,.14);color:#8ff0bd;border:1px solid rgba(126,224,168,.38)}
   .tag.k{background:rgba(160,186,255,.16);color:#bcd2ff;border:1px solid rgba(160,186,255,.42)}
+  .tag.m{background:rgba(198,166,255,.16);color:#d8c4ff;border:1px solid rgba(198,166,255,.42)}
   .card h2{margin:0 0 6px;font-size:21px;letter-spacing:-.01em}
   .card p{margin:0;font-size:13.5px;line-height:1.65;color:#9fb2d6}
   .spec{margin-top:14px;margin-bottom:18px;font-size:12px;color:#7f93bb;line-height:1.7}
@@ -99,10 +99,19 @@
       <div class="spec">발판 90개 · 구역 5개 · 위험/행운 이벤트 8종</div>
       <div class="go">플레이하기 <span>→</span></div>
     </a>
+
+    <a class="card" href="./manus/">
+      <div class="tag m">마누스 버전</div>
+      <h2>Godot 4 웹(WASM) 버전</h2>
+      <p>Godot 4 엔진을 브라우저에서 그대로 돌리는 웹 빌드. 원작의 그래픽과 사운드를 설치 없이 즐길 수 있습니다.</p>
+      <div class="spec">Godot 4 WebAssembly · 첫 로딩 시 약 130MB</div>
+      <div class="go">플레이하기 <span>→</span></div>
+    </a>
   </div>
 
   <footer>
-    <div>피클 버전은 첫 실행 시 엔진 파일(약 13MB)을 내려받느라 잠깐 로딩될 수 있습니다.</div>
+    <div>피클 버전은 첫 실행 시 엔진 파일을 내려받느라 잠깐 로딩될 수 있습니다.</div>
+    <div>마누스 버전은 게임 데이터가 커서 첫 로딩에 시간이 걸릴 수 있습니다(약 130MB).</div>
     <div>모바일은 세로 화면에 맞춰 주세요 · PC는 <code>←</code> <code>→</code> 이동, <code>Space</code>/<code>↑</code> 점프</div>
   </footer>
 </div>
