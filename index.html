@@ -34,6 +34,8 @@
   .cards{display:grid;gap:16px;margin-top:30px;max-width:840px;margin-left:auto;margin-right:auto}
   @media(min-width:680px){.cards{grid-template-columns:1fr 1fr}}
   @media(min-width:900px){.cards{grid-template-columns:repeat(3,1fr);max-width:1000px}}
+  @media(min-width:680px){a.card.solo{grid-column:1/-1;justify-self:center;width:100%;max-width:420px}}
+  @media(min-width:900px){a.card.solo{grid-column:2}}
   a.card{
     display:flex;flex-direction:column;text-decoration:none;color:inherit;position:relative;
     border-radius:20px;padding:22px 20px 20px;
@@ -57,6 +59,7 @@
   .tag.m{background:rgba(198,166,255,.16);color:#d8c4ff;border:1px solid rgba(198,166,255,.42)}
   .tag.c{background:rgba(255,176,146,.14);color:#ffc3a8;border:1px solid rgba(255,176,146,.4)}
   .tag.e{background:rgba(120,220,255,.14);color:#9fe6ff;border:1px solid rgba(120,220,255,.4)}
+  .tag.d{background:rgba(190,160,255,.14);color:#d9c8ff;border:1px solid rgba(190,160,255,.4)}
   .card h2{margin:0 0 6px;font-size:21px;letter-spacing:-.01em}
   .card p{margin:0;font-size:13.5px;line-height:1.65;color:#9fb2d6}
   .spec{margin-top:14px;margin-bottom:18px;font-size:12px;color:#7f93bb;line-height:1.7}
@@ -123,6 +126,13 @@
       <h2>조작 커스텀 캔버스 버전</h2>
       <p>모바일 버튼 위치·크기와 카메라 방식을 직접 맞출 수 있는 버전. Godot 4 코드와 도트 에셋 추출 도구도 들어 있습니다.</p>
       <div class="spec">발판 88개 · 구역 6개 · 태초 귀환 3%</div>
+      <div class="go">플레이하기 <span>→</span></div>
+    </a>
+    <a class="card solo" href="./deepseek/">
+      <div class="tag d">딥시크 버전</div>
+      <h2>단일 HTML 캔버스 버전</h2>
+      <p>충전 점프와 3% 태초 귀환을 담은 단일 HTML 버전. 버튼 배치·크기를 직접 맞출 수 있습니다.</p>
+      <div class="spec">발판 94개 · 구역 5개 + 구름 계곡 · 위험/행운 이벤트 9종</div>
       <div class="go">플레이하기 <span>→</span></div>
     </a>
   </div>

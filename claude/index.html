@@ -147,7 +147,7 @@ let k_=1;function fit(){const s=Math.min(innerWidth/W,innerHeight/H),d=devicePix
 function layout(){const s=Math.min(88*cfg.s/100,(innerWidth-30)/3.5),m=14,dx=cfg.x,b=`calc(${22+cfg.y}px + env(safe-area-inset-bottom))`,pos={};
 const L=cfg.l;if(L==0){pos.l=['L',m+dx,s];pos.r=['L',m+dx+s*1.12,s];pos.j=['R',m+dx,s*1.2]}else if(L==1){pos.l=['L',m+dx,s];pos.r=['L',m+dx+s*1.1,s];pos.j=['L',m+dx+s*2.2+12,s*1.2]}else{pos.j=['R',m+dx,s*1.2];pos.r=['R',m+dx+s*1.3,s];pos.l=['R',m+dx+s*2.4,s]}
 for(const k in pos){const e=$('t'+k),a=pos[k];e.style.width=e.style.height=a[2]+'px';e.style.bottom=b;e.style[a[0]=='L'?'left':'right']=a[1]+'px';e.style[a[0]=='L'?'right':'left']='auto'}
-const p=$('tp');p.style.width=p.style.height='46px';p.style.top='calc(env(safe-area-inset-top) + 40px)';p.style.right='8px'}
+const p=$('tp');p.style.width=p.style.height='46px';p.style.top='calc((100% - min(177.78vw,100vh))/2 + max(env(safe-area-inset-top),6px))';p.style.right='calc((100% - min(100vw,56.25vh))/2 + 6px)'}
 const coarse=matchMedia('(pointer:coarse)').matches;
 function show(s){st=s;$('menu').style.display=s=='menu'?'block':'none';$('set').style.display=s=='set'?'block':'none';$('ov').style.display=s=='pause'||s=='win'?'flex':'none';const tch=coarse||s=='set',pl=s=='play'||s=='pause'||s=='win'||s=='set';['l','r','j'].forEach(k=>$('t'+k).style.display=tch&&pl?'block':'none');$('tp').style.display=s=='play'||s=='pause'?'block':'none';cv.style.display=s=='menu'?'none':'block';$('bs').textContent='최고 기록: '+best+'m'}
 function over(w){TC.l=TC.r=TC.j=0;if(w=='win'){$('ot').textContent='성공했다, 재우!';$('od').textContent='정상 도착! 최고 높이 '+best+'m';$('o1').textContent='다시 도전'}else{$('ot').textContent='일시정지';$('od').textContent='';$('o1').textContent='이어하기'}show(w)}
