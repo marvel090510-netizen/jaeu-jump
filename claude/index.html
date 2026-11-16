@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>성공하고싶은 재우</title>
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="maximum-scale=1,user-scalable=no,width=device-width,initial-scale=1,viewport-fit=cover"><title>성공하고싶은 재우</title>
 <style>
 :root{color-scheme:dark;--bg:#0b0618;--fg:#f4eaff}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -17,7 +17,38 @@ h1{margin:0;font-size:clamp(30px,6vw,56px);line-height:1.15;color:#ffd24a;text-s
 .pn label{font-size:14px;display:flex;justify-content:space-between;gap:10px;align-items:center}.pn input{flex:1}
 .row{display:flex;gap:6px}.row .pb{flex:1;padding:10px 4px;font-size:14px;min-height:44px}
 #ov{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:#0a0418cc;z-index:7;text-align:center}
-</style></head><body>
+</style>
+
+<!-- LP-GUARD:START --><style>
+/* 꾹 누르기(롱프레스) 방지: iOS/iPadOS Safari 텍스트 선택·콜아웃·확대 차단 */
+html, body, body * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html, body {
+  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
+  touch-action: none;
+}
+/* 복사가 필요한 코드/입력 필드만 선택 허용(게임 조작부 보호에는 영향 없음) */
+pre, code, textarea, input {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
+#leftBtn, #rightBtn, #jumpBtn, #touchBtnLeft, #touchBtnRight, #touchBtnJump {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+</style><!-- LP-GUARD:END -->
+</head><body>
 <canvas id="g"></canvas>
 <div id="menu" class="scr" style="display:block"><canvas id="tbg" width="160" height="90"></canvas>
 <div class="side"><h1>성공하고싶은 재우</h1><div class="sb">한 번 더, 정상까지!</div><button class="pb" id="b1">도전 시작하기</button><button class="pb" id="b2">조작 설정</button><div class="sb" id="bs"></div></div></div>
@@ -164,4 +195,27 @@ addEventListener('keydown',e=>{if([' ','ArrowUp','ArrowLeft','ArrowRight'].inclu
 addEventListener('keyup',e=>K[e.key]=0);addEventListener('blur',()=>{for(const k in K)K[k]=0});addEventListener('resize',fit);
 function loop(t){const dt=Math.min(.033,((t-(lastT||t))/1000)||0);lastT=t;if(st=='play'){update(dt)}if(st=='play'||st=='pause'||st=='win'||st=='set'){if(BG&&st!='set')draw()}requestAnimationFrame(loop)}
 title();fit();show('menu');requestAnimationFrame(loop);
-</script></body></html>
+</script>
+
+<!-- LP-GUARD-JS:START -->
+<script>
+/* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
+(function () {
+  if (window.__lpGuard) { return; }
+  window.__lpGuard = true;
+  var stop = function (e) { if (e && e.cancelable !== false) { e.preventDefault(); } };
+  document.addEventListener('contextmenu', stop, { passive: false });
+  document.addEventListener('selectstart', stop, { passive: false });
+  document.addEventListener('dragstart', stop, { passive: false });
+  document.addEventListener('gesturestart', stop, { passive: false });
+  document.addEventListener('gesturechange', stop, { passive: false });
+  document.addEventListener('gestureend', stop, { passive: false });
+  document.addEventListener('dblclick', stop, { passive: false });
+  /* 두 손가락 이상일 때만 스크롤/확대 제스처를 막는다(한 손가락 스크롤은 그대로). */
+  document.addEventListener('touchmove', function (e) {
+    if (e.touches && e.touches.length > 1) { stop(e); }
+  }, { passive: false });
+})();
+</script>
+<!-- LP-GUARD-JS:END -->
+</body></html>
