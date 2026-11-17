@@ -302,16 +302,16 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
     </a>
 
-    <a class="card" href="./gemini-v4-1/" data-ai="gemini" style="--a:#8ec9ff;--a2:#22d3ee;--glow:96,165,250">
+    <a class="card" href="./gemini-v4-2/" data-ai="gemini" style="--a:#8ec9ff;--a2:#22d3ee;--glow:96,165,250">
       <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
         <path d="M24 4Q26.8 21.2 44 24 26.8 26.8 24 44 21.2 26.8 4 24 21.2 21.2 24 4Z" fill="currentColor" opacity=".24"/>
         <path d="M24 4Q26.8 21.2 44 24 26.8 26.8 24 44 21.2 26.8 4 24 21.2 21.2 24 4Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
       </svg></span>
       <div class="tag">제미나이 버전</div>
-      <h2>제미나이 <small>신규 맵 5종 · 모드 6종 레이스</small></h2>
-      <p>디저트 과자 탑·공사장·우주·대나무 숲까지 맵마다 다른 기믹, 타임어택·용암·AI 좀비·릴레이 모드, 친구 초대와 관전 입장까지. 친구와 최대 6명이 실시간으로 오릅니다.</p>
-      <div class="spec">맵 5종 · 모드 6종 · 발판 88개 · 멀티 2~6명</div>
-      <div class="go"><span class="count"><b>5</b>개 버전</span><span class="arrow">→</span></div>
+      <h2>제미나이 <small>10종 신기능 · 줄묶기·폭탄·보스</small></h2>
+      <p>2인 줄묶기 · 폭탄 돌리기 · 88층 수문장 보스 · 나만의 맵 에디터 · 연속 착지 피버 · AI 봇 대전 · 실시간 랭킹보드 · 고스트와 하이라이트 리플레이까지. 친구가 없어도 봇과 겨룰 수 있습니다.</p>
+      <div class="spec">모드 9종 · 신기능 10종 · 맵 6종(에디터) · 멀티 2~6명</div>
+      <div class="go"><span class="count"><b>6</b>개 버전</span><span class="arrow">→</span></div>
     </a>
 
     <a class="card" href="./deepseek/" data-ai="deepseek" style="--a:#9db4ff;--a2:#4d6bfe;--glow:77,107,254">
@@ -488,8 +488,25 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       accent: '#8ec9ff', accent2: '#22d3ee', glow: '96,165,250',
       versions: [
         {
-          ver: 'v4.1', label: '초대형 업데이트 (최신)', href: './gemini-v4-1/',
+          ver: 'v4.2', label: '10종 신기능 대규모 업데이트 (최신)', href: './gemini-v4-2/',
           date: '2026.11.17', latest: true,
+          spec: '모드 9종 · 신기능 10종 · AI 봇 · 맵 에디터 · 랭킹보드',
+          notes: [
+            '⛓️ 2인 줄묶기: 사슬로 묶여 최대 거리(120~340px)를 넘으면 서로 끌려갑니다. 멀티 실시간 동기화 + 싱글 봇 파트너',
+            '💣 폭탄 돌리기: 머리 위 카운트다운, 부딪히면 상대에게 전달. 0초에 터지면 보유자가 휩쓸리고 다음 라운드 새 폭탄',
+            '👻 고스트 리플레이: 내 최고 기록(또는 1등)의 좌표를 반투명 캐릭터로 나란히 재생 · 끄기/자동/1등 토글',
+            '🥊 88층 수문장: 정상 앞 픽셀아트 보스가 예고 표식 후 돌풍·탄막을 발사. 맞으면 넉백',
+            '🧩 맵 에디터: 터치로 일반·젤리·초코·부서짐·가시 발판을 찍어 88층 커스텀 맵 제작, JW42 압축 코드로 친구와 공유·즉시 플레이',
+            '🔥 연속 착지 피버: 미끄러짐/추락 없이 5연속 윗발판 착지 → 불꽃 오라 + 충전 1.75~2배 + 콤보 배지',
+            '🏆 실시간 랭킹보드: 맵·모드별 최단 클리어 / 최고 도달 TOP 10을 공용 릴레이 + 로컬 저장으로 조회',
+            '🤖 AI 봇 대전: 하·중·상·극악 난이도 봇 1~3명과 일반·폭탄·줄묶기·타임어택·보스 대전 (실제 발판 스캔 충전 점프)',
+            '🌧️ 실시간 날씨: 맑음 → 비(마찰 감소) → 눈(살짝 미끄럼) → 번개(섬광·돌풍) 순환, 토스트 알림·토글',
+            '📸 하이라이트: 태초/대추락/정상 골인 직전 4초를 자동 기록, 결과창에서 일시정지·다시재생 리플레이'
+          ]
+        },
+        {
+          ver: 'v4.1', label: '초대형 업데이트', href: './gemini-v4-1/',
+          date: '2026.11.17', latest: false,
           spec: '맵 5종 · 모드 6종 · 버프 4 · 함정 8 · 멀티 2~6명',
           notes: [
             '신규 맵 4종: 🍭 디저트 과자 탑(젤리 트램펄린·초코 시럽) · 🏗️ 고층 공사장(철골·크레인·강풍) · 🚀 우주 정거장(저중력·소행성·레이저) · 🏯 대나무 숲 & 구름 신사(휘는 대나무·사라지는 구름)',
