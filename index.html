@@ -225,6 +225,15 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
     <p class="sub">한 번 더, 정상까지.<br>AI를 고르면 그동안 만든 버전들이 쭉 나옵니다.</p>
   </header>
 
+  <div class="launcher">
+    <span class="lamp" aria-hidden="true"></span>
+    <div class="ltext">
+      <b>최신 빌드 <span class="lbadge">v4.3</span> · 맵 16종 · 모드 13종</b>
+      <span>16맵(전부 88층 도달 검증) · 모드 13종 · 아이템 7종 · 방 설정 10종 · 스킨 20종 · 색 12종</span>
+    </div>
+    <a class="play" href="./gemini-v4-3/">▶ 바로 플레이</a>
+  </div>
+
   <div class="cards">
     <a class="card" href="./pickle/" data-ai="pickle" style="--a:#ffe08a;--a2:#7fd6ff;--glow:255,205,110">
       <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
@@ -302,16 +311,16 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
     </a>
 
-    <a class="card" href="./gemini-v4-2/" data-ai="gemini" style="--a:#8ec9ff;--a2:#22d3ee;--glow:96,165,250">
+    <a class="card latest" href="./gemini-v4-3/" data-ai="gemini" style="--a:#8ec9ff;--a2:#22d3ee;--glow:96,165,250"><span class="pix" aria-hidden="true"></span>
       <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
         <path d="M24 4Q26.8 21.2 44 24 26.8 26.8 24 44 21.2 26.8 4 24 21.2 21.2 24 4Z" fill="currentColor" opacity=".24"/>
         <path d="M24 4Q26.8 21.2 44 24 26.8 26.8 24 44 21.2 26.8 4 24 21.2 21.2 24 4Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
       </svg></span>
       <div class="tag">제미나이 버전</div>
-      <h2>제미나이 <small>10종 신기능 · 줄묶기·폭탄·보스</small></h2>
-      <p>2인 줄묶기 · 폭탄 돌리기 · 88층 수문장 보스 · 나만의 맵 에디터 · 연속 착지 피버 · AI 봇 대전 · 실시간 랭킹보드 · 고스트와 하이라이트 리플레이까지. 친구가 없어도 봇과 겨룰 수 있습니다.</p>
-      <div class="spec">모드 9종 · 신기능 10종 · 맵 6종(에디터) · 멀티 2~6명</div>
-      <div class="go"><span class="count"><b>6</b>개 버전</span><span class="arrow">→</span></div>
+      <h2>제미나이 <small>초대형 · 16맵·모드13·친구·QoL</small></h2>
+      <p>맵 16종(심해·오락실·빙하·저택·화산·학교·시계탑·부엌·기차·무협·무지개) · 모드 13종(잠수 탈출·암전·리듬·불타는 발판·용암·좀비 감염전) · 아이템 7종 · 방 설정 10종 · 봇 통합 · 실시간 친구 활동 · 편리성 40여 종.</p>
+      <div class="spec">맵 16종 · 모드 13종 · 아이템 7종 · 스킨 20종 · 방 설정 10종</div>
+      <div class="go"><span class="count"><b>7</b>개 버전</span><span class="arrow">→</span></div>
     </a>
 
     <a class="card" href="./deepseek/" data-ai="deepseek" style="--a:#9db4ff;--a2:#4d6bfe;--glow:77,107,254">
@@ -488,7 +497,25 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       accent: '#8ec9ff', accent2: '#22d3ee', glow: '96,165,250',
       versions: [
         {
-          ver: 'v4.2', label: '10종 신기능 대규모 업데이트 (최신)', href: './gemini-v4-2/',
+          ver: 'v4.3', label: '초대형 업데이트 · 16맵 · 모드 13종 · 친구 · QoL (최신)', href: './gemini-v4-3/',
+          date: '2026.11.17', latest: true,
+          spec: '맵 16종 · 모드 13종 · 아이템 7종 · 방 설정 10종 · 스킨 20종 · 색 12종',
+          notes: [
+            '🌍 맵 16종: 심해 아틀란티스 · 네온 오락실 · 북극 빙하 성채 · 유령의 저택 · 공룡 화산 정글 · 학교 탈출 · 거대 시계탑 · 거인 부엌 · 달리는 기차 · 무협 벚꽃 절벽 · 무지개 궁전 (전부 88층 도달 자동 검증)',
+            '🤖 AI 봇을 멀티 방 안으로 통합: [+ 🤖 봇 추가] 한 번으로 혼자서도, 친구와 섞여서도 똑같은 레이스',
+            '🌋 용암 개편: 픽셀 파도 + 불씨 + 거리 경고(⚠️ 12m 아래) · 멀티 높이 완전 동기화',
+            '🧟 좀비 개편: 팔 뻗은 픽셀 좀비 · 심장 두근 경고 · 잡히면 좀비로 변해 생존자를 쫓는 감염전',
+            '🆕 신규 모드 4종: 잠수 탈출(산소 5초) · 암전 손전등 · 타이밍 리듬 점프 · 3초 불타는 발판',
+            '🎁 아이템 7종 + 개별 ON/OFF: 바나나 껍질 · 1등 저격 번개 · 위치 체인지 · 미니 로켓 · 자석 부츠 · 유령 망토 · 거미줄 덫',
+            '⚙️ 방 설정 10종(목표 층수·물리·하트·빈도·세트전·공개 범위 등) + 🙋 비방장 제안 + ✨ 변경 하이라이트',
+            '👥 친구: 원터치 추가 · 양방향 확인 · 실시간 활동(레이스 중 · 디저트 탑 · 45층) · 관전/합류 · 1:1 전적 · 접속 알림',
+            '🎭 스킨 20종(펭귄·곰돌이·공룡·닌자·카우보이·천사·꿀벌·호박맨 추가) · 색 12종',
+            '🏆 최고 기록을 맵·모드별로 분리 저장 · BEST 돌파선 · 내 최고 대비 페이스 · 통계·업적 20종',
+            '🤝 2인 릴레이: 기다리는 주자는 파트너를 자동 관전(44층 바통 터치까지)'
+          ]
+        },
+        {
+          ver: 'v4.2', label: '10종 신기능 대규모 업데이트', href: './gemini-v4-2/',
           date: '2026.11.17', latest: true,
           spec: '모드 9종 · 신기능 10종 · AI 봇 · 맵 에디터 · 랭킹보드',
           notes: [
