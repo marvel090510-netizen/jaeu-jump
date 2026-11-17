@@ -22818,9 +22818,15 @@ extends CanvasLayer
     var m = $('hudStageCounterMobile');
     if (!m) return;
     var box = m.parentElement;
-    if (box && box.style.display !== 'flex' && getComputedStyle(box).display === 'none') {
+    if (!box) return;
+    /* iPad·가로(700px 이상)에서만 ⏸ 옆에 층·보호막 박스를 같이 보인다 */
+    var want = window.innerWidth >= 700;
+    if (want && box.style.display !== 'flex') {
       box.style.display = 'flex';
       box.style.marginRight = '2px';
+    } else if (!want && box.style.display === 'flex') {
+      box.style.display = '';
+      box.style.marginRight = '';
     }
   }
 
