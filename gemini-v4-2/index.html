@@ -9242,7 +9242,7 @@ extends CanvasLayer
     if (CFG.ghost === 'off') return null;
     if (CFG.ghost === 'champ') {
       const ch = rankBestGhost(V.map, V.mode);
-      if (ch && ch.fr && ch.fr.length > 4) { pick = ch; label = '👻 1등 ' + (ch.n || ''); }
+      if (ch && ch.fr && ch.fr.length > 2) { pick = ch; label = '👻 1등 ' + (ch.n || ''); }
     }
     if (!pick && mine && mine.fr && mine.fr.length > 4) {
       pick = mine; label = '👻 내 최고 ' + Math.round(mine.m || 0) + 'm';
@@ -9842,7 +9842,7 @@ extends CanvasLayer
   function rankAll() { const r = lsGet(LS_RANK, []); return Array.isArray(r) ? r : []; }
   function rankSave(list) { lsSet(LS_RANK, list.slice(0, 400)); }
   function rankBestGhost(map, mode) {
-    const list = rankAll().concat(V.rank.live || []).filter((e) => e.map === map && e.mode === mode && e.fr && e.fr.length > 4);
+    const list = rankAll().concat(V.rank.live || []).filter((e) => e.map === map && e.mode === mode && e.fr && e.fr.length > 2);
     list.sort((a, b) => (b.m || 0) - (a.m || 0));
     return list[0] || null;
   }
@@ -10281,7 +10281,7 @@ extends CanvasLayer
     /* 고스트 저장 */
     ghostFinish();
     /* 랭킹 등록 */
-    const fr = (V.ghostRec && V.ghostRec.length > 8) ? V.ghostRec.filter((x, i) => i % 6 === 0).slice(-120) : null;
+    const fr = (V.ghostRec && V.ghostRec.length > 8) ? V.ghostRec.filter((x, i) => i % 3 === 0).slice(-160) : null;
     const wasClear = (reason === 'clear') || !!V.cleared;
     rankPush({ n: nick(), map: V.map, mode: V.mode, m: V.maxM, t: (V.clearT || J().game.time), clear: wasClear, fr: fr }, true);
     V.bomb = null; V.boss = null; V.chain.on = false;
