@@ -3308,7 +3308,7 @@ extends CanvasLayer
     el.className = 'mp-toast ' + (cat || '');
     el.innerHTML = '<span>' + String(title).replace(/[<>&]/g, '') + '</span>' + (desc ? '<small>' + String(desc).replace(/[<>&]/g, '') + '</small>' : '');
     wrap.appendChild(el);
-    while (wrap.children.length > 3) wrap.removeChild(wrap.firstChild);
+    while (wrap.children.length > 2) wrap.removeChild(wrap.firstChild);
     requestAnimationFrame(() => el.classList.add('show'));
     setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 260); }, ms || 2200);
   }
