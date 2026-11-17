@@ -31075,6 +31075,24 @@ extends CanvasLayer
       c.globalAlpha = 1;
     }
   }
+  /* 먼 곳 도시·계곡 불빛 띠: 중간 구간을 은은한 빛으로 채운다 */
+  function lightBand(c, G, u, col, seed, n) {
+    const y = Y(G, u);
+    const g = c.createLinearGradient(0, y - 34, 0, y + 34);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(0.5, col);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    c.fillStyle = g;
+    c.fillRect(-20, y - 34, W + 40, 68);
+    for (let i = 0; i < (n || 9); i++) {
+      const x = hash(i * 3.7 + seed) * (W + 30) - 15;
+      const yy = y + (hash(i * 5.3 + seed) - 0.5) * 26;
+      const a = 0.30 + hash(i * 7.1 + seed) * 0.45;
+      c.globalAlpha = a;
+      CIR(c, x, yy, 0.9 + hash(i + seed) * 1.1, '#ffe9b0');
+      c.globalAlpha = 1;
+    }
+  }
   /* 유리창 불빛 묶음 */
   function windows(c, x, y, w, h, col, seed, density) {
     const stepY = 9, stepX = 8;
@@ -32872,6 +32890,15 @@ extends CanvasLayer
         const y = Y(G, u + (d.cloudShift || 0));
         if (!inView(y, view, 260)) return;
         cloudSea(c, G, u + (d.cloudShift || 0), d.cloudCol || 'rgba(222,232,248,.20)', 5 + i * 3.7, 130);
+      });
+    }
+    /* 먼 불빛 띠 (맵 테마색) */
+    if (d.land || d.wall) {
+      const ac = d.accent || 'rgba(150,180,230,.16)';
+      [0.36, 0.55, 0.70].forEach((u, i) => {
+        const y = Y(G, u);
+        if (!inView(y, view, 120)) return;
+        lightBand(c, G, u, ac.replace(/[\d.]+\)$/, (0.10 - i * 0.02) + ')'), 2.1 + i * 3.3, 7 + i);
       });
     }
     /* 별빛: 고도 45% 위쪽은 어느 맵이든 밤하늘 별이 깔린다 */
