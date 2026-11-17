@@ -25552,6 +25552,31 @@ extends CanvasLayer
         ctx.fillRect((q.x | 0), (sy | 0), q.w, 2);
       });
     }
+    /* 랜덤 목표층 표식 (목표 발판 위 깃발) */
+    if (mode === 'randomtgt' && G.rtgt) {
+      const tp = plats().find((q) => q.index === G.rtgt);
+      if (tp) {
+        const ty = tp.y - camY;
+        if (ty > -80 && ty < lh + 80) {
+          const bob = Math.sin((g.time || 0) * 4) * 3;
+          const cx = tp.x + tp.w / 2;
+          ctx.save();
+          ctx.globalAlpha = 0.35 + 0.2 * Math.abs(Math.sin((g.time || 0) * 5));
+          ctx.fillStyle = '#fde047';
+          ctx.beginPath(); ctx.arc(cx, ty - 26 + bob, 18, 0, 6.3); ctx.fill();
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(cx - 1, ty - 42 + bob, 2, 24);
+          ctx.fillStyle = '#f43f5e';
+          ctx.beginPath(); ctx.moveTo(cx + 1, ty - 42 + bob); ctx.lineTo(cx + 19, ty - 36 + bob); ctx.lineTo(cx + 1, ty - 30 + bob); ctx.fill();
+          ctx.font = 'bold 9px "Galmuri11", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#fef3c7';
+          ctx.fillText('🎯 목표 ' + G.rtgt + '층', cx, ty - 48 + bob);
+          ctx.restore();
+        }
+      }
+    }
     /* 술래 출발 카운트다운 */
     if (mode === 'tag' && G.tag.grace > 0) {
       const n = Math.ceil(G.tag.grace);
