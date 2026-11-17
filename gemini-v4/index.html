@@ -2670,23 +2670,35 @@ extends CanvasLayer
   .mp-lbl { font-size:11px; font-weight:800; color:#93c5fd; letter-spacing:.02em; }
   .mp-toggle { display:flex; align-items:center; justify-content:space-between; gap:8px; background:#111a30; border:2px solid #1e293b; padding:8px 10px; }
   .mp-dot { width:10px; height:10px; display:inline-block; box-shadow:0 0 0 2px #05030a; }
-  #mpToasts { position:absolute; top:150px; right:8px; width:min(52vw,206px); display:flex; flex-direction:column; gap:6px; align-items:flex-end; pointer-events:none; z-index:42; }
-  .mp-toast { width:100%; background:rgba(9,13,26,.92); border:2px solid #60a5fa; border-left:6px solid #60a5fa; color:#fff;
-    padding:7px 9px; font-size:11.5px; font-weight:800; line-height:1.28; box-shadow:0 3px 0 rgba(5,3,10,.8); transform:translateX(120%); opacity:0; transition:transform .22s ease-out, opacity .22s ease-out; }
+  /* HUD 대칭 기준: 좌우 8px(sm 14px) 인셋 · 순위표와 토스트는 같은 Y에서 시작 */
+  #mpToasts { position:absolute; top:150px; right:8px; display:flex; flex-direction:column; align-items:flex-end; pointer-events:none; z-index:42; }
+  .mp-toast { max-width:min(56vw,196px); background:rgba(9,13,26,.66); border:1px solid rgba(96,165,250,.42); border-left:3px solid rgba(96,165,250,.92);
+    border-radius:4px; color:#eaf2ff; padding:3px 7px; font-size:10px; font-weight:800; line-height:1.25; letter-spacing:-.01em;
+    text-shadow:0 1px 0 rgba(5,3,10,.9); box-shadow:0 1px 4px rgba(3,5,12,.45);
+    -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);
+    transform:translateX(120%); opacity:0; transition:transform .18s ease-out, opacity .18s ease-out; }
   .mp-toast.show { transform:translateX(0); opacity:1; }
-  .mp-toast.lucky { border-color:#fbbf24; border-left-color:#fbbf24; }
-  .mp-toast.danger { border-color:#fb7185; border-left-color:#fb7185; }
-  .mp-toast.chat { border-color:#38bdf8; border-left-color:#38bdf8; }
-  .mp-toast small { display:block; font-size:10px; font-weight:700; color:#cbd5e1; margin-top:1px; }
+  .mp-toast .t1, .mp-toast .t2 { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mp-toast .t2 { font-size:8.5px; font-weight:700; color:rgba(203,213,225,.82); }
+  .mp-toast.lucky { border-left-color:rgba(251,191,36,.95); }
+  .mp-toast.danger { border-left-color:rgba(251,113,133,.95); }
+  .mp-toast.chat { border-left-color:rgba(56,189,248,.95); }
+  .mp-toast.flash { animation:mpTstSwap .2s ease-out; }
+  @keyframes mpTstSwap { from { transform:translateX(8px) scale(.96); opacity:.35 } to { transform:translateX(0) scale(1); opacity:1 } }
   #mpAltBar { position:absolute; left:4px; top:30%; height:42%; width:24px; pointer-events:none; z-index:24; }
   #mpAltBar.hidden{display:none !important;}
   #mpAltTrack { position:absolute; left:7px; top:0; bottom:0; width:8px; background:rgba(148,163,184,.42); border:1px solid rgba(203,213,225,.7); box-shadow:0 0 0 1px #05030a; }
   .mp-alt-mk { position:absolute; left:0; width:20px; height:14px; margin-top:-7px; transition:top .18s linear; }
   .mp-alt-mk i { position:absolute; left:0; top:2px; width:16px; height:10px; display:block; border:1px solid #fff; }
   .mp-alt-mk span { position:absolute; left:20px; top:1px; font-size:9px; font-weight:900; color:#fff; text-shadow:1px 1px 0 #05030a,0 0 3px #000; white-space:nowrap; }
-  #mpRankLine { position:absolute; left:6px; top:158px; z-index:24; pointer-events:none; display:flex; flex-direction:column; gap:3px; max-width:48vw; }
-  .mp-rk { display:flex; align-items:center; gap:4px; background:rgba(9,13,26,.9); border:2px solid #1e3a8a; padding:2px 5px; font-size:10px; font-weight:900; color:#e2e8f0; max-width:168px; }
-  .mp-rk.me { border-color:#fbbf24; }
+  #mpRankLine { position:absolute; left:8px; top:150px; z-index:24; pointer-events:none; display:flex; flex-direction:column; gap:2px; max-width:52vw; }
+  .mp-rk { display:flex; align-items:center; gap:4px; background:rgba(9,13,26,.66); border:1px solid rgba(96,165,250,.42); border-radius:4px;
+    padding:1px 6px 1px 4px; font-size:9.5px; font-weight:900; color:#dbe7f7; max-width:150px; text-shadow:0 1px 0 rgba(5,3,10,.9);
+    -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
+  .mp-rk.me { border-color:rgba(251,191,36,.85); background:rgba(9,13,26,.8); }
+  .mp-rk .rkn { max-width:62px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mp-rk .rkd { font-size:8.5px; font-weight:800; color:rgba(251,191,36,.92); }
+  .mp-rk .rkme { color:#fde047; }
   .mp-fab { position:absolute; z-index:36; width:44px; height:44px; display:flex; align-items:center; justify-content:center; font-size:20px;
     background:#0f172a; border:2px solid #60a5fa; box-shadow:0 3px 0 #05030a; }
   #mpChatFab { right:8px; bottom:150px; }
@@ -2702,8 +2714,10 @@ extends CanvasLayer
   #mpCount { position:absolute; inset:0; z-index:48; display:flex; align-items:center; justify-content:center; background:rgba(3,5,12,.55); pointer-events:none; }
   #mpCount div { font-size:64px; font-weight:900; color:#fde047; text-shadow:4px 4px 0 #05030a,-3px -3px 0 #b45309; }
   #mpFog { position:absolute; inset:0; z-index:35; pointer-events:none; opacity:0; transition:opacity .25s; background:radial-gradient(circle at 50% 45%, rgba(30,41,59,.55) 0%, rgba(2,6,23,.94) 78%); }
-  #mpSpectateBar { position:absolute; left:50%; transform:translateX(-50%); top:140px; z-index:37; display:flex; gap:6px; align-items:center;
-    background:rgba(9,13,26,.9); border:2px solid #c084fc; padding:4px 8px; font-size:11px; font-weight:900; color:#f5d0fe; }
+  #mpSpectateBar { position:absolute; left:0; right:0; margin:0 auto; width:max-content; max-width:calc(100% - 16px); top:140px; z-index:37; display:flex; gap:6px; align-items:center; white-space:nowrap;
+    background:rgba(9,13,26,.72); border:1px solid rgba(192,132,252,.7); border-radius:4px; padding:3px 8px; font-size:10.5px; font-weight:900; color:#f5d0fe;
+    -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
+  #mpSpectateBar > *, #mpSpectateBar button { white-space:nowrap; }
   .mp-lrow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:#0b1222; border:2px solid #1e293b; padding:7px 8px; }
   .mp-bubble { position:absolute; z-index:34; pointer-events:none; background:#fff; color:#0b1020; font-weight:900; font-size:11px; padding:2px 6px;
     border:2px solid #05030a; border-radius:10px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -2722,15 +2736,10 @@ extends CanvasLayer
   .mp-maxchip.on { background:#1d4ed8; border-color:#93c5fd; color:#fff; }
   .mp-maxchip.locked { opacity:.6; }
 
-  /* ---- 레이스 중 나가기 / 아이템 칩 ---- */
-  #mpLeaveHud { position:absolute; right:6px; top:88px; z-index:38; width:52px; min-height:46px; display:none;
-    flex-direction:column; align-items:center; justify-content:center; gap:1px; background:#0f172a; border:2px solid #f87171;
-    color:#fecaca; box-shadow:0 3px 0 #05030a; font-weight:900; font-size:9px; line-height:1.1; }
-  #mpLeaveHud.show { display:flex; }
-  #mpLeaveHud .ic { font-size:16px; }
-  #mpLeaveHud.confirm { background:#b91c1c; border-color:#fff; color:#fff; box-shadow:0 0 0 3px rgba(255,255,255,.45), 0 3px 0 #05030a; }
-  #mpItemChip { position:absolute; right:6px; top:150px; z-index:38; display:none; align-items:center; gap:2px;
-    background:rgba(9,13,26,.92); border:2px solid #34d399; color:#a7f3d0; font-weight:900; font-size:10px; padding:2px 6px; }
+  /* ---- 아이템 칩 (나가기는 ⏸ 메뉴 안으로 통합) ---- */
+  #mpItemChip { position:absolute; right:8px; top:62px; z-index:38; display:none; align-items:center; gap:2px;
+    background:rgba(9,13,26,.66); border:1px solid rgba(52,211,153,.6); border-radius:4px; color:#a7f3d0; font-weight:900; font-size:10px; padding:2px 6px;
+    -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
   #mpItemChip.show { display:flex; }
   #mpRaceMenu { position:absolute; inset:0; z-index:49; display:flex; align-items:center; justify-content:center; background:rgba(3,5,12,.82); padding:14px; }
 
@@ -2743,11 +2752,17 @@ extends CanvasLayer
   .mp-streak { font-size:9.5px; font-weight:900; padding:1px 5px; border:1px solid #fb923c; background:#431407; color:#fed7aa; white-space:nowrap; }
   #mpResultList { max-height:46vh; overflow-y:auto; }
 
-  /* iPad/가로 화면: HUD 나가기 버튼·토스트 위치 미세 조정 (기본 규칙 뒤에 와야 적용됨) */
+  /* 상단 HUD 좌우 대칭(멀티 레이스): 좌측 상태 카드 ↔ 우측 ★/⏸ 의 상단 기준선·바깥 여백(8·8 / 14·14) 맞춤
+     · 플레이 중에는 우상단 '⚡ 바로 플레이' 바가 숨겨지므로 그 자리 여백(pr-28/pr-44)을 비운다 */
+  #gameHud.race-clean > div:first-child { padding-right: 0 !important; align-items: flex-start; }
+  #gameHud.race-clean > div:first-child > div:last-child { margin-top: 0 !important; }
+  #gameHud.race-clean #btnPauseHud { flex: 0 0 auto; }
+  /* 하단 이동/점프: 좌우 바깥 여백 14px·바닥선 정렬 유지 */
+  #touchBtnLeft, #touchBtnRight, #touchBtnJump { bottom: 14px; }
+
+  /* iPad/가로 화면: HUD 시작 Y는 JS(layoutRaceHud)가 실제 카드 높이로 맞춘다 */
   @media (min-width: 768px) {
     #mpRankLine { top:128px; }
-    #mpLeaveHud { width:58px; min-height:50px; font-size:10px; }
-    #mpLeaveHud .ic { font-size:18px; }
     #mpSpectateBar { top:126px; }
   }
 </style>
@@ -2900,7 +2915,6 @@ extends CanvasLayer
 <div id="mpRankLine" class="hidden"></div>
 <div id="mpSpectateBar" class="hidden"><span id="mpSpecName">관전 중</span><button id="mpSpecExit" class="mp-chip" style="padding:2px 6px;font-size:10px">관전 종료</button><button id="mpSpecLeave" class="mp-chip" style="padding:2px 6px;font-size:10px;border-color:#f87171;color:#fecaca">나가기</button></div>
 
-<button id="mpLeaveHud" type="button"><span class="ic">🚪</span><span id="mpLeaveHudTxt">나가기</span></button>
 <div id="mpItemChip"><span>🪽</span><span id="mpWingCount">x0</span></div>
 
 <button id="mpChatFab" class="mp-fab hidden">💬<span id="mpChatBadge" class="badge hidden">0</span></button>
@@ -2923,7 +2937,7 @@ extends CanvasLayer
     <div class="text-center text-lg font-black text-white">⏸ 레이스 메뉴</div>
     <div id="mpRaceMenuInfo" class="text-center text-[11px] font-bold text-sky-300"></div>
     <button id="mpRaceResume" class="mp-btn green">계속 달리기</button>
-    <button id="mpRaceLeave" class="mp-btn dark" style="border-color:#f87171;color:#fecaca">🚪 방 나가기</button>
+    <button id="mpRaceLeave" class="mp-btn red">🚪 방 나가기</button>
     <div class="text-[10px] font-bold text-slate-400 text-center leading-snug">메뉴를 열어도 다른 참가자는 계속 달립니다.</div>
   </div>
 </div>
@@ -3296,21 +3310,26 @@ extends CanvasLayer
     wings: 0, safe: null, fallDist: 0,
     shakeIdx: 0, shakeUntil: 0,
     recDone: false, resultRank: 0,
-    leaveArmed: 0,
+    toastT: 0,
     raceMenuOpen: false
   };
 
-  /* ---------- 토스트 ---------- */
+  /* ---------- 토스트 (항상 1개 · 한 줄 반투명 칩) ---------- */
   function toast(title, cat, desc, ms) {
     const wrap = $('mpToasts');
     if (!wrap) return;
-    const el = document.createElement('div');
+    /* 새 알림이 오면 같은 칩을 그대로 갈아끼운다 → 화면에 절대 쌓이지 않음 */
+    let el = wrap.firstElementChild;
+    const fresh = !el;
+    if (!el) { el = document.createElement('div'); wrap.appendChild(el); }
     el.className = 'mp-toast ' + (cat || '');
-    el.innerHTML = '<span>' + String(title).replace(/[<>&]/g, '') + '</span>' + (desc ? '<small>' + String(desc).replace(/[<>&]/g, '') + '</small>' : '');
-    wrap.appendChild(el);
-    while (wrap.children.length > 2) wrap.removeChild(wrap.firstChild);
-    requestAnimationFrame(() => el.classList.add('show'));
-    setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 260); }, ms || 2200);
+    el.innerHTML = '<span class="t1">' + String(title).replace(/[<>&]/g, '') + '</span>' +
+      (desc ? '<span class="t2">' + String(desc).replace(/[<>&]/g, '') + '</span>' : '');
+    void el.offsetWidth;
+    el.classList.add('show');
+    if (!fresh) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+    clearTimeout(S.toastT);
+    S.toastT = setTimeout(() => { el.classList.remove('show'); }, ms || 2200);
   }
 
   /* ---------- 사운드 ---------- */
@@ -3841,7 +3860,6 @@ extends CanvasLayer
     S.safe = { x: p.x, y: p.y, plat: p.plat };
     placeItems();
     startRaceHud();
-    updateLeaveHud(true);
 
     // 카운트다운
     const el = $('mpCount'), txt = el.querySelector('div');
@@ -4437,16 +4455,21 @@ extends CanvasLayer
   function updateRank() {
     if (S.phase !== 'race' && S.phase !== 'result') return;
     const rows = standings();
-    const myY = rows.find((r) => r.me).y;
+    const mine = rows.find((r) => r.me);
+    const myY = mine ? mine.y : 0;
     const line = $('mpRankLine');
     line.classList.remove('hidden');
-    line.innerHTML = rows.slice(0, 3).map((r, i) => {
+    /* 참가자 전원을 아주 작은 반투명 미니 칩으로 표시 */
+    line.innerHTML = rows.map((r, i) => {
       const diff = (myY - r.y) / 13.4;
-      const dtxt = r.me ? '' : (diff > 0 ? ' ▲' + diff.toFixed(1) + 'm' : (diff < 0 ? ' ▼' + Math.abs(diff).toFixed(1) + 'm' : ' ='));
-      return '<div class="mp-rk ' + (r.me ? 'me' : '') + '"><span class="mp-dot" style="background:' + colorHex(r.color) + ';width:8px;height:8px"></span>' +
+      const dtxt = r.me ? '' : (diff > 0 ? '▲' + diff.toFixed(1) + 'm' : (diff < 0 ? '▼' + Math.abs(diff).toFixed(1) + 'm' : '='));
+      const nm = String(r.nick).replace(/\s*\(나\)$/, '').slice(0, 8);
+      return '<div class="mp-rk ' + (r.me ? 'me' : '') + '">' +
+        '<span class="mp-dot" style="background:' + colorHex(r.color) + ';width:6px;height:6px"></span>' +
         '<span>' + (r.fin ? '🏁' : (i + 1) + '.') + '</span>' +
-        '<span class="truncate" style="max-width:64px">' + esc(String(r.nick).slice(0, 7)) + '</span>' +
-        '<span class="text-amber-300">' + dtxt + '</span></div>';
+        '<span class="rkn">' + esc(nm) + '</span>' +
+        (r.me ? '<span class="rkme">나</span>' : '') +
+        (dtxt ? '<span class="rkd">' + dtxt + '</span>' : '') + '</div>';
     }).join('');
 
     const bar = $('mpAltBar');
@@ -4467,12 +4490,16 @@ extends CanvasLayer
   }
 
   function startRaceHud() {
+    $('gameHud').classList.add('race-clean');
     $('mpRankLine').classList.remove('hidden');
     $('mpAltBar').classList.remove('hidden');
     $('mpChatFab').classList.remove('hidden');
     updateWingChip();
+    layoutRaceHud();
+    requestAnimationFrame(() => layoutRaceHud());
   }
   function endRaceHud() {
+    $('gameHud').classList.remove('race-clean');
     $('mpRankLine').classList.add('hidden');
     $('mpAltBar').classList.add('hidden');
     $('mpChatFab').classList.add('hidden');
@@ -4481,7 +4508,6 @@ extends CanvasLayer
     $('mpFog').style.opacity = '0';
     $('mpCount').classList.add('hidden');
     $('mpItemChip').classList.remove('show');
-    updateLeaveHud(false);
     closeRaceMenu();
   }
 
@@ -4840,45 +4866,40 @@ extends CanvasLayer
     $('titleScreen').classList.remove('hidden');
   }
 
-  /* 레이스 중 나가기 버튼 */
-  /* 레이스 HUD: 나가기 버튼·아이템 칩을 일시정지 버튼 바로 아래에 정렬 */
-  function layoutHudChips() {
-    const p = $('btnPauseHud'), b = $('mpLeaveHud'), chip = $('mpItemChip'), ts = $('mpToasts');
-    if (!p || !b) return;
-    const r = p.getBoundingClientRect();
-    if (!r.width) return;
-    const right = Math.max(4, Math.round(window.innerWidth - r.right));
-    const top = Math.round(r.bottom + 6);
-    b.style.right = right + 'px';
-    b.style.top = top + 'px';
-    const h = b.offsetHeight || 46;
-    if (chip) { chip.style.right = right + 'px'; chip.style.top = (top + h + 4) + 'px'; }
-    if (ts) ts.style.top = (top + h + 4 + 24) + 'px';
-  }
-  function updateLeaveHud(show) {
-    const b = $('mpLeaveHud');
-    if (!b) return;
-    b.classList.remove('hidden');
-    if (show) {
-      b.classList.add('show'); b.classList.remove('confirm'); $('mpLeaveHudTxt').textContent = '나가기';
-      layoutHudChips();
-    } else {
-      b.classList.remove('show'); b.classList.remove('confirm');
-      const ts = $('mpToasts'); if (ts) ts.style.top = '';
-      const chip = $('mpItemChip'); if (chip) chip.style.top = '';
+  /* 레이스 HUD 정렬
+     · 좌우 바깥 여백 = 화면 인셋과 동일(모바일 8px / iPad 14px)
+     · 순위표(왼쪽)와 토스트(오른쪽)는 같은 Y에서 시작해 좌우 대칭
+     · 아이템 칩은 ⏸ 버튼 바로 아래 */
+  function layoutRaceHud() {
+    const hud = $('gameHud');
+    const row = hud ? hud.firstElementChild : null;
+    const cs = hud ? getComputedStyle(hud) : null;
+    const padL = cs ? Math.round(parseFloat(cs.paddingLeft) || 8) : 8;
+    const padR = cs ? Math.round(parseFloat(cs.paddingRight) || 8) : 8;
+    let top = 150;
+    const kids = row ? [...row.children] : [];
+    if (kids.length) {
+      /* 카드가 행 높이보다 클 수 있어 실제로 가장 낮은 요소의 바닥을 기준으로 삼는다 */
+      const bottom = Math.max.apply(null, kids.map((k) => k.getBoundingClientRect().bottom));
+      if (bottom > 0) top = Math.round(bottom) + padL;
     }
-    S.leaveArmed = 0;
-  }
-  function armLeave() {
-    const b = $('mpLeaveHud');
-    if (!b) return;
-    if (now() < S.leaveArmed) { S.leaveArmed = 0; doLeave(); return; }
-    S.leaveArmed = now() + 2600;
-    b.classList.add('confirm');
-    $('mpLeaveHudTxt').textContent = '한 번 더';
-    toast('🚪 방에서 나가려면 한 번 더', 'danger', '2.6초 안에 다시 누르면 나갑니다', 2400);
-    beep(520, 0.08, 0.1);
-    setTimeout(() => { if (now() >= S.leaveArmed) { b.classList.remove('confirm'); $('mpLeaveHudTxt').textContent = '나가기'; } }, 2700);
+    /* 관전 중에는 관전 바를 먼저 놓고, 순위표·토스트는 그 아래에서 시작 */
+    const spec = $('mpSpectateBar');
+    if (spec && !spec.classList.contains('hidden')) {
+      spec.style.top = top + 'px';
+      top += (spec.getBoundingClientRect().height || 24) + 6;
+    }
+    const rank = $('mpRankLine');
+    if (rank) { rank.style.left = padL + 'px'; rank.style.top = top + 'px'; }
+    const ts = $('mpToasts');
+    if (ts) { ts.style.right = padR + 'px'; ts.style.top = top + 'px'; }
+    const p = $('btnPauseHud'), chip = $('mpItemChip');
+    if (p && chip) {
+      const pr = p.getBoundingClientRect();
+      const under = Math.round(pr.bottom) + 6;
+      chip.style.right = padR + 'px';
+      chip.style.top = Math.min(under, top - 22) + 'px';
+    }
   }
   function doLeave() {
     closeRaceMenu();
@@ -5083,8 +5104,7 @@ extends CanvasLayer
     });
     $('mpChatClose').addEventListener('click', () => { $('mpChatPanel').classList.add('hidden'); });
 
-    // 레이스 중 나가기
-    $('mpLeaveHud').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); armLeave(); });
+    // 레이스 중 나가기는 ⏸ 메뉴 안에서
     $('mpRaceResume').addEventListener('click', closeRaceMenu);
     $('mpRaceLeave').addEventListener('click', () => { closeRaceMenu(); doLeave(); });
 
@@ -5137,8 +5157,8 @@ extends CanvasLayer
     bindSingleSettings();
     wireGameHooks();
     renderProfileCard();
-    window.addEventListener('resize', () => { if (S.phase === 'race' || S.phase === 'count') layoutHudChips(); });
-    window.addEventListener('orientationchange', () => setTimeout(() => { if (S.phase === 'race' || S.phase === 'count') layoutHudChips(); }, 350));
+    window.addEventListener('resize', () => { if (S.phase === 'race' || S.phase === 'result') layoutRaceHud(); });
+    window.addEventListener('orientationchange', () => setTimeout(() => { if (S.phase === 'race' || S.phase === 'result') layoutRaceHud(); }, 350));
     setInterval(() => { if (S.phase !== 'idle') publishPresence(); }, 25000);
   }
 
@@ -5180,6 +5200,7 @@ extends CanvasLayer
     $('mpResult').classList.add('hidden');
     $('mpSpectateBar').classList.remove('hidden');
     $('mpSpecName').textContent = '👀 ' + target.nick + ' 관전 중';
+    layoutRaceHud();
     toast('👀 관전 시작', 'chat', target.nick + ' 님의 등반을 지켜보세요', 2200);
   }
 
