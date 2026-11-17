@@ -19856,6 +19856,26 @@ extends CanvasLayer
       }));
     });
   }
+  function ghostRow() {
+    const box = $('v43QolBody');
+    if (!box || $('v43GhostQol')) return;
+    const row = document.createElement('div');
+    row.className = 'v43-block';
+    row.innerHTML = '<b>👻 고스트</b><button type="button" id="v43GhostQol" class="v43-ghostbtn' + (V.ghostOn && V.ghostOn() ? ' on' : '') + '">' +
+      '<span>내 최고 기록 고스트 함께 달리기</span><b>' + (V.ghostOn && V.ghostOn() ? 'ON' : 'OFF') + '</b></button>' +
+      '<div class="v43-note">멀티에서는 방 설정에서만 켜집니다 · 일시정지 메뉴에서도 바꿀 수 있어요.</div>';
+    box.insertBefore(row, box.firstChild);
+    const btn = $('v43GhostQol');
+    if (btn) btn.addEventListener('click', () => {
+      const on = !(V.ghostOn && V.ghostOn());
+      V.setGhost(on);
+      btn.classList.toggle('on', on);
+      btn.querySelector('b').textContent = on ? 'ON' : 'OFF';
+      V.toast(on ? '👻 고스트 ON' : '👻 고스트 OFF', 'lucky', on ? '내 최고 기록 고스트가 함께 뜹니다' : '고스트를 숨겼습니다', 1700);
+    });
+  }
+  const _openQol = openQol;
+  openQol = function () { _openQol(); try { ghostRow(); } catch (e) {} };
   V.openQol = openQol;
   V.openStats = openStats;
   V.linkRow = linkRow;
