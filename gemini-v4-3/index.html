@@ -12206,7 +12206,8 @@ extends CanvasLayer
     </div>
     <div id="v43MyCode" class="mp-chip gold" style="padding:5px 7px;font-size:11px;color:#fde68a">닉네임#0000</div>
     <div id="v43MyState" class="v43-sub" style="color:#a7f3d0">🟢 온라인 · 친구에게 이렇게 보입니다</div>
-    <div id="v43FrDetail" class="hidden"></div>
+    <div id="v43Week" class="hidden"></div>
+<div id="v43FrDetail" class="hidden"></div>
     <div class="v43-sub">친구를 탭하면 <b>지금 뭐 하는지</b> 상세로 보여요 · 초록불 = 온라인 · 노랑 = 방 대기 중</div>
     <div id="v43FriendList" style="display:flex;flex-direction:column;gap:4px;max-height:46vh;overflow-y:auto"></div>
   </div>
@@ -12874,8 +12875,18 @@ extends CanvasLayer
     { id: 'goldjaeu', name: '황금 재우', emoji: '🌟', hidden: true,
       why: '전 맵 정복 (21맵 첫 완등)', lock: () => Object.keys(V.badges ? V.badges() : {}).length >= 21 },
     { id: 'origin_god', name: '태초의 신', emoji: '🌀', hidden: true,
-      why: '누적 태초 50회', lock: () => originCount() >= 50 }
+      why: '누적 태초 50회', lock: () => originCount() >= 50 },
+    { id: 'flameskull', name: '불꽃 해골', emoji: '💀', hidden: true,
+      why: '용암 차오르기 모드 완등', lock: () => anyRec((k, r) => /:lava$/.test(k) && (r.t > 0 || (r.plat || 0) >= 20)) },
+    { id: 'lightning', name: '번개맨', emoji: '⚡', hidden: true,
+      why: '아무 맵 2분 컷 완등', lock: () => anyRec((k, r) => r.t > 0 && r.t <= 120000) }
   ];
+  function anyRec(fn, n) {
+    try {
+      const all = V.lsGet('jw43_best_v1', {}) || {};
+      return Object.keys(all).some((k) => fn(k, all[k] || {}));
+    } catch (e) { return false; }
+  }
   function originCount() {
     try {
       const S = (V.api() && V.api().internals) ? V.api().internals() : null;
@@ -13022,6 +13033,22 @@ extends CanvasLayer
       R(13, 16, 7, 2, '#fef3c7');
       R(4, 2, 6, 2, '#fef9c3'); R(22, 2, 6, 2, '#fef9c3');
       c.globalAlpha = 0.9; R(2, 14, 2, 2, '#fff7ed'); R(28, 22, 2, 2, '#fff7ed'); R(16, 30, 2, 2, '#fff7ed'); c.globalAlpha = 1;
+    } else if (skinId === 'flameskull') {
+      tint('#7f1d1d', 0.9);
+      R(6, 8, 20, 22, '#f8fafc');
+      R(9, 12, 5, 5, '#111827'); R(18, 12, 5, 5, '#111827');
+      R(10, 13, 3, 3, '#f97316'); R(19, 13, 3, 3, '#f97316');
+      R(13, 20, 6, 2, '#111827'); R(12, 23, 8, 2, '#111827');
+      c.globalAlpha = 0.8;
+      R(7, 2, 3, 6, '#f97316'); R(14, 0, 3, 7, '#fbbf24'); R(21, 2, 3, 6, '#f97316');
+      c.globalAlpha = 1;
+      R(10, 28, 12, 4, '#111827');
+    } else if (skinId === 'lightning') {
+      tint('#0c4a6e', 0.85);
+      R(13, 0, 5, 10, '#fde047'); R(9, 8, 7, 10, '#fde047'); R(16, 6, 6, 12, '#fde047');
+      R(14, 14, 4, 16, '#facc15'); R(10, 20, 6, 4, '#fde047');
+      R(11, 4, 3, 3, '#0f172a'); R(18, 4, 3, 3, '#0f172a');
+      c.globalAlpha = 0.6; R(2, 12, 4, 4, '#fef9c3'); R(26, 18, 4, 4, '#fef9c3'); c.globalAlpha = 1;
     } else if (skinId === 'origin_god') {
       tint('#0e7490', 0.8);
       c.globalAlpha = 0.55;
@@ -15904,6 +15931,7 @@ extends CanvasLayer
       badgeRun = true;
       const id = (MP() && MP().current) || 'default';
       if (id !== 'default' && id !== 'custom') V.grantBadge(id);
+      try { if (V.weekBump) V.weekBump(J().stats.bestHeight || 0, true); } catch (e2) {}
     }
     if (!shown) badgeRun = false;
   }
@@ -17997,9 +18025,47 @@ extends CanvasLayer
     } catch (e) {}
     V.sendPresence({ t: 'v43pres', ftag: ftag, nick: me().nick, act: a.act, map: a.map, mode: a.mode, floor: a.floor, room: a.room, ver: V.version, sm: a.sm,
       ti: (V.api().internals().ident.title || ''), tiv: (V.recTitleShort ? V.recTitleShort() : ''), sk: V.api().meSkin(), col: V.api().meColor(),
-      recs: recs, badges: (V.badges ? Object.keys(V.badges()).length : 0) });
+      recs: recs, badges: (V.badges ? Object.keys(V.badges()).length : 0), wc: (weekInit().clears || 0), wb: (weekInit().best || 0) });
   }
   V.heartbeat = heartbeat;
+
+
+  /* ---------------- 🏆 친구끼리 주간 순위표 ---------------- */
+  const K_WEEK = 'jw43_week_v1';
+  function weekId() {
+    const d = new Date();
+    const onejan = new Date(d.getFullYear(), 0, 1);
+    const wk = Math.ceil(((d - onejan) / 86400000 + onejan.getDay() + 1) / 7);
+    return d.getFullYear() + '-W' + wk;
+  }
+  function weekInit() {
+    const w = V.lsGet(K_WEEK, null);
+    if (!w || w.wk !== weekId()) { const n = { wk: weekId(), clears: 0, best: 0 }; V.lsSet(K_WEEK, n); return n; }
+    return w;
+  }
+  V.weekStat = weekInit;
+  V.weekBump = function (h, cleared) {
+    const w = weekInit();
+    if (cleared) w.clears = (w.clears || 0) + 1;
+    if (h > (w.best || 0)) w.best = Math.round(h * 10) / 10;
+    V.lsSet(K_WEEK, w);
+    return w;
+  };
+  function renderWeek() {
+    const box = $('v43Week');
+    if (!box) return;
+    const w = weekInit();
+    const rows = [{ nick: (me().nick || '나') + ' (나)', clears: w.clears || 0, best: w.best || 0, me: true }];
+    myList().forEach((f) => {
+      const a = F.act[f.ftag] || {};
+      rows.push({ nick: f.nick, clears: (a.wc || 0), best: (a.wb || 0), off: presenceOf(f.ftag).state === 'off' });
+    });
+    rows.sort((a, b) => (b.clears - a.clears) || (b.best - a.best));
+    box.innerHTML = '<div class="dh"><span class="nm">🏆 이번 주 친구 순위</span><span class="st">' + weekId() + '</span></div>' +
+      rows.slice(0, 8).map((r, i) => '<div class="kv"><span>' + (i + 1) + '. ' + esc(r.nick) + '</span><b>' + (r.clears || 0) + '회 · ' + (r.best || 0).toFixed(1) + 'm</b></div>').join('') +
+      '<div class="v43-sub">완등 횟수 → 최고 높이 순 · 친구가 공유한 값 기준</div>';
+  }
+  V.renderWeek = renderWeek;
 
   /* ---------------- 친구 상세 ---------------- */
   function detail(ftag) {
