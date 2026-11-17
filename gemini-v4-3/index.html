@@ -19324,16 +19324,14 @@ extends CanvasLayer
     const rk = $('v43OpenRank');
     if (rk) rk.addEventListener('click', () => {
       closeAll();
-      const b = $('v42OpenRank') || $('v42RankBtn');
-      if (b) { b.click(); return; }
-      const m = $('v43Stats'); if (m) { m.classList.remove('hidden'); V.renderStats(); }
+      const m = $('v43Stats');
+      if (m) { m.classList.remove('hidden'); V.renderStats(); V.linkRow && V.linkRow(); }
     });
     const st = $('v43OpenSet');
     if (st) st.addEventListener('click', () => {
       closeAll();
-      const b = $('v42OpenSet') || $('v42SetBtn') || $('btnOpenSettingsTitle');
-      if (b) b.click();
-      else { const m = $('v43Qol'); if (m) { m.classList.remove('hidden'); V.renderQol(); } }
+      V.openQol && V.openQol();
+      V.linkRow && V.linkRow();
     });
   }
 
@@ -19812,6 +19810,55 @@ extends CanvasLayer
       if (b) b.click();
     });
   };
+})(window);
+
+
+/* 설정/랭킹 모달 안에 통계·4.2 설정 링크 붙이기 */
+(function (root) {
+  'use strict';
+  const V = root.JW43;
+  if (!V) return;
+  const $ = V.$;
+  function openQol() {
+    const m = $('v43Qol');
+    if (m) { m.classList.remove('hidden'); try { V.renderQol(); } catch (e) {} }
+  }
+  function openStats() {
+    const m = $('v43Stats');
+    if (m) { m.classList.remove('hidden'); try { V.renderStats(); } catch (e) {} }
+  }
+  function linkRow() {
+    const ids = ['v43Qol', 'v43Stats'];
+    ids.forEach((id) => {
+      const box = $(id);
+      if (!box) return;
+      const card = box.querySelector('.v43-card');
+      if (!card || card.querySelector('.v43-links')) return;
+      const row = document.createElement('div');
+      row.className = 'v43-links';
+      row.style.cssText = 'display:flex;gap:5px;margin-top:6px';
+      row.innerHTML = '<button type="button" class="mp-chip" data-lk="stats" style="flex:1;padding:5px;font-size:10.5px">📊 통계·업적</button>' +
+        '<button type="button" class="mp-chip" data-lk="qol" style="flex:1;padding:5px;font-size:10.5px">✨ 편리성</button>' +
+        '<button type="button" class="mp-chip" data-lk="rank" style="flex:1;padding:5px;font-size:10.5px">🏆 랭킹</button>' +
+        '<button type="button" class="mp-chip" data-lk="set42" style="flex:1;padding:5px;font-size:10.5px">🎛 4.2 설정</button>';
+      card.appendChild(row);
+      row.querySelectorAll('[data-lk]').forEach((b) => b.addEventListener('click', () => {
+        const k = b.getAttribute('data-lk');
+        $(id).classList.add('hidden');
+        if (k === 'stats') openStats();
+        else if (k === 'qol') openQol();
+        else if (k === 'rank') { const rb = $('v42OpenRank') || $('v42RankBtn'); if (rb) rb.click(); else openStats(); }
+        else {
+          const sb = $('v42OpenSet') || $('v42SetBtn');
+          if (sb) sb.click();
+          else V.toast('🎛 4.2 설정', 'chat', '설정 버튼을 찾지 못했어요', 1600);
+        }
+      }));
+    });
+  }
+  V.openQol = openQol;
+  V.openStats = openStats;
+  V.linkRow = linkRow;
 })(window);
 
 </script>
