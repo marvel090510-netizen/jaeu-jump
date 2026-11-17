@@ -1810,9 +1810,20 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
         const btnL = document.getElementById('btnTouchLeft');
         const btnR = document.getElementById('btnTouchRight');
         const btnJ = document.getElementById('btnTouchJump');
-        const sc = ctrlConfig.scale / 100;
         const ox = ctrlConfig.offsetX;
         const oy = ctrlConfig.offsetY;
+
+        // 설정한 배율이 화면 폭보다 크면 버튼끼리 겹치거나 화면 밖으로 나가므로
+        // 실제로 그릴 때는 겹치지 않는 최대 배율로 자동으로 줄인다(저장되는 설정값은 그대로).
+        const hudEl = document.getElementById('gameHud');
+        const hudCs = hudEl ? getComputedStyle(hudEl) : null;
+        const padX = hudCs ? (parseFloat(hudCs.paddingLeft) || 0) + (parseFloat(hudCs.paddingRight) || 0) : 20;
+        const availW = (window.innerWidth || document.documentElement.clientWidth) - padX - ox * 2;
+        const extraGap = ctrlConfig.preset === 'right' ? 34 : (ctrlConfig.preset === 'left' ? 10 : 12);
+        let sc = ctrlConfig.scale / 100;
+        if (82 * sc * 2 + extraGap + 94 * sc > availW - 2) {
+          sc = Math.max(0.55, (availW - extraGap - 2) / 258);
+        }
 
         const dpadSize = Math.round(82 * sc);
         const jumpSize = Math.round(94 * sc);
@@ -1821,14 +1832,15 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
           b.style.width = dpadSize + 'px';
           b.style.height = dpadSize + 'px';
           b.style.bottom = oy + 'px';
-          b.style.left = '';
-          b.style.right = '';
+          // 클래스(left-3/right-3)가 남아 위치를 덮어쓰지 않도록 auto로 확실히 해제한다
+          b.style.left = 'auto';
+          b.style.right = 'auto';
         });
         btnJ.style.width = jumpSize + 'px';
         btnJ.style.height = jumpSize + 'px';
         btnJ.style.bottom = oy + 'px';
-        btnJ.style.left = '';
-        btnJ.style.right = '';
+        btnJ.style.left = 'auto';
+        btnJ.style.right = 'auto';
 
         if (ctrlConfig.preset === 'split') {
           btnL.style.left = ox + 'px';
@@ -1995,6 +2007,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
         const releaseAllKeys = () => { keys.left = false; keys.right = false; keys.jump = false; };
         window.addEventListener('blur', releaseAllKeys);
         document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAllKeys(); });
+        window.addEventListener('resize', () => { try { applyControlLayout(); } catch (e) {} });
 
         function bindHoldButton(id, keyField) {
           const el = document.getElementById(id);
