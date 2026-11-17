@@ -180,10 +180,13 @@ html.theme-light .pixel-shadow { text-shadow: none !important; }
   #titleBgImg { display: none !important; }
   #v43SideArt {
     display: flex; position: absolute; right: 0; top: 0; bottom: 0;
-    width: calc(100% - 470px); z-index: 6; padding: 26px;
+    width: calc(100% - 452px); z-index: 6; padding: 26px;
     flex-direction: column; gap: 14px;
     background: linear-gradient(160deg, #16203a 0%, #121a2e 55%, #101a2c 100%);
   }
+  html.theme-light #v43SideArt { background: linear-gradient(160deg, #f7f9fd, #eaeef6); }
+}
+@media (min-width: 1024px) { #v43SideArt { width: calc(100% - 492px); }
   html.theme-light #v43SideArt { background: linear-gradient(160deg, #f7f9fd, #eaeef6); }
 }
 #v43SideArt .sa-h { font-size: 12px; font-weight: 900; letter-spacing: .04em; color: var(--v43-sub); }
@@ -22635,9 +22638,10 @@ extends CanvasLayer
     const sub = $('v43SideSub');
     if (sub) sub.textContent = info ? (info.desc || (info.total + '층')) : '1번 발판부터 정상까지';
     if (cv.__map !== mapId) {
-      try {
-        if (root.JW43 && JW43.mapThumb43 && JW43.mapThumb43(mapId, cv)) cv.__map = mapId;
-      } catch (e) {}
+      let drawn = false;
+      try { drawn = !!(root.JW43 && JW43.mapThumb43 && JW43.mapThumb43(mapId, cv)); } catch (e) {}
+      if (!drawn) { try { if (root.JW42 && JW42.mapThumb) { JW42.mapThumb(cv, mapId); drawn = true; } } catch (e) {} }
+      if (drawn) cv.__map = mapId;
     }
     const hEl = $('v43SideH'), pEl = $('v43SideP');
     if (hEl || pEl) {
