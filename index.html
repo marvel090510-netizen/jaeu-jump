@@ -16920,7 +16920,7 @@ extends CanvasLayer
       [0.68, 0.92, 'wisp', 16, 'rgba(125,211,252,.05)']
     ],
     arcade: [
-      [0.12, 0.42, 'bldg', 16, 'rgba(14,10,34,.85)', 'rgba(56,189,248,.22)'],
+      [0.08, 0.36, 'tower', 12, 'rgba(12,9,30,.9)', 'rgba(56,189,248,.24)'],
       [0.42, 0.72, 'neon', 22, 'rgba(232,121,249,.35)'],
       [0.72, 0.95, 'star', 46, 'rgba(196,181,253,.5)']
     ],
@@ -16982,7 +16982,7 @@ extends CanvasLayer
       [0.70, 0.94, 'star', 30, 'rgba(226,232,240,.35)']
     ],
     paris: [
-      [0.08, 0.30, 'bldg', 18, 'rgba(24,18,42,.85)', 'rgba(251,191,36,.3)'],
+      [0.06, 0.26, 'tower', 10, 'rgba(20,15,36,.9)', 'rgba(251,191,36,.32)'],
       [0.30, 0.68, 'neon', 12, 'rgba(253,224,71,.14)'],
       [0.68, 0.94, 'star', 52, 'rgba(253,224,71,.45)']
     ],
@@ -16992,7 +16992,7 @@ extends CanvasLayer
       [0.60, 0.90, 'star', 30, 'rgba(254,240,138,.4)']
     ],
     fuji: [
-      [0.08, 0.34, 'bldg', 14, 'rgba(14,10,28,.9)', 'rgba(244,114,182,.3)'],
+      [0.06, 0.26, 'tower', 12, 'rgba(12,9,26,.92)', 'rgba(244,114,182,.32)'],
       [0.34, 0.66, 'cloud', 16, 'rgba(226,232,240,.10)'],
       [0.66, 0.94, 'star', 56, 'rgba(226,232,240,.55)']
     ],
@@ -21523,7 +21523,19 @@ extends CanvasLayer
     if (!w || !MP()) return;
     const list = MP().list.filter((m) => m.id !== 'custom');
     const head = w.querySelector('.v42-world-h');
-    if (head && head.textContent.indexOf('맵 ' + (list.length - 1) + '종') >= 0) return;
+    const rowNow = w.querySelector('.v42-world-row');
+    /* 이미 같은 수의 칸이 그려져 있으면 다시 만들지 않는다(썸네일이 지워지는 문제 방지) */
+    if (rowNow && rowNow.querySelectorAll('figure').length === Math.min(10, list.length)) {
+      if (V.mapThumb43) {
+        Array.prototype.forEach.call(rowNow.querySelectorAll('figure'), function (f, i) {
+          const m = list[i]; if (!m) return;
+          const cv = f.querySelector('canvas'); if (!cv) return;
+          if (cv.__v43drawn === m.id) return;
+          try { if (!V.mapThumb43(m.id, cv)) { if (V.thumbBase43) V.thumbBase43(m.id, cv); } cv.__v43drawn = m.id; } catch (e) {}
+        });
+      }
+      return;
+    }
     if (head) head.textContent = '🗺️ 맵 ' + list.length + '종 · 모드 ' + (MD() ? MD().MODES.length : 13) + '종 · 스킨 ' + (MD() && MD().SKINS ? MD().SKINS.length : 22) + '종';
     const row = w.querySelector('.v42-world-row');
     if (!row) return;
@@ -22343,6 +22355,7 @@ extends CanvasLayer
     }
     return true;
   }
+  V.thumbBase43 = function (id, cv) { try { return thumbBase(id, cv); } catch (e) { return false; } };
   function paintThumbs() {
     var w = $('v42World');
     if (!w) return;
@@ -22355,8 +22368,10 @@ extends CanvasLayer
       if (!cv) return;
       f.setAttribute('data-map', m.id);
       try {
-        if (V.mapThumb43 && V.mapThumb43(m.id, cv)) return;
+        if (cv.__v43drawn === m.id) return;
+        if (V.mapThumb43 && V.mapThumb43(m.id, cv)) { cv.__v43drawn = m.id; return; }
         thumbBase(m.id, cv);
+        cv.__v43drawn = m.id;
       } catch (e) {}
     });
   }
@@ -23045,6 +23060,15 @@ extends CanvasLayer
     b.addEventListener('click', function (e) { e.preventDefault(); fsToggle(); });
     body.appendChild(b);
   }
+  /* 하위 경로(/gemini-v4-3/)에서도 manifest·아이콘 경로가 맞도록 */
+  function fixHeadPaths() {
+    var sp = subPath();
+    if (sp === './') return;
+    var mf = doc.querySelector('link[rel=manifest]');
+    if (mf && mf.getAttribute('href') === './manifest.json') mf.setAttribute('href', sp + 'manifest.json');
+    var icon = doc.querySelector('link[rel=apple-touch-icon]');
+    if (icon && (icon.getAttribute('href') || '').indexOf('./') === 0) icon.setAttribute('href', sp + icon.getAttribute('href').slice(2));
+  }
   function fsAuto() {
     if (FS.tried) return;
     FS.tried = true;
@@ -23078,6 +23102,7 @@ extends CanvasLayer
     try { bgmSync(); } catch (e) {}
     try { paintTitles(); } catch (e) {}
     try { fsEntry(); } catch (e) {}
+    try { fixHeadPaths(); } catch (e) {}
   }
 
   function init() {
