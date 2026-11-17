@@ -89,7 +89,114 @@
   </style>
 
 
-<style id="v43-fs">html,body{height:100%;min-height:100dvh;height:100dvh;overflow:hidden;overscroll-behavior:none}#gameCanvas{width:100vw;height:100dvh;display:block}body.v43-fs #gameCanvas{width:100vw;height:100vh}</style><!-- LP-GUARD:START --><style>
+<style id="v43-theme">/* ==========================================================================
+   재우 4.3 : 눈 편한 UI 톤 (소프트 다크 / 눈 편한 라이트) + 타이틀 사이드 패널
+   - 게임 캔버스(맵)는 건드리지 않고 UI 판·패널·글자만 조정한다.
+   ========================================================================== */
+:root {
+  --v43-bg: #111a2b;
+  --v43-bg2: #16203a;
+  --v43-panel: #1a2439;
+  --v43-panel2: #202c46;
+  --v43-line: #33456b;
+  --v43-ink: #e8eef8;
+  --v43-sub: #aab8d0;
+  --v43-gold: #e3c877;
+  --v43-blue: #9cc2ea;
+}
+html.theme-soft body { background: var(--v43-bg) !important; }
+html.theme-soft #titleScreen > div.relative.z-10 {
+  background: rgba(24, 33, 52, .96) !important;
+  border-color: var(--v43-line) !important;
+  box-shadow: 8px 0 0 #0b1220 !important;
+}
+html.theme-soft .pixel-panel,
+html.theme-soft .mp-card,
+html.theme-soft .m41-card,
+html.theme-soft .v42-card,
+html.theme-soft .v43-card,
+html.theme-soft .v43-sumgrid,
+html.theme-soft .v43-sumhead,
+html.theme-soft #v43Wiz > div,
+html.theme-soft #v43BotCfg > div,
+html.theme-soft #mpScreen > div > .mp-card {
+  background: var(--v43-panel) !important;
+  border-color: var(--v43-line) !important;
+  box-shadow: inset 0 0 0 2px #223050, 0 3px 0 #0b1220 !important;
+}
+html.theme-soft .mp-lrow { background: #1d2840 !important; border-color: #2f4066 !important; }
+html.theme-soft .v43-ghostbtn { background: #1b2438 !important; border-color: #33456b !important; color: #dbe5f4 !important; }
+html.theme-soft .text-white { color: var(--v43-ink) !important; }
+html.theme-soft .text-amber-300, html.theme-soft .text-yellow-300 { color: var(--v43-gold) !important; }
+html.theme-soft .text-sky-300, html.theme-soft .text-sky-200 { color: var(--v43-blue) !important; }
+html.theme-soft .text-slate-300, html.theme-soft .text-slate-400 { color: var(--v43-sub) !important; }
+html.theme-soft .text-emerald-300, html.theme-soft .text-emerald-400 { color: #8fd8b6 !important; }
+html.theme-soft .text-fuchsia-300, html.theme-soft .text-fuchsia-400 { color: #d9aee8 !important; }
+html.theme-soft .pixel-btn-gold { background-color: #c99a2e !important; border-color: #e8d49a !important; }
+html.theme-soft .pixel-btn-blue { background-color: #2f66c4 !important; border-color: #a8c8f0 !important; }
+
+/* --- 눈 편한 라이트 (파스텔 뮤트) --- */
+html.theme-light body { background: #edf0f6 !important; }
+html.theme-light #titleScreen { background: #edf0f6 !important; }
+html.theme-light #titleBgImg { opacity: .18 !important; }
+html.theme-light #titleScreen > div.relative.z-10 {
+  background: rgba(250, 251, 254, .97) !important;
+  border-color: #c8d2e2 !important;
+  box-shadow: 8px 0 0 #dde3ee !important;
+}
+html.theme-light .pixel-panel,
+html.theme-light .mp-card,
+html.theme-light .m41-card,
+html.theme-light .v42-card,
+html.theme-light .v43-card,
+html.theme-light .v43-sumgrid,
+html.theme-light .v43-sumhead,
+html.theme-light #v43Wiz > div,
+html.theme-light #v43BotCfg > div {
+  background: #f8fafd !important;
+  border-color: #c8d2e2 !important;
+  box-shadow: inset 0 0 0 2px #e4e9f2, 0 3px 0 #dde3ee !important;
+  color: #1c2739 !important;
+}
+html.theme-light .mp-lrow { background: #f1f4fa !important; border-color: #cfd8e6 !important; color: #1c2739 !important; }
+html.theme-light .v43-ghostbtn { background: #f1f4fa !important; border-color: #c8d2e2 !important; color: #22304a !important; }
+html.theme-light .text-white { color: #16223a !important; }
+html.theme-light .text-amber-300, html.theme-light .text-yellow-300 { color: #9a6b12 !important; }
+html.theme-light .text-sky-300, html.theme-light .text-sky-200 { color: #1e5f96 !important; }
+html.theme-light .text-slate-300, html.theme-light .text-slate-400 { color: #4a5a75 !important; }
+html.theme-light .text-emerald-300, html.theme-light .text-emerald-400 { color: #1c7a52 !important; }
+html.theme-light .text-fuchsia-300, html.theme-light .text-fuchsia-400 { color: #8a4fa8 !important; }
+html.theme-light .pixel-shadow { text-shadow: none !important; }
+
+/* --- 재참여 배너: 떠다니지 않고 레이아웃 안에 --- */
+#v43Rejoin { position: static !important; transform: none !important; left: auto !important;
+  width: 100%; margin: 8px 0 0 !important; box-shadow: 0 3px 0 #0b1220 !important; }
+#v43Rejoin .rj-txt b { color: var(--v43-ink); }
+#v43Rejoin .rj-txt span { color: var(--v43-sub); }
+
+/* --- 아이패드/넓은 화면: 오른쪽 패널 정리 --- */
+#v43SideArt { display: none; }
+@media (min-width: 768px) {
+  #titleBgImg { display: none !important; }
+  #v43SideArt {
+    display: flex; position: absolute; right: 0; top: 0; bottom: 0;
+    width: calc(100% - 470px); z-index: 6; padding: 26px;
+    flex-direction: column; gap: 14px;
+    background: linear-gradient(160deg, #16203a 0%, #121a2e 55%, #101a2c 100%);
+  }
+  html.theme-light #v43SideArt { background: linear-gradient(160deg, #f7f9fd, #eaeef6); }
+}
+#v43SideArt .sa-h { font-size: 12px; font-weight: 900; letter-spacing: .04em; color: var(--v43-sub); }
+#v43SideArt .sa-card { background: var(--v43-panel); border: 2px solid var(--v43-line); padding: 14px; }
+html.theme-light #v43SideArt .sa-card { background: #f8fafd; border-color: #c8d2e2; }
+#v43SideArt canvas { width: 100%; max-width: 420px; image-rendering: pixelated; border: 2px solid var(--v43-line); background: #0d1524; }
+#v43SideArt .sa-name { margin-top: 10px; font-size: 17px; font-weight: 900; color: var(--v43-ink); }
+html.theme-light #v43SideArt .sa-name { color: #16223a; }
+#v43SideArt .sa-rec { margin-top: 12px; display: flex; gap: 16px; flex-wrap: wrap; }
+#v43SideArt .sa-rec div { font-size: 12px; font-weight: 800; color: var(--v43-sub); }
+#v43SideArt .sa-rec b { display: block; font-size: 22px; color: var(--v43-gold); }
+#v43SideArt .sa-hint { font-size: 11.5px; font-weight: 700; line-height: 1.5; color: var(--v43-sub); }
+</style><style id="v43-fs">html,body{height:100%;min-height:100dvh;height:100dvh;overflow:hidden;overscroll-behavior:none}#gameCanvas{width:100vw;height:100dvh;display:block}body.v43-fs #gameCanvas{width:100vw;height:100vh}</style><!-- LP-GUARD:START --><style>
 /* 꾹 누르기(롱프레스) 방지: iOS/iPadOS Safari 텍스트 선택·콜아웃·확대 차단 */
 html, body, body * {
   -webkit-user-select: none;
@@ -140,7 +247,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       <div>
         <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-[#172554] border-2 border-[#60a5fa] text-sky-200 text-xs font-bold mb-2.5">
           <span>★ JUMP KING STYLE 16-BIT DOT</span>
-          <span class="text-amber-300">• 88 STAGES</span>
+          <span class="text-amber-300">• 21 MAPS</span>
         </div>
 
         <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white title-glow leading-tight">
@@ -1315,7 +1422,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
         player.moodT = dur;
         const img = document.getElementById('hudPortrait');
         const badge = document.getElementById('hudMoodBadge');
-        if (img && ASSETS.portraits[m]) img.src = ASSETS.portraits[m];
+        if (img && ASSETS.portraits[m] && !(window.JW43 && JW43.hasSkin && JW43.hasSkin())) img.src = ASSETS.portraits[m];
         if (badge) badge.textContent = m;
       }
 
@@ -2191,7 +2298,8 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
           }
         }
         if (game.lightningFlashT > 0) {
-          rect(ctx, 0, 0, WORLD_W, logicalH, 'rgba(254, 240, 138, 0.45)');
+          const lk = Math.max(0, Math.min(1, game.lightningFlashT / 0.22));
+          rect(ctx, 0, 0, WORLD_W, logicalH, 'rgba(44, 40, 92, ' + (0.17 * lk).toFixed(3) + ')');
         }
 
         // 4.5) 멀티 레이스: 방해 별 · 상대 캐릭터 · 이름표
@@ -2249,8 +2357,17 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
           ctx.fillText(ft.txt, ft.x | 0, (ft.y - camY) | 0);
         }
 
-        if (game.originFlashT > 0 && (((game.originFlashT * 18) | 0) % 2 === 0)) {
-          rect(ctx, 0, 0, WORLD_W, logicalH, 'rgba(232, 121, 249, 0.5)');
+        if (game.originFlashT > 0) {
+          /* 태초 귀환 연출: 하얗게 번쩍이는 스트로브 없이, 어두운 보라·남색 비네팅만 */
+          const ok = Math.max(0, Math.min(1, game.originFlashT));
+          const pulse = 0.55 + 0.45 * Math.sin((1 - ok) * Math.PI);
+          const vg = ctx.createRadialGradient(WORLD_W / 2, logicalH / 2, Math.min(WORLD_W, logicalH) * 0.16,
+            WORLD_W / 2, logicalH / 2, Math.max(WORLD_W, logicalH) * 0.8);
+          vg.addColorStop(0, 'rgba(40, 22, 78, 0)');
+          vg.addColorStop(0.55, 'rgba(36, 20, 72, ' + (0.14 * pulse * ok).toFixed(3) + ')');
+          vg.addColorStop(1, 'rgba(12, 8, 30, ' + (0.46 * pulse * ok).toFixed(3) + ')');
+          ctx.fillStyle = vg;
+          ctx.fillRect(0, 0, WORLD_W, logicalH);
         }
 
         ctx.restore();
@@ -5978,9 +6095,10 @@ extends CanvasLayer
     if (!S.room) return;
     $('mpRoomCode').textContent = S.room.code;
     const n = S.players.size;
-    const readyCnt = [...S.players.values()].filter((p) => p.ready).length;
-    $('mpRoomCount').textContent = n + ' / ' + S.room.max + '명 · ' + readyCnt + '/' + n + ' 준비';
-    $('mpRoomCount').className = 'text-xs font-black ' + (n >= S.room.max ? 'text-rose-300' : 'text-sky-300');
+    const botN = (window.JW43 && JW43.lobbyBotCount) ? JW43.lobbyBotCount() : 0;
+    const readyCnt = [...S.players.values()].filter((p) => p.ready).length + botN;
+    $('mpRoomCount').textContent = (n + botN) + ' / ' + S.room.max + '명 · ' + readyCnt + '/' + (n + botN) + ' 준비';
+    $('mpRoomCount').className = 'text-xs font-black ' + ((n + botN) >= S.room.max ? 'text-rose-300' : 'text-sky-300');
     const hostOnly = S.isHost;
 
     const list = $('mpRoomPlayers');
@@ -5991,6 +6109,7 @@ extends CanvasLayer
       d.innerHTML = playerRowHTML(p);
       list.appendChild(d);
     });
+    if (window.JW43 && JW43.lobbyBotRows) { try { JW43.lobbyBotRows(list, hostOnly); } catch (e) { console.warn('v43 bot rows', e); } }
     list.querySelectorAll('[data-face]').forEach((cv) => {
       const p = S.players.get(cv.getAttribute('data-face'));
       if (!p) return;
@@ -6002,7 +6121,7 @@ extends CanvasLayer
     });
     /* 빈 자리에 친구 초대 */
     const maxN = S.room.max || 4;
-    for (let i = n; i < maxN; i++) {
+    for (let i = n + botN; i < maxN; i++) {
       const d = document.createElement('div');
       d.className = 'mps-slot';
       d.innerHTML = '<span>➕ 빈 자리 ' + (i + 1) + '</span><span style="opacity:.75">📩 초대</span>';
@@ -6037,8 +6156,8 @@ extends CanvasLayer
       const readyN = others.filter((p) => p.ready).length;
       const allReady = others.length > 0 && readyN === others.length;
       $('mpStartBtn').disabled = others.length === 0 && !(window.JW43 && JW43.R && JW43.R.bots && JW43.R.bots.length);
-      $('mpStartBtn').textContent = (others.length === 0 && !(window.JW43 && JW43.R && JW43.R.bots && JW43.R.bots.length)) ? '👥 친구 기다리는 중... (+🤖봇 가능)' : ('🚀 레이스 시작' + (allReady ? ' · 전원 준비!' : ' (' + readyN + '/' + others.length + ')'));
-      $('mpStartBtn').className = 'mp-btn flex-[1.4]' + (allReady ? ' green' : '');
+      $('mpStartBtn').textContent = (others.length === 0 && !botN) ? '👥 친구 기다리는 중... (+🤖봇 가능)' : (others.length === 0 ? ('🚀 봇 ' + botN + '명과 레이스 시작') : ('🚀 레이스 시작' + (allReady ? ' · 전원 준비!' : ' (' + readyN + '/' + others.length + ')')));
+      $('mpStartBtn').className = 'mp-btn flex-[1.4]' + ((allReady || (others.length === 0 && botN > 0)) ? ' green' : '');
     } else {
       $('mpReadyBtn').classList.remove('hidden');
       $('mpStartBtn').classList.add('hidden');
@@ -7565,6 +7684,12 @@ extends CanvasLayer
   }
   function dtScale() { return now() < S.slowmoUntil ? 0.32 : 1; }
   function zoomHook() {
+    const gz = (window.__jwg && window.__jwg.game) || null;
+    if (gz && gz.originFlashT > 0) {
+      /* 태초: 섬광 대신 천천히 당겼다 놓는 카메라 줌 */
+      const t = Math.max(0, Math.min(1, 1 - gz.originFlashT));
+      return 1 + 0.085 * Math.sin(t * Math.PI);
+    }
     const left = S.slowmoUntil - now();
     if (left <= 0) return 1;
     const t = 1 - left / 950;
@@ -8997,7 +9122,7 @@ extends CanvasLayer
   .v42-code { width:100%; background:#060a15; border:2px solid #3b82f6; color:#a7f3d0; font-size:10px; font-weight:700; padding:6px; font-family:ui-monospace,monospace; }
   #v42EditorCv { width:100%; height:auto; image-rendering:pixelated; background:#070a14; border:2px solid #334155; touch-action:none; display:block; }
   #v42HLCv { width:100%; max-width:270px; height:auto; image-rendering:pixelated; background:#070a14; border:2px solid #334155; margin:0 auto; display:block; }
-  #v42Flash { position:absolute; inset:0; background:#f8fbff; opacity:0; pointer-events:none; z-index:19; }
+  #v42Flash { position:absolute; inset:0; background:#221a52; opacity:0; pointer-events:none; z-index:19; }
   .v42-trow { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
   .v42-trow button { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
     font-size:10.5px; font-weight:900; padding:6px 2px; line-height:1.1; background:#0f172a; border:2px solid #7c3aed; color:#ddd6fe;
@@ -9294,7 +9419,7 @@ extends CanvasLayer
   function lsGet(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 
-  const DEF_CFG = { weather: false, ghost: 'auto', fever: true, boss: false, chainMax: 210, botN: 2, botDiff: 'mid' };
+  const DEF_CFG = { weather: false, ghost: 'off', fever: true, boss: false, chainMax: 210, botN: 2, botDiff: 'mid' };
   const CFG = Object.assign({}, DEF_CFG, lsGet(LS_SET, {}) || {});
   function saveCfg() { lsSet(LS_SET, CFG); }
   window.__v42cfg = CFG; window.__v42saveCfg = saveCfg;
@@ -9574,7 +9699,7 @@ extends CanvasLayer
     if (V.wx.flash > 0) {
       V.wx.flash = Math.max(0, V.wx.flash - dt * 3.2);
       const el = $('v42Flash');
-      if (el) el.style.opacity = String(V.wx.flash * 0.85);
+      if (el) el.style.opacity = String(V.wx.flash * 0.30);
     }
     if (V.wx.cur === 'thunder') {
       V.wx.gustT -= dt;
@@ -9644,6 +9769,7 @@ extends CanvasLayer
   function ghosts() { const g = lsGet(LS_GHOST, {}); return g && typeof g === 'object' ? g : {}; }
   function ghostSave(key, rec) { const g = ghosts(); g[key] = rec; lsSet(LS_GHOST, g); }
   function ghostPick() {
+    if (window.JW43 && JW43.inMulti && JW43.inMulti()) return null;
     const k = ghostKey();
     const g = ghosts();
     const mine = g[k];
@@ -12448,6 +12574,8 @@ extends CanvasLayer
 
   /* 멀티에서는 고스트 기본 OFF (방 설정으로만 켠다) */
   V43.ghostBlocked = function () {
+    /* 멀티 레이스(사람·봇 섞인 방)에서는 설정과 무관하게 고스트를 그리지 않는다 */
+    if (V43.inMulti && V43.inMulti()) return true;
     const S = V43.st();
     if (!S) return false;
     const inRace = (S.phase === 'race' || S.phase === 'count');
@@ -12456,6 +12584,7 @@ extends CanvasLayer
     return !x.ghost;
   };
   V43.ghostOn = function () {
+    if (V43.inMulti && V43.inMulti()) return false;
     const c = root.__v42cfg;
     return !!(c && c.ghost && c.ghost !== 'off');
   };
@@ -12466,6 +12595,33 @@ extends CanvasLayer
     try { if (root.__v42saveCfg) root.__v42saveCfg(); } catch (e) {}
     return true;
   };
+
+  /* 멀티 레이스(사람·봇 섞인 방)에서는 라이벌 고스트를 쓰지 않는다 */
+  V43.inMulti = function () {
+    const S = V43.st && V43.st();
+    if (!S) return false;
+    if (S.room && (S.phase === 'race' || S.phase === 'count' || S.phase === 'result')) return true;
+    return false;
+  };
+  /* 기본 스킨이 아닌 스킨을 입고 있나 (HUD 초상화 우선순위) */
+  V43.hasSkin = function () {
+    try {
+      const api = V43.api ? V43.api() : null;
+      const sk = api && api.meSkin ? api.meSkin() : 'jaeu';
+      return !!(sk && sk !== 'jaeu');
+    } catch (e) { return false; }
+  };
+  /* 4.3: 고스트 기본값 = 끄기. 예전 저장값('자동')도 한 번만 끄기로 정리한다 */
+  try {
+    if (!window.localStorage.getItem('jw43_ghost_off_v1')) {
+      const c = root.__v42cfg;
+      if (c && c.ghost !== 'off') {
+        c.ghost = 'off';
+        try { if (root.__v42saveCfg) root.__v42saveCfg(); } catch (e) {}
+      }
+      window.localStorage.setItem('jw43_ghost_off_v1', '1');
+    }
+  } catch (e) {}
 
   /* ================================================================
      맵 연결 : JWMap(4.1) → JWMap43(4.3 11종) 위임
@@ -14972,28 +15128,93 @@ extends CanvasLayer
   const GROUND = 0;          /* 1번 발판 상단 = 세계 바닥 기준선 */
   const ORIG = API.drawBg;
 
-  /* ---------------- 기본 유틸 ---------------- */
+  /* ---------------- 눈 편한 톤 보정 ----------------
+     원색·네온의 채도를 부드럽게 빼고, 명도는 ‘칙칙한 암흑’이 아니라
+     은은한 중간 톤(맑은 밤·노을·파스텔 뮤트)으로 모아 준다.
+     발판·캐릭터는 이 함수를 거치지 않는다 → 대비는 그대로 선명하다. */
+  const _tc = new Map();
+  function _rgb(col) {
+    let s = String(col).trim();
+    if (s.charAt(0) === '#') {
+      if (s.length === 4) s = '#' + s[1] + s[1] + s[2] + s[2] + s[3] + s[3];
+      if (s.length === 7) return [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16), 1];
+      if (s.length === 9) return [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16), parseInt(s.slice(7, 9), 16) / 255];
+      return null;
+    }
+    const m = /^rgba?\(([^)]+)\)$/i.exec(s);
+    if (!m) return null;
+    const p = m[1].split(',').map(function (x) { return parseFloat(x); });
+    if (p.length < 3) return null;
+    return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1];
+  }
+  function _toHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (mx + mn) / 2, d = mx - mn;
+    if (d > 0.0001) {
+      s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+      if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (mx === g) h = ((b - r) / d + 2) / 6;
+      else h = ((r - g) / d + 4) / 6;
+    }
+    return [h, s, l];
+  }
+  function _hue2rgb(p, q, t) {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  }
+  function toneCol(col) {
+    if (typeof col !== 'string') return col;
+    let out = _tc.get(col);
+    if (out !== undefined) return out;
+    const rgb = _rgb(col);
+    if (!rgb) { _tc.set(col, col); return col; }
+    const hsl = _toHsl(rgb[0], rgb[1], rgb[2]);
+    let h = hsl[0], s = hsl[1], l = hsl[2];
+    /* 1) 채도: 원색·네온만 부드럽게 (이미 차분한 색은 거의 그대로) */
+    s = Math.min(s, 0.20 + s * 0.52);
+    /* 2) 명도: 순백·형광은 눌러 주고, 너무 칙칙한 암흑은 살짝 들어 올린다 */
+    l = 0.42 + (l - 0.42) * 0.86;
+    l = Math.max(0.12, Math.min(0.80, l));
+    /* 3) 빛나는 입자·광원만 알파를 살짝 줄인다 */
+    let a = rgb[3];
+    if (a < 1) a = Math.min(1, a * 1.06);
+    let r = _hue2rgb;
+    let q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    let p = 2 * l - q;
+    const R2 = Math.round(_hue2rgb(p, q, h + 1 / 3) * 255);
+    const G2 = Math.round(_hue2rgb(p, q, h) * 255);
+    const B2 = Math.round(_hue2rgb(p, q, h - 1 / 3) * 255);
+    out = a >= 0.999 ? 'rgb(' + R2 + ',' + G2 + ',' + B2 + ')' : 'rgba(' + R2 + ',' + G2 + ',' + B2 + ',' + (Math.round(a * 1000) / 1000) + ')';
+    _tc.set(col, out);
+    return out;
+  }
+
   function hash(n) {
-    n = (n | 0) ^ 0x9e3779b9;
     n = Math.imul(n ^ (n >>> 16), 0x85ebca6b);
     n = Math.imul(n ^ (n >>> 13), 0xc2b2ae35);
     return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
   }
   function R(c, x, y, w, h, col) {
-    c.fillStyle = col;
+    c.fillStyle = toneCol(col);
     c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
   }
-  function PX(c, x, y, col) { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), 1, 1); }
+  function PX(c, x, y, col) { c.fillStyle = toneCol(col); c.fillRect(Math.round(x), Math.round(y), 1, 1); }
   function circle(c, x, y, r, col) {
-    c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, 6.3); c.fill();
+    c.fillStyle = toneCol(col); c.beginPath(); c.arc(x, y, r, 0, 6.3); c.fill();
   }
   function poly(c, pts, col) {
-    c.fillStyle = col; c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
+    c.fillStyle = toneCol(col); c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
     for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
     c.closePath(); c.fill();
   }
   function line(c, x1, y1, x2, y2, col, w) {
-    c.strokeStyle = col; c.lineWidth = w || 1;
+    c.strokeStyle = toneCol(col); c.lineWidth = w || 1;
     c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
   }
   function inView(wy, y0, y1, pad) { return wy > y0 - (pad || 260) && wy < y1 + (pad || 260); }
@@ -15032,7 +15253,7 @@ extends CanvasLayer
   function sky(ctx, camY, G, stops) {
     const g = ctx.createLinearGradient(0, G.bot - camY, 0, G.top - camY);
     for (let i = 0; i < stops.length; i++) {
-      g.addColorStop(Math.max(0, Math.min(1, stops[i][0])), stops[i][1]);
+      g.addColorStop(Math.max(0, Math.min(1, stops[i][0])), toneCol(stops[i][1]));
     }
     ctx.fillStyle = g;
     ctx.fillRect(-40, 0, W + 80, G.H);
@@ -15088,7 +15309,7 @@ extends CanvasLayer
   }
   /* 구름 덩어리 */
   function cloud(c, x, y, s, col) {
-    c.fillStyle = col;
+    c.fillStyle = toneCol(col);
     c.beginPath();
     c.arc(x, y, 22 * s, 0, 6.3);
     c.arc(x + 26 * s, y + 6 * s, 17 * s, 0, 6.3);
@@ -15896,7 +16117,7 @@ extends CanvasLayer
       const ty = G2.bot - 0.82 * G2.h;
       if (inView(ty, a, b, 300)) {
         R(c, 0, ty - 220, W, 230, 'rgba(20,26,38,.92)');
-        c.fillStyle = 'rgba(6,10,18,.95)';
+        c.fillStyle = toneCol('rgba(6,10,18,.95)');
         c.beginPath(); c.arc(270, ty, 190, Math.PI, 0); c.fill();
         R(c, 0, ty - 6, W, 10, 'rgba(100,116,139,.3)');
         for (let k = 0; k < 12; k++) circle(c, 90 + k * 34, ty - 210, 3, 'rgba(251,191,36,.35)');
@@ -16028,7 +16249,7 @@ extends CanvasLayer
         const by = G2.bot - (0.24 + arc * 0.26) * G2.h;
         if (!inView(by - 300, a, b, 400)) continue;
         for (let k = 0; k < 7; k++) {
-          c.strokeStyle = cols[k]; c.globalAlpha = 0.10; c.lineWidth = 7;
+          c.strokeStyle = toneCol(cols[k]); c.globalAlpha = 0.10; c.lineWidth = 7;
           c.beginPath(); c.arc(270, by + 260, 250 - k * 10 - arc * 20, Math.PI * 1.04, Math.PI * 1.96); c.stroke();
         }
         c.globalAlpha = 1;
@@ -16408,7 +16629,7 @@ extends CanvasLayer
         const u = 0.01 + hash(k * 23) * 0.12;
         const wy = G2.bot - u * G2.h;
         if (!inView(wy, a, b, 200)) continue;
-        c.fillStyle = 'rgba(214,160,70,.35)';
+        c.fillStyle = toneCol('rgba(214,160,70,.35)');
         c.beginPath(); c.moveTo(-10, wy + 20);
         c.quadraticCurveTo(120 + k * 40, wy - 50 - (k % 3) * 20, 300 + k * 30, wy + 24);
         c.lineTo(-10, wy + 30); c.closePath(); c.fill();
@@ -16590,7 +16811,7 @@ extends CanvasLayer
      ====================================================================== */
   function dessert(ctx, camY, H, G) {
     sky(ctx, camY, G, [
-      [0, '#ffb7d6'], [0.16, '#ffc8e0'], [0.4, '#ffd9ea'], [0.64, '#ffe6f3'], [0.84, '#fff0f8'], [1, '#fff8fc']
+      [0, '#42263f'], [0.16, '#4e2d49'], [0.4, '#5c3654'], [0.64, '#6d4363'], [0.84, '#7d5272'], [1, '#8d6183']
     ]);
     layer(ctx, camY, H, 1, (c, G2, a, b) => {
       /* 솜사탕 구름 */
@@ -17036,6 +17257,17 @@ extends CanvasLayer
     }, G);
   }
 
+
+  /* 배경을 살짝 뒤로 물리는 소프트 베일 (발판 대비는 건드리지 않는다) */
+  function softVeil(c, H) {
+    const g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, 'rgba(10, 14, 28, 0.10)');
+    g.addColorStop(0.55, 'rgba(10, 14, 28, 0.04)');
+    g.addColorStop(1, 'rgba(10, 14, 28, 0.12)');
+    c.fillStyle = g;
+    c.fillRect(-40, 0, W + 80, H);
+  }
+
   /* ---------------- 등록 ---------------- */
   const PAINT = {
     atlantis: atlantis, arcade: arcade, arctic: arctic, mansion: mansion, volcano: volcano, school: school,
@@ -17059,6 +17291,7 @@ extends CanvasLayer
       stageDress(ctx, camY, H, G, STAGE[id]);
       const at = ATMO[id];
       if (at) atmosphere(ctx, camY, H, G, at[0], at[1]);
+      softVeil(ctx, H);
       return true;
     }
   };
@@ -17078,6 +17311,7 @@ extends CanvasLayer
     stageDress(ctx, camY, logicalH, G, STAGE[id]);
     const at = ATMO[id];
     if (at) atmosphere(ctx, camY, logicalH, G, at[0], at[1]);
+    softVeil(ctx, logicalH);
     return true;
   };
   API.pano43 = PAINT;
@@ -18739,7 +18973,10 @@ extends CanvasLayer
     /* 방 버스로 내보낼 4.3 전용 값 */
     const S = J() && V.st();
     if (!S || !S.room) return null;
-    return Object.assign({}, V.ex(), { bots: R.bots.length ? R.bots.length : (V.ex().bots || 0) });
+    return Object.assign({}, V.ex(), {
+      bots: R.bots.length ? R.bots.length : (V.ex().bots || 0),
+      botList: R.bots.length ? R.bots.map((b) => [b.name, b.skin, b.color, botTitle(b), b.diff || 'mid', b.pers || 'normal']) : null
+    });
   };
   V.roomExtraOut = function () { return V.exOut(); };
 
@@ -18965,7 +19202,240 @@ extends CanvasLayer
      ================================================================ */
   const BOT_COLS = ['#f472b6', '#34d399', '#fbbf24', '#60a5fa'];
   const BOT_SKINS = ['robot', 'knight', 'fox', 'panda'];
+  const BOT_NAMES = ['네오', '아라', '폭스', '모모'];
+  const BOT_TITLES = ['로봇 AI', '기사 AI', '여우 AI', '판다 AI'];
+  /* 난이도 · 성격: 레이스 AI 행동에 그대로 반영된다 */
+  const BOT_DIFFS = [['low', '하'], ['mid', '중'], ['high', '상'], ['extreme', '극악']];
+  const BOT_PERS = [['normal', '일반'], ['mistake', '실수'], ['safe', '안전'], ['speed', '스피드'], ['taunt', '도발 채팅']];
+  const BOT_DIFF_LABEL = { low: '하', mid: '중', high: '상', extreme: '극악' };
+  const BOT_PERS_LABEL = { normal: '일반', mistake: '실수', safe: '안전', speed: '스피드', taunt: '도발' };
+  const BOT_TAUNTS = [
+    '이 정도는 식은 죽 먹기지', '따라올 수 있겠어?', '한 번 더, 정상까지!',
+    '슬슬 힘들지?', '봇한테 지면 좀 그렇지', '난 아직 여유로운데', '다음 층에서 기다릴게'
+  ];
+  let botSeq = 1;
+  /* 봇 한 명 만들기: 로비 카드·경주 달리기 모두 같은 정보를 쓴다 */
+  function makeBot(slot) {
+    return {
+      id: 'bot' + (botSeq++), slot: slot,
+      name: '봇 ' + BOT_NAMES[slot % 4], color: BOT_COLS[slot % 4],
+      skin: BOT_SKINS[slot % 4], title: BOT_TITLES[slot % 4],
+      diff: 'mid', pers: 'normal',
+      x: 230 + slot * 24, y: -34, vx: 0, vy: 0, onGround: true, plat: 1,
+      wait: 1.6 + slot * 0.4, fin: false, time: 0, idx: 1
+    };
+  }
+  function botTitle(b) {
+    const d = BOT_DIFF_LABEL[b.diff || 'mid'] || '중';
+    const p = BOT_PERS_LABEL[b.pers || 'normal'] || '일반';
+    return d + ' · ' + p;
+  }
+  /* 난이도·성격 → 실제 점프 정확도와 대기 시간 */
+  function botParams(b) {
+    const d = b.diff || 'mid';
+    const base = {
+      low: { wait: 0.62, acc: 0.11 },
+      mid: { wait: 0.30, acc: 0.045 },
+      high: { wait: 0.14, acc: 0.016 },
+      extreme: { wait: 0.075, acc: 0.004 }
+    }[d] || { wait: 0.30, acc: 0.045 };
+    let wait = base.wait, acc = base.acc;
+    const p = b.pers || 'normal';
+    if (p === 'mistake') { wait *= 1.2; acc = Math.min(0.28, acc * 2.8); }
+    else if (p === 'safe') { wait *= 1.5; acc *= 0.45; }
+    else if (p === 'speed') { wait *= 0.55; acc *= 1.4; }
+    else if (p === 'taunt') { wait *= 0.95; acc *= 0.9; }
+    return { wait: wait, acc: acc, pers: p };
+  }
+  /* 빈 봇 자리(0~3) 중 첫 번째로 봇을 들인다 → 이름·스킨·색이 겹치지 않는다 */
+  function addBotOne() {
+    const used = R.bots.map((b) => (typeof b.slot === 'number' ? b.slot : -1));
+    let slot = 0;
+    while (slot < 4 && used.indexOf(slot) >= 0) slot++;
+    const b = makeBot(slot);
+    R.bots.push(b);
+    return b;
+  }
   function botCount() { return R.bots.length; }
+
+  /* 로비에 보여 줄 봇 명단 (방장은 자기 봇, 참가자는 방장이 보낸 목록) */
+  V.botRoster = function () {
+    const S = J() && V.st();
+    if (S && S.isHost) {
+      return R.bots.map((b) => ({ id: b.id, name: b.name, skin: b.skin, color: b.color, title: botTitle(b), real: true, diff: b.diff, pers: b.pers }));
+    }
+    const x = V.ex() || {};
+    if (Array.isArray(x.botList) && x.botList.length) {
+      return x.botList.map((it, i) => ({
+        id: 'xbot' + i, name: (it && it[0]) || ('봇 ' + BOT_NAMES[i % 4]),
+        skin: (it && it[1]) || BOT_SKINS[i % 4], color: (it && it[2]) || BOT_COLS[i % 4],
+        title: (it && it[3]) || BOT_DIFF_LABEL.mid + ' · 일반', real: false, diff: (it && it[4]) || 'mid', pers: (it && it[5]) || 'normal'
+      }));
+    }
+    const n = Number(x.bots) || 0, out = [];
+    for (let i = 0; i < n; i++) {
+      out.push({ id: 'xbot' + i, name: '봇 ' + BOT_NAMES[i % 4], skin: BOT_SKINS[i % 4], color: BOT_COLS[i % 4], title: BOT_DIFF_LABEL.mid + ' · 일반', real: false, diff: 'mid', pers: 'normal' });
+    }
+    return out;
+  };
+  V.lobbyBotCount = function () { try { return V.botRoster().length; } catch (e) { return 0; } };
+
+  /* 대기실 참가자 목록에 봇을 사람 참가자와 같은 카드로 채운다 */
+  V.lobbyBotRows = function (list, hostOnly) {
+    if (!list) return;
+    const roster = V.botRoster();
+    if (!roster.length) return;
+    const api = V.api();
+    roster.forEach((b) => {
+      const d = document.createElement('div');
+      d.className = 'mp-lrow mp-lrow-bot';
+      d.innerHTML =
+        '<span class="mp-avarow"><canvas class="mpa-face" width="32" height="36"></canvas>' +
+          '<span class="mp-crown" style="font-size:12px">🤖</span></span>' +
+        '<div class="flex-1 min-w-0">' +
+          '<div class="flex items-center gap-1 flex-wrap">' +
+            '<span class="text-sm font-black truncate" style="max-width:88px">' + esc(b.name) + '</span>' +
+            '<span class="mp-title">' + esc(b.title) + '</span>' +
+          '</div>' +
+          '<div class="text-[9.5px] font-bold text-slate-400 leading-tight">AI 봇 · 실제 발판을 스캔해 점프</div>' +
+        '</div>' +
+        '<span class="text-[11px] font-black text-emerald-300">✅ 준비완료</span>' +
+        (hostOnly && b.real
+          ? '<button type="button" class="mp-chip" data-botcfg="' + esc(b.id) + '" title="봇 설정" style="padding:3px 6px;font-size:10px;border-color:#60a5fa;color:#bae6fd">⚙️</button>' +
+            '<button type="button" class="mp-chip" data-kickbot="' + esc(b.id) + '" title="봇 내보내기" style="padding:3px 6px;font-size:10px;border-color:#f87171;color:#fecaca">✕</button>'
+          : '');
+      list.appendChild(d);
+      d.setAttribute('data-botrow', b.id);
+      if (hostOnly && b.real) {
+        d.style.cursor = 'pointer';
+        d.addEventListener('click', (ev) => {
+          if (ev.target && ev.target.closest && ev.target.closest('[data-kickbot]')) return;
+          V.openBotCfg(b.id);
+        });
+      }
+      const cv = d.querySelector('canvas');
+      if (!cv) return;
+      let sp = null;
+      try { sp = api && api.spriteFor ? api.spriteFor(b.color, 'idle1', b.skin) : null; } catch (e) { sp = null; }
+      if (sp) {
+        const c = cv.getContext('2d');
+        c.imageSmoothingEnabled = false;
+        c.clearRect(0, 0, 32, 36);
+        try { c.drawImage(sp, 0, 0); } catch (e) {}
+      }
+    });
+    list.querySelectorAll('[data-kickbot]').forEach((btn) => {
+      btn.addEventListener('click', (ev) => { ev.stopPropagation(); V.kickBot(btn.getAttribute('data-kickbot')); });
+    });
+    list.querySelectorAll('[data-botcfg]').forEach((btn) => {
+      btn.addEventListener('click', (ev) => { ev.stopPropagation(); V.openBotCfg(btn.getAttribute('data-botcfg')); });
+    });
+  };
+
+  /* ---------------- 봇 설정 시트: 이름 · 난이도 · 성격 · 스킨 ---------------- */
+  let botCfgId = null, botDraft = null;
+  function botCfgHost() {
+    let m = document.getElementById('v43BotCfg');
+    if (m) return m;
+    m = document.createElement('div');
+    m.id = 'v43BotCfg';
+    m.className = 'hidden';
+    m.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:flex-end;justify-content:center;background:rgba(4,6,16,.74)';
+    m.innerHTML = '<div style="width:min(520px,100%);max-height:84vh;overflow:auto;margin:8px;padding:14px;' +
+      'background:#0b1024;border:2px solid #3b82f6;border-radius:10px;box-shadow:0 0 0 3px #05030a,0 12px 30px rgba(0,0,0,.6)">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
+        '<b style="font-size:15px;color:#e8f6ff">🤖 봇 설정</b>' +
+        '<button type="button" id="v43BotCfgX" class="mp-chip" style="padding:4px 9px">닫기 ✕</button></div>' +
+      '<div id="v43BotCfgBody"></div></div>';
+    document.body.appendChild(m);
+    m.addEventListener('click', (e) => { if (e.target === m) m.classList.add('hidden'); });
+    const x = document.getElementById('v43BotCfgX');
+    if (x) x.addEventListener('click', () => m.classList.add('hidden'));
+    return m;
+  }
+  function botCfgRow(label, inner) {
+    return '<div style="margin:9px 0 3px;font-size:11px;font-weight:900;color:#9fc2e8">' + label + '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:5px">' + inner + '</div>';
+  }
+  function chips(kind, list, cur) {
+    return list.map((o) => '<button type="button" class="mp-chip' + (String(cur) === String(o[0]) ? ' on' : '') +
+      '" data-bbset="' + kind + '" data-val="' + esc(o[0]) + '" style="font-size:11px;padding:5px 9px">' + esc(o[1]) + '</button>').join('');
+  }
+  function renderBotCfg() {
+    const body = document.getElementById('v43BotCfgBody');
+    if (!body || !botDraft) return;
+    const skins = (root.JWMode && root.JWMode.SKINS) ? root.JWMode.SKINS : [];
+    const skinOpts = skins.map((s) => [s.id, s.emoji + ' ' + s.name]);
+    let h = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
+      '<canvas id="v43BotPrev" width="32" height="36" style="width:48px;height:54px;image-rendering:pixelated;background:#05030a;border:2px solid #1e293b"></canvas>' +
+      '<div style="flex:1;min-width:0"><input id="v43BotName" class="mp-in" maxlength="10" value="' + esc(botDraft.name) +
+      '" placeholder="봇 이름" style="width:100%;font-size:13px" />' +
+      '<div style="margin-top:4px;font-size:10px;font-weight:800;color:#64748b">이름은 10자까지 · 설정은 레이스 AI 행동에 바로 적용됩니다</div></div></div>';
+    h += botCfgRow('난이도', chips('diff', BOT_DIFFS, botDraft.diff));
+    h += botCfgRow('성격', chips('pers', BOT_PERS, botDraft.pers));
+    h += '<div style="margin:6px 0 2px;font-size:10px;font-weight:800;color:#64748b">' +
+      ({ normal: '기본 실력으로 꾸준히 오릅니다', mistake: '가끔 점프를 짧게해 미끄러집니다(재도전)',
+         safe: '느리지만 실수가 거의 없습니다', speed: '빠르게 치고 올라가지만 정확도는 조금 낮습니다',
+         'taunt': '도발 채팅을 날리며 오릅니다' }[botDraft.pers] || '') + '</div>';
+    h += botCfgRow('스킨', chips('skin', skinOpts.length ? skinOpts : [['robot', '🤖 로봇']], botDraft.skin));
+    h += '<div style="display:flex;gap:8px;margin-top:14px">' +
+      '<button type="button" id="v43BotSave" class="mp-btn green" style="flex:1;font-size:13px">💾 저장</button>' +
+      '<button type="button" id="v43BotCancel" class="mp-btn dark" style="flex:0 0 auto;font-size:13px">취소</button></div>';
+    body.innerHTML = h;
+    const nameIn = document.getElementById('v43BotName');
+    if (nameIn) nameIn.addEventListener('input', () => { botDraft.name = nameIn.value.slice(0, 10); });
+    body.querySelectorAll('[data-bbset]').forEach((b) => {
+      b.addEventListener('click', () => {
+        botDraft[b.getAttribute('data-bbset')] = b.getAttribute('data-val');
+        renderBotCfg();
+      });
+    });
+    const sv = document.getElementById('v43BotSave');
+    if (sv) sv.addEventListener('click', saveBotCfg);
+    const cc = document.getElementById('v43BotCancel');
+    if (cc) cc.addEventListener('click', () => { const m = document.getElementById('v43BotCfg'); if (m) m.classList.add('hidden'); });
+    const pv = document.getElementById('v43BotPrev');
+    if (pv) {
+      let sp = null;
+      try { sp = V.api() && V.api().spriteFor ? V.api().spriteFor(botDraft.color, 'idle1', botDraft.skin) : null; } catch (e) {}
+      if (sp) { const c = pv.getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(sp, 0, 0); }
+    }
+  }
+  V.openBotCfg = function (id) {
+    const S = J() && V.st();
+    if (!S || !S.isHost) { V.toast('🔒 방장만', 'danger', '방장이 봇을 설정합니다', 1600); return; }
+    const b = R.bots.find((x) => x.id === id);
+    if (!b) return;
+    botCfgId = id;
+    botDraft = { name: b.name, diff: b.diff || 'mid', pers: b.pers || 'normal', skin: b.skin, color: b.color };
+    botCfgHost().classList.remove('hidden');
+    renderBotCfg();
+  };
+  function saveBotCfg() {
+    const b = R.bots.find((x) => x.id === botCfgId);
+    if (!b || !botDraft) return;
+    b.name = (botDraft.name || '').trim().slice(0, 10) || b.name;
+    b.diff = botDraft.diff; b.pers = botDraft.pers; b.skin = botDraft.skin; b.title = botTitle(b);
+    const m = document.getElementById('v43BotCfg');
+    if (m) m.classList.add('hidden');
+    V.applyExtra({ bots: R.bots.length }, '봇 설정');
+    V.toast('💾 봇 설정 저장', 'lucky', b.name + ' · ' + botTitle(b), 2000);
+    try { V.api().renderLobby(); } catch (e) {}
+    renderLobbySummary();
+  }
+
+  V.kickBot = function (id) {
+    const S = J() && V.st();
+    if (!S || !S.isHost) { V.toast('🔒 방장만', 'danger', '방장이 봇을 내보냅니다', 1600); return; }
+    const i = R.bots.findIndex((b) => b.id === id);
+    if (i < 0) return;
+    const nm = R.bots[i].name;
+    R.bots.splice(i, 1);
+    V.applyExtra({ bots: R.bots.length }, '봇 내보냄');
+    V.toast('🤖 ' + nm + ' 내보냄', 'chat', '참가자 ' + (S.players.size + R.bots.length) + '명', 1600);
+    renderLobbySummary();
+    try { V.api().renderLobby(); } catch (e) {}
+  };
 
   V.addBot = function (n) {
     const S = J() && V.st();
@@ -18980,14 +19450,11 @@ extends CanvasLayer
       return;
     }
     if (want > R.bots.length) {
-      while (R.bots.length < want) {
-        const i = R.bots.length;
-        R.bots.push({ id: 'bot' + i, name: '봇 ' + (i + 1), color: BOT_COLS[i % 4], skin: BOT_SKINS[i % 4], x: 230 + i * 24, y: -34, vx: 0, vy: 0, onGround: true, plat: 1, wait: 1.6 + i * 0.4, fin: false, time: 0, idx: 1 });
-      }
+      while (R.bots.length < want) addBotOne();
     } else {
       R.bots.length = want;
     }
-    V.toast(dir > 0 ? '🤖 봇 추가' : '🤖 봇 빼기', 'lucky', '참가자 ' + (S.players.size + R.bots.length) + '명', 1600);
+    V.toast(dir > 0 ? '🤖 봇 입장' : '🤖 봇 퇴장', 'lucky', '참가자 ' + (S.players.size + R.bots.length) + '명', 1600);
     V.applyExtra({ bots: R.bots.length }, '봇 ' + R.bots.length + '명');
     renderLobbySummary();
     try { V.api().renderLobby(); } catch (e) {}
@@ -19011,15 +19478,23 @@ extends CanvasLayer
     if (S.isHost) {
       R.bots.forEach((b) => {
         if (b.fin) return;
+        /* 도발 채팅 성격: 가끔 한 마디 */
+        if (b.pers === 'taunt' && g.time - (b.tauntT || 0) > 6 + Math.random() * 5) {
+          b.tauntT = g.time;
+          V.toast('💬 ' + b.name, BOT_TAUNTS[(Math.random() * BOT_TAUNTS.length) | 0], 'chat', 2200);
+        }
         if (b.onGround) {
           b.wait -= dt;
           if (b.wait <= 0) {
+            const pr = botParams(b);
             const next = plats.find((p) => p.index === Math.min(goal, b.idx + 1));
             const tgt = next || plats[plats.length - 1];
             if (tgt) {
               const up = Math.max(50, (b.y + 34) - tgt.y + 22);
               const gg = 1380;
-              b.vy = -Math.sqrt(2 * gg * up) * (0.96 + Math.random() * 0.1);
+              let k = 1 + (Math.random() - 0.5) * pr.acc;
+              if (pr.pers === 'mistake' && Math.random() < 0.10) k *= 0.90;
+              b.vy = -Math.sqrt(2 * gg * up) * k;
               b.vx = Math.max(-380, Math.min(380, (tgt.x + tgt.w / 2 - 14 - b.x) / 0.42));
               b.onGround = false;
               b.facing = b.vx >= 0 ? 1 : -1;
@@ -19035,7 +19510,8 @@ extends CanvasLayer
             if (b.x + 24 > p.x + 2 && b.x < p.x + p.w - 2 && b.vy >= 0 && b.y + 34 >= p.y && b.y + 34 <= p.y + 30) {
               b.y = p.y - 34; b.vy = 0; b.onGround = true; b.plat = p.index;
               if (p.index > b.idx) b.idx = p.index;
-              b.wait = 0.10 + Math.random() * 0.22;
+              const pr2 = botParams(b);
+              b.wait = Math.max(0.05, pr2.wait * (0.5 + Math.random()));
               break;
             }
           }
@@ -19290,8 +19766,7 @@ extends CanvasLayer
         const want = Math.max(0, Math.min(4, (S.room.max || 4) - humans));
         if (want > R.bots.length && S.players.size + want <= (S.room.max || 6)) {
           while (R.bots.length < want) {
-            const i = R.bots.length;
-            R.bots.push({ id: 'bot' + i, name: '봇 ' + (i + 1), color: BOT_COLS[i % 4], skin: BOT_SKINS[i % 4], x: 230 + i * 22, y: -34, vx: 0, vy: 0, onGround: true, plat: 1, wait: 1.5 + i * 0.4, fin: false, time: 0, idx: 1 });
+            addBotOne();
           }
           V.applyExtra({ bots: R.bots.length }, '빈자리 봇 자동 채우기');
         }
@@ -22076,6 +22551,124 @@ extends CanvasLayer
 })(window);
 
 /* ==========================================================================
+   재우 4.3 : UI 테마(소프트 다크 / 눈 편한 라이트) · 타이틀 사이드 패널 · 배너 인라인
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  const KEY = 'jw43_theme_v1';
+  const $ = (id) => document.getElementById(id);
+  let theme = 'soft';
+  try { theme = window.localStorage.getItem(KEY) || 'soft'; } catch (e) {}
+
+  function label(t) { return t === 'light' ? '🌤 눈 편한 라이트' : '🌙 소프트 다크'; }
+  function apply(t) {
+    const h = document.documentElement;
+    h.classList.toggle('theme-soft', t !== 'light');
+    h.classList.toggle('theme-light', t === 'light');
+  }
+  apply(theme);
+
+  /* 설정(편리성 설정) 상단에 원터치 스위치 */
+  function themeRow() {
+    const box = $('v43QolBody');
+    if (!box || $('v43ThemeRow')) return;
+    const d = document.createElement('div');
+    d.id = 'v43ThemeRow';
+    d.className = 'v43-ghostbtn';
+    d.innerHTML = '<span>🌓 UI 테마</span><b id="v43ThemeVal">' + label(theme) + '</b>';
+    d.addEventListener('click', () => {
+      theme = theme === 'light' ? 'soft' : 'light';
+      try { window.localStorage.setItem(KEY, theme); } catch (e) {}
+      apply(theme);
+      const v = $('v43ThemeVal');
+      if (v) v.textContent = label(theme);
+      try { if (root.JW43 && JW43.toast) JW43.toast('🌓 UI 테마', 'lucky', label(theme) + '로 바꿨어요', 1500); } catch (e) {}
+    });
+    box.insertBefore(d, box.firstChild);
+  }
+
+  /* 재참여 배너를 레이아웃 흐름 안(도전 시작 버튼 위)으로 옮긴다 */
+  function inlineBanner() {
+    const el = $('v43Rejoin');
+    if (!el || el.__v43inline) return;
+    const start = $('btnStartGame');
+    if (!start) return;
+    let row = start;
+    while (row && row.parentElement && row.parentElement.id !== 'titleScreen' && row.parentElement.children.length < 3) {
+      row = row.parentElement;
+    }
+    const host = (row && row.parentElement) ? row : start.parentElement;
+    if (!host) return;
+    host.insertBefore(el, row || start);
+    el.__v43inline = true;
+  }
+
+  /* 아이패드·넓은 화면: 오른쪽에 깔끔한 '지금 고른 맵 + 내 기록' 패널 */
+  function sideArt() {
+    const t = $('titleScreen');
+    if (!t || $('v43SideArt')) return;
+    const d = document.createElement('div');
+    d.id = 'v43SideArt';
+    d.innerHTML =
+      '<div class="sa-card" style="flex:1;display:flex;flex-direction:column">' +
+        '<div class="sa-h">🗺️ 지금 고른 맵</div>' +
+        '<canvas id="v43SideMap" width="320" height="180" style="margin-top:10px"></canvas>' +
+        '<div class="sa-name" id="v43SideName">구름 계곡 ~ 별빛 정상</div>' +
+        '<div class="sa-h" id="v43SideSub" style="margin-top:6px">1번 발판부터 정상까지</div>' +
+        '<div class="sa-rec">' +
+          '<div>최고 높이<b id="v43SideH">0.0m</b></div>' +
+          '<div>최고 층<b id="v43SideP">001</b></div>' +
+        '</div>' +
+        '<div class="sa-hint" style="margin-top:auto;padding-top:14px">한 번 더, 정상까지.<br>탭해서 충전 · 놓아서 점프 · 3% 확률로 태초 귀환</div>' +
+      '</div>';
+    t.appendChild(d);
+    paintSide();
+    setInterval(paintSide, 900);
+  }
+  function paintSide() {
+    const cv = $('v43SideMap');
+    if (!cv || cv.offsetParent === null) return;
+    const mapId = (root.JWMap && (root.JWMap.current || (root.JW43 && JW43.map))) || 'default';
+    const info = (root.JWMap && root.JWMap.byId) ? root.JWMap.byId(mapId) : null;
+    const nameEl = $('v43SideName');
+    if (nameEl) nameEl.textContent = info ? (info.emoji + ' ' + info.name) : '구름 계곡 ~ 별빛 정상';
+    const sub = $('v43SideSub');
+    if (sub) sub.textContent = info ? (info.desc || (info.total + '층')) : '1번 발판부터 정상까지';
+    if (cv.__map !== mapId) {
+      try {
+        if (root.JW43 && JW43.mapThumb43 && JW43.mapThumb43(mapId, cv)) cv.__map = mapId;
+      } catch (e) {}
+    }
+    const hEl = $('v43SideH'), pEl = $('v43SideP');
+    if (hEl || pEl) {
+      let best = 0, plat = 1;
+      try {
+        const st = (root.JW43 && JW43.st) ? JW43.st() : null;
+        const stats = (root.__jwg && root.__jwg.stats) || {};
+        best = Number(stats.bestHeight || stats.best || 0) || 0;
+        plat = Number(stats.bestPlat || 1) || 1;
+      } catch (e) {}
+      if (hEl) hEl.textContent = (Math.round(best * 10) / 10) + 'm';
+      if (pEl) pEl.textContent = String(plat).padStart(3, '0');
+    }
+  }
+
+  function tick() {
+    try { themeRow(); } catch (e) {}
+    try { inlineBanner(); } catch (e) {}
+    try { sideArt(); } catch (e) {}
+  }
+  setInterval(tick, 800);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', tick);
+  else setTimeout(tick, 300);
+
+  root.JW43Theme = {
+    get: () => theme,
+    set: (t) => { theme = (t === 'light') ? 'light' : 'soft'; try { window.localStorage.setItem(KEY, theme); } catch (e) {} apply(theme); }
+  };
+})(window);
+
+/* ==========================================================================
    성공하고싶은 재우 4.3 : 통합 마무리 패치 (fix43)
    - 거리 등급(단거리/중거리/장거리) + 필터
    - 일시정지: 구간명 · 고스트 ON/OFF
@@ -22932,7 +23525,7 @@ extends CanvasLayer
   }
 
   /* ================================================================ 13. 실제 MP3 BGM */
-  var BGM = { main: null, boss: null, cur: '', unlocked: false, target: 0 };
+  var BGM = { main: null, boss: null, lobby: null, seoul: null, cur: '', unlocked: false, target: 0 };
   function bgmInit() {
     if (BGM.main) return;
     try {
@@ -22942,7 +23535,19 @@ extends CanvasLayer
       BGM.boss = new Audio();
       BGM.boss.src = subPath() + 'audio/bgm-boss.mp3';
       BGM.boss.loop = true; BGM.boss.preload = 'auto'; BGM.boss.volume = 0;
+      BGM.lobby = new Audio();
+      BGM.lobby.src = subPath() + 'audio/bgm-lobby.mp3';
+      BGM.lobby.loop = true; BGM.lobby.preload = 'auto'; BGM.lobby.volume = 0;
+      BGM.seoul = new Audio();
+      BGM.seoul.src = subPath() + 'audio/bgm-seoul.mp3';
+      BGM.seoul.loop = true; BGM.seoul.preload = 'auto'; BGM.seoul.volume = 0;
     } catch (e) {}
+  }
+  function bgmCurMap() {
+    try {
+      var id = (V.map) || (root.JWMap && root.JWMap.current) || 'default';
+      return String(id);
+    } catch (e) { return 'default'; }
   }
   function bgmFloorPct() {
     try {
@@ -22966,15 +23571,19 @@ extends CanvasLayer
     var g = J() && J().game;
     var inPlay = !!(g && g.inPlay);
     var boss = inPlay && (bgmMode() === 'boss' || bgmFloorPct() >= 0.8);
-    var wantTrack = boss ? 'boss' : 'main';
+    /* 트랙 선택: 타이틀·로비 → 로비 BGM / 서울 맵 → 서울 BGM / 보스·80%↑ → 보스 / 그 외 → 메인 */
+    var mapId = bgmCurMap();
+    var wantTrack = !inPlay ? 'lobby' : (boss ? 'boss' : (mapId === 'seoul' ? 'seoul' : 'main'));
     if (BGM.cur !== wantTrack) {
-      var old = BGM.cur === 'boss' ? BGM.boss : BGM.main;
+      var old = BGM[BGM.cur];
       if (old) { try { old.pause(); } catch (e) {} }
       BGM.cur = wantTrack;
     }
-    var a = wantTrack === 'boss' ? BGM.boss : BGM.main;
-    var b = wantTrack === 'boss' ? BGM.main : BGM.boss;
-    if (b && !b.paused) { try { b.pause(); } catch (e) {} }
+    var a = BGM[wantTrack] || BGM.main;
+    ['main', 'boss', 'lobby', 'seoul'].forEach(function (k) {
+      var t = BGM[k];
+      if (t && t !== a && !t.paused) { try { t.pause(); } catch (e) {} }
+    });
     if (!a) return;
     /* 볼륨 페이드 */
     var v = want * 0.85;
@@ -22988,7 +23597,7 @@ extends CanvasLayer
     bgmSync();
     setTimeout(bgmSync, 400);
   }
-  root.JW43MP3 = { on: true, sync: bgmSync, unlock: bgmUnlock };
+  root.JW43MP3 = { on: true, sync: bgmSync, unlock: bgmUnlock, tracks: BGM };
 
   /* ================================================================ 14. 칭호 선택 UI 정돈 */
   function paintTitles() {
