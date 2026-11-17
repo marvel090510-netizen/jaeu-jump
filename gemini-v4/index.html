@@ -2873,6 +2873,27 @@ extends CanvasLayer
   </div>
 </div>
 
+<!-- LP-GUARD-JS:START -->
+<script>
+/* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
+(function () {
+  if (window.__lpGuard) { return; }
+  window.__lpGuard = true;
+  var stop = function (e) { if (e && e.cancelable !== false) { e.preventDefault(); } };
+  document.addEventListener('contextmenu', stop, { passive: false });
+  document.addEventListener('selectstart', stop, { passive: false });
+  document.addEventListener('dragstart', stop, { passive: false });
+  document.addEventListener('gesturestart', stop, { passive: false });
+  document.addEventListener('gesturechange', stop, { passive: false });
+  document.addEventListener('gestureend', stop, { passive: false });
+  document.addEventListener('dblclick', stop, { passive: false });
+  /* 두 손가락 이상일 때만 스크롤/확대 제스처를 막는다(한 손가락 스크롤은 그대로). */
+  document.addEventListener('touchmove', function (e) {
+    if (e.touches && e.touches.length > 1) { stop(e); }
+  }, { passive: false });
+})();
+</script>
+<!-- LP-GUARD-JS:END -->
 <!-- ==================== 재우 4.0 멀티 레이스 엔진 ==================== -->
 <script>
 /* ===== 재우 4.0 실시간 통신 (공용 WSS 릴레이 풀 pub/sub) ===== */
@@ -3806,20 +3827,22 @@ extends CanvasLayer
         if (pr.stale) return;
         const rx = pr.rx, ry = pr.ry;
         const oX = p.x + p.w > rx + 5 && p.x < rx + 23;
-        const oY = p.y + p.h > ry + 4 && p.y < ry + 30;
-        if (!oX || !oY) return;
 
-        // 머리 밟기 (아이템 ON)
-        if (S.room.items && p.vy > 150 && (p.y + p.h) < (ry + 20) && now() - (S.stompCd[pr.pid] || 0) > 900) {
+        // 머리 밟기 (아이템 ON): 발이 상대 머리 근처를 지나며 내려올 때
+        const feet = p.y + p.h;
+        if (S.room.items && oX && p.vy > 130 && feet > ry - 14 && feet < ry + 22 && now() - (S.stompCd[pr.pid] || 0) > 900) {
           S.stompCd[pr.pid] = now();
-          p.vy = -Math.max(600, Math.abs(p.vy) * 0.85);
+          p.vy = -Math.max(620, Math.abs(p.vy) * 0.85);
           p.onGround = false; p.plat = null;
           sendEv({ t: 'stomp', to: pr.pid, from: S.me.nick });
           JW().addParticles(rx + 14, ry, '#fca5a5', 16, 180);
-          JW().addText(rx + 14, ry - 16, '밟았다!', '#fca5a5');
+          JW().addText(rx + 14, ry - 18, '밟았다!', '#fca5a5');
           beep(520, 0.09, 0.14, 'square', 900);
           return;
         }
+
+        const oY = p.y + p.h > ry + 4 && p.y < ry + 30;
+        if (!oX || !oY) return;
         if (!S.room.collide) return;
 
         // 충돌은 pid가 작은 쪽이 판정 (중복 튕김 방지)
@@ -4533,26 +4556,5 @@ extends CanvasLayer
 })();
 
 </script>
-<!-- LP-GUARD-JS:START -->
-<script>
-/* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
-(function () {
-  if (window.__lpGuard) { return; }
-  window.__lpGuard = true;
-  var stop = function (e) { if (e && e.cancelable !== false) { e.preventDefault(); } };
-  document.addEventListener('contextmenu', stop, { passive: false });
-  document.addEventListener('selectstart', stop, { passive: false });
-  document.addEventListener('dragstart', stop, { passive: false });
-  document.addEventListener('gesturestart', stop, { passive: false });
-  document.addEventListener('gesturechange', stop, { passive: false });
-  document.addEventListener('gestureend', stop, { passive: false });
-  document.addEventListener('dblclick', stop, { passive: false });
-  /* 두 손가락 이상일 때만 스크롤/확대 제스처를 막는다(한 손가락 스크롤은 그대로). */
-  document.addEventListener('touchmove', function (e) {
-    if (e.touches && e.touches.length > 1) { stop(e); }
-  }, { passive: false });
-})();
-</script>
-<!-- LP-GUARD-JS:END -->
 </body>
 </html>
