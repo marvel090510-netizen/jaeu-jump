@@ -22145,7 +22145,10 @@ extends CanvasLayer
     '#gameHud > div:first-child { padding-right:0 !important; }',
     '#gameHud > div:first-child > div:last-child { margin-right:10px; }',
     '#hudStageCounterMobile, #hudShieldMobile { white-space:nowrap; }',
-    '#hudStageCounterMobile { font-size:9.5px; }'
+    '#hudStageCounterMobile { font-size:9.5px; }',
+    /* 타이틀에서는 토스트가 커버 그림을 가리지 않게 아래쪽으로 */
+    '#mpToasts { top:auto !important; bottom:74px; }',
+    '#gameHud:not(.hidden) ~ #mpToasts, #mpToasts.ingame { top:150px !important; bottom:auto !important; }'
   ].join('\n'));
 
   /* ================================================================ 1. 거리 등급 */
