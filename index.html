@@ -18418,6 +18418,9 @@ extends CanvasLayer
     const t = (root.__jwtime || 0);
     const a = alpha == null ? 1 : alpha;
     const sway = Math.sin(t * 6 + (x || 0) * 0.03) * 1.4;
+    /* 월드 좌표 → 화면 좌표 (camY 를 빼지 않아 화면 밖에 그려지던 버그 수정) */
+    const sy = (y || 0) - (camY || 0);
+    y = sy;
     /* 붉은 위험 오라 */
     ctx.save();
     ctx.globalAlpha = a * 0.2;
@@ -18426,8 +18429,8 @@ extends CanvasLayer
     ctx.restore();
     const img = (ZIMG && ZIMG.complete && ZIMG.naturalWidth) ? ZIMG : null;
     if (img) {
-      /* 160x160 정사각 스프라이트 → 비율 유지(34x34) */
-      const w = 34, h = 34;
+      /* 160x160 정사각 스프라이트 → 비율 유지(40x40, 또렷하게) */
+      const w = 40, h = 40;
       ctx.save();
       ctx.globalAlpha = a;
       ctx.imageSmoothingEnabled = false;
