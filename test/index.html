@@ -231,7 +231,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       <b>최신 빌드 <span class="lbadge">v4.3</span> · 맵 21종 · 모드 13종</b>
       <span>21맵(전부 정상 도달 검증) · 모드 13종 · 아이템 7종 · 방 설정 10종 · 스킨 20종 · 색 12종</span>
     </div>
-    <a class="play" href="../gemini-v4-3/">▶ 바로 플레이</a>
+    <a class="play" href="../gemini-v4-4/">▶ 바로 플레이</a>
   </div>
 
   <div class="cards">
@@ -311,13 +311,13 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
     </a>
 
-    <a class="card latest" href="../gemini-v4-3/" data-ai="gemini" style="--a:#8ec9ff;--a2:#22d3ee;--glow:96,165,250"><span class="pix" aria-hidden="true"></span>
+    <a class="card latest" href="../gemini-v4-4/" data-ai="gemini" style="--a:#8ec9ff;--a2:#22d3ee;--glow:96,165,250"><span class="pix" aria-hidden="true"></span>
       <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
         <path d="M24 4Q26.8 21.2 44 24 26.8 26.8 24 44 21.2 26.8 4 24 21.2 21.2 24 4Z" fill="currentColor" opacity=".24"/>
         <path d="M24 4Q26.8 21.2 44 24 26.8 26.8 24 44 21.2 26.8 4 24 21.2 21.2 24 4Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
       </svg></span>
       <div class="tag">제미나이 버전</div>
-      <h2>제미나이 <small>초대형 · 21맵·모드13·친구·QoL</small></h2>
+      <h2>제미나이 <small>초대형 · 21맵·모드29·꾸미기·QoL</small></h2>
       <p>맵 21종(디저트·공사장·우주·대나무·심해·오락실·빙하·저택·화산·학교·시계탑·부엌·기차·무협·무지개·뉴욕·서울·파리·이집트·후지 + 기본맵) · 모드 13종(잠수 탈출·암전·리듬·불타는 발판·용암·좀비 감염전) · 아이템 7종 · 방 설정 10종 · 봇 통합 · 실시간 친구 활동 · 편리성 40여 종.</p>
       <div class="spec">맵 21종 · 모드 13종 · 아이템 7종 · 스킨 20종 · 방 설정 10종</div>
       <div class="go"><span class="count"><b>7</b>개 버전</span><span class="arrow">→</span></div>
@@ -497,8 +497,23 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       accent: '#8ec9ff', accent2: '#22d3ee', glow: '96,165,250',
       versions: [
         {
-          ver: 'v4.3', label: '초대형 업데이트 · 21맵 · 모드 13종 · 친구 · QoL (최신)', href: '../gemini-v4-3/',
-          date: '2026.11.17', latest: true,
+          ver: 'v4.4', label: '초대형 업데이트 · 모드 15종 추가 · 맵별 구조/기믹 · 꾸미기 (최신)', href: '../gemini-v4-4/',
+          date: '2026.11.18', latest: true,
+          spec: '맵 21종(전부 전용 BGM) · 모드 29종 · 방 규칙 스위치 5종 · 펫 6종 · 치장 4종 · 편의 20종',
+          notes: [
+            '🥊 신규 모드 15종: 보스 러시 · 술래잡기 · 역방향 하강 · 발판 땅따먹기 · 벽 차기 · 황금 코인 · 무한 타워 · 최소 점프 · 기억력 · 보스 레이드 · 유리 다리 · 하트 1개 · 깃발 뺏기 · 고속 발판 · 감각 모드',
+            '🏛️ 클래식 분리: 기존 클래식 → 🔥 챌린지 모드, 새 🏛️ 클래식은 이벤트·아이템·함정·버프·태초 없는 순수 피지컬',
+            '🗺️ 21맵 전부 전용 MP3 BGM 연결 (기본 맵 포함)',
+            '🧱 맵별 고유 발판 구조·기믹(젤리 바운스·부서지는 얼음·유령 발판·케이블카·승강 발판 등) + 발판 테마 디테일',
+            '🌋 맵별 고유 장애물(철구·펄스 레이저·스팀·고드름·유령·종이비행기·불똥 등, 전부 예고 후 회피 가능)',
+            '🎭 스킨·꾸미기 스튜디오: 펫 6종 · 모자·안경·망토·꼬리 잔상·말풍선 스타일 실시간 미리보기',
+            '😈 닉변빵 · 🎲 로비 미니게임 · 👑 지역 왕관 · 📖 도감 · 🏆 트로피 · 🔥 연속 출석 스트릭 · ⚔️ 라이벌 전적',
+            '🧩 편의 20종: 빠른 재시작 · 프리셋 3칸 · 집중 모드 · 핑 · 1초 재도전 · 단축키 · 연습장 저장 등'
+          ]
+        },
+        {
+          ver: 'v4.3', label: '초대형 업데이트 · 21맵 · 모드 13종 · 친구 · QoL', href: '../gemini-v4-3/',
+          date: '2026.11.17', latest: false,
           spec: '맵 21종 · 모드 13종 · 아이템 7종 · 방 설정 10종 · 스킨 20종 · 색 12종',
           notes: [
             '🌍 맵 21종: 심해 아틀란티스 · 네온 오락실 · 북극 빙하 성채 · 유령의 저택 · 공룡 화산 정글 · 학교 탈출 · 거대 시계탑 · 거인 부엌 · 달리는 기차 · 무협 벚꽃 절벽 · 무지개 궁전 · 뉴욕 자유의 여신상 · 서울 한강 & 남산타워 · 파리 에펠탑 야경 · 이집트 피라미드 · 후지산 & 네온 시부야 + 기본맵·디저트·공사장·우주·대나무 (전부 정상 도달 자동 검증)',
