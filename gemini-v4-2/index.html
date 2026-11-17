@@ -10154,6 +10154,8 @@ extends CanvasLayer
   }
   function customRegister(def) {
     V.custom = def;
+    /* 코드 공유·에디터가 같은 맵을 가리키도록 동기화 */
+    if (def && Array.isArray(def.p)) V.ed = { name: def.name || '내 맵', p: def.p.map((x) => ({ x: x.x, h: x.h, w: x.w, t: x.t || 'normal' })) };
     const list = MP() ? MP().list : null;
     if (list && !list.some((m) => m.id === 'custom')) {
       list.push({
@@ -10327,6 +10329,7 @@ extends CanvasLayer
     } else if (m.t === 'm42') {
       const def = edDecode(m.code);
       if (def) {
+        if (V.ed) V.ed = { name: def.name, p: def.p };
         customRegister(def);
         lsSet(LS_MAP, { n: def.name, p: def.p.map((x) => [x.x, x.h, x.w, x.t]) });
         if (S && S.room && S.room.map === 'custom') { MP().current = 'custom'; toast('🧩 친구 커스텀 맵', 'lucky', def.name + ' 맵을 받았습니다', 2200); }
@@ -10536,6 +10539,11 @@ extends CanvasLayer
     const S = W().state;
     if (!g) return;
     hookBus();
+    /* 로비: 커스텀 맵 코드를 미리 공유해 두면 시작할 때 양쪽 월드가 같아진다 */
+    if (S.phase === 'lobby' && S.isHost && S.room && S.room.map === 'custom' && V.custom) {
+      const t = now();
+      if (!poll.__lastMapShare || t - poll.__lastMapShare > 2500) { poll.__lastMapShare = t; send42({ t: 'm42', code: edCode() }); }
+    }
     if (!V.inRun) return;
     if (!g.inPlay) { finishRun('quit'); return; }
     const soloOff = (V.kind === 'solo' && MD() && MD().solo && !MD().solo.active && !V.ai);
