@@ -6720,7 +6720,7 @@ extends CanvasLayer
       }
       /* AI 봇 대전도 순위표·고도바를 실제 멀티처럼 갱신 */
       if (window.__jwgBotRows && window.__jwgBotRows().length) {
-        if (now() - S.hudT > 180) { S.hudT = now(); updateRank(); }
+        if (now() - S.hudT > 180) { S.hudT = now(); updateRank(); checkMilestones(); }
       }
       return;
     }
