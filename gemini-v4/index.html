@@ -3452,7 +3452,7 @@ extends CanvasLayer
       d.innerHTML = '<span class="mp-dot" style="background:' + colorHex(p.color) + '"></span>' +
         '<span class="text-sm font-black text-white flex-1 truncate">' + esc(p.nick) + (p.pid === S.me.pid ? ' <span class="text-[10px] text-sky-300">(나)</span>' : '') + '</span>' +
         (p.host ? '<span class="text-[10px] font-black px-1.5 py-0.5 bg-amber-500 text-slate-950">방장</span>' : '') +
-        (p.ftag ? '<button class="mp-chip" data-addfr="' + esc(p.ftag) + '|' + esc(p.nick) + '" style="padding:3px 6px;font-size:10px">친구+</button>' : '') +
+        (p.ftag && p.pid !== S.me.pid ? '<button class="mp-chip" data-addfr="' + esc(p.ftag) + '|' + esc(p.nick) + '" style="padding:3px 6px;font-size:10px">친구+</button>' : '') +
         '<span class="text-[11px] font-black ' + (p.ready ? 'text-emerald-300' : 'text-slate-400') + '">' + (p.ready ? '준비 ✓' : '대기') + '</span>';
       list.appendChild(d);
     });
@@ -3884,8 +3884,11 @@ extends CanvasLayer
   function standings() {
     const p = JW().player;
     const rows = [];
-    rows.push({ pid: S.me.pid, nick: S.me.nick + ' (나)', color: S.me.color, y: p.y, fin: S.me.fin, time: S.me.time, me: true });
-    S.peers.forEach((pr) => rows.push({ pid: pr.pid, nick: pr.nick, color: pr.color, y: pr.ry !== undefined ? pr.ry : pr.y, fin: pr.fin, time: pr.time, me: false }));
+    rows.push({ pid: S.me.pid, nick: S.me.nick + ' (나)', color: S.me.color, y: p.y, fin: S.me.fin, time: S.me.time, me: true, ftag: ident.ftag });
+    S.peers.forEach((pr) => {
+      const pl = S.players.get(pr.pid);
+      rows.push({ pid: pr.pid, nick: pr.nick, color: pr.color, y: pr.ry !== undefined ? pr.ry : pr.y, fin: pr.fin, time: pr.time, me: false, ftag: pl ? pl.ftag : null });
+    });
     rows.forEach((r) => {
       const idx = S.finishing.findIndex((f) => f.pid === r.pid);
       r.order = idx >= 0 ? idx : 999;
@@ -4062,10 +4065,10 @@ extends CanvasLayer
     $('mpResultTitle').className = 'text-2xl font-black text-center pixel-shadow ' + (rank === 1 ? 'text-amber-300' : 'text-slate-200');
     $('mpResultSub').textContent = '기록 ' + fmt(mine.time) + ' · ' + rows.length + '명 중 ' + rank + '위';
     $('mpResultList').innerHTML = rows.map((r, i) => {
-      const rec = records[r.ftag] ? ' · ' + records[r.ftag].w + '승 ' + records[r.ftag].l + '패' : '';
+      const rec = (!r.me && r.ftag && records[r.ftag]) ? '<span class="text-[10px] font-black text-amber-300">' + records[r.ftag].w + '승 ' + records[r.ftag].l + '패</span>' : '';
       return '<div class="mp-lrow"><span class="text-xs font-black text-amber-300 w-6">' + (i + 1) + '</span>' +
         '<span class="mp-dot" style="background:' + colorHex(r.color) + '"></span>' +
-        '<span class="text-sm font-black text-white flex-1 truncate">' + esc(r.nick) + '</span>' +
+        '<span class="text-sm font-black text-white flex-1 truncate">' + esc(r.nick) + '</span>' + rec +
         '<span class="text-[11px] font-bold text-sky-300">' + (r.fin || r.me ? fmt(r.time) : '진행 중') + '</span></div>';
     }).join('');
     $('mpSpectateBtn').classList.toggle('hidden', S.peers.size === 0);
