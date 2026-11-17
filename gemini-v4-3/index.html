@@ -23525,30 +23525,22 @@ extends CanvasLayer
   }
 
   /* ================================================================ 13. 실제 MP3 BGM */
-  var BGM = { main: null, boss: null, lobby: null, seoul: null, fuji: null, newyork: null, cur: '', unlocked: false, target: 0 };
-  /* 맵별 전용 BGM (없는 맵은 bgm-main) */
-  var MAP_BGM = { seoul: 'seoul', fuji: 'fuji', newyork: 'newyork' };
+  /* 맵별 전용 트랙: 파일 audio/bgm-<id>.mp3 가 있으면 그 맵에서 재생 */
+  var MAP_TRACKS = ['seoul', 'fuji', 'newyork', 'paris', 'egypt', 'arcade', 'mansion', 'atlantis'];
+  var BGM = { main: null, boss: null, lobby: null, cur: '', unlocked: false, target: 0 };
+  function bgmAudio(file) {
+    var a = new Audio();
+    a.src = subPath() + 'audio/' + file;
+    a.loop = true; a.preload = 'auto'; a.volume = 0;
+    return a;
+  }
   function bgmInit() {
     if (BGM.main) return;
     try {
-      BGM.main = new Audio();
-      BGM.main.src = subPath() + 'audio/bgm-main.mp3';
-      BGM.main.loop = true; BGM.main.preload = 'auto'; BGM.main.volume = 0;
-      BGM.boss = new Audio();
-      BGM.boss.src = subPath() + 'audio/bgm-boss.mp3';
-      BGM.boss.loop = true; BGM.boss.preload = 'auto'; BGM.boss.volume = 0;
-      BGM.lobby = new Audio();
-      BGM.lobby.src = subPath() + 'audio/bgm-lobby.mp3';
-      BGM.lobby.loop = true; BGM.lobby.preload = 'auto'; BGM.lobby.volume = 0;
-      BGM.seoul = new Audio();
-      BGM.seoul.src = subPath() + 'audio/bgm-seoul.mp3';
-      BGM.seoul.loop = true; BGM.seoul.preload = 'auto'; BGM.seoul.volume = 0;
-      BGM.fuji = new Audio();
-      BGM.fuji.src = subPath() + 'audio/bgm-fuji.mp3';
-      BGM.fuji.loop = true; BGM.fuji.preload = 'auto'; BGM.fuji.volume = 0;
-      BGM.newyork = new Audio();
-      BGM.newyork.src = subPath() + 'audio/bgm-newyork.mp3';
-      BGM.newyork.loop = true; BGM.newyork.preload = 'auto'; BGM.newyork.volume = 0;
+      BGM.main = bgmAudio('bgm-main.mp3');
+      BGM.boss = bgmAudio('bgm-boss.mp3');
+      BGM.lobby = bgmAudio('bgm-lobby.mp3');
+      MAP_TRACKS.forEach(function (k) { BGM[k] = bgmAudio('bgm-' + k + '.mp3'); });
     } catch (e) {}
   }
   function bgmCurMap() {
@@ -23561,7 +23553,6 @@ extends CanvasLayer
     try {
       var p = J() && J().player;
       if (!p) return 0;
-      var tot = V.mapTotal ? V.mapTotal() : 88;
       var pl = J().platforms || [];
       var top = pl.length ? pl[pl.length - 1].y : -1100;
       if (!top) return 0;
@@ -23579,18 +23570,18 @@ extends CanvasLayer
     var g = J() && J().game;
     var inPlay = !!(g && g.inPlay);
     var boss = inPlay && (bgmMode() === 'boss' || bgmFloorPct() >= 0.8);
-    /* 트랙 선택: 타이틀·로비 → 로비 BGM / 서울 맵 → 서울 BGM / 보스·80%↑ → 보스 / 그 외 → 메인 */
+    /* 라우팅: 타이틀·로비 → 로비 / 보스·80%↑ → 보스 / 맵 전용 → 그 맵 / 나머지 → 메인 */
     var mapId = bgmCurMap();
-    var wantTrack = !inPlay ? 'lobby' : (boss ? 'boss' : (MAP_BGM[mapId] || 'main'));
+    var wantTrack = !inPlay ? 'lobby' : (boss ? 'boss' : (MAP_TRACKS.indexOf(mapId) >= 0 ? mapId : 'main'));
     if (BGM.cur !== wantTrack) {
       var old = BGM[BGM.cur];
       if (old) { try { old.pause(); } catch (e) {} }
       BGM.cur = wantTrack;
     }
     var a = BGM[wantTrack] || BGM.main;
-    ['main', 'boss', 'lobby', 'seoul', 'fuji', 'newyork'].forEach(function (k) {
+    Object.keys(BGM).forEach(function (k) {
       var t = BGM[k];
-      if (t && t !== a && !t.paused) { try { t.pause(); } catch (e) {} }
+      if (t && t !== a && t.pause && !t.paused) { try { t.pause(); } catch (e) {} }
     });
     if (!a) return;
     /* 볼륨 페이드 */
