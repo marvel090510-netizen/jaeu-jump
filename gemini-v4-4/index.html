@@ -2103,13 +2103,27 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
         return String(m).padStart(2, '0') + ':' + String(s).padStart(4, '0');
       }
 
+      /* 4.4: 최고 기록은 오직 현재 (맵·모드) 조합 기준 */
+      function recNowSafe() {
+        try { if (window.JW43 && JW43.recNow) return JW43.recNow(); } catch (e) {}
+        return null;
+      }
+      function recordMeters() {
+        const r = recNowSafe();
+        return (r && r.m) ? r.m : 0;
+      }
+      function recordPlat() {
+        const r = recNowSafe();
+        return (r && r.plat) ? r.plat : 1;
+      }
+
       function syncHud(curMeters = 0) {
         const z = getZoneByY(player.y);
         document.getElementById('hudZoneName').textContent = (window.JWG && JWG.zoneName) ? JWG.zoneName(player.y, z) : z.name;
         document.getElementById('hudCurHeight').textContent = curMeters.toFixed(1) + 'm';
-        document.getElementById('hudBestHeight').textContent = stats.bestHeight.toFixed(1) + 'm';
+        document.getElementById('hudBestHeight').textContent = (recordMeters()).toFixed(1) + 'm';
 
-        const curIdx = (player.plat && player.plat.index > 0) ? player.plat.index : player.runBestPlat;
+        const curIdx = Math.max(1, (player.plat && player.plat.index > 0) ? player.plat.index : Math.max(1, player.runBestPlat || 1));
         const sStr = String(curIdx).padStart(3, '0') + ' / ' + String((window.JW43 && JW43.mapTotal) ? JW43.mapTotal() : 88).padStart(3, '0');
         document.getElementById('hudStageCounter').textContent = sStr;
         document.getElementById('hudStageCounterMobile').textContent = '★ ' + sStr;
@@ -2238,6 +2252,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
         let ox = ((canvas.width - viewW) >> 1);
         if (zoomK !== 1) ox = Math.round(canvas.width / 2 - (player.x + 14) * scale);
         const logicalH = Math.ceil(canvas.height / scale);
+        game.camH = logicalH; game.camW = viewW;
 
         const sx = game.shakeT > 0 ? ((Math.random() - 0.5) * game.shakeMag * 2) | 0 : 0;
         const sy = game.shakeT > 0 ? ((Math.random() - 0.5) * game.shakeMag * 2) | 0 : 0;
@@ -2486,8 +2501,8 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
         document.getElementById('titleScreen').classList.remove('hidden');
         document.getElementById('btnQuickPlayToggle').textContent = '⚡ 바로 플레이';
 
-        document.getElementById('titleBestHeight').textContent = stats.bestHeight.toFixed(1) + ' m';
-        document.getElementById('titleBestPlat').textContent = String(stats.bestPlat).padStart(3, '0') + ' / ' + String((window.JW43 && JW43.mapTotal) ? JW43.mapTotal() : 88).padStart(3, '0');
+        document.getElementById('titleBestHeight').textContent = (recordMeters()).toFixed(1) + ' m';
+        document.getElementById('titleBestPlat').textContent = String(recordPlat()).padStart(3, '0') + ' / 088';
         document.getElementById('titleOriginCount').textContent = stats.originCount + '회';
         document.getElementById('titleClearCount').textContent = stats.clearCount + '회';
       }
@@ -4550,7 +4565,8 @@ extends CanvasLayer
     originRandom: false,
     events: true,
     buffs: true,
-    traps: true,
+    /* 4.4: 함정은 멀티 레이스·방 규칙 전용 — 싱글 기본값 OFF (직접 켜면 동작) */
+    traps: false,
     items: true,
     collide: true,
     evList: null,      /* null = 전체, 아니면 켜진 key 배열 */
@@ -5474,17 +5490,43 @@ extends CanvasLayer
       graphPts: graph.pts.slice(),
       map: (root.JWMap.byId(solo.map) || {}).name || '기본',
       mode: (modeById(solo.mode) || {}).name || '일반',
+      modeId: solo.mode || 'normal',
       clear: reason === 'clear'
     };
     showSoloEnd(data);
     try { root.JWMode.lastSoloEnd = data; } catch (e) {}
   }
 
+  /* 실패 사유별 결과창 제목 (모드·사유를 정확히 구분) */
+  const SOLO_END_TITLE = {
+    clear: '🏆 정상 등극!',
+    lava: '🌋 용암에 잠겼다!',
+    dive: '🌊 산소가 다 떨어졌다!',
+    drown: '🌊 산소가 다 떨어졌다!',
+    timeup: '⏱️ 시간 종료!',
+    caught: '🧟 좀비에게 잡혔다!',
+    heart: '💔 한 번의 실수로 끝!',
+    boss: '👊 보스에게 당했다!',
+    fall: '💥 추락했다!'
+  };
+  function soloEndTitle(d) {
+    if (!d) return '💀 도전 실패';
+    if (d.clear) return SOLO_END_TITLE.clear;
+    if (d.reason && SOLO_END_TITLE[d.reason]) return SOLO_END_TITLE[d.reason];
+    /* 사유가 비어 있으면 모드로 추정 (좀비 모드만 좀비 문구) */
+    if (d.modeId === 'zombie') return SOLO_END_TITLE.caught;
+    if (d.modeId === 'lava') return SOLO_END_TITLE.lava;
+    if (d.modeId === 'dive') return SOLO_END_TITLE.dive;
+    if (d.modeId === 'timeattack') return SOLO_END_TITLE.timeup;
+    if (d.modeId === 'oneheart') return SOLO_END_TITLE.heart;
+    return '💀 도전 실패';
+  }
+
   function showSoloEnd(d) {
     const ov = $('soloEnd');
     if (!ov) { return; }
     ov.classList.remove('hidden');
-    $('soloEndTitle').textContent = d.clear ? '🏆 정상 등극!' : (d.reason === 'lava' ? '🌋 용암에 잠겼다!' : (d.reason === 'caught' ? '🧟 좀비에게 잡혔다!' : '⏱️ 시간 종료!'));
+    $('soloEndTitle').textContent = soloEndTitle(d);
     $('soloEndSub').textContent = d.mode + ' · ' + d.map + ' · ' + Math.round(d.meters) + 'm · ' + fmt(d.time) + ' · 태초 ' + d.origin + '회';
     $('soloEndWorst').textContent = '📍 마의 구간: ' + metersToFloor(d.worst) + '층';
     const cv = $('soloEndGraph');
@@ -7514,8 +7556,9 @@ extends CanvasLayer
   }
 
   function drawWorld(ctx, camY, logicalH) {
-    if (S.phase === 'idle') return;
+    /* 싱글에서도 모드 이펙트(좀비·불꽃·아이템·BEST)를 그린다 */
     if (MD() && MD().drawWorld) MD().drawWorld(ctx, camY, logicalH, JW());
+    if (S.phase === 'idle') return;
     // 방해/아이템
     if (S.items && S.items.length) {
       const t = now() / 300;
@@ -11733,7 +11776,7 @@ extends CanvasLayer
     });
   }
   function swRow(label, desc, on, act, extra) {
-    return '<button type="button" class="v42-srow' + (on ? ' on' : '') + '" data-act="' + act + '">' +
+    return '<button type="button" class="v42-srow' + (on ? ' on' : '') + '" data-act="' + act + '" data-v44set="' + act + '">' +
       '<span class="tx"><b>' + label + '</b>' + (desc ? '<i>' + desc + '</i>' : '') + '</span>' +
       '<span class="sw">' + (on ? 'ON' : 'OFF') + '</span>' + (extra || '') + '</button>';
   }
@@ -11764,11 +11807,11 @@ extends CanvasLayer
         '<button type="button" class="v42-mapc' + (m.id === v.map ? ' on' : '') + '" data-map="' + m.id + '">' +
         '<canvas width="62" height="44"></canvas><span class="tx"><b>' + m.emoji + ' ' + m.name + '</b>' +
         '<span class="v42-mrow"><em style="color:' + (m.diffColor || '#94a3b8') + '">' + (m.diff || '') + '</em>' +
-        '<span class="v42-tot">' + ((V43 && V43.mapTotal) ? V43.mapTotal(m.id) : 88) + '층</span></span>' +
+        '<span class="v42-tot">' + ((window.JW43 && window.JW43.mapTotal) ? window.JW43.mapTotal(m.id) : 88) + '층</span></span>' +
         '<i>' + (m.desc || '') + '</i></span></button>').join('');
       ml.querySelectorAll('[data-map]').forEach((b) => {
         const id = b.getAttribute('data-map');
-        try { if (!(V43 && V43.mapThumb43 && V43.mapThumb43(id, b.querySelector('canvas')))) mapThumb(b.querySelector('canvas'), id); }
+        try { if (!(window.JW43 && window.JW43.mapThumb43 && window.JW43.mapThumb43(id, b.querySelector('canvas')))) mapThumb(b.querySelector('canvas'), id); }
         catch (e) { try { mapThumb(b.querySelector('canvas'), id); } catch (e2) {} }
         b.addEventListener('click', () => {
           const patch = { map: id };
@@ -11891,6 +11934,8 @@ extends CanvasLayer
         if (k === 'weather') { CFG.weather = !CFG.weather; saveCfg(); renderRules(); }
       }));
     }
+    /* 규칙 잠금(🔒) 안내도 이 모달의 탭 패널에 함께 표시 */
+    try { if (root.JW44 && root.JW44.paintModeLocks) root.JW44.paintModeLocks(); } catch (e) {}
     setRuleTab(RU.tab);
   }
   function startFromRules() {
@@ -13096,6 +13141,17 @@ extends CanvasLayer
         try { if (root.__v42saveCfg) root.__v42saveCfg(); } catch (e) {}
       }
       window.localStorage.setItem('jw43_ghost_off_v1', '1');
+    }
+  } catch (e) {}
+  /* 4.4: 라이벌 유령은 기본 삭제(OFF). 설정에서 직접 켠 경우에만 보인다 */
+  try {
+    if (!window.localStorage.getItem('v44_ghost_off_v2')) {
+      const c = root.__v42cfg;
+      if (c) {
+        c.ghost = 'off';
+        try { if (root.__v42saveCfg) root.__v42saveCfg(); } catch (e) {}
+      }
+      window.localStorage.setItem('v44_ghost_off_v2', '1');
     }
   } catch (e) {}
 
@@ -18174,10 +18230,19 @@ extends CanvasLayer
      ================================================================ */
   function spawnZombies() {
     M.zombs = [];
-    if (!J() || !J().platforms) return;
-    const p = J().platforms[0];
-    if (!p) return;
-    M.zombs.push({ x: p.x + 4, y: p.y - 34, vy: 0, vx: 0, onGround: true, wait: 2.2, pose: 'idle1', facing: 1 });
+    const jw = J();
+    if (!jw || !jw.platforms) return;
+    const pl = jw.player;
+    const p = jw.platforms[0];
+    if (!pl) return;
+    /* 4.4: 화면에 바로 보이도록 플레이어가 선 발판 위, 30px 옆에서 출발 */
+    const host = pl.plat || p;
+    const px = pl.x, hx = host ? host.x : 0, hw = host ? host.w : 260;
+    const want = px + (px < hx + hw / 2 ? 110 : -110);
+    const x = Math.max(hx + 2, Math.min(hx + hw - 28, want));
+    const y = (host ? host.y : 0) - 34;
+    M.zombs.push({ x: x, y: y, vy: 0, vx: 0, onGround: true, wait: 1.0, pose: 'idle1', facing: 1, grace: 2.2 });
+    M.zombSpawnT = (jw.game && jw.game.time) || 0;
   }
 
   function nearestPlatAbove(y, x) {
@@ -18193,39 +18258,70 @@ extends CanvasLayer
     return best;
   }
 
+  /* 좀비가 오를 다음 발판: 플레이어보다 위로는 올라가지 않는다 */
+  function chaseTarget(z, pl, plats) {
+    const feet = z.y + 34;
+    let best = null;
+    for (let i = 0; i < plats.length; i++) {
+      const q = plats[i];
+      if (!q || q.index <= 0 || q.crumbled) continue;
+      if (pl && q.y < pl.y + 6) continue;
+      if (q.y >= feet - 4) continue;
+      if (pl && Math.abs((q.x + q.w / 2) - (pl.x + 14)) > 320) continue;
+      if (!best || q.y > best.y) best = q;
+    }
+    return best;
+  }
+
   function zombieTick43(dt, multi) {
     const g = J().game, pl = J().player;
     if (!M.zombs.length) spawnZombies();
     const plats = J().platforms || [];
     const speed = 1 + Math.min(0.9, (g.time || 0) / 160);
+    /* 4.4: 플레이어와 멀어질수록 자동 추격 가속 (화면 밖으로 벌어지지 않게) */
+    const pGapM = pl ? Math.max(0, (pl.y - (M.zombs[0] ? M.zombs[0].y : pl.y)) / 13.4) : 0;
+    const boost = 1 + Math.min(2.4, pGapM / 5);
     M.zombs.forEach((z) => {
       if (z.onGround) {
-        z.wait -= dt * speed;
+        z.wait -= dt * speed * (1 + (boost - 1) * 0.6);
         if (z.wait <= 0) {
-          const tgt = nearestPlatAbove(z.y + 30, z.x + 12) || plats[1];
+          /* 플레이어 높이까지만 따라 올라간다 (플레이어보다 위로 튀어 오르지 않게) */
+          const tgt = chaseTarget(z, pl, plats);
+          if (!tgt) { z.wait = 0.5; }
           if (tgt) {
             const up = Math.max(60, (z.y + 34) - tgt.y + 24);
             const gg = 1400;
             z.vy = -Math.sqrt(2 * gg * up);
-            z.vx = Math.max(-380, Math.min(380, (tgt.x + tgt.w / 2 - 12 - z.x) / 0.45));
+            z.vx = Math.max(-420, Math.min(420, (tgt.x + tgt.w / 2 - 12 - z.x) / 0.42));
             z.onGround = false;
             z.facing = z.vx >= 0 ? 1 : -1;
           }
+          z.wait = 0.05;
         }
       } else {
+        const prevFeet = z.y + 34;
         z.vy += 1400 * dt;
         z.x += z.vx * dt;
         z.y += z.vy * dt;
+        const feet = z.y + 34;
         for (let i = 0; i < plats.length; i++) {
           const p = plats[i];
           if (p.crumbled || p.index < 0) continue;
-          if (z.x + 24 > p.x + 2 && z.x < p.x + p.w - 2 && z.vy >= 0 && z.y + 34 >= p.y && z.y + 34 <= p.y + 30) {
+          /* 낙하 스윕 판정: 한 프레임에 발판을 통과해도 착지한다 (저프레임 터널링 방지) */
+          if (z.x + 24 > p.x + 2 && z.x < p.x + p.w - 2 && z.vy >= 0 && feet >= p.y && prevFeet <= p.y + 8) {
             z.y = p.y - 34; z.vy = 0; z.onGround = true;
             z.wait = Math.max(0.12, 0.6 - (g.time || 0) * 0.004) / speed;
             break;
           }
         }
-        if (z.y > 1200) { z.y = 60; z.x = 80; z.onGround = true; z.vy = 0; }
+        /* 바닥 발판보다 아래로 내려가면 즉시 되돌린다 (화면 밖 실종 방지) */
+        const floorP = plats[0];
+        if (floorP && z.y + 34 > floorP.y + 60) {
+          z.y = floorP.y - 34;
+          z.x = Math.max(floorP.x + 4, Math.min(floorP.x + floorP.w - 30, z.x));
+          z.vy = 0; z.vx = 0; z.onGround = true;
+          z.wait = 0.3;
+        }
       }
       if (!M.infected['ai' + (z.id || 0)]) z.wait = z.wait;
     });
@@ -18243,8 +18339,18 @@ extends CanvasLayer
         V.beep(70 + k * 40, 0.07, 0.05 + k * 0.05, 'sine', 50);
       }
     } else if (vg) vg.style.opacity = '0';
+    /* 4.4: 좀비가 화면 아래로 벗어나면 하단 중앙 경고 배지 */
+    try {
+      let zn = null, bd = 1e9;
+      M.zombs.forEach((z) => { const dd = Math.abs(z.y - pl.y); if (dd < bd) { bd = dd; zn = z; } });
+      const camH = (g.camH || 620);
+      const off = zn ? ((zn.y - (g.camY || 0)) > camH + 6) : false;
+      const belowM = zn ? Math.max(0, (zn.y - pl.y) / 13.4) : 0;
+      zombWarn(off && belowM > 1.2, belowM);
+    } catch (e) {}
     /* 잡힘 / 감염 */
     M.zombs.forEach((z) => {
+      if ((g.time || 0) - (M.zombSpawnT || 0) < 2.0) return;
       if (Math.abs((z.x + 12) - (pl.x + 14)) < 22 && Math.abs((z.y + 17) - (pl.y + 17)) < 30) {
         if (multi) infectMe('zombie');
         else if (MD() && MD().endSolo) MD().endSolo('caught');
@@ -18273,6 +18379,22 @@ extends CanvasLayer
     }
   }
 
+  /* 좀비가 화면 밖(아래)에 있을 때 표시하는 경고 배지 */
+  function zombWarn(show, m) {
+    let el = $('v44ZombWarn');
+    if (!show) { if (el) el.classList.add('hidden'); return; }
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'v44ZombWarn';
+      el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:86px;z-index:26;'
+        + 'padding:5px 11px;font:900 11px "Galmuri11",monospace;color:#fee2e2;background:rgba(127,29,29,.9);'
+        + 'border:2px solid #f87171;box-shadow:0 3px 0 #450a0a;pointer-events:none;letter-spacing:.02em';
+      document.body.appendChild(el);
+    }
+    el.classList.remove('hidden');
+    el.textContent = '\ud83e\udddf 좀비 접근 중! ' + Math.max(1, Math.round(m)) + 'm \u25be';
+  }
+
   function infectMe(by) {
     const S = V.st();
     if (M.infected[S.me.pid]) return;
@@ -18289,6 +18411,7 @@ extends CanvasLayer
     try { const im = new Image(); im.src = 'assets/zombie.png'; return im; } catch (e) { return null; }
   })();
   V.zombieImg = ZIMG;
+  V.zombState = function () { return { zombs: M.zombs, infected: M.infected, count: M.zombs.length }; };
 
   /* 좀비/감염자 그리기 (월드 좌표) */
   function drawZombieWorld(ctx, camY, x, y, facing, alpha) {
@@ -18303,7 +18426,8 @@ extends CanvasLayer
     ctx.restore();
     const img = (ZIMG && ZIMG.complete && ZIMG.naturalWidth) ? ZIMG : null;
     if (img) {
-      const w = 30, h = 36;
+      /* 160x160 정사각 스프라이트 → 비율 유지(34x34) */
+      const w = 34, h = 34;
       ctx.save();
       ctx.globalAlpha = a;
       ctx.imageSmoothingEnabled = false;
@@ -20937,6 +21061,20 @@ extends CanvasLayer
     return d[c.key] || { m: 0, plat: 1, t: 0, clears: 0, pts: [] };
   };
   V.recKey = function () { return combo().key; };
+  /* 현재 (맵·모드) 조합 기록을 항상 같은 키로 보장한다 — 다른 모드 BEST가 섞이지 않도록 */
+  V.recNow = function () {
+    const c = combo();
+    if (RC.key !== c.key) {
+      RC.key = c.key;
+      RC.cur = ensure(c.key)[c.key];
+    }
+    if (!RC.cur) RC.cur = ensure(c.key)[c.key];
+    return RC.cur;
+  };
+  V.recFor = function (mapId, modeId) {
+    const d = all();
+    return d[(mapId || 'default') + ':' + (modeId || 'normal')] || { m: 0, plat: 1, t: 0, clears: 0, pts: [] };
+  };
 
   /* 프레임마다 최고 기록 갱신 */
   V.recTick = function (dt) {
@@ -21007,25 +21145,32 @@ extends CanvasLayer
     }
   }
 
-  /* BEST 돌파선 */
+  /* BEST 돌파선 → 화면 가장자리 미니 마커 (가로지르는 선 제거) */
   function drawBestLine(ctx, camY, lh) {
     if (!V.QOL.bestLine) return;
-    const rec = RC.cur;
+    const rec = (V.recNow && V.recNow()) || RC.cur;
     if (!rec || !rec.m || rec.m < 1) return;
     const y = -rec.m * 13.4;
     const sy = y - camY;
     if (sy < -20 || sy > lh + 20) return;
+    const WW = (J() && J().WORLD_W) || 540;
+    /* 좌상단 HUD·모드 칩 영역(y<210)과 겹치면 오른쪽 가장자리에만 표시 */
+    const leftOK = sy >= 210;
     ctx.save();
-    ctx.strokeStyle = 'rgba(251,191,36,.85)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash && ctx.setLineDash([6, 5]);
+    ctx.strokeStyle = 'rgba(253,224,71,.5)';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(46, sy); ctx.lineTo(494, sy); ctx.stroke();
-    ctx.setLineDash && ctx.setLineDash([]);
-    ctx.fillStyle = '#fde047';
-    ctx.font = 'bold 9px "Galmuri11", monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText('BEST ' + rec.m.toFixed(1) + 'm', 48, sy - 4);
+    if (leftOK) { ctx.moveTo(2, sy); ctx.lineTo(26, sy); }
+    ctx.moveTo(WW - 26, sy); ctx.lineTo(WW - 2, sy);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(253,224,71,.72)';
+    ctx.font = 'bold 8px "Galmuri11", monospace';
+    if (leftOK) {
+      ctx.textAlign = 'left';
+      ctx.fillText('\u25b8BEST', 2, sy - 4);
+    }
+    ctx.textAlign = 'right';
+    ctx.fillText('BEST\u25c2', WW - 2, sy - 4);
     ctx.restore();
   }
 
@@ -21064,13 +21209,11 @@ extends CanvasLayer
     if (sub) {
       const map = MP() ? MP().byId(c.map) : null;
       const mode = MD() && MD().modeById ? MD().modeById(c.mode) : null;
-      const W = J();
-      const allBest = (W && W.stats && W.stats.bestHeight) || 0;
-      const clears = (W && W.stats && W.stats.clearCount) || 0;
+      /* 4.4: 전체 최고 대신 이 (맵·모드) 조합 기록만 보여준다 */
       sub.innerHTML = '🗺️ ' + (map ? map.emoji + ' ' + escapeHtml(map.name) : '기본') + ' · 🎮 ' + (mode ? mode.emoji + ' ' + escapeHtml(mode.name) : '일반') +
+        (rec.m ? ' · 최고 ' + (rec.m || 0).toFixed(1) + 'm' : '') +
         (rec.t ? ' · 최단 ' + V.fmtTime(rec.t / 1000) : '') +
-        '<br>전체 최고 ' + allBest.toFixed(1) + 'm · 총 완등 ' + clears + '회' +
-        (rec.clears ? ' · 이 조합 완등 ' + rec.clears + '회' : '');
+        (rec.clears ? ' · 완등 ' + rec.clears + '회' : '');
     }
   }
   function escapeHtml(s) { return String(s == null ? '' : s).replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -22086,6 +22229,9 @@ extends CanvasLayer
   /* 라이벌 고스트 */
   function ghostDraw(ctx, camY) {
     if (!Q.aura) return;
+    /* 4.4: 기본 OFF — 설정에서 고스트를 직접 켰을 때만 그린다 */
+    if (V.ghostOn && !V.ghostOn()) return;
+    if (V.ghostBlocked && V.ghostBlocked()) return;
     const gh = ST.ghost;
     if (!gh || !gh.pts || gh.pts.length < 3) return;
     const g = J().game;
@@ -22135,7 +22281,7 @@ extends CanvasLayer
     /* BEST · 페이스 */
     const chip = $('v43BestChip');
     if (chip) {
-      const rec = V.recOf ? V.recOf() : null;
+      const rec = V.recNow ? V.recNow() : (V.recOf ? V.recOf() : null);
       if (!rec || !g.inPlay) chip.classList.add('hidden');
       else {
         chip.classList.remove('hidden');
@@ -23488,10 +23634,11 @@ extends CanvasLayer
     if (hEl || pEl) {
       let best = 0, plat = 1;
       try {
-        const st = (root.JW43 && JW43.st) ? JW43.st() : null;
-        const stats = (root.__jwg && root.__jwg.stats) || {};
-        best = Number(stats.bestHeight || stats.best || 0) || 0;
-        plat = Number(stats.bestPlat || 1) || 1;
+        /* 4.4: 선택한 (맵·모드) 조합의 기록만 표시 */
+        const mode = (root.JWMode && root.JWMode.rules && root.JWMode.rules.mode) || 'normal';
+        const rec = (root.JW43 && root.JW43.recFor) ? root.JW43.recFor(mapId, mode) : null;
+        best = Number(rec && rec.m) || 0;
+        plat = Number(rec && rec.plat) || 1;
       } catch (e) {}
       if (hEl) hEl.textContent = (Math.round(best * 10) / 10) + 'm';
       if (pEl) pEl.textContent = String(plat).padStart(3, '0');
@@ -23910,6 +24057,25 @@ extends CanvasLayer
     /* 스크롤 목록은 pan-y 유지 */
     Array.prototype.forEach.call(doc.querySelectorAll('.v43-card, .v42-card, .v41-card, .v43-opts'), function (el) {
       el.style.touchAction = 'pan-y';
+    });
+  }
+
+  /* ================================================================ 8-b. 조작 버튼 꾹 누르기(돋보기·콜아웃) 완전 차단 */
+  function wireCalloutGuard() {
+    var SEL = '#touchBtnLeft, #touchBtnRight, #touchBtnJump, #touchLayer button, .touch-btn, #controls button, #leftBtn, #rightBtn, #jumpBtn';
+    var els = doc.querySelectorAll(SEL);
+    Array.prototype.forEach.call(els, function (el) {
+      if (!el || el.__tcg) return;
+      el.__tcg = true;
+      el.style.webkitTouchCallout = 'none';
+      el.style.webkitUserSelect = 'none';
+      el.style.userSelect = 'none';
+      el.style.webkitUserDrag = 'none';
+      el.style.touchAction = 'none';
+      el.addEventListener('touchstart', function (e) { if (e.cancelable !== false) e.preventDefault(); }, { passive: false });
+      el.addEventListener('touchmove', function (e) { if (e.cancelable !== false) e.preventDefault(); }, { passive: false });
+      el.addEventListener('touchend', function (e) { if (e.cancelable !== false) e.preventDefault(); }, { passive: false });
+      el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     });
   }
 
@@ -24578,12 +24744,14 @@ extends CanvasLayer
     try { paintTitles(); } catch (e) {}
     try { fsEntry(); } catch (e) {}
     try { fixHeadPaths(); } catch (e) {}
+    try { wireCalloutGuard(); } catch (e) {}
   }
 
   function init() {
     wireClickSfx();
     wireAudio();
     wireGestureGuard();
+    try { wireCalloutGuard(); } catch (e) {}
     try { dedupeWindows(); } catch (e) {}
     try { wireRulesEntry(); } catch (e) {}
     tick();
@@ -24640,7 +24808,7 @@ extends CanvasLayer
   G.minJumps = 0;
   G.tag = { chaser: null, caught: {}, t: 0, dur: 90, role: 'runner', bot: null };
   G.paint = { total: 0, target: 0 };
-  G.descend = { fallFrom: 0, dead: false };
+  G.descend = { fallFrom: 0, dead: false, topIndex: 0, topY: 0, topStarted: false, spawnT: 0, won: false };
   G.gold = { on: false };
   G.ruleSeed = 0;
   G.rndStartT = 0;
@@ -24667,7 +24835,10 @@ extends CanvasLayer
     if (ogn && !V.__v44gn) {
       V.__v44gn = true;
       V.goalNow = function () {
-        try { if (curMode() === 'randomtgt' && G.rtgt) return G.rtgt; } catch (e) {}
+        try {
+          if (curMode() === 'randomtgt' && G.rtgt) return G.rtgt;
+          if (curMode() === 'descend') return 1;
+        } catch (e) {}
         return ogn.apply(this, arguments);
       };
     }
@@ -24741,7 +24912,7 @@ extends CanvasLayer
     G.memoryT = 0; G.hiddenMem = false;
     G.endless = { top: 88, gen: 0 };
     G.tag = { chaser: null, caught: {}, t: 0, dur: 90, role: 'runner', bot: null };
-    G.descend = { fallFrom: 0, dead: false };
+    G.descend = { fallFrom: 0, dead: false, topIndex: 0, topY: 0, topStarted: false, spawnT: 0, won: false };
     G.gold.on = false; G.rndStartT = 0;
     if (G.restoreHearts) { try { G.restoreHearts(); } catch (e) {} G.restoreHearts = null; }
     const chip = $('v44Chip'); if (chip) chip.classList.add('hidden');
@@ -24799,12 +24970,21 @@ extends CanvasLayer
       G.rtgt = 0;
     }
     if (mode === 'descend') {
+      /* 정상(가장 높은 발판) 위에 정확히 안전 스폰: 허공 낙하·끼임 없이 발판 중앙에 내려놓는다 */
       const top = ps[ps.length - 1];
       if (top) {
         p.x = top.x + top.w / 2 - p.w / 2; p.y = top.y - p.h - 1;
         p.vx = 0; p.vy = 0; p.onGround = true; p.plat = top; p.runBestPlat = top.index;
+        p.peakFallVy = 0;
         g.camY = p.y - 260;
         G.descend.fallFrom = p.y;
+        G.descend.dead = false;
+        G.descend.won = false;
+        G.descend.topIndex = top.index;
+        G.descend.topY = top.y;
+        G.descend.spawnT = performance.now();
+        /* 아직 정상에서 출발하지 않았다 → 1층 판정·클리어 금지 */
+        G.descend.topStarted = false;
       }
     }
     if (mode === 'endless') {
@@ -24853,8 +25033,23 @@ extends CanvasLayer
   }
   G.win = win;
   function lose(why) {
+    const mode = G.mode || curMode();
+    const s = String(why || '');
+    /* 실패 사유를 모드/문구에 맞게 분류: 하트 1개 모드가 '좀비'로 뜨던 문제 수정 */
+    let reason = 'fail';
+    if (mode === 'oneheart') reason = 'heart';
+    else if (mode === 'zombie') reason = 'caught';
+    else if (mode === 'lava') reason = 'lava';
+    else if (mode === 'dive') reason = 'dive';
+    else if (/보스/.test(s)) reason = 'boss';
+    else if (/추락/.test(s)) reason = 'fall';
+    else if (/좀비/.test(s)) reason = 'caught';
+    else if (/산소|물/.test(s)) reason = 'dive';
+    else if (/용암/.test(s)) reason = 'lava';
+    else if (/시간/.test(s)) reason = 'timeup';
+    G.failReason = reason;
     if (multi()) { try { V.outOverlay('💥 ' + why); } catch (e) {} }
-    else if (MD() && MD().endSolo) { try { MD().endSolo('caught', { why: why }); } catch (e) {} }
+    else if (MD() && MD().endSolo) { try { MD().endSolo(reason, { why: why, mode: mode }); } catch (e) {} }
   }
   G.lose = lose;
 
@@ -25345,17 +25540,44 @@ extends CanvasLayer
 
   /* ---------- 역방향 하강 ---------- */
   function descendTick(dt) {
-    const p = pl();
-    if (!p || !G.descend) return;
-    if (p.onGround || p.vy < 0) { G.descend.fallFrom = p.y; return; }
-    const drop = (p.y - G.descend.fallFrom) / 13.4;
-    if (drop > 250 && !G.descend.dead) {
-      G.descend.dead = true;
-      V.toast('💀 추락사!', 'danger', '한 번에 ' + Math.round(drop) + 'm 추락', 2600);
-      lose('추락사');
-    } else if (drop > 160) {
-      const vg = $('v43Vig');
-      if (vg) { vg.style.opacity = String(Math.min(0.5, (drop - 160) / 200)); vg.style.background = 'radial-gradient(circle at 50% 55%, rgba(3,5,12,0) 40%, rgba(190,18,60,.8) 100%)'; }
+    const p = pl(), g = game();
+    if (!p || !G.descend || !g) return;
+    /* 1) 정상에서 실제로 출발했는지 판정 (한 번만 true) */
+    if (!G.descend.topStarted) {
+      const leftPlat = !p.onGround || (p.plat && p.plat.index !== G.descend.topIndex);
+      const movedDown = p.y > G.descend.topY + 24;
+      const jumped = (g.jumps || 0) > (G.descend.jump0 || 0);
+      if (leftPlat || movedDown || jumped) {
+        G.descend.topStarted = true;
+        G.descend.jump0 = g.jumps || 0;
+        G.descend.fallFrom = p.y;
+        V.toast('⬇️ 역방향 하강', 'lucky', '1층 바닥까지 내려가면 클리어!', 2200);
+      }
+      return;
+    }
+    /* 2) 추락사 판정 */
+    if (p.onGround || p.vy < 0) { G.descend.fallFrom = p.y; }
+    else {
+      const drop = (p.y - G.descend.fallFrom) / 13.4;
+      if (drop > 250 && !G.descend.dead) {
+        G.descend.dead = true;
+        V.toast('💀 추락사!', 'danger', '한 번에 ' + Math.round(drop) + 'm 추락', 2600);
+        lose('추락사');
+        return;
+      } else if (drop > 160) {
+        const vg = $('v43Vig');
+        if (vg) { vg.style.opacity = String(Math.min(0.5, (drop - 160) / 200)); vg.style.background = 'radial-gradient(circle at 50% 55%, rgba(3,5,12,0) 40%, rgba(190,18,60,.8) 100%)'; }
+      }
+    }
+    /* 3) 1층 바닥 도달 → 클리어 (정상에서 출발한 뒤 1초 이상 경과했을 때만) */
+    if (!G.descend.won && G.descend.topStarted && (g.time || 0) > 1.0 && p.onGround) {
+      const idx = (p.plat && p.plat.index > 0) ? p.plat.index : (V.floorOf ? V.floorOf(p.y) : 99);
+      if (idx <= 1) {
+        G.descend.won = true;
+        V.toast('🏁 1층 도착!', 'lucky', '역방향 하강 클리어', 2800);
+        V.fireworks && V.fireworks();
+        win('descend');
+      }
     }
   }
 
@@ -25364,7 +25586,7 @@ extends CanvasLayer
     extendEndless();
     const p = pl();
     if (!p) return;
-    const idx = (p.plat && p.plat.index) || p.runBestPlat || 1;
+    const idx = Math.max(1, (p.plat && p.plat.index > 0) ? p.plat.index : Math.max(1, p.runBestPlat || 1));
     if (idx > (G.endless.best || 0)) {
       G.endless.best = idx;
       if (idx === 200 || idx === 300 || idx === 400) {
@@ -25374,12 +25596,12 @@ extends CanvasLayer
     }
     /* 최고 기록 저장 */
     const key = 'jw44_endless_v1';
-    const best = V.lsGet(key, 0);
+    const best = Math.max(0, V.lsGet(key, 0) || 0);
     if (idx > best) { V.lsSet(key, idx); }
     const chip = $('v44Chip');
     if (chip) {
       chip.classList.remove('hidden');
-      chip.innerHTML = '<b>♾️ 무한 타워</b><span>' + idx + '층 · 최고 ' + Math.max(best, idx, G.endless.best || 0) + '층</span>';
+      chip.innerHTML = '<b>♾️ 무한 타워</b><span>' + idx + '층 · 최고 ' + Math.max(0, best, idx, G.endless.best || 0) + '층</span>';
     }
   }
 
@@ -25510,6 +25732,7 @@ extends CanvasLayer
     const rec = V.recOf ? V.recOf() : null;
     const rt = (G.curMode && G.curMode() === 'randomtgt' && G.rtgt);
     let s = '남은 ' + Math.max(0, total - cur) + '층 · 목표 ' + total + '층';
+    if ((G.curMode && G.curMode() === 'descend')) s = '1층까지 ' + Math.max(0, cur - 1) + '층 · 목표 1층';
     el.textContent = (rt ? '🎯 랜덤 목표 ' + total + '층 · ' : '🧭 ') + s;
   }
   G.paintHudLine = paintHudLine;
@@ -25794,6 +26017,16 @@ extends CanvasLayer
   G.canWin = function () {
     const mode = curMode();
     const S = V.st();
+    /* ⬇️ 역방향 하강: 정상에 스폰된 첫 프레임의 '정상 도달' 판정으로 바로 깨지지 않게 막는다 */
+    if (mode === 'descend') {
+      const p = pl(), g = game();
+      if (!G.descend || !G.descend.topStarted) return false;
+      if (G.descend.won) return true;
+      const idx = (p && p.plat && p.plat.index > 0) ? p.plat.index : 99;
+      if (idx > 1) return false;
+      if (!g || (g.time || 0) <= 1.0) return false;
+      return true;
+    }
     if (mode === 'flag') {
       const owner = G.flag.owner;
       const mine = owner === 'me' || (multi() && S && owner === S.me.pid);
@@ -27718,8 +27951,16 @@ extends CanvasLayer
   if (!G) return;
 
   const KEY = 'jw44_gim_v1';
-  const D = { ufo: true, bomb: true, seesaw: true, mission: true, lines: true };
+  /* 4.4: 플레이어를 이유 없이 위로 들어올리는 기믹(UFO 납치 · 하늘 폭탄)은 기본 OFF */
+  const D = { ufo: false, bomb: false, seesaw: true, mission: true, lines: true };
   const CFG = Object.assign({}, D, V.lsGet(KEY, {}));
+  try {
+    if (!V.lsGet('v44_gim_off_v1', false)) {
+      CFG.ufo = false; CFG.bomb = false;
+      V.lsSet(KEY, CFG);
+      V.lsSet('v44_gim_off_v1', true);
+    }
+  } catch (e) {}
   G.gimCfg = CFG;
   G.saveGim = function () { V.lsSet(KEY, CFG); };
 
@@ -28998,10 +29239,10 @@ extends CanvasLayer
   function retry(modal, fn) {
     let n = 1;
     const btn = modal.querySelector('#v44RetrySolo, #v44RetryMp');
-    if (btn) btn.textContent = '⚡ ' + n.toFixed(1) + '초…';
+    if (btn) btn.textContent = '⚡ 1초 재도전';
     const iv = setInterval(() => {
       n -= 0.1;
-      if (btn) btn.textContent = '⚡ ' + Math.max(0, n).toFixed(1) + '초…';
+      if (btn) btn.textContent = (n > 0.5) ? '⚡ 1초 재도전' : '🔄 다시 도전 중…';
       if (n <= 0) {
         clearInterval(iv);
         if (modal) modal.classList.add('hidden');
@@ -30039,7 +30280,7 @@ extends CanvasLayer
   function paintModeLocks() {
     const mode = G.curMode ? G.curMode() : 'normal';
     const lock = modeLocks(mode);
-    ['v43RoomBody', 'v44RulesBody', 'v42RulesBody'].forEach((id) => {
+    ['v43RoomBody', 'v44RulesBody', 'v42RulesBody', 'v42RtBasic', 'v42RtExtras'].forEach((id) => {
       const body = $(id);
       if (!body) return;
       Array.prototype.forEach.call(body.querySelectorAll('[data-v43set], [data-v42set], [data-v44set], button'), (b) => {
@@ -30222,11 +30463,53 @@ extends CanvasLayer
   /* ================================================================
      부팅
      ================================================================ */
+  /* ================================================================
+     4.4: 버그로 오염된 기록 1회 초기화 (프로필·스킨·친구·출석은 유지)
+     ================================================================ */
+  function cleanBugRecords() {
+    try {
+      if (localStorage.getItem('v44_clean_reset_v2')) return;
+      const ZERO = { bestHeight: 0, bestPlat: 1, originCount: 0, clearCount: 0 };
+      /* 1) 맵·모드 최고 기록 · 고스트 궤적 · 클리어 시간 */
+      localStorage.setItem('jw43_best_v1', '{}');
+      localStorage.removeItem('jw42_ghosts_v1');
+      localStorage.removeItem('jw41_records_v1');
+      localStorage.setItem('jw44_endless_v1', '0');
+      /* 2) 랭킹 */
+      localStorage.removeItem('jw42_rank_v1');
+      /* 3) 전체 최고 높이 · 완등 횟수 */
+      localStorage.setItem('jaewoo_stats_v2', JSON.stringify(ZERO));
+      try { const st = J() && J().stats; if (st) Object.assign(st, ZERO); } catch (e) {}
+      /* 4) 멀티 전적(프로필의 기록 항목만 0, 닉네임·스킨·상태·친구는 그대로) */
+      try {
+        const raw = JSON.parse(localStorage.getItem('jw41_profile_v1') || '{}') || {};
+        ['wins', 'losses', 'streak', 'bestStreak', 'origin', 'collide', 'clears', 'races'].forEach((k) => { raw[k] = 0; });
+        raw.bestT = {}; raw.mapsCleared = [];
+        localStorage.setItem('jw41_profile_v1', JSON.stringify(raw));
+        const api = (W() && W().internals) ? W().internals() : null;
+        const prof = api && api.prof;
+        if (prof) {
+          ['wins', 'losses', 'streak', 'bestStreak', 'origin', 'collide', 'clears', 'races'].forEach((k) => { prof[k] = 0; });
+          prof.bestT = {}; prof.mapsCleared = [];
+        }
+      } catch (e) {}
+      /* 5) 누적 통계의 완등/격파 계열만 0 (점프·플레이 시간 등 습관 통계는 유지) */
+      try {
+        const st = V.lsGet(V.LS.stats, {}) || {};
+        ['clears', 'minJumpClear', 'bossKills', 'tagWins', 'raidWins'].forEach((k) => { st[k] = 0; });
+        V.lsSet(V.LS.stats, st);
+      } catch (e) {}
+      localStorage.setItem('v44_clean_reset_v2', '1');
+      try { V.toast('🧹 기록 초기화', 'lucky', '버그로 오염된 최고 기록·완등·랭킹을 0으로 정리했어요', 3400); } catch (e) {}
+    } catch (e) {}
+  }
+
   function init() {
     if (inited) return;
     if (!root.JWG || !root.JWMode || !J()) return;
     if (!document.getElementById('v43Root')) return;
     inited = true;
+    cleanBugRecords();
     try { G.initModes44(); } catch (e) { console.warn('v44 modes init', e); }
     try { if (root.JW44LAYOUT && root.JW44LAYOUT.install) root.JW44LAYOUT.install(); } catch (e) { console.warn('v44 layout init', e); }
     try { if (G.initChar) G.initChar(); } catch (e) { console.warn('v44 char', e); }
