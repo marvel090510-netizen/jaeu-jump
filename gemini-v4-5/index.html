@@ -32893,10 +32893,12 @@ extends CanvasLayer
       const G3 = { bot: mbot, top: mbot - mh, h: mh, cur: G.cur };
       c.save(); d.mid(c, G3, view); c.restore();
       /* 아래쪽은 안개에 잠기게 */
-      const fy0 = mbot - mh * 0.22, fy1 = mbot + 60;
+      const fy0 = mbot - mh * 0.30, fy1 = mbot + 120;
       const fg = c.createLinearGradient(0, fy0, 0, fy1);
+      const mc2 = d.baseMist || 'rgba(150,170,205,.22)';
       fg.addColorStop(0, 'rgba(0,0,0,0)');
-      fg.addColorStop(1, d.baseMist || 'rgba(150,170,205,.22)');
+      fg.addColorStop(0.45, mc2);
+      fg.addColorStop(1, 'rgba(0,0,0,0)');
       c.fillStyle = fg; c.fillRect(-40, fy0, W + 80, fy1 - fy0);
     }
     if (d.hero) {
@@ -32911,14 +32913,20 @@ extends CanvasLayer
       const landCol = d.land ? hexA(d.land, 0.92) : 'rgba(26,30,44,.92)';
       ridge(c, G, ub - 0.004, 0.0055, 0.0028, 4.4 + hu, landCol, 18, 300);
       cloudSea(c, G, ub + 0.004, d.cloudCol || 'rgba(180,200,230,.18)', 3.1 + hu * 7, 120);
-      const gy0 = hbot - hh * 0.20, gy1 = hbot + 30;
+      const gy0 = hbot - hh * 0.26, gy1 = hbot + 70;
       const gg = c.createLinearGradient(0, gy0, 0, gy1);
+      const mc = d.baseMist || 'rgba(150,170,205,.20)';
       gg.addColorStop(0, 'rgba(0,0,0,0)');
-      gg.addColorStop(1, d.baseMist || 'rgba(150,170,205,.20)');
+      gg.addColorStop(0.55, mc);
+      gg.addColorStop(1, 'rgba(0,0,0,0)');
       c.fillStyle = gg;
       c.fillRect(-40, gy0, W + 80, gy1 - gy0);
     }
-    if (d.ground) { c.save(); d.ground(c, G, view); c.restore(); }
+    if (d.ground) {
+      /* 바닥 풍경은 1번 발판 아래(강·거리·플랫폼)에 오도록 살짝 내린다 */
+      const G4 = { bot: G.bot + 300, top: G.top + 300, h: G.h, cur: G.cur };
+      c.save(); d.ground(c, G4, view); c.restore();
+    }
     if (d.summit) { c.save(); d.summit(c, G, view); c.restore(); }
     /* 위로 갈수록 맑아지는 공기 + 정상 빛 */
     const yTop = Y(G, 1.06), yHi = Y(G, 0.72);
