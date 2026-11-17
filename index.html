@@ -22143,7 +22143,9 @@ extends CanvasLayer
     '.v43-pauserow { display:grid; grid-template-columns:1fr 1fr; gap:6px; }',
     /* iPad/가로: 일시정지 버튼 왼쪽에 상태 박스를 같이, 우측 여백을 일정하게 */
     '#gameHud > div:first-child { padding-right:0 !important; }',
-    '#gameHud > div:first-child > div:last-child { margin-right:10px; }'
+    '#gameHud > div:first-child > div:last-child { margin-right:10px; }',
+    '#hudStageCounterMobile, #hudShieldMobile { white-space:nowrap; }',
+    '#hudStageCounterMobile { font-size:9.5px; }'
   ].join('\n'));
 
   /* ================================================================ 1. 거리 등급 */
