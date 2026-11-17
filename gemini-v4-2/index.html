@@ -124,14 +124,10 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
   <!-- ALWAYS-LIVE GAME CANVAS -->
   <canvas id="gameCanvas" class="block w-full h-full pixelated"></canvas>
 
-  <!-- EMERGENCY QUICK SWITCH BAR (Always accessible top-right if user wants instant toggle) -->
-  <div class="fixed top-2 right-2 z-50 flex items-center gap-1.5 pointer-events-auto">
-    <button id="btnQuickPlayToggle" class="px-2.5 py-1 text-xs font-black bg-amber-400 text-slate-950 border-2 border-white shadow-[0_3px_0_#000] active:translate-y-0.5 cursor-pointer">
-      ⚡ 바로 플레이
-    </button>
-    <button id="btnQuickOriginTest" class="hidden px-2.5 py-1 text-xs font-black bg-fuchsia-700 text-white border-2 border-fuchsia-300 shadow-[0_3px_0_#000] active:translate-y-0.5 cursor-pointer">
-      🌀 태초귀환(3%) 테스트
-    </button>
+  <!-- 4.3: 상단 '바로 플레이' 중복 버튼 제거 (가운데 도전 시작 버튼으로 충분) -->
+  <div id="quickSwitchBar" aria-hidden="true" style="display:none">
+    <button id="btnQuickPlayToggle" type="button" tabindex="-1">⚡ 바로 플레이</button>
+    <button id="btnQuickOriginTest" type="button" tabindex="-1" style="display:none">🌀 태초귀환(3%) 테스트</button>
   </div>
 
   <!-- ==================== 1. MAIN TITLE SCREEN OVERLAY ==================== -->
@@ -140,7 +136,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
     <img id="titleBgImg" alt="타이틀 배경" class="absolute inset-0 w-full h-full object-cover pixelated -z-10" />
 
     <!-- Left Dark Safe Area for Title & Responsive Buttons -->
-    <div class="relative z-10 w-full md:w-[450px] lg:w-[490px] min-h-full bg-[#080b18]/95 flex flex-col justify-between p-4 sm:p-6 border-b-4 md:border-b-0 md:border-r-4 border-[#3b82f6] shadow-[8px_0_0_#040308]">
+    <div class="relative z-10 w-full md:w-[450px] lg:w-[490px] min-h-full bg-[#080b18]/95 flex flex-col justify-between p-3.5 sm:p-6 border-b-4 md:border-b-0 md:border-r-4 border-[#3b82f6] shadow-[8px_0_0_#040308]">
       <div>
         <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-[#172554] border-2 border-[#60a5fa] text-sky-200 text-xs font-bold mb-2.5">
           <span>★ JUMP KING STYLE 16-BIT DOT</span>
@@ -154,9 +150,9 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
           한 번 더, 정상까지!
         </p>
 
-        <p class="mt-2.5 text-xs sm:text-sm text-slate-200 leading-relaxed bg-[#0c1226] p-3 border-2 border-[#25386e]">
-          점프 키를 누르고 있는 시간에 따라 도약 높이와 거리가 달라집니다!<br/>
-          한 번의 실수로 아래 구름 계곡까지 추락할 수 있으며, 매 점프마다 <strong class="text-fuchsia-300">3% 확률로 모든 것이 초기화되는 ‘태초 귀환’</strong>이 찾아옵니다.
+        <p class="mt-2 text-[11px] sm:text-xs text-slate-300 leading-snug bg-[#0c1226] px-2.5 py-2 border-2 border-[#25386e]">
+          누른 시간만큼 높이·거리가 달라집니다. 실수 한 번에 구름 계곡까지 추락하고, 매 점프
+          <strong class="text-fuchsia-300">3% 확률로 ‘태초 귀환’</strong>이 찾아옵니다.
         </p>
 
         <!-- Hero Status Card -->
@@ -177,7 +173,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       </div>
 
       <!-- Main Menu Buttons: 혼자 하기 / 같이 하기 분리 -->
-      <div class="my-4 flex flex-col gap-2.5">
+      <div class="mt-3 mb-2 flex flex-col gap-2">
         <div class="grid grid-cols-2 gap-2">
           <button id="btnStartGame" type="button" class="pixel-btn-gold py-2.5 px-2.5 text-left">
             <span class="block text-[10px] font-black" style="color:#4a2a05">혼자 하기 · 싱글</span>
@@ -204,22 +200,18 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
           <span class="text-xs text-sky-200">배치 · 크기 · 위치</span>
         </button>
 
-        <button id="btnOpenGodotCode" type="button" class="w-full py-2 px-4 font-bold text-xs sm:text-sm text-fuchsia-100 bg-[#3b0764] border-2 border-[#e879f9] shadow-[0_4px_0_#05030a] active:translate-y-1 flex items-center justify-between cursor-pointer">
-          <span>📦 Godot 4 GDScript 코드 & 도트 PNG 에셋 추출</span>
-          <span class="text-[11px] px-2 py-0.5 bg-black/50 border border-fuchsia-300/60">열기</span>
-        </button>
+        <!-- 4.3: 큰 보라색 박스 제거 · 설정 모달 맨 아래 작은 링크로 이동 (스크립트 참조용 숨김 버튼) -->
+        <button id="btnOpenGodotCode" type="button" style="display:none" aria-hidden="true" tabindex="-1">Godot 4 코드 · PNG</button>
       </div>
 
-      <!-- Controls Quick Help -->
-      <div class="text-[11px] sm:text-xs text-slate-200 bg-[#070a17] p-2.5 border-2 border-[#1e293b] space-y-1">
-        <div class="font-bold text-amber-300">🎮 조작 안내 (키보드 & 모바일 보석 버튼)</div>
-        <div>• <strong>좌우 이동 / 점프 방향 조준:</strong> <kbd class="px-1 bg-slate-800 border border-slate-500">←</kbd> <kbd class="px-1 bg-slate-800 border border-slate-500">→</kbd> 또는 <kbd class="px-1 bg-slate-800 border border-slate-500">A</kbd> <kbd class="px-1 bg-slate-800 border border-slate-500">D</kbd> / 파란 보석 방향키</div>
-        <div>• <strong>충전 점프:</strong> <kbd class="px-1 bg-slate-800 border border-slate-500">Space</kbd> 또는 <kbd class="px-1 bg-slate-800 border border-slate-500">↑</kbd> / 금색 보석 점프키 길게 눌렀다 떼기</div>
+      <!-- Controls Quick Help (4.3: 한 줄 요약) -->
+      <div id="titleHelpBox" class="text-[10.5px] sm:text-xs text-slate-300 bg-[#070a17] px-2.5 py-2 border-2 border-[#1e293b] leading-snug">
+        <span class="font-bold text-amber-300">🎮 조작</span> · ← → 이동 · 점프 버튼을 <strong class="text-white">길게 눌렀다 떼면</strong> 그만큼 높이 도약
       </div>
     </div>
 
     <!-- Right Scenic Preview Area (Shows Giant Floating Island, Waterfall, Castle, Summit) -->
-    <div class="hidden md:flex flex-1 flex-col justify-between items-end p-7 pointer-events-none">
+    <div class="tright flex-1 flex-col justify-between items-end p-7 pointer-events-none">
       <div class="pixel-panel p-3 flex items-center gap-3 mt-8">
         <img id="titleSpritePreview" alt="재우 스프라이트" class="w-14 h-14 pixelated bg-[#080b16] p-1 border border-sky-400" />
         <div class="text-xs">
@@ -2706,12 +2698,13 @@ extends CanvasLayer
   .mp-toast.chat { border-left-color:rgba(56,189,248,.95); }
   .mp-toast.flash { animation:mpTstSwap .2s ease-out; }
   @keyframes mpTstSwap { from { transform:translateX(8px) scale(.96); opacity:.35 } to { transform:translateX(0) scale(1); opacity:1 } }
-  #mpAltBar { position:absolute; left:4px; top:30%; height:42%; width:24px; pointer-events:none; z-index:24; }
+  /* 고도 타워(4.3): 16비트 픽셀 게이지 캔버스 */
+  #mpAltBar { position:absolute; left:2px; top:24%; width:54px; pointer-events:none; z-index:24;
+    display:flex; flex-direction:column; gap:2px; align-items:center; }
   #mpAltBar.hidden{display:none !important;}
-  #mpAltTrack { position:absolute; left:7px; top:0; bottom:0; width:8px; background:rgba(148,163,184,.42); border:1px solid rgba(203,213,225,.7); box-shadow:0 0 0 1px #05030a; }
-  .mp-alt-mk { position:absolute; left:0; width:20px; height:14px; margin-top:-7px; transition:top .18s linear; }
-  .mp-alt-mk i { position:absolute; left:0; top:2px; width:16px; height:10px; display:block; border:1px solid #fff; }
-  .mp-alt-mk span { position:absolute; left:20px; top:1px; font-size:9px; font-weight:900; color:#fff; text-shadow:1px 1px 0 #05030a,0 0 3px #000; white-space:nowrap; }
+  #mpAltPct { font-size:8.5px; font-weight:900; color:#fde047; background:#05030a; border:1px solid #a16207;
+    padding:1px 3px; line-height:1.1; text-shadow:0 1px 0 #000; }
+  #mpAltCv { width:54px; height:210px; display:block; image-rendering:pixelated; filter:drop-shadow(0 2px 0 rgba(5,3,10,.7)); }
   #mpRankLine { position:absolute; left:8px; top:150px; z-index:24; pointer-events:none; display:flex; flex-direction:column; gap:2px; max-width:52vw; }
   .mp-rk { display:flex; align-items:center; gap:4px; background:rgba(9,13,26,.66); border:1px solid rgba(96,165,250,.42); border-radius:4px;
     padding:1px 6px 1px 4px; font-size:9.5px; font-weight:900; color:#dbe7f7; max-width:150px; text-shadow:0 1px 0 rgba(5,3,10,.9);
@@ -2742,6 +2735,50 @@ extends CanvasLayer
   .mp-lrow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:#0b1222; border:2px solid #1e293b; padding:7px 8px; }
   .mp-bubble { position:absolute; z-index:34; pointer-events:none; background:#fff; color:#0b1020; font-weight:900; font-size:11px; padding:2px 6px;
     border:2px solid #05030a; border-radius:10px; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+
+  /* ================= 4.3 쉬운 멀티 UI (내 프로필 · 방 만들기 · 방 규칙 요약) ================= */
+  .mps-card { background:#0d1326; border:3px solid #2563eb; box-shadow:inset 0 0 0 2px #0b1020,0 4px 0 #05030a; padding:10px; display:flex; flex-direction:column; gap:8px; }
+  .mps-ava { width:64px; height:72px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; background:#070c18; border:2px solid #1e3a8a; box-shadow:inset 0 0 0 2px #0b1222; }
+  .mps-ava canvas { width:64px; height:72px; image-rendering:pixelated; display:block; }
+  .mps-skinbtn { width:100%; padding:9px; font-size:12px; font-weight:900; background:#4c1d95; border:2px solid #c4b5fd; color:#f5e8ff; box-shadow:0 3px 0 #05030a; cursor:pointer; }
+  .mps-skinbtn:active { transform:translateY(2px); box-shadow:0 1px 0 #05030a; }
+  .mps-big { display:flex; align-items:center; gap:10px; width:100%; padding:12px; text-align:left; font-weight:900;
+    border:3px solid #fef08a; background:#f59e0b; color:#0b1020; box-shadow:inset 0 -4px 0 rgba(0,0,0,.18),0 4px 0 #05030a; cursor:pointer; }
+  .mps-big:active { transform:translateY(2px); box-shadow:0 2px 0 #05030a; }
+  .mps-big .ic { font-size:26px; line-height:1; flex:0 0 auto; }
+  .mps-big .tx { display:flex; flex-direction:column; line-height:1.16; min-width:0; }
+  .mps-big .tx b { font-size:16px; letter-spacing:-.01em; }
+  .mps-big .tx i { font-style:normal; font-size:10.5px; font-weight:800; opacity:.74; }
+  .mps-big .go { margin-left:auto; font-size:17px; }
+  .mps-big .cnt { margin-left:auto; font-size:10.5px; font-weight:900; background:#0f172a; border:1px solid #94a3b8; color:#cbd5e1; padding:2px 6px; }
+  .mps-big.blue { background:#2563eb; border-color:#bfdbfe; color:#fff; }
+  .mps-big.dark { background:#1e293b; border-color:#64748b; color:#e2e8f0; }
+  .mps-join { display:flex; gap:6px; align-items:stretch; }
+  .mps-join .mp-in { flex:0 0 40%; font-size:16px; font-weight:900; text-align:center; letter-spacing:.24em; padding:8px 4px; }
+  .mps-join .mps-big { flex:1; padding:9px 10px; }
+  .mps-join .mps-big .tx b { font-size:15px; }
+  .mps-code { font-size:12px; font-weight:900; color:#fde68a; background:#0b1222; border:2px solid #fbbf24; padding:5px 8px; box-shadow:0 3px 0 #05030a; }
+  .mps-slot { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; padding:7px; font-size:11px; font-weight:900;
+    background:#0b1b36; border:2px dashed #3b82f6; color:#bfdbfe; cursor:pointer; }
+  .mpb-summary { background:#0d1326; border:3px solid #fbbf24; box-shadow:inset 0 0 0 2px #0b1020,0 4px 0 #05030a; padding:10px; display:flex; flex-direction:column; gap:7px; }
+  .mpb-sum-t { font-size:12.5px; font-weight:900; color:#fde68a; letter-spacing:-.01em; }
+  .mpb-sum-body { display:flex; gap:8px; align-items:center; background:#0a1020; border:2px solid #334155; padding:7px; }
+  .mpb-sum-body canvas { width:62px; height:44px; image-rendering:pixelated; border:2px solid #1e293b; background:#070a14; flex:0 0 auto; }
+  .mpb-sum-body .mpb-nm { font-size:13.5px; font-weight:900; color:#fff; line-height:1.15; letter-spacing:-.02em; }
+  .mpb-sum-body .mpb-tags { font-size:10px; font-weight:800; color:#94a3b8; margin-top:3px; line-height:1.4; }
+  .mpb-sum-body .mpb-tags b { color:#a7f3d0; }
+  .mpa-face { width:28px; height:32px; image-rendering:pixelated; flex:0 0 auto; background:#070c18; border:1px solid #1e3a8a; }
+  .mp-crown { position:absolute; left:-4px; top:-7px; font-size:11px; }
+  .mp-avarow { position:relative; display:flex; align-items:center; }
+  .mps-tip { background:#0b1222; border:2px dashed #334155; padding:8px 9px; display:flex; flex-direction:column; gap:3px; }
+  .mps-tip b { font-size:10.5px; font-weight:900; color:#fde68a; }
+  .mps-tip span { font-size:10px; font-weight:800; color:#94a3b8; line-height:1.45; }
+  .mps-tip span b { font-size:10px; color:#e2e8f0; }
+  .mps-gate { display:flex; align-items:center; gap:8px; width:100%; background:#0b1222; border:2px solid #334155; padding:8px 9px; font-size:11.5px; font-weight:800; color:#e2e8f0; cursor:pointer; text-align:left; }
+  .mps-gate .ic { font-size:20px; }
+  .mps-gate .v { margin-left:auto; flex:0 0 auto; max-width:52%; font-size:9px; font-weight:900; padding:2px 6px; border:2px solid #475569; color:#a7f3d0; background:#111a30; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mps-gate .v.on { background:#047857; border-color:#6ee7b7; color:#fff; }
 
   /* ---- 방 규칙 편집 (로비) ---- */
   .mp-rule-row { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; text-align:left;
@@ -2790,103 +2827,115 @@ extends CanvasLayer
 </style>
 
 <div id="mpScreen" class="hidden absolute inset-0 z-[45] bg-[#070a17]/[0.98] overflow-y-auto">
-  <div class="w-full max-w-lg mx-auto p-3 sm:p-5 flex flex-col gap-2.5">
+  <div class="w-full max-w-lg sm:max-w-2xl mx-auto p-3 sm:p-5 flex flex-col gap-2.5">
+
     <div class="flex items-center justify-between gap-2">
-      <button id="mpBackBtn" class="mp-btn dark" style="padding:8px 12px;font-size:12px">← 뒤로</button>
-      <div class="text-right">
-        <div class="mp-lbl">내 친구 코드</div>
-        <button id="mpMyCode" class="font-black text-sm text-amber-300 bg-[#0b1222] border-2 border-amber-400 px-2 py-1">닉네임#0000</button>
-      </div>
+      <button id="mpBackBtn" class="mp-btn dark" style="padding:8px 12px;font-size:12px">← 타이틀</button>
+      <button id="mpMyCode" class="mps-code" title="탭해서 내 친구 코드 복사">닉네임#0000</button>
     </div>
 
-    <div class="mp-card p-2.5 flex flex-col gap-2">
-      <div class="flex items-center gap-2">
-        <div class="mp-lbl shrink-0 w-12">닉네임</div>
-        <input id="mpNick" class="mp-in" maxlength="10" placeholder="닉네임" />
+    <!-- ① 내 프로필: 스킨 · 색상 -->
+    <div class="mps-card">
+      <div class="flex items-center gap-3">
+        <div class="mps-ava"><canvas id="mpMyAvatar" width="32" height="36"></canvas></div>
+        <div class="flex-1 min-w-0 flex flex-col gap-1.5">
+          <input id="mpNick" class="mp-in" maxlength="10" placeholder="닉네임" style="padding:7px 9px;font-size:14px" />
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span id="mpMyTitleNow" class="mp-title">🌱 도전자</span>
+            <span id="mpMyRec" class="text-[10px] font-black text-amber-300">0승 0패 · 승률 0%</span>
+          </div>
+        </div>
       </div>
       <div class="flex items-center gap-2">
-        <div class="mp-lbl shrink-0 w-12">색상</div>
+        <span class="mp-lbl shrink-0">색상</span>
         <div id="mpColors" class="flex gap-1.5 flex-wrap"></div>
       </div>
-      <div class="border-t-2 border-slate-800 pt-2 flex flex-col gap-1.5">
-        <div class="flex items-center justify-between">
-          <span class="mp-lbl">내 전적</span>
-          <span id="mpMyRec" class="text-[11px] font-black text-amber-300">0승 0패 · 승률 0%</span>
-        </div>
-        <div class="flex items-center justify-between">
-          <span class="mp-lbl">칭호</span>
-          <span id="mpMyTitleNow" class="mp-title">🌱 도전자</span>
-        </div>
-        <div id="mpTitles" class="flex flex-wrap gap-1.5"></div>
-      </div>
+      <button id="mpsSkinBtn" type="button" class="mps-skinbtn">🎭 스킨 · 색 크게 보고 고르기</button>
     </div>
 
-    <div class="grid grid-cols-3 gap-1.5">
-      <button class="mp-chip on" data-mptab="create">방 만들기</button>
-      <button class="mp-chip" data-mptab="join">코드 입장</button>
-      <button class="mp-chip" data-mptab="friends">친구</button>
+    <!-- ② 방 만들기 / 코드 입장 -->
+    <button id="mpCreateBtn" type="button" class="mps-big">
+      <span class="ic">🏠</span>
+      <span class="tx"><b>방 만들기</b><i>내가 방장 · 5자리 코드로 친구 초대</i></span>
+      <span class="go">▶</span>
+    </button>
+
+    <div class="mps-join">
+      <input id="mpJoinCode" class="mp-in" maxlength="5" placeholder="ABCDE" autocomplete="off" autocapitalize="characters" />
+      <button id="mpJoinBtn" type="button" class="mps-big blue">
+        <span class="ic">🔑</span>
+        <span class="tx"><b>코드 입장</b><i>받은 5자리</i></span>
+      </button>
     </div>
 
-    <button id="mpTitlePick" class="mp-chip" style="padding:8px;font-size:11.5px">🗺️ 맵 · 🎮 모드 고르기 (싱글에도 적용)</button>
+    <!-- ③ 친구 -->
+    <button id="mpsFriendsBtn" type="button" class="mps-big dark">
+      <span class="ic">👥</span>
+      <span class="tx"><b>친구</b><i>접속 중인 친구에게 바로 합류 · 초대</i></span>
+      <span id="mpPresState" class="cnt">0/0</span>
+    </button>
 
-    <div id="mpTabCreate" class="mp-card p-3 flex flex-col gap-2.5">
-      <div>
-        <div class="mp-lbl mb-1">최대 인원</div>
-        <div id="mpMaxChips" class="grid grid-cols-4 gap-1.5"></div>
-      </div>
-      <div class="flex flex-col gap-1.5">
-        <div class="mp-toggle"><span class="text-xs font-bold text-slate-200">🎲 랜덤 이벤트</span><button id="mpOptEvents" class="mp-chip green on" style="min-width:56px">ON</button></div>
-        <div class="mp-toggle"><span class="text-xs font-bold text-slate-200">✨ 버프·방해꾼 아이템</span><button id="mpOptItems" class="mp-chip green on" style="min-width:56px">ON</button></div>
-        <div class="mp-toggle"><span class="text-xs font-bold text-slate-200">💥 플레이어 충돌</span><button id="mpOptCollide" class="mp-chip green on" style="min-width:56px">ON</button></div>
-      </div>
-      <div>
-        <div class="flex items-center justify-between mb-1">
-          <span class="mp-lbl">🌀 태초 귀환 확률</span>
-          <span id="mpOriginPctLbl" class="text-xs font-black text-fuchsia-300">3%</span>
-        </div>
-        <input id="mpOriginPct" type="range" min="0" max="20" step="1" value="3" class="w-full accent-fuchsia-400" />
-      </div>
-      <button id="mpCreateBtn" class="mp-btn w-full">🏁 방 만들기 (코드 발급)</button>
-    </div>
-
-    <div id="mpTabJoin" class="mp-card p-3 flex flex-col gap-2.5 hidden">
-      <div class="mp-lbl">방 코드 5자리</div>
-      <input id="mpJoinCode" class="mp-in text-center text-xl tracking-[0.35em] uppercase" maxlength="5" placeholder="ABCDE" autocomplete="off" autocapitalize="characters" />
-      <button id="mpJoinBtn" class="mp-btn blue w-full">입장하기</button>
-      <div class="text-[11px] text-slate-400 leading-snug">친구에게 받은 초대 링크를 열면 자동으로 코드가 채워집니다.</div>
-    </div>
-
-    <div id="mpTabFriends" class="mp-card p-3 flex flex-col gap-2 hidden">
-      <div class="flex items-center justify-between">
+    <div id="mpTabFriends" class="mps-card hidden">
+      <div class="flex items-center justify-between gap-2">
         <span class="mp-lbl">친구 목록</span>
-        <span id="mpPresState" class="text-[10px] font-bold text-slate-400">오프라인</span>
+        <button id="mpFrOpenBtn" type="button" class="mp-chip" style="padding:3px 8px;font-size:10.5px">🎭 칭호 · 스킨 · 상태메시지</button>
       </div>
       <div class="flex gap-1.5">
         <input id="mpFriendCode" class="mp-in flex-1" maxlength="16" placeholder="친구 코드 (닉네임#0000)" autocapitalize="characters" autocomplete="off" />
         <button id="mpAddFriend" class="mp-btn blue" style="padding:8px 10px;font-size:12px">추가</button>
       </div>
       <div id="mpFriendList" class="flex flex-col gap-1.5"></div>
-      <div class="text-[11px] text-slate-400 leading-snug">친구가 접속 중이면 초록불이 켜지고, 방을 만들었으면 바로 합류할 수 있어요.</div>
+      <div class="text-[10.5px] text-slate-400 leading-snug">초록불 = 접속 중 · 친구가 방을 열었으면 <b class="text-sky-300">합류</b>를 누르면 바로 들어갑니다.</div>
     </div>
 
+    <div class="mps-tip">
+      <b>이렇게 놀아요</b>
+      <span>① <b>방 만들기</b> → ② 5자리 코드를 친구에게 → ③ 친구가 <b>코드 입장</b> → ④ 전원 <b>준비</b> 후 <b>레이스 시작</b></span>
+    </div>
+
+    <!-- 스크립트 호환용(화면에는 보이지 않음): 방 세부 옵션 · 옛 탭 컨테이너 -->
+    <div id="mpTabCreate" class="hidden">
+      <div id="mpMaxChips" class="hidden" data-value="4"></div>
+      <button id="mpOptEvents" type="button" class="hidden"></button>
+      <button id="mpOptItems" type="button" class="hidden"></button>
+      <button id="mpOptCollide" type="button" class="hidden"></button>
+      <input id="mpOriginPct" type="range" class="hidden" />
+      <span id="mpOriginPctLbl" class="hidden">3%</span>
+    </div>
+    <div id="mpTabJoin" class="hidden"></div>
+    <div id="mpTitlePick" class="hidden"></div>
+    <div id="mpTitles" class="hidden"></div>
     <div id="mpStatus" class="text-[11px] font-bold text-sky-300 min-h-[16px]"></div>
   </div>
 </div>
 
 <div id="mpLobby" class="hidden absolute inset-0 z-[45] bg-[#070a17]/[0.98] overflow-y-auto">
-  <div class="w-full max-w-lg mx-auto p-3 sm:p-5 pb-24 sm:pb-24 flex flex-col gap-2.5">
-    <div class="flex items-center justify-between">
+  <div class="w-full max-w-lg sm:max-w-2xl mx-auto p-3 sm:p-5 pb-28 flex flex-col gap-2.5">
+
+    <div class="flex items-start justify-between gap-2">
       <div>
         <div class="mp-lbl">방 코드</div>
         <div id="mpRoomCode" class="text-3xl font-black text-amber-300 tracking-[0.25em]">ABCDE</div>
       </div>
-      <div class="flex flex-col gap-1.5 items-end">
-        <button id="mpCopyCode" class="mp-btn dark" style="padding:6px 10px;font-size:11px">코드 복사</button>
-        <button id="mpCopyLink" class="mp-btn blue" style="padding:6px 10px;font-size:11px">초대 링크 복사</button>
-        <button id="mpInviteBtn" class="mp-btn" style="padding:6px 10px;font-size:11px;background:#7c3aed;border-color:#e9d5ff;color:#fff">📩 친구 초대</button>
+      <div class="flex flex-col gap-1 items-end">
+        <button id="mpCopyCode" class="mp-btn dark" style="padding:6px 10px;font-size:11px">📋 코드 복사</button>
+        <button id="mpCopyLink" class="mp-btn blue" style="padding:6px 10px;font-size:11px">🔗 초대 링크</button>
       </div>
     </div>
 
+    <!-- 현재 방 설정 요약 -->
+    <div class="mpb-summary">
+      <div class="flex items-center justify-between gap-2">
+        <span class="mpb-sum-t">이 방은 이렇게 놉니다</span>
+        <span id="mpRuleHostOnly" class="text-[10px] font-bold text-slate-400">방장만 변경</span>
+      </div>
+      <div id="mpLobbyRules" class="mpb-sum-body"></div>
+      <button id="mpRuleOpenBtn" type="button" class="mp-btn blue w-full" style="padding:10px;font-size:13px">⚙️ 방 규칙 · 커스텀 설정</button>
+      <div id="mpRuleHint" class="text-[10px] font-bold text-slate-500 leading-snug"></div>
+      <span id="mpRuleSeed" class="hidden"></span>
+    </div>
+
+    <!-- 참가자 -->
     <div class="mp-card p-2.5">
       <div class="flex items-center justify-between mb-1.5">
         <span class="mp-lbl">참가자</span>
@@ -2895,15 +2944,7 @@ extends CanvasLayer
       <div id="mpRoomPlayers" class="flex flex-col gap-1.5"></div>
     </div>
 
-    <div class="mp-card p-2.5 flex flex-col gap-2">
-      <div class="flex items-center justify-between">
-        <span class="mp-lbl">방 규칙 <span id="mpRuleHostOnly" class="text-[10px] text-slate-500">(방장만 변경)</span></span>
-        <span id="mpRuleSeed" class="text-[10px] font-bold text-slate-400">SEED</span>
-      </div>
-      <div id="mpLobbyRules" class="flex flex-col gap-1.5"></div>
-      <div id="mpRuleHint" class="text-[10px] font-bold text-slate-500 leading-snug">방장은 위 항목을 탭해 바로 바꿀 수 있고, 참가자 화면에도 실시간 반영됩니다.</div>
-    </div>
-
+    <!-- 채팅 -->
     <div class="mp-card p-2.5">
       <div class="flex items-center justify-between mb-1.5"><span class="mp-lbl">방 채팅</span><span class="text-[10px] text-slate-500">Enter 전송</span></div>
       <div id="mpLobbyChatLog" class="overflow-y-auto flex flex-col gap-1" style="height:78px;max-height:78px"></div>
@@ -2916,9 +2957,9 @@ extends CanvasLayer
 
     <div class="sticky bottom-0 z-10 -mx-3 sm:-mx-5 px-3 sm:px-5 pb-2 pt-2 bg-[#070a17] border-t-2 border-slate-800 flex flex-col gap-1.5">
       <div class="flex gap-2">
-        <button id="mpLeaveBtn" class="mp-btn dark flex-1" style="border-color:#f87171;color:#fecaca">🚪 나가기</button>
-        <button id="mpReadyBtn" class="mp-btn green flex-[1.4]">준비 완료</button>
-        <button id="mpStartBtn" class="mp-btn flex-[1.4] hidden">레이스 시작 🏁</button>
+        <button id="mpLeaveBtn" class="mp-btn dark" style="border-color:#f87171;color:#fecaca;flex:0 0 auto;font-size:12px">🚪 나가기</button>
+        <button id="mpReadyBtn" class="mp-btn green flex-1">✅ 준비 완료</button>
+        <button id="mpStartBtn" class="mp-btn hidden flex-1">🚀 레이스 시작</button>
       </div>
       <div id="mpLobbyStatus" class="text-[11px] font-bold text-sky-300 min-h-[16px]"></div>
     </div>
@@ -2928,7 +2969,7 @@ extends CanvasLayer
 <div id="mpCount" class="hidden"><div>3</div></div>
 <div id="mpFog"></div>
 <div id="mpToasts"></div>
-<div id="mpAltBar" class="hidden"><div id="mpAltTrack"></div></div>
+<div id="mpAltBar" class="hidden"><div id="mpAltPct">0%</div><canvas id="mpAltCv" width="54" height="210"></canvas></div>
 <div id="mpRankLine" class="hidden"></div>
 <div id="mpSpectateBar" class="hidden"><span id="mpSpecName">관전 중</span><button id="mpSpecExit" class="mp-chip" style="padding:2px 6px;font-size:10px">관전 종료</button><button id="mpSpecLeave" class="mp-chip" style="padding:2px 6px;font-size:10px;border-color:#f87171;color:#fecaca">나가기</button></div>
 
@@ -2999,9 +3040,7 @@ extends CanvasLayer
   #tauntBubble { position:absolute; left:50%; transform:translateX(-50%); top:118px; z-index:45; pointer-events:none;
     background:#0b1222; border:2px solid #f472b6; color:#fbcfe8; font-weight:900; font-size:12px; padding:4px 10px; }
   /* 친구창 열기 버튼 (타이틀·로비 우상단) */
-  #frOpenBtn { position:absolute; right:8px; top:44px; z-index:41; display:flex; align-items:center; gap:3px;
-    background:#0f172a; border:2px solid #a78bfa; color:#ddd6fe; font-size:11px; font-weight:900; padding:4px 7px; box-shadow:0 3px 0 #05030a; }
-  #frOpenBtn .cnt { background:#7c3aed; color:#fff; font-size:9px; padding:0 4px; border:1px solid #fff; }
+  /* 4.3: 타이틀에 떠 있던 친구 버튼은 멀티 화면 안으로 이동 (CSS 제거) */
   /* 초대 팝업 */
   #invitePop { position:absolute; left:50%; transform:translateX(-50%); top:76px; z-index:52; width:min(92%,320px);
     background:#0d1326; border:3px solid #a78bfa; box-shadow:0 6px 0 #05030a; padding:10px; }
@@ -3058,8 +3097,6 @@ extends CanvasLayer
 <div id="slowmoTint"></div>
 <canvas id="fanfare" class="hidden"></canvas>
 
-<!-- 친구창 열기 -->
-<button id="frOpenBtn" class="hidden">👥 친구 <span class="cnt" id="frOpenCnt">0</span></button>
 
 <!-- 초대 팝업 -->
 <div id="invitePop" class="hidden">
@@ -4692,7 +4729,14 @@ extends CanvasLayer
     { id: 'cat', name: '고양이', emoji: '🐱' },
     { id: 'frog', name: '개구리', emoji: '🐸' },
     { id: 'robot', name: '로봇', emoji: '🤖' },
-    { id: 'ghost', name: '유령', emoji: '👻' }
+    { id: 'ghost', name: '유령', emoji: '👻' },
+    { id: 'rabbit', name: '토끼', emoji: '🐰' },
+    { id: 'panda', name: '판다', emoji: '🐼' },
+    { id: 'fox', name: '여우', emoji: '🦊' },
+    { id: 'demon', name: '악마', emoji: '😈' },
+    { id: 'alien', name: '외계인', emoji: '👽' },
+    { id: 'wizard', name: '마법사', emoji: '🧙' },
+    { id: 'knight', name: '기사', emoji: '🛡️' }
   ];
   const skinCache = {};
   function skinCanvas(skinId, pose) {
@@ -4749,6 +4793,88 @@ extends CanvasLayer
       c.globalAlpha = 1;
       R(12, 11, 3, 4, '#1e293b'); R(19, 11, 3, 4, '#1e293b');
       R(14, 17, 4, 3, '#94a3b8');
+    } else if (skinId === 'rabbit') {
+      /* 토끼: 흰 털 + 긴 귀 */
+      c.globalCompositeOperation = 'source-atop';
+      c.fillStyle = 'rgba(248,250,252,.94)'; c.fillRect(0, 6, 32, 30);
+      c.fillStyle = 'rgba(253,242,248,.95)'; c.fillRect(8, 6, 18, 12);
+      c.globalCompositeOperation = 'source-over';
+      R(9, -3, 5, 13, '#f8fafc'); R(19, -3, 5, 13, '#f8fafc');
+      R(10, -1, 3, 9, '#fbcfe8'); R(20, -1, 3, 9, '#fbcfe8');
+      R(10, 9, 3, 3, '#1f2937'); R(19, 9, 3, 3, '#1f2937');
+      R(15, 13, 3, 2, '#fb7185');
+      R(6, 14, 4, 1, '#e2e8f0'); R(23, 14, 4, 1, '#e2e8f0');
+      R(22, 24, 5, 5, '#f8fafc');
+    } else if (skinId === 'panda') {
+      /* 판다: 흑백 무늬 + 둥근 귀 + 눈 패치 */
+      c.globalCompositeOperation = 'source-atop';
+      c.fillStyle = 'rgba(248,250,252,.96)'; c.fillRect(0, 0, 32, 36);
+      c.fillStyle = 'rgba(30,41,59,.95)'; c.fillRect(0, 26, 32, 10);
+      c.globalCompositeOperation = 'source-over';
+      R(6, 0, 7, 6, '#111827'); R(19, 0, 7, 6, '#111827');
+      R(7, 1, 4, 3, '#374151'); R(20, 1, 4, 3, '#374151');
+      R(9, 8, 6, 6, '#111827'); R(18, 8, 6, 6, '#111827');
+      R(10, 9, 3, 3, '#f8fafc'); R(19, 9, 3, 3, '#f8fafc');
+      R(11, 10, 2, 2, '#0f172a'); R(20, 10, 2, 2, '#0f172a');
+      R(15, 14, 3, 2, '#111827'); R(14, 17, 5, 1, '#94a3b8');
+      R(2, 20, 6, 8, '#111827'); R(24, 20, 6, 8, '#111827');
+    } else if (skinId === 'fox') {
+      /* 여우: 주황 털 + 뾰족 귀 + 꼬리 */
+      c.globalCompositeOperation = 'source-atop';
+      c.fillStyle = 'rgba(251,146,60,.92)'; c.fillRect(0, 0, 32, 26);
+      c.fillStyle = 'rgba(253,224,171,.92)'; c.fillRect(10, 8, 14, 10);
+      c.globalCompositeOperation = 'source-over';
+      R(7, -3, 4, 7, '#fb923c'); R(8, 0, 2, 4, '#7c2d12');
+      R(21, -3, 4, 7, '#fb923c'); R(22, 0, 2, 4, '#7c2d12');
+      R(11, 9, 3, 3, '#111827'); R(19, 9, 3, 3, '#111827');
+      R(15, 13, 3, 2, '#111827');
+      R(24, 23, 7, 8, '#fb923c'); R(26, 29, 5, 4, '#fef3c7');
+    } else if (skinId === 'demon') {
+      /* 악마: 붉은 피부 + 뿔 + 꼬리 + 송곳니 */
+      c.globalCompositeOperation = 'source-atop';
+      c.fillStyle = 'rgba(220,38,38,.86)'; c.fillRect(0, 0, 32, 34);
+      c.globalCompositeOperation = 'source-over';
+      R(7, -2, 3, 6, '#111827'); R(6, 2, 2, 2, '#1f2937');
+      R(22, -2, 3, 6, '#111827'); R(24, 2, 2, 2, '#1f2937');
+      R(11, 9, 4, 3, '#fde047'); R(18, 9, 4, 3, '#fde047');
+      R(12, 10, 2, 2, '#111827'); R(19, 10, 2, 2, '#111827');
+      R(12, 16, 2, 3, '#f8fafc'); R(19, 16, 2, 3, '#f8fafc');
+      R(25, 24, 6, 3, '#b91c1c'); R(29, 20, 3, 5, '#b91c1c');
+    } else if (skinId === 'alien') {
+      /* 외계인: 초록 피부 + 큰 머리 + 안테나 */
+      c.globalCompositeOperation = 'source-atop';
+      c.fillStyle = 'rgba(74,222,128,.9)'; c.fillRect(0, 0, 32, 36);
+      c.globalCompositeOperation = 'source-over';
+      R(5, 2, 22, 16, '#4ade80'); R(7, 0, 18, 4, '#4ade80');
+      R(10, -5, 2, 6, '#86efac'); R(20, -5, 2, 6, '#86efac');
+      R(9, -6, 4, 2, '#fde047'); R(19, -6, 4, 2, '#fde047');
+      R(10, 8, 5, 4, '#0f172a'); R(18, 8, 5, 4, '#0f172a');
+      R(11, 9, 2, 2, '#e0f2fe'); R(19, 9, 2, 2, '#e0f2fe');
+      R(15, 14, 2, 2, '#166534');
+      R(6, 30, 5, 4, '#22c55e'); R(22, 30, 5, 4, '#22c55e');
+    } else if (skinId === 'wizard') {
+      /* 마법사: 뾰족 모자 + 별 + 흰 수염 */
+      c.globalCompositeOperation = 'source-atop';
+      c.fillStyle = 'rgba(91,33,182,.9)'; c.fillRect(0, 18, 32, 18);
+      c.fillStyle = 'rgba(253,224,71,.95)'; c.fillRect(12, 20, 8, 8);
+      c.globalCompositeOperation = 'source-over';
+      R(5, 2, 22, 3, '#312e81');
+      R(9, -9, 14, 11, '#312e81'); R(11, -13, 10, 4, '#312e81'); R(14, -16, 5, 3, '#4338ca');
+      R(16, -6, 3, 3, '#fde047');
+      R(11, 9, 3, 3, '#111827'); R(19, 9, 3, 3, '#111827');
+      R(12, 14, 9, 6, '#f8fafc'); R(14, 19, 5, 2, '#e2e8f0');
+    } else if (skinId === 'knight') {
+      /* 기사: 강철 투구 + 깃털 + 어깨 갑옷 */
+      c.globalCompositeOperation = 'source-atop';
+      c.fillStyle = 'rgba(148,163,184,.92)'; c.fillRect(0, 0, 32, 36);
+      c.fillStyle = 'rgba(71,85,105,.9)'; c.fillRect(0, 22, 32, 14);
+      c.globalCompositeOperation = 'source-over';
+      R(6, 2, 20, 14, '#cbd5e1'); R(8, 0, 16, 3, '#e2e8f0');
+      R(9, 7, 14, 3, '#0f172a');
+      R(11, 8, 3, 1, '#38bdf8'); R(18, 8, 3, 1, '#38bdf8');
+      R(14, 17, 4, 4, '#fbbf24');
+      R(13, -7, 2, 7, '#f87171'); R(14, -10, 3, 4, '#fca5a5');
+      R(4, 18, 4, 8, '#94a3b8'); R(24, 18, 4, 8, '#94a3b8');
     }
     skinCache[key] = cv;
     return cv;
@@ -5260,7 +5386,10 @@ extends CanvasLayer
     { id: 'purple', name: '퍼플', hex: '#c084fc' },
     { id: 'red', name: '레드', hex: '#fb7185' }
   ];
-  const colorHex = (id) => ((COLORS.find((c) => c.id === id) || COLORS[0]).hex);
+  const colorHex = (id) => {
+    if (typeof id === 'string' && id.charAt(0) === '#') return id;
+    return (COLORS.find((c) => c.id === id) || COLORS[0]).hex;
+  };
 
   /* ---------- 칭호 ---------- */
   const TITLES = [
@@ -5549,6 +5678,7 @@ extends CanvasLayer
     publishPresence();
   }
   function renderProfileCard() {
+    drawMyAvatar();
     const rec = $('mpMyRec');
     if (rec) rec.innerHTML = (prof.wins || 0) + '승 ' + (prof.losses || 0) + '패 · 승률 ' + winRate(prof) + '%' + (prof.streak > 1 ? ' <span class="mp-streak">🔥' + prof.streak + '연승</span>' : '');
     const tnow = $('mpMyTitleNow');
@@ -5808,7 +5938,8 @@ extends CanvasLayer
     const rec = hasRec ? '<div class="text-[9.5px] font-bold text-slate-400 leading-tight">승률 ' + winRate(p) + '% · ' + (p.w || 0) + '승 ' + (p.l || 0) + '패</div>' : '';
     const skinEm = skinEmoji(p.sk);
     const sm = p.sm ? '<div class="text-[9.5px] font-bold text-sky-300/90 leading-tight truncate">💬 ' + esc(p.sm) + '</div>' : '';
-    return '<span class="mp-dot" style="background:' + colorHex(p.color) + '"></span>' +
+    return '<span class="mp-avarow"><canvas class="mpa-face" data-face="' + esc(p.pid) + '" width="32" height="36"></canvas>' +
+      (p.host ? '<span class="mp-crown">👑</span>' : '') + '</span>' +
       '<div class="flex-1 min-w-0">' +
         '<div class="flex items-center gap-1 flex-wrap">' +
           (skinEm ? '<span class="text-[11px]">' + skinEm + '</span>' : '') +
@@ -5850,6 +5981,24 @@ extends CanvasLayer
       d.innerHTML = playerRowHTML(p);
       list.appendChild(d);
     });
+    list.querySelectorAll('[data-face]').forEach((cv) => {
+      const p = S.players.get(cv.getAttribute('data-face'));
+      if (!p) return;
+      const sp = spriteFor(p.color, 'idle1', p.sk);
+      if (!sp) return;
+      const c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+      c.clearRect(0, 0, 32, 36);
+      try { c.drawImage(sp, 0, 0); } catch (e) {}
+    });
+    /* 빈 자리에 친구 초대 */
+    const maxN = S.room.max || 4;
+    for (let i = n; i < maxN; i++) {
+      const d = document.createElement('div');
+      d.className = 'mps-slot';
+      d.innerHTML = '<span>➕ 빈 자리 ' + (i + 1) + '</span><span style="opacity:.75">📩 초대</span>';
+      d.addEventListener('click', () => frOpen());
+      list.appendChild(d);
+    }
     list.querySelectorAll('[data-addfr]').forEach((b) => {
       b.addEventListener('click', () => { const [t, nk] = b.getAttribute('data-addfr').split('|'); addFriend(nk, t); b.textContent = '추가됨'; });
     });
@@ -5859,13 +6008,10 @@ extends CanvasLayer
 
     renderLobbyRules(hostOnly);
 
-    $('mpRuleSeed').textContent = 'SEED ' + String(S.room.seed).slice(0, 8);
-    $('mpRuleHostOnly').textContent = hostOnly ? '(방장만 변경)' : '(방장이 설정)';
-    $('mpRuleHint').textContent = S.room.mode === 'classic'
-      ? '🏛️ 클래식 모드: 기본 맵 · 태초 3% · 순정 물리로 고정됩니다. 규칙을 바꿀 수 없어요.'
-      : (hostOnly
-        ? '항목을 탭하면 바로 바뀌고, 참가자 화면에도 실시간 반영됩니다.'
-        : '방장만 규칙을 바꿀 수 있어요. 방장이 바꾸면 내 화면에도 바로 반영됩니다.');
+    const seedEl = $('mpRuleSeed');
+    if (seedEl) seedEl.textContent = 'SEED ' + String(S.room.seed).slice(0, 8);
+    const ho = $('mpRuleHostOnly');
+    if (ho) ho.textContent = hostOnly ? '방장만 변경' : '방장이 설정';
     const rng = $('mpOriginRange');
     if (rng && !rng.dataset.bound) {
       rng.dataset.bound = '1';
@@ -5881,54 +6027,51 @@ extends CanvasLayer
       const readyN = others.filter((p) => p.ready).length;
       const allReady = others.length > 0 && readyN === others.length;
       $('mpStartBtn').disabled = others.length === 0;
-      $('mpStartBtn').textContent = others.length === 0 ? '친구를 기다리는 중...' : ('레이스 시작 🏁' + (allReady ? ' · 전원 준비!' : ' (' + readyN + '/' + others.length + ')'));
+      $('mpStartBtn').textContent = others.length === 0 ? '👥 친구를 기다리는 중...' : ('🚀 레이스 시작' + (allReady ? ' · 전원 준비!' : ' (' + readyN + '/' + others.length + ')'));
       $('mpStartBtn').className = 'mp-btn flex-[1.4]' + (allReady ? ' green' : '');
     } else {
       $('mpReadyBtn').classList.remove('hidden');
       $('mpStartBtn').classList.add('hidden');
-      $('mpReadyBtn').textContent = S.me.ready ? '준비 취소' : '준비 완료';
+      $('mpReadyBtn').textContent = S.me.ready ? '↩️ 준비 취소' : '✅ 준비 완료';
       $('mpReadyBtn').className = 'mp-btn flex-[1.4] ' + (S.me.ready ? 'dark' : 'green');
     }
     renderLobbyChat();
   }
 
-  /* ---------- 로비 방 규칙 (탭해서 변경 · 모두에게 실시간 동기화) ---------- */
+  /* ---------- 로비: 방 설정 요약 (큰 글씨 · 참가자는 읽기 전용) ---------- */
   function renderLobbyRules(hostOnly) {
     const box = $('mpLobbyRules');
     if (!box || !S.room) return;
-    const lock = hostOnly ? '' : ' locked';
-    const v = (on) => '<span class="v ' + (on ? 'on' : 'off') + '">' + (on ? 'ON' : 'OFF') + '</span>';
-    const mapDef = (MP() ? MP().byId(S.room.map) : { name: '구름 계곡', emoji: '☁️', diff: '기본' });
-    const modeDef = (MD() ? MD().modeById(S.room.mode) : { name: '일반 레이스', emoji: '🏁' });
-    const classic = S.room.mode === 'classic';
-    let html = '';
-    html += '<button type="button" class="mp-rule-row' + (classic ? ' locked' : lock) + '" data-pick="1">' +
-      '<span>🗺️ ' + mapDef.emoji + ' ' + esc(mapDef.name) + '</span><span class="v on">' + esc(mapDef.diff) + '</span></button>';
-    html += '<button type="button" class="mp-rule-row' + (classic ? ' locked' : lock) + '" data-pick="1">' +
-      '<span>🎮 ' + modeDef.emoji + ' ' + esc(modeDef.name) + '</span><span class="v on">변경</span></button>';
-    html += '<div class="flex items-center justify-between bg-[#0b1222] border-2 border-slate-700 px-2 py-1.5">' +
-      '<span class="text-[11px] font-bold text-slate-200">최대 인원</span>' +
-      '<span class="text-[11px] font-black ' + (S.room.max <= S.players.size ? 'text-rose-300' : 'text-sky-300') + '">' + S.room.max + '명 (현재 ' + S.players.size + '명)</span></div>';
-    html += '<div class="grid grid-cols-4 gap-1">';
-    [2, 3, 4, 6].forEach((m) => {
-      html += '<button type="button" class="mp-maxchip' + (S.room.max === m ? ' on' : '') + (classic ? ' locked' : lock) + '" data-max="' + m + '">' + m + '명</button>';
-    });
-    html += '</div>';
-    html += '<div class="grid grid-cols-2 gap-1.5">';
-    html += ruleBtn('events', '🎲 이벤트', S.room.events, classic ? ' locked' : lock);
-    html += ruleBtn('items', '✨ 아이템', S.room.items, classic ? ' locked' : lock);
-    html += ruleBtn('buffs', '✨ 버프', S.room.buffs !== false, classic ? ' locked' : lock);
-    html += ruleBtn('traps', '😈 함정', S.room.traps !== false, classic ? ' locked' : lock);
-    html += '</div>';
-    html += ruleBtn('collide', '💥 플레이어 충돌', S.room.collide, classic ? ' locked' : lock);
-    html += '<div class="flex items-center gap-1.5 pt-0.5">' +
-      '<span class="text-[11px] font-bold text-fuchsia-300 shrink-0">🌀 태초</span>' +
-      '<input id="mpOriginRange" type="range" min="0" max="100" step="1" value="' + (S.room.originPct || 0) + '" ' + (classic ? 'disabled' : '') +
-      ' class="flex-1 accent-fuchsia-400 ' + (hostOnly && !classic ? '' : 'opacity-60') + '" style="min-width:0" />' +
-      '<span class="text-[11px] font-black text-fuchsia-300 w-9 text-right">' + (S.room.originPct || 0) + '%</span></div>';
-    html += '<button type="button" class="mp-rule-row' + (classic ? ' locked' : lock) + '" data-rule="originRandom"><span>🎲 태초 실시간 랜덤 (20초마다 0~50%)</span>' + v(S.room.originRandom) + '</button>';
-    html += '<button type="button" class="mp-rule-row' + (classic ? ' locked' : lock) + '" data-filter="1"><span>🎛️ 이벤트·버프·함정 개별 선택</span><span class="v on">열기</span></button>';
-    box.innerHTML = html;
+    const mapDef = (MP() ? MP().byId(S.room.map) : { name: '구름 계곡', emoji: '☁️', diff: '기본', desc: '' });
+    const modeDef = (MD() ? MD().modeById(S.room.mode) : { name: '일반 레이스', emoji: '🏁', desc: '' });
+    const tags = [];
+    tags.push('<b>' + modeDef.emoji + ' ' + esc(modeDef.name) + '</b>');
+    tags.push('🌀 태초 ' + (S.room.originRandom ? '🎲랜덤' : (Number(S.room.originPct) || 0) + '%'));
+    tags.push('👥 최대 ' + S.room.max + '명');
+    tags.push(S.room.events ? '🎲 이벤트' : '🚫 이벤트');
+    tags.push(S.room.items ? '✨ 아이템' : '🚫 아이템');
+    tags.push(S.room.buffs !== false ? '🎁 버프' : '🚫 버프');
+    tags.push(S.room.traps !== false ? '😈 함정' : '🚫 함정');
+    tags.push(S.room.collide ? '💥 충돌' : '👻 통과');
+    box.innerHTML = '<canvas class="mpb-thumb" width="62" height="44"></canvas>' +
+      '<div class="flex-1 min-w-0">' +
+      '<div class="mpb-nm">' + mapDef.emoji + ' ' + esc(mapDef.name) + '</div>' +
+      '<div class="mpb-tags">' + tags.join(' · ') + '</div>' +
+      '</div>';
+    const th = box.querySelector('canvas');
+    try {
+      if (window.JW42 && window.JW42.mapThumb) window.JW42.mapThumb(th, S.room.map);
+      else if (th) { const c = th.getContext('2d'); c.fillStyle = '#1e293b'; c.fillRect(0, 0, 62, 44); }
+    } catch (e) {}
+    const rb = $('mpRuleOpenBtn');
+    if (rb) {
+      rb.classList.toggle('hidden', !hostOnly);
+      rb.textContent = '⚙️ 방 규칙 · 커스텀 설정';
+    }
+    const hint = $('mpRuleHint');
+    if (hint) hint.textContent = S.room.mode === 'classic'
+      ? '🏛️ 클래식: 기본 맵 · 태초 3% · 순정 물리로 고정됩니다.'
+      : (hostOnly ? '방장은 위 버튼에서 맵·모드·규칙을 한 번에 바꿀 수 있어요.' : '방장이 정한 규칙으로 함께 놉니다. 바꾸려면 채팅으로 요청해 보세요.');
   }
   function ruleBtn(key, label, on, lock) {
     return '<button type="button" class="mp-rule-row' + lock + '" data-rule="' + key + '"><span>' + label + '</span><span class="v ' + (on ? 'on' : 'off') + '">' + (on ? 'ON' : 'OFF') + '</span></button>';
@@ -6233,6 +6376,7 @@ extends CanvasLayer
           if (m.ti) p.ti = m.ti;
           if (m.w != null) { p.w = m.w; p.l = m.l; p.st = m.st; }
           if (m.sk) p.sk = m.sk;
+          if (m.col) p.color = m.col;
           if (m.sm != null) p.sm = m.sm;
           renderLobby(); broadcastLobby();
         }
@@ -6573,6 +6717,10 @@ extends CanvasLayer
           toast('🎲 태초 확률 변동', 'danger', '지금 태초 확률은 ' + S.liveOrigin + '%!', 2400);
           beep(560, 0.1, 0.12, 'square', 900);
         }
+      }
+      /* AI 봇 대전도 순위표·고도바를 실제 멀티처럼 갱신 */
+      if (window.__jwgBotRows && window.__jwgBotRows().length) {
+        if (now() - S.hudT > 180) { S.hudT = now(); updateRank(); }
       }
       return;
     }
@@ -7026,6 +7174,10 @@ extends CanvasLayer
       const ps = S.pst.get(pr.pid) || {};
       rows.push({ pid: pr.pid, nick: pr.nick, color: pr.color, y: pr.ry !== undefined ? pr.ry : pr.y, fin: pr.fin, time: pr.time, me: false, ftag: pl ? pl.ftag : null, ti: (pl && pl.ti) || ps.ti, coll: ps.k || 0, orig: ps.o || 0, best: progressOf(ps.hi === undefined ? pr.y : ps.hi), elim: !!pr.elim, sk: pr.sk });
     });
+    /* 4.3: AI 봇도 실제 멀티 참가자처럼 순위표·고도바에 합류한다 */
+    try {
+      if (window.__jwgBotRows) window.__jwgBotRows().forEach((r) => rows.push(r));
+    } catch (e) {}
     /* 관전자·퇴장자는 순위에서 뺐다 (peers에만 있고 players에는 없는 경우 방어) */
     rows.forEach((r) => {
       const idx = S.finishing.findIndex((f) => f.pid === r.pid);
@@ -7035,7 +7187,9 @@ extends CanvasLayer
   }
 
   function updateRank() {
-    if (S.phase !== 'race' && S.phase !== 'result') return;
+    let bots = 0;
+    try { bots = (window.__jwgBotRows ? window.__jwgBotRows().length : 0); } catch (e) { bots = 0; }
+    if (S.phase !== 'race' && S.phase !== 'result' && !bots) return;
     const rows = standings();
     const mine = rows.find((r) => r.me);
     const myY = mine ? mine.y : JW().player.y;
@@ -7057,21 +7211,93 @@ extends CanvasLayer
         (dtxt ? '<span class="rkd">' + dtxt + '</span>' : '') + '</div>';
     }).join('');
 
-    const bar = $('mpAltBar');
+    drawAltTower(rows);
+  }
+
+  /* 16비트 픽셀 고도 타워: 존 색 구간 · 눈금 · 깃발 · 캐릭터 얼굴 마커 */
+  const TOWER_ZONE = ['#334155', '#34d399', '#fb923c', '#7dd3fc', '#a78bfa', '#fde047'];
+  function drawAltTower(rows) {
+    const bar = $('mpAltBar'), cv = $('mpAltCv');
+    if (!bar || !cv) return;
     bar.classList.remove('hidden');
-    const plats = JW().platforms;
+    const ctx = cv.getContext('2d');
+    const W = cv.width, H = cv.height;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, W, H);
+    const tx = 6, tw = 13, top = 18, bot = 194;
+    const span = bot - top;
+    /* 프레임 */
+    ctx.fillStyle = '#05030a'; ctx.fillRect(tx - 3, top - 3, tw + 6, span + 6);
+    ctx.fillStyle = '#0b1222'; ctx.fillRect(tx - 2, top - 2, tw + 4, span + 4);
+    /* 깃발 */
+    ctx.fillStyle = '#e2e8f0'; ctx.fillRect(tx + 4, 3, 2, 14);
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) {
+      ctx.fillStyle = ((i + j) % 2) ? '#f8fafc' : '#ef4444';
+      ctx.fillRect(tx + 6 + i * 3, 3 + j * 2, 3, 2);
+    }
+    /* 존 색 구간 (아래→위) */
+    const seg = span / 6;
+    for (let z = 0; z < 6; z++) {
+      const y0 = bot - (z + 1) * seg, y1 = bot - z * seg;
+      ctx.fillStyle = TOWER_ZONE[z];
+      ctx.globalAlpha = 0.42;
+      ctx.fillRect(tx, y0, tw, y1 - y0);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(5,3,10,.35)';
+      for (let y = y0 + 1; y < y1; y += 3) for (let x = tx + ((y | 0) % 2 ? 0 : 2); x < tx + tw; x += 3) ctx.fillRect(x, y, 1, 1);
+    }
+    /* 내 진행 채움 */
+    const plats = JW().platforms || [];
     let maxY = 0, minY = -1;
     for (const p of plats) { if (p.y > maxY) maxY = p.y; if (p.y < minY) minY = p.y; }
-    const H = 100;
-    const pos = (y) => Math.max(0, Math.min(H, ((y - minY) / (maxY - minY || 1)) * H));
-    let html = '<div id="mpAltTrack"></div>';
-    rows.forEach((r, i) => {
-      const top = pos(r.y);
-      html += '<div class="mp-alt-mk" style="left:0;top:' + top.toFixed(1) + '%">' +
-        '<i style="background:' + colorHex(r.color) + ';box-shadow:0 0 0 1px #05030a' + (r.me ? ',0 0 0 3px #fde047' : '') + '"></i>' +
-        '<span style="left:18px">' + (r.fin ? '🏁' : (i + 1)) + '</span></div>';
+    const posOf = (y) => Math.max(top, Math.min(bot, top + ((y - minY) / (maxY - minY || 1)) * span));
+    const mine = rows.find((r) => r.me);
+    const myPct = mine ? Math.max(0, Math.min(100, 100 - ((mine.y - minY) / (maxY - minY || 1)) * 100)) : 0;
+    if (mine) {
+      const myTop = posOf(mine.y);
+      ctx.fillStyle = '#fde047'; ctx.globalAlpha = 0.9;
+      ctx.fillRect(tx + 1, myTop, tw - 2, bot - myTop);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#fffbeb';
+      ctx.fillRect(tx + 1, myTop, 2, bot - myTop);
+      ctx.fillStyle = 'rgba(5,3,10,.30)';
+      for (let y = myTop + 2; y < bot; y += 4) ctx.fillRect(tx + 1, y, tw - 2, 1);
+    }
+    /* 눈금 25 · 50 · 75% */
+    [0.25, 0.5, 0.75].forEach((t) => {
+      const y = bot - span * t;
+      ctx.fillStyle = 'rgba(248,250,252,.85)';
+      ctx.fillRect(tx - 2, y, tw + 4, 1);
+      ctx.fillStyle = 'rgba(5,3,10,.8)';
+      ctx.fillRect(tx - 2, y + 1, tw + 4, 1);
     });
-    bar.innerHTML = html;
+    /* 시작 라벨 · 높이 % */
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 7px "Galmuri11", monospace';
+    ctx.fillStyle = '#94a3b8'; ctx.fillText('0m', tx + tw / 2, H - 2);
+    const pctEl = $('mpAltPct');
+    if (pctEl) pctEl.textContent = Math.round(myPct) + '%';
+    /* 마커: 내/상대/봇 캐릭터 얼굴 + 순위 숫자 + 1등 왕관 */
+    rows.forEach((r, i) => {
+      const y = posOf(r.y);
+      const col = colorHex(r.color);
+      const sp = spriteFor(r.color, 'idle1', r.sk);
+      const fw = 14, fh = 16;
+      const fx = tx + tw + 3;
+      const fy = Math.max(14, Math.min(H - fh - 2, y - fh / 2));
+      ctx.fillStyle = col; ctx.fillRect(tx + tw, y - 1, 4, 2);
+      if (r.me) { ctx.fillStyle = '#fde047'; ctx.fillRect(fx - 2, fy - 2, fw + 4, fh + 4); }
+      ctx.fillStyle = '#05030a'; ctx.fillRect(fx - 1, fy - 1, fw + 2, fh + 2);
+      if (sp) { try { ctx.drawImage(sp, fx, fy, fw, fh); } catch (e) {} }
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 8px "Galmuri11", monospace';
+      ctx.fillStyle = r.me ? '#fde047' : '#e2e8f0';
+      ctx.fillText(r.fin ? '🏁' : String(i + 1), fx + fw + 2, fy + fh - 3);
+      if (i === 0) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(fx + 4, fy - 4, 6, 2); ctx.fillRect(fx + 3, fy - 6, 1, 2); ctx.fillRect(fx + 6, fy - 7, 1, 3); ctx.fillRect(fx + 9, fy - 6, 1, 2);
+      }
+    });
   }
 
   function startRaceHud() {
@@ -7777,7 +8003,7 @@ extends CanvasLayer
     if (lbl && MD() && MP()) {
       const mm = MP().byId(MD().rules.map || MP().current);
       const md = MD().modeById(MD().rules.mode);
-      lbl.textContent = mm.emoji + ' ' + mm.name + ' · ' + md.emoji;
+      lbl.textContent = mm.emoji + ' ' + String(mm.name).replace(/\s*~.*$/, '').slice(0, 9) + ' · ' + md.emoji;
     }
     const rnd = $('sgOriginRandom');
     if (rnd && MD()) {
@@ -8041,6 +8267,33 @@ extends CanvasLayer
   }
 
   /* ---------------- 스킨 ---------------- */
+  function setPlayerColor(id) {
+    if (!COLORS.some((c) => c.id === id)) return;
+    S.me.color = id;
+    if (JW().ctrl) { JW().ctrl.color = id; if (JW().saveCtrl) JW().saveCtrl(); }
+    saveIdent();
+    document.querySelectorAll('#mpColors [data-color]').forEach((x) => { x.style.outline = x.getAttribute('data-color') === id ? '3px solid #fff' : 'none'; });
+    document.querySelectorAll('#sgColors [data-sgcolor]').forEach((x) => { x.style.outline = x.getAttribute('data-sgcolor') === id ? '3px solid #fff' : 'none'; });
+    drawMyAvatar();
+    if (S.phase === 'lobby' && S.room) {
+      const me = S.players.get(S.me.pid);
+      if (me) me.color = id;
+      if (S.isHost) broadcastLobby();
+      else sendEv({ t: 'ready', ready: S.me.ready, ti: myTitle().id, w: prof.wins, l: prof.losses, st: prof.streak, sk: S.me.skin, sm: prof.status || '', col: id });
+      renderLobby();
+    }
+    beep(760, 0.05, 0.08);
+  }
+  const meSkinId = () => (S.me.skin || (prof && prof.skin) || 'jaeu');
+  function drawMyAvatar() {
+    const cv = $('mpMyAvatar');
+    if (!cv) return;
+    const sp = spriteFor(S.me.color || 'blue', 'idle1', meSkinId());
+    const c = cv.getContext('2d'); c.imageSmoothingEnabled = false;
+    c.clearRect(0, 0, cv.width, cv.height);
+    if (sp) { try { c.drawImage(sp, 0, 0); } catch (e) {} }
+  }
+
   function renderSkins() {
     const wrap = $('frSkins');
     if (!wrap) return;
@@ -8056,6 +8309,7 @@ extends CanvasLayer
     prof.skin = id;
     lsSet(LSID, ident); saveProf();
     renderSkins();
+    drawMyAvatar();
     if (S.phase === 'lobby') {
       const me = S.players.get(S.me.pid);
       if (me) me.sk = id;
@@ -8225,12 +8479,7 @@ extends CanvasLayer
       b.textContent = c.name;
       b.dataset.color = c.id;
       if (c.id === S.me.color) b.style.outline = '3px solid #fff';
-      b.addEventListener('click', () => {
-        S.me.color = c.id;
-        if (JW().ctrl) { JW().ctrl.color = c.id; if (JW().saveCtrl) JW().saveCtrl(); }
-        colorsWrap.querySelectorAll('[data-color]').forEach((x) => { x.style.outline = x === b ? '3px solid #fff' : 'none'; });
-        saveIdent();
-      });
+      b.addEventListener('click', () => { setPlayerColor(c.id); });
       colorsWrap.appendChild(b);
     });
 
@@ -8258,13 +8507,19 @@ extends CanvasLayer
       setStatus('내 친구 코드를 복사했어요.');
     });
 
-    document.querySelectorAll('[data-mptab]').forEach((b) => {
-      b.addEventListener('click', () => {
-        document.querySelectorAll('[data-mptab]').forEach((x) => x.classList.toggle('on', x === b));
-        ['create', 'join', 'friends'].forEach((t) => $('mpTab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('hidden', t !== b.dataset.mptab));
-        if (b.dataset.mptab === 'friends') { ensurePresence(); renderFriends(); publishPresence(); }
-      });
+    /* 4.3 첫 화면: 친구 목록 접기/펼치기 + 스킨 모달 */
+    const fbtn = $('mpsFriendsBtn');
+    if (fbtn) fbtn.addEventListener('click', () => {
+      const box = $('mpTabFriends');
+      if (!box) return;
+      const show = box.classList.contains('hidden');
+      box.classList.toggle('hidden', !show);
+      if (show) { ensurePresence(); renderFriends(); publishPresence(); }
     });
+    const skm = $('mpsSkinBtn');
+    if (skm) skm.addEventListener('click', () => { if (window.JW42 && window.JW42.openSkin) window.JW42.openSkin(); });
+    const fro = $('mpFrOpenBtn');
+    if (fro) fro.addEventListener('click', frOpen);
 
     // 방 만들기 토글
     [['mpOptEvents', 'events'], ['mpOptItems', 'items'], ['mpOptCollide', 'collide']].forEach(([id]) => {
@@ -8536,64 +8791,33 @@ extends CanvasLayer
         if (JW().saveCtrl) JW().saveCtrl();
       });
     }
-    const wrap = $('sgColors');
-    if (wrap) {
-      COLORS.forEach((col) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.dataset.sgcolor = col.id;
-        btn.className = 'mp-chip';
-        btn.style.cssText = 'min-width:34px;padding:5px 6px;background:' + col.hex + ';color:#05030a;border-color:#fff;font-size:10px';
-        btn.textContent = col.name;
-        btn.addEventListener('click', () => {
-          c.color = col.id; S.me.color = col.id; saveIdent();
-          syncSingleSettingsUI(); if (JW().saveCtrl) JW().saveCtrl();
-        });
-        wrap.appendChild(btn);
-      });
-      syncSingleSettingsUI();
-    }
+    const wrap0 = null;
 
-    /* --- 4.1: 맵 · 모드 · 태초 0~100 · 랜덤 · 필터 · 스킨 (모달/칩으로만) --- */
+    /* --- 4.3: 싱글 설정은 '플레이 설정' 모달 하나로 통합 (중복 버튼 제거) --- */
     const box = $('sgRulesBox');
     if (box && !$('sgPickRow')) {
-      const row = document.createElement('button');
-      row.id = 'sgPickRow';
-      row.type = 'button';
-      row.className = 'mp-rule-row';
-      row.innerHTML = '<span>🗺️ 맵 · 🎮 모드</span><span class="v on" id="sgMapModeLbl" style="font-size:9.5px">기본 · 일반</span>';
-      row.addEventListener('click', () => openPicker('single'));
-      box.insertBefore(row, box.children[1] || null);
-
-      const rnd = document.createElement('button');
-      rnd.id = 'sgOriginRandom';
-      rnd.type = 'button';
-      rnd.className = 'mp-rule-row';
-      rnd.style.marginTop = '6px';
-      rnd.innerHTML = '<span>🎲 태초 실시간 랜덤 (20초마다 0~50%)</span><span class="v off">OFF</span>';
-      rnd.addEventListener('click', () => {
-        if (!MD()) return;
-        MD().rules.originRandom = !MD().rules.originRandom;
-        rnd.querySelector('.v').className = 'v ' + (MD().rules.originRandom ? 'on' : 'off');
-        rnd.querySelector('.v').textContent = MD().rules.originRandom ? 'ON' : 'OFF';
-        beep(MD().rules.originRandom ? 880 : 520, 0.06, 0.09);
-      });
-      box.appendChild(rnd);
-
-      const flt = document.createElement('button');
-      flt.id = 'sgFilterBtn';
-      flt.type = 'button';
-      flt.className = 'mp-rule-row';
-      flt.style.marginTop = '6px';
-      flt.innerHTML = '<span>🎛️ 이벤트·버프·함정 개별 선택</span><span class="v on">열기</span>';
-      flt.addEventListener('click', () => openFilter('single'));
-      box.appendChild(flt);
-
-      const sk = document.createElement('div');
-      sk.style.marginTop = '6px';
-      sk.innerHTML = '<div class="text-xs font-bold mb-1 text-slate-200">🎭 캐릭터 스킨</div><div id="sgSkins" class="flex flex-wrap gap-1.5"></div>';
-      box.appendChild(sk);
-      renderSgSkins();
+      box.innerHTML =
+        '<div class="text-xs font-black" style="color:#c4b5fd">혼자 하기 설정</div>' +
+        '<button type="button" id="sgPickRow" class="mps-gate"><span class="ic">🎮</span><span>맵 · 모드 · 규칙 고르기</span><span class="v on" id="sgMapModeLbl" style="font-size:9px">기본</span></button>' +
+        '<button type="button" id="sgSkinRow" class="mps-gate"><span class="ic">🎭</span><span>캐릭터 스킨 · 색상</span><span class="v on" id="sgSkinLbl" style="font-size:9px">기본 재우</span></button>' +
+        '<div class="flex items-center gap-2"><span class="text-[11px] font-bold shrink-0">🎨 색상</span><div id="sgColors" class="flex flex-wrap gap-1.5"></div></div>' +
+        '<div class="text-[10px] font-bold text-slate-400 leading-snug">위 버튼 하나면 맵·모드·규칙·스킨을 한 화면에서 고를 수 있어요.</div>';
+      $('sgPickRow').addEventListener('click', () => { if (window.JW42 && window.JW42.openRules) window.JW42.openRules('solo'); });
+      $('sgSkinRow').addEventListener('click', () => { if (window.JW42 && window.JW42.openSkin) window.JW42.openSkin(); });
+      const wrap = $('sgColors');
+      if (wrap) {
+        COLORS.forEach((col) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.dataset.sgcolor = col.id;
+          btn.className = 'mp-chip';
+          btn.style.cssText = 'min-width:34px;padding:4px 6px;background:' + col.hex + ';color:#05030a;border-color:#fff;font-size:10px';
+          btn.textContent = col.name;
+          btn.addEventListener('click', () => { setPlayerColor(col.id); syncSingleSettingsUI(); });
+          wrap.appendChild(btn);
+        });
+      }
+      syncSingleSettingsUI();
     }
   }
   function renderSgSkins() {
@@ -8711,6 +8935,28 @@ extends CanvasLayer
       return spriteFor(col, pose, skin);
     },
     leave: () => { doLeave(); },
+    /* 4.3: 스킨 · 색 · 방 규칙 API (v42 UI에서 사용) */
+    skins: () => (MD() ? MD().SKINS : []),
+    colors: () => COLORS,
+    colorHex,
+    meSkin: () => meSkinId(),
+    meColor: () => (S.me.color || 'blue'),
+    spriteFor: (color, pose, skin) => spriteFor(color || S.me.color, pose || 'idle1', skin || meSkinId()),
+    setSkin: (id) => setSkin(id),
+    setColor: (id) => setPlayerColor(id),
+    setRoomRule: (key, val) => setRoomRule(key, val),
+    setRoomRulesBulk: (patch, what) => setRoomRulesBulk(patch, what),
+    renderLobby: () => renderLobby(),
+    room: () => S.room,
+    isHost: () => !!S.isHost,
+    roomSummary: () => ruleSummary(),
+    applySingle: (mapId, modeId) => applySingle(mapId, modeId),
+    openPicker: (who) => openPicker(who),
+    openFilter: (scope) => openFilter(scope),
+    frOpen: () => frOpen(),
+    syncSingle: () => syncSingleSettingsUI(),
+    drawMyAvatar: () => drawMyAvatar(),
+    layoutHud: () => { layoutModeBar(); layoutRaceHud(); },
     state: S,
     /* 4.1 내부 접근(테스트/디버그용) */
     internals: () => ({ S, prof, ident, friends, records, rules: MD() ? MD().rules : null })
@@ -8740,10 +8986,18 @@ extends CanvasLayer
   #v42EditorCv { width:100%; height:auto; image-rendering:pixelated; background:#070a14; border:2px solid #334155; touch-action:none; display:block; }
   #v42HLCv { width:100%; max-width:270px; height:auto; image-rendering:pixelated; background:#070a14; border:2px solid #334155; margin:0 auto; display:block; }
   #v42Flash { position:absolute; inset:0; background:#f8fbff; opacity:0; pointer-events:none; z-index:19; }
-  #v42TitleRow { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
-  #v42TitleRow button { font-size:10.5px; font-weight:900; padding:7px 2px; line-height:1.15; background:#0f172a; border:2px solid #7c3aed; color:#ddd6fe;
-    box-shadow:0 3px 0 #05030a; cursor:pointer; }
-  #v42TitleRow button:active { transform:translateY(2px); box-shadow:0 1px 0 #05030a; }
+  .v42-trow { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .v42-trow button { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    font-size:10.5px; font-weight:900; padding:6px 2px; line-height:1.1; background:#0f172a; border:2px solid #7c3aed; color:#ddd6fe;
+    box-shadow:inset 0 -3px 0 rgba(0,0,0,.35),0 3px 0 #05030a; cursor:pointer; }
+  .v42-trow button:active { transform:translateY(2px); box-shadow:0 1px 0 #05030a; }
+  .v42-tico { width:26px; height:26px; image-rendering:pixelated; display:block; }
+  .v42-world { background:#070c18; border:2px solid #1e293b; padding:6px; }
+  .v42-world-h { font-size:10px; font-weight:900; color:#a5b4fc; margin-bottom:4px; }
+  .v42-world-row { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; }
+  .v42-world-row figure { display:flex; flex-direction:column; align-items:center; gap:2px; margin:0; }
+  .v42-world-row canvas { width:100%; height:auto; aspect-ratio:62/44; image-rendering:pixelated; border:1px solid #334155; display:block; }
+  .v42-world-row figcaption { font-size:8px; font-weight:800; color:#94a3b8; white-space:nowrap; }
   .v42-hlbtn { font-weight:900; padding:9px 10px; font-size:11.5px; border:3px solid #fde047; background:#7c2d12; color:#fef3c7; box-shadow:0 3px 0 #05030a; cursor:pointer; }
   .v42-hlbtn:active { transform:translateY(2px); box-shadow:0 1px 0 #05030a; }
   .v42-rankrow { display:flex; align-items:center; gap:6px; background:#0b1222; border:1px solid #1e293b; padding:3px 6px; font-size:11px; font-weight:800; color:#dbe7f7; }
@@ -8754,9 +9008,92 @@ extends CanvasLayer
   .v42-rankempty { font-size:10.5px; font-weight:800; color:#64748b; text-align:center; padding:10px 4px; }
   #v42SetBox { border-top:2px solid #1e293b; padding-top:8px; display:flex; flex-direction:column; gap:6px; }
   #v42SetBox .v42-row { padding:5px 7px; }
+
+  /* ================= 4.3: 스킨 · 플레이 설정 · AI 좌석 · 카운트다운 ================= */
+  .v42-skin-hero { display:flex; align-items:center; gap:9px; background:#070c18; border:2px solid #334155; padding:8px; }
+  .v42-stage { width:100px; height:112px; flex:0 0 100px; display:flex; align-items:center; justify-content:center;
+    background:repeating-conic-gradient(#0b1222 0% 25%, #111a30 0% 50%) 50%/10px 10px; border:2px solid #1e293b; }
+  #v42SkinBig { width:96px; height:108px; image-rendering:pixelated; display:block; }
+  .v42-skin-nm { font-size:15px; font-weight:900; color:#fff; letter-spacing:-.01em; }
+  .v42-skin-cl { font-size:10px; font-weight:800; color:#a5b4fc; line-height:1.35; margin-top:2px; }
+  .v42-skgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; }
+  .v42-skcard { display:flex; flex-direction:column; align-items:center; gap:2px; padding:5px 2px; background:#0b1222;
+    border:2px solid #334155; color:#cbd5e1; font-size:8.5px; font-weight:800; line-height:1.1; cursor:pointer; }
+  .v42-skcard canvas { width:32px; height:36px; image-rendering:pixelated; }
+  .v42-skcard .nm { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  .v42-skcard.on { border-color:#fde047; background:#1f2937; box-shadow:inset 0 0 0 1px #fde047; color:#fef3c7; }
+  .v42-colors { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
+  .v42-colchip { padding:5px 2px; font-size:10px; font-weight:900; border:2px solid #fff; color:#05030a; cursor:pointer; opacity:.72; }
+  .v42-colchip.on { opacity:1; box-shadow:0 0 0 2px #fde047; }
+  .v42-presets { display:flex; flex-direction:column; gap:4px; }
+  .v42-preset { display:flex; align-items:center; gap:7px; padding:5px 7px; text-align:left; background:#0b1222; border:2px solid #334155; color:#e2e8f0; cursor:pointer; }
+  .v42-preset canvas { width:28px; height:28px; image-rendering:pixelated; flex:0 0 auto; }
+  .v42-preset b { display:block; font-size:11.5px; font-weight:900; }
+  .v42-preset i { display:block; font-style:normal; font-size:9.5px; font-weight:700; color:#94a3b8; }
+  .v42-preset:active { transform:translateY(1px); }
+  .v42-tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
+  .v42-tab { padding:6px 2px; font-size:10px; font-weight:900; background:#0b1222; border:2px solid #334155; color:#94a3b8; cursor:pointer; }
+  .v42-tab.on { background:#1d4ed8; border-color:#93c5fd; color:#fff; }
+  .v42-maplist { display:flex; gap:5px; overflow-x:auto; padding:2px 1px 4px; -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
+  .v42-mapc { flex:0 0 110px; width:110px; min-width:0; overflow:hidden; display:flex; flex-direction:column; gap:2px; align-items:stretch; text-align:left; padding:4px; background:#0b1222; border:2px solid #334155; color:#e2e8f0; cursor:pointer; }
+  .v42-mapc canvas { width:100%; height:70px; image-rendering:pixelated; border:1px solid #1e293b; display:block; }
+  .v42-mapc .tx { min-width:0; width:100%; overflow:hidden; }
+  .v42-mapc b { display:block; font-size:9.5px; font-weight:900; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .v42-mapc i { display:block; font-style:normal; font-size:8px; font-weight:700; color:#94a3b8; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .v42-mapc em { font-style:normal; font-size:8px; font-weight:900; border:1px solid currentColor; padding:0 2px; }
+  .v42-mapc.on { border-color:#fbbf24; background:#1f2937; box-shadow:inset 0 0 0 1px #fbbf24; }
+  .v42-modelist { display:grid; grid-template-columns:1fr 1fr; gap:4px; max-height:238px; overflow-y:auto; }
+  .v42-modec { display:flex; flex-direction:row; align-items:center; gap:5px; text-align:left; padding:4px; background:#0b1222; border:2px solid #334155; color:#e2e8f0; cursor:pointer; height:42px; overflow:hidden; }
+  .v42-modec canvas { width:26px; height:26px; image-rendering:pixelated; flex:0 0 auto; }
+  .v42-modec .tx { min-width:0; flex:1; }
+  .v42-modec b { display:block; font-size:10px; font-weight:900; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .v42-modec i { display:block; font-style:normal; font-size:8.5px; font-weight:700; color:#94a3b8; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .v42-modec.on { border-color:#fde047; background:#1f2937; box-shadow:inset 0 0 0 1px #fde047; }
+  .v42-srow { display:flex; align-items:center; gap:6px; width:100%; text-align:left; background:#0b1222; border:2px solid #334155; padding:6px 7px; color:#e2e8f0; cursor:pointer; }
+  .v42-srow .tx { flex:1; min-width:0; }
+  .v42-srow .tx b { display:block; font-size:11px; font-weight:900; line-height:1.15; }
+  .v42-srow .tx i { display:block; font-style:normal; font-size:9px; font-weight:700; color:#94a3b8; line-height:1.2; }
+  .v42-srow .sw { flex:0 0 auto; font-size:9.5px; font-weight:900; padding:2px 6px; border:2px solid #475569; color:#94a3b8; background:#111a30; }
+  .v42-srow.on { border-color:#047857; }
+  .v42-srow.on .sw { background:#047857; border-color:#6ee7b7; color:#fff; }
+  .v42-sliderow { display:flex; align-items:center; gap:6px; }
+  .v42-range { flex:1; min-width:0; accent-color:#c084fc; }
+  .v42-pct { font-size:10.5px; font-weight:900; color:#f0abfc; min-width:34px; text-align:right; }
+  .v42-cols4 { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; }
+  .v42-num { padding:6px 0; font-size:11px; font-weight:900; background:#111a30; border:2px solid #334155; color:#cbd5e1; cursor:pointer; }
+  .v42-num.on { background:#1d4ed8; border-color:#93c5fd; color:#fff; }
+  .v42-dup { display:flex; gap:5px; }
+  .v42-dup .v42-chip { flex:1; }
+  .v42-chk { display:flex; align-items:center; gap:6px; width:100%; text-align:left; background:#0b1222; border:2px solid #1e293b; padding:5px 6px; color:#e2e8f0; cursor:pointer; }
+  .v42-chk .ck { width:18px; height:18px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-size:11px; background:#111a30; border:2px solid #475569; color:#94a3b8; }
+  .v42-chk.on .ck { background:#047857; border-color:#6ee7b7; color:#fff; }
+  .v42-chk .tx { flex:1; min-width:0; }
+  .v42-chk b { display:block; font-size:10.5px; font-weight:900; }
+  .v42-chk i { display:block; font-style:normal; font-size:8.5px; color:#94a3b8; font-weight:700; }
+  .v42-details summary { font-size:10px; font-weight:900; color:#93c5fd; cursor:pointer; padding:4px 0; }
+  .v42-evs { display:flex; flex-wrap:wrap; gap:3px; }
+  .v42-chkev { font-size:9px; font-weight:800; padding:3px 5px; background:#111a30; border:1px solid #475569; color:#94a3b8; cursor:pointer; }
+  .v42-chkev.on { background:#1d4ed8; border-color:#93c5fd; color:#fff; }
+  .v42-rfoot { display:flex; gap:5px; position:sticky; bottom:0; background:#0d1326; padding-top:4px; }
+  .v42-seats { display:flex; gap:5px; flex-wrap:wrap; }
+  .v42-seat { display:flex; flex-direction:column; align-items:center; gap:1px; width:58px; padding:4px 2px; background:#0b1222; border:2px solid #1e293b; font-size:8.5px; font-weight:800; color:#cbd5e1; text-align:center; }
+  .v42-seat canvas { width:32px; height:36px; image-rendering:pixelated; }
+  .v42-seat.me { border-color:#fde047; color:#fef3c7; background:#1a1508; }
+  .v42-seat.empty { opacity:.4; justify-content:center; height:58px; }
+  #v42Count { position:absolute; inset:0; z-index:57; display:flex; align-items:center; justify-content:center; background:rgba(3,5,12,.45); pointer-events:none; }
+  #v42Count > div { font-size:72px; font-weight:900; color:#fde047; text-shadow:4px 4px 0 #05030a,-3px -3px 0 #b45309; }
+  #v42SetTabs { margin-top:-2px; }
+  .v42-setpane { min-height:0; }
+  /* iPad: 오른쪽 배경 미리보기 카드 (mp.html의 .hidden!important 우회) */
+  .tright { display:none; }
+  @media (min-width:768px) { .tright { display:flex !important; } }
+
 </style>
 
 <div id="v42Flash"></div>
+
+<!-- 3-2-1 카운트다운 (AI 대전도 실제 멀티처럼) -->
+<div id="v42Count" class="hidden"><div>3</div></div>
 
 <!-- ============ 1. AI 봇 대전 설정 ============ -->
 <div id="v42AI" class="v42-modal hidden">
@@ -8773,6 +9110,8 @@ extends CanvasLayer
     <div id="v42AIDiff" style="display:flex;gap:5px"></div>
     <div class="v42-sub">맵</div>
     <div id="v42AIMap" style="display:flex;flex-direction:column;gap:4px;max-height:126px;overflow-y:auto"></div>
+    <div class="v42-sub">참가자 (나 + 봇)</div>
+    <div id="v42AISeats" class="v42-seats"></div>
     <div class="v42-sub" id="v42AINote">봇은 실제 발판을 스캔해 충전 점프합니다. 난이도가 높을수록 실수가 적습니다.</div>
     <button type="button" id="v42AIStart" class="mp-btn green" style="padding:9px">🤖 대전 시작</button>
   </div>
@@ -8856,6 +9195,62 @@ extends CanvasLayer
     <div style="display:flex;gap:5px">
       <button type="button" id="v42EndAgain" class="mp-btn" style="flex:1">🔁 재대결</button>
       <button type="button" id="v42EndTitleBtn" class="mp-btn dark" style="flex:1">🏠 타이틀</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 6. 전용 스킨 선택 ============ -->
+<div id="v42Skin" class="v42-modal hidden">
+  <div class="v42-card" style="max-width:23rem">
+    <div class="v42-h">
+      <div><div class="v42-t">🎭 스킨 고르기</div><div class="v42-sub">고르는 즉시 저장되고 게임 · 멀티 · 타이틀에 바로 적용돼요.</div></div>
+      <button type="button" class="v42-chip" data-v42close="v42Skin">닫기 ✕</button>
+    </div>
+    <div class="v42-skin-hero">
+      <div class="v42-stage"><canvas id="v42SkinBig" width="128" height="144"></canvas></div>
+      <div class="flex-1 min-w-0">
+        <div id="v42SkinName" class="v42-skin-nm">🧑 기본 재우</div>
+        <div id="v42SkinColor" class="v42-skin-cl">🎨 블루</div>
+        <div class="v42-sub" style="margin-top:4px">미리보기는 게임에 나오는 그 도트 그림이에요.</div>
+      </div>
+    </div>
+    <div class="v42-sub">스킨 12종 · 탭해서 바로 변경</div>
+    <div id="v42SkinGrid" class="v42-skgrid"></div>
+    <div class="v42-sub">캐릭터 색상</div>
+    <div id="v42SkinColors" class="v42-colors"></div>
+    <div style="display:flex;gap:5px">
+      <button type="button" id="v42SkinRandom" class="v42-chip" style="flex:1;padding:8px">🎲 랜덤</button>
+      <button type="button" id="v42SkinDone" class="mp-btn green" style="flex:1.6;padding:8px;font-size:12px">✅ 적용 완료</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 7. 플레이 설정 (싱글 · 방 규칙 공용) ============ -->
+<div id="v42Rules" class="v42-modal hidden">
+  <div class="v42-card" style="max-width:24rem">
+    <div class="v42-h">
+      <div><div class="v42-t" id="v42RulesTitle">🎮 싱글 플레이 설정</div><div class="v42-sub" id="v42RulesSub">프리셋 하나만 눌러도 세팅 끝</div></div>
+      <button type="button" class="v42-chip" data-v42close="v42Rules">닫기 ✕</button>
+    </div>
+    <div class="v42-sub">추천 프리셋 · 원터치</div>
+    <div id="v42Presets" class="v42-presets"></div>
+    <div class="v42-tabs">
+      <button type="button" class="v42-tab on" data-rtab="mapmode">🗺️ 맵·모드</button>
+      <button type="button" class="v42-tab" data-rtab="basic">⚙️ 기본 규칙</button>
+      <button type="button" class="v42-tab" data-rtab="extras">🎁 버프·함정</button>
+    </div>
+    <div id="v42RtMapmode">
+      <div class="v42-sub">맵 · 한 줄 설명</div>
+      <div id="v42MapList" class="v42-maplist"></div>
+      <div class="v42-sub">모드 · 한 줄 설명</div>
+      <div id="v42ModeList" class="v42-modelist"></div>
+      <button type="button" id="v42RuleRoulette" class="v42-chip gold" style="padding:8px;width:100%">🎲 랜덤 룰렛 (맵 + 모드)</button>
+    </div>
+    <div id="v42RtBasic" class="hidden"></div>
+    <div id="v42RtExtras" class="hidden"></div>
+    <div class="v42-rfoot">
+      <button type="button" id="v42RulesDone" class="mp-btn blue" style="flex:1;padding:9px;font-size:12px">✅ 저장하고 닫기</button>
+      <button type="button" id="v42RulesStart" class="mp-btn green" style="flex:1.2;padding:9px;font-size:12px">▶ 이 설정으로 시작</button>
     </div>
   </div>
 </div>
@@ -8975,7 +9370,8 @@ extends CanvasLayer
         id: i, name: BOT_NAMES[i] || ('봇 ' + (i + 1)), color: BOT_COLORS[i % 3], diff: d,
         x: sp.x + 60 + i * 52, y: sp.y, vy: 0, vx: 0, plat: 1, onGround: true,
         charging: false, charge: 0, wait: 0.4 + i * 0.25, fin: false, time: 0,
-        follow: !!follow, best: 1, downT: 0, target: null, tint: null, bob: Math.random() * 6
+        follow: !!follow, best: 1, downT: 0, target: null, tint: null, bob: Math.random() * 6,
+        skin: ['cat', 'frog', 'robot'][i % 3]
       });
     }
     if (follow) V.bots.forEach((b) => { b.follow = true; });
@@ -10190,6 +10586,7 @@ extends CanvasLayer
     mp.querySelectorAll('[data-v42amp]').forEach((b) => b.addEventListener('click', () => { AI.map = b.getAttribute('data-v42amp'); renderAI(); }));
     const note = $('v42AINote');
     if (note) note.textContent = (AI.mode === 'chain' ? '줄묶기에서는 봇이 파트너로 묶여 함께 오릅니다. ' : '') + '봇은 실제 발판을 스캔해 충전 점프합니다. 난이도가 높을수록 실수가 적습니다.';
+    try { renderAISeats(); } catch (e) {}
   }
   function startAI() {
     if (!MD() || !MP()) return;
@@ -10200,6 +10597,8 @@ extends CanvasLayer
     $('v42AI').classList.add('hidden');
     const b = $('btnStartGame');
     if (b) b.click();
+    /* 실제 멀티처럼 3-2-1 카운트다운 후 출발 */
+    setTimeout(() => { try { countdown3(() => {}); } catch (e) {} }, 560);
   }
   function aiEnd(reason) {
     if (MD() && MD().solo) MD().solo.active = false;
@@ -10288,6 +10687,12 @@ extends CanvasLayer
     rankPush({ n: nick(), map: V.map, mode: V.mode, m: V.maxM, t: (V.clearT || J().game.time), clear: wasClear, fr: fr }, true);
     V.bomb = null; V.boss = null; V.chain.on = false;
     $('v42Flash').style.opacity = '0';
+    /* AI 대전: 실제 멀티처럼 쓰던 순위표·고도바 정리 */
+    try {
+      const rl = $('mpRankLine'), ab = $('mpAltBar');
+      if (rl) rl.classList.add('hidden');
+      if (ab) ab.classList.add('hidden');
+    } catch (e) {}
   }
 
   /* ================================================================ 메시지 동기화(멀티) */
@@ -10438,16 +10843,6 @@ extends CanvasLayer
     };
     w.afterHud = function () {
       try { ORIG.afterHud.apply(this, arguments); } catch (e) {}
-      try {
-        if (!V.inRun || !V.bots.length) return;
-        const bar = $('modeBar');
-        if (!bar || bar.classList.contains('hidden')) return;
-        const ex = $('modeBarExtra');
-        if (!ex) return;
-        const me = (J().player.plat && J().player.plat.index) || 1;
-        const best = V.bots.reduce((a, b) => Math.max(a, b.plat || 1), 1);
-        ex.textContent = '🤖 봇 ' + best + 'F · 나 ' + me + 'F';
-      } catch (e) {}
     };
     /* 모드 확장 */
     const md = MD();
@@ -10545,6 +10940,8 @@ extends CanvasLayer
       if (!poll.__lastMapShare || t - poll.__lastMapShare > 2500) { poll.__lastMapShare = t; send42({ t: 'm42', code: edCode() }); }
     }
     if (!V.inRun) return;
+    /* AI 대전: 실제 멀티와 같은 HUD 배치(순위표·모드칩이 HUD를 가리지 않게) */
+    if (V.bots.length && W().layoutHud && now() - (V.__hudT || 0) > 900) { V.__hudT = now(); try { W().layoutHud(); } catch (e) {} }
     if (!g.inPlay) { finishRun('quit'); return; }
     const soloOff = (V.kind === 'solo' && MD() && MD().solo && !MD().solo.active && !V.ai);
     const mpOff = (V.kind === 'mp' && (S.phase === 'result' || S.phase === 'idle'));
@@ -10555,22 +10952,6 @@ extends CanvasLayer
   }
 
   /* ================================================================ UI */
-  function injectTitleRow() {
-    const menu = $('btnOpenSettingsTitle') && $('btnOpenSettingsTitle').closest('div');
-    if (!menu || $('v42TitleRow')) return;
-    const row = document.createElement('div');
-    row.id = 'v42TitleRow';
-    row.innerHTML =
-      '<button type="button" id="v42OpenAI">🤖<br>AI 대전</button>' +
-      '<button type="button" id="v42OpenEditor">🧩<br>맵 에디터</button>' +
-      '<button type="button" id="v42OpenRank">🏆<br>랭킹보드</button>';
-    const anchor = $('btnMultiplayer') ? $('btnMultiplayer').parentElement : null;
-    if (anchor && anchor.parentElement) anchor.parentElement.insertBefore(row, $('btnOpenSettingsTitle'));
-    else menu.appendChild(row);
-    $('v42OpenAI').addEventListener('click', () => { renderAI(); $('v42AI').classList.remove('hidden'); });
-    $('v42OpenEditor').addEventListener('click', () => openEditor());
-    $('v42OpenRank').addEventListener('click', () => openRank());
-  }
   function injectSettingsBox() {
     const card = document.querySelector('#settingsModal .pixel-panel');
     if (!card || $('v42SetBox')) return;
@@ -10583,7 +10964,8 @@ extends CanvasLayer
       '<div class="v42-row"><span class="v42-lbl">🔥 연속 착지 피버</span><button type="button" class="v42-chip" id="v42CfgFever">ON</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">🥊 78층부터 수문장</span><button type="button" class="v42-chip" id="v42CfgBoss">OFF</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">⛓️ 사슬 최대 거리</span><input type="range" id="v42CfgChain" min="120" max="340" step="10" style="width:96px" /></div>' +
-      '<div class="v42-sub">날씨·수문장은 새로 시작하는 판부터 적용됩니다. 고스트는 이 기기에 저장된 내 기록으로 재생됩니다.</div>';
+      '<div class="v42-sub">날씨·수문장은 새로 시작하는 판부터 적용됩니다. 고스트는 이 기기에 저장된 내 기록으로 재생됩니다.</div>' +
+      '<button type="button" id="v42GodotLink" style="margin-top:2px;font-size:10px;font-weight:800;color:#c4b5fd;text-decoration:underline;background:none;border:0;text-align:left;padding:2px 0;opacity:.75">📦 Godot 4 코드 · 도트 PNG 에셋 내보내기</button>';
     card.appendChild(box);
     const wb = $('v42CfgWeather'), gb = $('v42CfgGhost'), fb = $('v42CfgFever'), bb = $('v42CfgBoss'), cs = $('v42CfgChain');
     const paint = () => {
@@ -10602,6 +10984,11 @@ extends CanvasLayer
       saveCfg(); paint();
     });
     cs.addEventListener('input', () => { CFG.chainMax = +cs.value; saveCfg(); });
+    const gl = $('v42GodotLink');
+    if (gl) gl.addEventListener('click', () => {
+      const sm = $('settingsModal'); if (sm) sm.classList.add('hidden');
+      const gb2 = $('btnOpenGodotCode'); if (gb2) gb2.click();
+    });
     paint();
   }
   function injectResultButtons() {
@@ -10665,6 +11052,42 @@ extends CanvasLayer
     }));
     /* AI */
     $('v42AIStart').addEventListener('click', () => startAI());
+    /* 스킨 모달 */
+    const skDone = $('v42SkinDone');
+    if (skDone) skDone.addEventListener('click', () => $('v42Skin').classList.add('hidden'));
+    const skRnd = $('v42SkinRandom');
+    if (skRnd) skRnd.addEventListener('click', () => {
+      const ss = W().skins(), cs = W().colors();
+      W().setSkin(ss[(Math.random() * ss.length) | 0].id);
+      W().setColor(cs[(Math.random() * cs.length) | 0].id);
+      refreshTitleArt(); renderSkinModal();
+    });
+    /* 플레이 설정 모달 */
+    document.querySelectorAll('[data-rtab]').forEach((b) => b.addEventListener('click', () => setRuleTab(b.getAttribute('data-rtab'))));
+    const rd = $('v42RulesDone');
+    if (rd) rd.addEventListener('click', () => $('v42Rules').classList.add('hidden'));
+    const rs = $('v42RulesStart');
+    if (rs) rs.addEventListener('click', () => startFromRules());
+    const rl = $('v42RuleRoulette');
+    if (rl) rl.addEventListener('click', () => {
+      const maps = (MP() ? MP().list : []).map((m) => m.id);
+      const modes = ['normal', 'classic', 'timeattack', 'lava', 'zombie', 'relay', 'chain', 'bomb', 'boss'];
+      let map = maps[(Math.random() * maps.length) | 0];
+      let mode = modes[(Math.random() * modes.length) | 0];
+      if (mode === 'classic') map = 'default';
+      const patch = { map, mode };
+      if (mode === 'classic') { patch.originPct = 3; patch.originRandom = false; patch.items = false; patch.buffs = false; patch.traps = false; }
+      applyRules(patch, (MP().byId(map).name) + ' · ' + MD().modeById(mode).name);
+      beep(660, 0.08, 0.11, 'square', 990);
+      setTimeout(() => beep(990, 0.1, 0.11, 'square', 1320), 120);
+    });
+    const rOpen = $('mpRuleOpenBtn');
+    if (rOpen) rOpen.addEventListener('click', () => openRules('room'));
+    /* 설정을 열 때마다 탭/요소 재정리 */
+    ['btnOpenSettingsTitle', 'btnOpenSettingsPause'].forEach((id) => {
+      const b = $(id);
+      if (b) b.addEventListener('click', () => setTimeout(() => { try { wrapSettingsTabs(); } catch (e) {} }, 30), true);
+    });
     /* 에디터 */
     const cv = $('v42EditorCv');
     cv.addEventListener('pointerdown', (e) => { e.preventDefault(); edPointer(e); });
@@ -10759,6 +11182,608 @@ extends CanvasLayer
     });
   }
 
+  const BOT_SKINS = ['cat', 'frog', 'robot', 'ghost', 'rabbit', 'panda', 'fox'];
+
+  /* ================================================================ 12. 16비트 미니 픽셀아트 */
+  function mkCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+  function paintCv(cv, fn) {
+    if (!cv) return; const g = cv.getContext('2d');
+    g.imageSmoothingEnabled = false; g.clearRect(0, 0, cv.width, cv.height); fn(g, cv.width, cv.height);
+  }
+  const MAP_PAL = {
+    default: { sky: '#7dd3fc', sky2: '#bae6fd', land: '#22c55e', deep: '#0e7490', hi: '#f8fafc', acc: '#fbbf24' },
+    dessert: { sky: '#fbcfe8', sky2: '#fce7f3', land: '#f472b6', deep: '#9d174d', hi: '#fff1f2', acc: '#fbbf24' },
+    site: { sky: '#0f172a', sky2: '#1e293b', land: '#fbbf24', deep: '#475569', hi: '#94a3b8', acc: '#f87171' },
+    space: { sky: '#111034', sky2: '#1e1b4b', land: '#a5b4fc', deep: '#312e81', hi: '#fde047', acc: '#38bdf8' },
+    bamboo: { sky: '#bbf7d0', sky2: '#dcfce7', land: '#16a34a', deep: '#065f46', hi: '#f8fafc', acc: '#ef4444' }
+  };
+  /* 맵 썸네일: 각 맵의 실제 도트 분위기 축소판 */
+  function mapThumb(cv, mapId) {
+    const P = MAP_PAL[mapId] || MAP_PAL.default;
+    paintCv(cv, (g, W, H) => {
+      g.fillStyle = P.sky; g.fillRect(0, 0, W, H);
+      g.fillStyle = P.sky2; g.fillRect(0, Math.round(H * 0.55), W, H);
+      if (mapId === 'dessert') {
+        g.fillStyle = '#fff1f2'; for (let i = 0; i < 10; i++) g.fillRect((i * 13) % W, 2 + (i % 3) * 6, 8, 3);
+        g.fillStyle = '#a16207'; g.fillRect(6, H - 12, 22, 10); g.fillStyle = '#fbcfe8'; g.fillRect(6, H - 14, 22, 4);
+        g.fillStyle = '#f472b6'; g.fillRect(34, H - 26, 2, 24); g.fillStyle = '#fda4af'; g.fillRect(28, H - 33, 14, 10);
+        g.fillStyle = '#fff1f2'; g.fillRect(31, H - 30, 4, 3);
+        g.fillStyle = '#fbbf24'; g.fillRect(46, H - 18, 10, 4); g.fillRect(48, H - 22, 6, 3);
+      } else if (mapId === 'site') {
+        g.fillStyle = '#f8fafc'; for (let i = 0; i < 8; i++) g.fillRect(6 + i * 8, 5 + (i % 2) * 5, 2, 2);
+        g.fillStyle = P.land; g.fillRect(10, 6, 3, H - 6); g.fillRect(10, H - 30, 30, 3);
+        g.fillRect(10, 8, 20, 2); g.fillRect(10, 18, 16, 2);
+        g.fillStyle = P.deep; g.fillRect(30, H - 22, 18, 6); g.fillRect(36, H - 14, 18, 6);
+        g.fillStyle = '#fbbf24'; g.fillRect(2, H - 8, 10, 8);
+        g.fillStyle = '#f87171'; g.fillRect(52, 4, 6, 3);
+      } else if (mapId === 'space') {
+        g.fillStyle = '#fde047'; for (let i = 0; i < 14; i++) g.fillRect((i * 7 + 3) % W, (i * 11) % (H - 8), 1, 1);
+        g.fillStyle = '#a5b4fc'; g.fillRect(38, 8, 14, 14); g.fillStyle = '#6366f1'; g.fillRect(38, 8, 5, 14);
+        g.fillStyle = '#fde047'; g.fillRect(34, 14, 24, 2);
+        g.fillStyle = '#94a3b8'; g.fillRect(6, H - 18, 12, 6); g.fillRect(22, H - 26, 8, 5);
+        g.fillStyle = '#38bdf8'; g.fillRect(0, H - 8, W, 3);
+      } else if (mapId === 'bamboo') {
+        g.fillStyle = '#86efac'; for (let i = 0; i < 5; i++) g.fillRect(6 + i * 12, 2, 3, H - 4);
+        g.fillStyle = '#166534'; for (let i = 0; i < 5; i++) for (let y = 6; y < H - 4; y += 9) g.fillRect(6 + i * 12, y, 3, 2);
+        g.fillStyle = '#ef4444'; g.fillRect(28, 12, 3, H - 30); g.fillRect(42, 12, 3, H - 30); g.fillRect(24, 9, 25, 3); g.fillRect(26, 14, 21, 2);
+        g.fillStyle = 'rgba(226,232,240,.65)'; g.fillRect(0, H - 22, W, 6);
+        g.fillStyle = '#22c55e'; g.fillRect(0, H - 8, W, 8);
+      } else {
+        g.fillStyle = P.hi; g.fillRect(4, 8, 14, 4); g.fillRect(10, 6, 10, 3); g.fillRect(40, 16, 12, 4);
+        g.fillStyle = '#22c55e'; g.fillRect(0, H - 14, W, 14);
+        g.fillStyle = '#16a34a'; g.fillRect(0, H - 12, W, 3);
+        g.fillStyle = P.deep; g.fillRect(26, H - 14, 5, 14); g.fillStyle = '#a5f3fc'; g.fillRect(27, H - 12, 3, 12);
+        g.fillStyle = P.acc; g.fillRect(4, H - 20, 6, 6);
+      }
+    });
+  }
+
+  /* 모드 아이콘 (30x30) */
+  function modeIcon(cv, modeId) {
+    paintCv(cv, (g, W, H) => {
+      g.fillStyle = '#0b1222'; g.fillRect(0, 0, W, H);
+      if (modeId === 'classic') {
+        g.fillStyle = '#e2e8f0'; g.fillRect(5, 12, 20, 3); g.fillRect(6, 6, 18, 2);
+        g.fillStyle = '#f8fafc'; for (let i = 0; i < 4; i++) g.fillRect(7 + i * 5, 15, 3, 10);
+        g.fillStyle = '#94a3b8'; g.fillRect(4, 25, 22, 3); g.fillRect(12, 2, 6, 3);
+      } else if (modeId === 'timeattack') {
+        g.fillStyle = '#fde047'; g.fillRect(9, 4, 12, 2);
+        g.fillStyle = '#e2e8f0'; g.fillRect(7, 6, 16, 16); g.fillStyle = '#0f172a'; g.fillRect(9, 8, 12, 12);
+        g.fillStyle = '#fde047'; g.fillRect(15, 10, 2, 5); g.fillRect(15, 14, 5, 2);
+        g.fillStyle = '#f87171'; g.fillRect(13, 20, 4, 5);
+      } else if (modeId === 'lava') {
+        g.fillStyle = '#1c1917'; g.fillRect(0, 0, W, 14);
+        g.fillStyle = '#f97316'; g.fillRect(0, 15, W, 4); g.fillRect(0, 22, W, 8);
+        g.fillStyle = '#fbbf24'; for (let i = 0; i < 6; i++) g.fillRect(2 + i * 5, 19 + (i % 2) * 2, 4, 3);
+        g.fillStyle = '#ef4444'; g.fillRect(0, 26, W, 4);
+      } else if (modeId === 'zombie') {
+        g.fillStyle = '#4ade80'; g.fillRect(6, 5, 18, 18);
+        g.fillStyle = '#166534'; g.fillRect(6, 5, 18, 3);
+        g.fillStyle = '#0f172a'; g.fillRect(10, 11, 4, 4); g.fillRect(18, 11, 4, 4);
+        g.fillStyle = '#f8fafc'; g.fillRect(12, 18, 2, 3); g.fillRect(18, 18, 2, 3);
+        g.fillStyle = '#22c55e'; g.fillRect(8, 23, 3, 5); g.fillRect(20, 23, 3, 5);
+      } else if (modeId === 'relay') {
+        g.fillStyle = '#38bdf8'; g.fillRect(3, 12, 8, 10); g.fillStyle = '#fde047'; g.fillRect(5, 6, 4, 5);
+        g.fillStyle = '#f472b6'; g.fillRect(19, 12, 8, 10); g.fillStyle = '#fde047'; g.fillRect(21, 6, 4, 5);
+        g.fillStyle = '#fbbf24'; g.fillRect(12, 15, 6, 3);
+        g.fillStyle = '#f8fafc'; g.fillRect(13, 10, 4, 4);
+      } else if (modeId === 'chain') {
+        g.fillStyle = '#94a3b8'; g.fillRect(4, 12, 8, 6); g.fillRect(10, 10, 3, 10); g.fillRect(16, 12, 8, 6);
+        g.fillStyle = '#cbd5e1'; g.fillRect(6, 13, 3, 2); g.fillRect(18, 13, 3, 2);
+        g.fillStyle = '#fbbf24'; g.fillRect(13, 11, 4, 8);
+      } else if (modeId === 'bomb') {
+        g.fillStyle = '#0f172a'; g.fillRect(8, 10, 14, 14);
+        g.fillStyle = '#334155'; g.fillRect(8, 10, 14, 3); g.fillStyle = '#f8fafc'; g.fillRect(11, 14, 3, 3);
+        g.fillStyle = '#94a3b8'; g.fillRect(18, 7, 3, 4);
+        g.fillStyle = '#fbbf24'; g.fillRect(21, 3, 3, 3); g.fillStyle = '#ef4444'; g.fillRect(23, 1, 2, 2);
+      } else if (modeId === 'boss') {
+        g.fillStyle = '#cbd5e1'; g.fillRect(5, 9, 20, 13); g.fillStyle = '#64748b'; g.fillRect(5, 9, 20, 3);
+        g.fillStyle = '#0f172a'; g.fillRect(9, 14, 12, 3); g.fillStyle = '#f87171'; g.fillRect(11, 15, 2, 1); g.fillRect(17, 15, 2, 1);
+        g.fillStyle = '#fbbf24'; g.fillRect(13, 3, 4, 6); g.fillStyle = '#ef4444'; g.fillRect(14, 1, 3, 3);
+      } else {
+        g.fillStyle = '#e2e8f0'; g.fillRect(13, 4, 2, 22);
+        g.fillStyle = '#ef4444'; g.fillRect(15, 4, 10, 7); g.fillStyle = '#f8fafc'; g.fillRect(15, 8, 10, 3);
+        g.fillStyle = '#22c55e'; g.fillRect(4, 25, 22, 3);
+      }
+    });
+  }
+
+  /* 프리셋 아이콘 (28x28) */
+  function presetIcon(cv, kind) {
+    paintCv(cv, (g, W, H) => {
+      g.fillStyle = '#0b1222'; g.fillRect(0, 0, W, H);
+      if (kind === 'classic') {
+        g.fillStyle = '#fbbf24'; g.fillRect(6, 20, 16, 3); g.fillRect(8, 8, 12, 3);
+        g.fillStyle = '#f8fafc'; for (let i = 0; i < 4; i++) g.fillRect(8 + i * 4, 11, 2, 9);
+        g.fillStyle = '#a78bfa'; g.fillRect(11, 2, 6, 5);
+      } else if (kind === 'fun') {
+        g.fillStyle = '#f472b6'; g.fillRect(6, 8, 16, 14);
+        g.fillStyle = '#fde047'; g.fillRect(10, 12, 3, 3); g.fillRect(16, 12, 3, 3);
+        g.fillStyle = '#fff1f2'; g.fillRect(11, 17, 7, 2);
+        g.fillStyle = '#38bdf8'; g.fillRect(2, 3, 3, 3); g.fillStyle = '#4ade80'; g.fillRect(22, 4, 3, 3);
+        g.fillStyle = '#fbbf24'; g.fillRect(20, 22, 3, 2);
+      } else {
+        g.fillStyle = '#e2e8f0'; g.fillRect(7, 7, 14, 12);
+        g.fillStyle = '#0f172a'; g.fillRect(10, 11, 3, 3); g.fillRect(16, 11, 3, 3);
+        g.fillStyle = '#e2e8f0'; g.fillRect(11, 17, 2, 3); g.fillRect(16, 17, 2, 3);
+        g.fillStyle = '#f87171'; g.fillRect(2, 20, 24, 4); g.fillStyle = '#fbbf24'; g.fillRect(5, 23, 4, 3);
+      }
+    });
+  }
+
+  /* 타이틀/버튼 미니 아이콘 (24x24) */
+  function pixIcon(cv, kind) {
+    paintCv(cv, (g, W, H) => {
+      if (kind === 'solo') {
+        g.fillStyle = '#fde047'; g.fillRect(11, 3, 2, 16);
+        g.fillStyle = '#ef4444'; g.fillRect(13, 4, 8, 5); g.fillStyle = '#f8fafc'; g.fillRect(13, 7, 8, 2);
+        g.fillStyle = '#22c55e'; g.fillRect(3, 19, 18, 3);
+      } else if (kind === 'skin') {
+        g.fillStyle = '#f472b6'; g.fillRect(5, 7, 14, 11);
+        g.fillStyle = '#0f172a'; g.fillRect(8, 11, 3, 3); g.fillRect(14, 11, 3, 3);
+        g.fillStyle = '#fde047'; g.fillRect(6, 5, 12, 2); g.fillRect(3, 8, 3, 3); g.fillRect(18, 8, 3, 3);
+        g.fillStyle = '#fff1f2'; g.fillRect(11, 16, 3, 2);
+      } else if (kind === 'ai') {
+        g.fillStyle = '#cbd5e1'; g.fillRect(5, 7, 14, 11);
+        g.fillStyle = '#0f172a'; g.fillRect(7, 10, 10, 5);
+        g.fillStyle = '#22d3ee'; g.fillRect(8, 11, 3, 3); g.fillRect(14, 11, 3, 3);
+        g.fillStyle = '#fbbf24'; g.fillRect(11, 3, 2, 4); g.fillStyle = '#f87171'; g.fillRect(16, 19, 3, 2);
+      } else if (kind === 'editor') {
+        g.fillStyle = '#38bdf8'; g.fillRect(3, 6, 7, 4); g.fillRect(12, 10, 8, 4); g.fillRect(5, 15, 6, 4);
+        g.fillStyle = '#fde047'; g.fillRect(17, 3, 4, 4);
+      } else if (kind === 'rank') {
+        g.fillStyle = '#fbbf24'; g.fillRect(7, 5, 10, 8); g.fillRect(3, 6, 4, 5); g.fillRect(17, 6, 4, 5);
+        g.fillStyle = '#fde68a'; g.fillRect(9, 7, 6, 4); g.fillStyle = '#b45309'; g.fillRect(10, 13, 4, 4); g.fillRect(8, 17, 8, 3);
+      } else {
+        g.fillStyle = '#94a3b8'; g.fillRect(3, 9, 18, 9);
+        g.fillStyle = '#0f172a'; g.fillRect(6, 12, 3, 3); g.fillStyle = '#f87171'; g.fillRect(16, 12, 3, 3);
+        g.fillStyle = '#cbd5e1'; g.fillRect(8, 6, 8, 3); g.fillRect(10, 18, 4, 3);
+      }
+    });
+  }
+
+  /* 작은 미리보기 캔버스에 스프라이트 그리기 */
+  function drawSpriteTo(cv, sprite, w, h) {
+    if (!cv || !sprite) return;
+    const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+    g.clearRect(0, 0, cv.width, cv.height);
+    try { g.drawImage(sprite, 0, 0, w || cv.width, h || cv.height); } catch (e) {}
+  }
+
+  /* ================================================================ 13. 스킨 선택 모달 */
+  function openSkin() {
+    const m = $('v42Skin'); if (!m || !W()) return;
+    m.classList.remove('hidden');
+    renderSkinModal();
+  }
+  function skinBigSprite(skin, col, size) {
+    const cv = mkCanvas(size || 128, size || 128);
+    const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+    const sp = W().spriteFor(col, 'idle1', skin);
+    if (sp) {
+      const sc = Math.max(1, Math.floor(Math.min(cv.width / sp.width, cv.height / sp.height)));
+      const w = sp.width * sc, h = sp.height * sc;
+      g.drawImage(sp, Math.floor((cv.width - w) / 2), Math.floor((cv.height - h) / 2), w, h);
+    }
+    return cv;
+  }
+  function renderSkinModal() {
+    if (!W()) return;
+    const sk = W().meSkin(), col = W().meColor();
+    const skins = W().skins(), cols = W().colors();
+    const grid = $('v42SkinGrid');
+    if (grid) {
+      grid.innerHTML = skins.map((s) =>
+        '<button type="button" class="v42-skcard' + (s.id === sk ? ' on' : '') + '" data-sk="' + s.id + '">' +
+        '<canvas width="32" height="36"></canvas><span class="nm">' + s.emoji + ' ' + s.name + '</span></button>').join('');
+      grid.querySelectorAll('[data-sk]').forEach((b) => {
+        const id = b.getAttribute('data-sk');
+        const sp = W().spriteFor(col, 'idle1', id);
+        drawSpriteTo(b.querySelector('canvas'), sp);
+        b.addEventListener('click', () => {
+          W().setSkin(id); refreshTitleArt(); renderSkinModal();
+          toast('🎭 스킨 변경', 'lucky', (skins.find((s) => s.id === id) || {}).name + ' · 바로 적용됐어요', 1600);
+        });
+      });
+    }
+    const cc = $('v42SkinColors');
+    if (cc) {
+      cc.innerHTML = cols.map((c) =>
+        '<button type="button" class="v42-colchip' + (c.id === col ? ' on' : '') + '" data-col="' + c.id + '" style="background:' + c.hex + '">' + c.name + '</button>').join('');
+      cc.querySelectorAll('[data-col]').forEach((b) => b.addEventListener('click', () => {
+        W().setColor(b.getAttribute('data-col')); refreshTitleArt(); renderSkinModal();
+      }));
+    }
+    const big = $('v42SkinBig');
+    if (big) drawSpriteTo(big, W().spriteFor(col, 'idle1', sk), big.width, big.height);
+    const nm = $('v42SkinName'), cln = $('v42SkinColor');
+    const def = skins.find((s) => s.id === sk) || skins[0];
+    if (nm) nm.textContent = def.emoji + ' ' + def.name;
+    if (cln) cln.textContent = '🎨 ' + ((cols.find((c) => c.id === col) || { name: '블루' }).name) + ' · 게임·멀티·타이틀에 즉시 적용';
+  }
+  /* 타이틀 초상화/미리보기를 고른 스킨으로 */
+  function refreshTitleArt() {
+    if (!W()) return;
+    const A = J() && J().ASSETS;
+    const img = $('titlePortraitImg'), prev = $('titleSpritePreview');
+    const skin = W().meSkin(), col = W().meColor();
+    try {
+      if (img) {
+        if (skin === 'jaeu' && A && A.portraits && A.portraits['결의']) img.src = A.portraits['결의'];
+        else img.src = skinBigSprite(skin, col, 128).toDataURL('image/png');
+      }
+      if (prev) prev.src = skinBigSprite(skin, col, 112).toDataURL('image/png');
+    } catch (e) {}
+    drawMyAvatarSafe();
+  }
+  function drawMyAvatarSafe() { try { if (W() && W().drawMyAvatar) W().drawMyAvatar(); } catch (e) {} }
+
+  /* ================================================================ 14. 플레이 설정 (싱글/방 공용) */
+  const RU = { scope: 'solo', tab: 'mapmode' };
+  const PRESETS = [
+    { id: 'classic', name: '순정 클래식', emoji: '🏛️', desc: '기본 맵 · 태초 3% · 순정 물리', mode: 'classic', map: 'default', originPct: 3, originRandom: false, events: true, items: false, buffs: false, traps: false, collide: true },
+    { id: 'fun', name: '꿀잼 예능', emoji: '🎉', desc: '디저트 탑 · 아이템·버프 팡팡', mode: 'normal', map: 'dessert', originPct: 10, originRandom: true, events: true, items: true, buffs: true, traps: true, collide: true },
+    { id: 'hell', name: '극악 지옥', emoji: '💀', desc: '대나무 신사 · 용암 · 함정 최대', mode: 'lava', map: 'bamboo', originPct: 25, originRandom: false, events: true, items: false, buffs: false, traps: true, collide: true }
+  ];
+  const MODE_DESC = {
+    normal: '먼저 정상에 도착하면 승리', classic: '규칙 잠금 · 순정 그대로', timeattack: '2분 안에 가장 높이',
+    lava: '바닥부터 용암이 차오름', zombie: 'AI 좀비에게 닿으면 탈락', relay: '44층에서 바통 터치',
+    chain: '사슬로 묶여 함께 오르기', bomb: '부딪혀 폭탄 넘기기', boss: '정상 앞 수문장과 대결'
+  };
+  function rv() {
+    if (RU.scope === 'room' && W().room && W().room()) {
+      const r = W().room();
+      return { mode: r.mode, map: r.map, originPct: Number(r.originPct) || 0, originRandom: !!r.originRandom, events: !!r.events,
+        items: !!r.items, buffs: r.buffs !== false, traps: r.traps !== false, collide: !!r.collide, max: r.max || 4,
+        evList: r.evList, buffList: r.buffList, trapList: r.trapList };
+    }
+    const r = MD().rules;
+    return { mode: r.mode, map: r.map, originPct: Number(r.originPct) || 0, originRandom: !!r.originRandom, events: r.events,
+      items: r.items, buffs: r.buffs, traps: r.traps, collide: r.collide, max: 1,
+      evList: r.evList, buffList: r.buffList, trapList: r.trapList };
+  }
+  function applyRules(patch, what) {
+    try {
+      if (RU.scope === 'room') {
+        if (!W().isHost()) { toast('🔒 방장만 변경', 'danger', '방장에게 요청해 보세요', 1800); return false; }
+        const ok = W().setRoomRulesBulk(patch, what);
+        if (ok) { renderRules(); renderLobbySoon(); }
+        return ok;
+      }
+      Object.assign(MD().rules, patch);
+      if (MD().rules.mode === 'classic') MD().applyClassicLock();
+      try { W().syncSingle(); } catch (e) {}
+      const lbl = $('sgMapModeLbl');
+      if (lbl && MD() && MP()) {
+        const mm = MP().byId(MD().rules.map), md = MD().modeById(MD().rules.mode);
+        lbl.textContent = mm.emoji + ' ' + mm.name.slice(0, 6) + ' · ' + md.emoji;
+      }
+      if (what) toast('🎮 규칙 적용', 'lucky', what, 1500);
+      renderRules();
+      return true;
+    } catch (e) { console.warn('rules', e); return false; }
+  }
+  function renderLobbySoon() { try { if (W() && W().renderLobby) W().renderLobby(); } catch (e) {} }
+  function openRules(scope) {
+    RU.scope = (scope === 'room') ? 'room' : 'solo';
+    RU.tab = 'mapmode';
+    const m = $('v42Rules'); if (!m) return;
+    $('v42RulesTitle').textContent = RU.scope === 'room' ? '⚙️ 방 규칙 · 커스텀 설정' : '🎮 싱글 플레이 설정';
+    $('v42RulesSub').textContent = RU.scope === 'room'
+      ? '프리셋 하나만 눌러도 방 규칙이 바로 바뀝니다.'
+      : '프리셋 하나만 눌러도 세팅 끝 · 바로 시작할 수 있어요.';
+    $('v42RulesStart').classList.toggle('hidden', RU.scope === 'room');
+    $('v42RulesDone').textContent = RU.scope === 'room' ? '✅ 완료' : '✅ 저장하고 닫기';
+    m.classList.remove('hidden');
+    renderRules();
+  }
+  function setRuleTab(t) {
+    RU.tab = t;
+    ['mapmode', 'basic', 'extras'].forEach((k) => {
+      const el = $('v42Rt' + k[0].toUpperCase() + k.slice(1));
+      if (el) el.classList.toggle('hidden', k !== t);
+      const b = document.querySelector('[data-rtab="' + k + '"]');
+      if (b) b.classList.toggle('on', k === t);
+    });
+  }
+  function swRow(label, desc, on, act, extra) {
+    return '<button type="button" class="v42-srow' + (on ? ' on' : '') + '" data-act="' + act + '">' +
+      '<span class="tx"><b>' + label + '</b>' + (desc ? '<i>' + desc + '</i>' : '') + '</span>' +
+      '<span class="sw">' + (on ? 'ON' : 'OFF') + '</span>' + (extra || '') + '</button>';
+  }
+  function renderRules() {
+    if (!W()) return;
+    const v = rv();
+    const maps = MP() ? MP().list : [];
+    const modes = (MD() ? MD().MODES : []).filter((m) => ['normal', 'classic', 'timeattack', 'lava', 'zombie', 'relay', 'chain', 'bomb', 'boss'].indexOf(m.id) >= 0);
+    /* 프리셋 */
+    const pr = $('v42Presets');
+    if (pr) {
+      pr.innerHTML = PRESETS.map((p) =>
+        '<button type="button" class="v42-preset" data-preset="' + p.id + '"><canvas width="28" height="28"></canvas>' +
+        '<span class="tx"><b>' + p.emoji + ' ' + p.name + '</b><i>' + p.desc + '</i></span></button>').join('');
+      pr.querySelectorAll('[data-preset]').forEach((b) => {
+        const p = PRESETS.find((x) => x.id === b.getAttribute('data-preset'));
+        presetIcon(b.querySelector('canvas'), p.id);
+        b.addEventListener('click', () => {
+          applyRules({ mode: p.mode, map: p.map, originPct: p.originPct, originRandom: p.originRandom, events: p.events, items: p.items, buffs: p.buffs, traps: p.traps, collide: p.collide }, p.emoji + ' ' + p.name + ' 프리셋');
+          beep(880, 0.08, 0.1, 'square', 1180);
+        });
+      });
+    }
+    /* 맵 */
+    const ml = $('v42MapList');
+    if (ml) {
+      ml.innerHTML = maps.map((m) =>
+        '<button type="button" class="v42-mapc' + (m.id === v.map ? ' on' : '') + '" data-map="' + m.id + '">' +
+        '<canvas width="62" height="44"></canvas><span class="tx"><b>' + m.emoji + ' ' + m.name +
+        ' <em style="color:' + (m.diffColor || '#94a3b8') + '">' + (m.diff || '') + '</em></b>' +
+        '<i>' + (m.desc || '') + '</i></span></button>').join('');
+      ml.querySelectorAll('[data-map]').forEach((b) => {
+        const id = b.getAttribute('data-map');
+        mapThumb(b.querySelector('canvas'), id);
+        b.addEventListener('click', () => {
+          const patch = { map: id };
+          if (v.mode === 'classic') patch.mode = 'normal';
+          applyRules(patch, (MP().byId(id).name) + ' 맵');
+          beep(760, 0.06, 0.09);
+        });
+      });
+    }
+    /* 모드 */
+    const md = $('v42ModeList');
+    if (md) {
+      md.innerHTML = modes.map((m) =>
+        '<button type="button" class="v42-modec' + (m.id === v.mode ? ' on' : '') + '" data-mode="' + m.id + '">' +
+        '<canvas width="26" height="26"></canvas><span class="tx"><b>' + m.emoji + ' ' + m.name + '</b>' +
+        '<i>' + (MODE_DESC[m.id] || m.desc || '') + '</i></span></button>').join('');
+      md.querySelectorAll('[data-mode]').forEach((b) => {
+        const id = b.getAttribute('data-mode');
+        modeIcon(b.querySelector('canvas'), id);
+        b.addEventListener('click', () => {
+          const patch = { mode: id };
+          if (id === 'classic') { patch.map = 'default'; patch.originPct = 3; patch.originRandom = false; patch.items = false; patch.buffs = false; patch.traps = false; }
+          applyRules(patch, (MD().modeById(id).name) + ' 모드');
+          beep(880, 0.06, 0.09);
+        });
+      });
+    }
+    /* 기본 규칙 */
+    const basic = $('v42RtBasic');
+    if (basic) {
+      let h = '';
+      if (RU.scope === 'room') {
+        h += '<div class="v42-sub">최대 인원</div><div class="v42-cols4">';
+        [2, 3, 4, 6].forEach((n) => { h += '<button type="button" class="v42-num' + (v.max === n ? ' on' : '') + '" data-max="' + n + '">' + n + '명</button>'; });
+        h += '</div>';
+      }
+      h += '<div class="v42-sub">🌀 태초 귀환 확률</div>' +
+        '<div class="v42-sliderow"><input type="range" id="v42OriginRange" min="0" max="' + (RU.scope === 'room' ? 100 : 100) + '" step="1" value="' + v.originPct + '" class="v42-range" />' +
+        '<span class="v42-pct">' + v.originPct + '%</span></div>' +
+        '<div class="v42-sub" style="margin-top:-2px">매 점프마다 이 확률로 처음부터 다시 시작합니다. 0%면 태초 귀환이 없어요.</div>' +
+        swRow('🎲 태초 확률 실시간 랜덤', '20초마다 0~50%로 바뀝니다', v.originRandom, 'originRandom') +
+        swRow('🎲 랜덤 이벤트', '돌풍·낙석·번개 같은 위험/행운 카드', v.events, 'events') +
+        swRow('✨ 아이템', '보호막·날개 같은 필드 아이템', v.items, 'items') +
+        swRow('🎁 버프', '2단 점프 · 착지 가이드 같은 도움 효과', v.buffs, 'buffs') +
+        swRow('😈 함정', '시야 안개 · 버튼 바뀜 같은 방해 효과', v.traps, 'traps') +
+        swRow('💥 플레이어 충돌', '부딪히면 서로 밀려납니다', v.collide, 'collide') +
+        swRow('🌧️ 날씨 변화', '맑음 → 비 → 눈 → 번개', !!CFG.weather, 'weather') +
+        swRow('🥊 78층부터 수문장 보스', '보스의 돌풍·탄막을 피해 정상 골인', !!CFG.boss, 'boss') +
+        '<div class="v42-sub">⛓️ 사슬 최대 거리</div>' +
+        '<div class="v42-sliderow"><input type="range" id="v42ChainRange" min="120" max="340" step="10" value="' + (CFG.chainMax || 210) + '" class="v42-range" /><span class="v42-pct">' + (CFG.chainMax || 210) + '</span></div>' +
+        '<div class="v42-sub">봇과 ⛓️ 줄묶기 · 💣 폭탄 돌리기는 [🤖 AI 대전]에서 바로 즐길 수 있어요.</div>';
+      basic.innerHTML = h;
+      basic.querySelectorAll('[data-max]').forEach((b) => b.addEventListener('click', () => {
+        applyRules({ max: Number(b.getAttribute('data-max')) }, '최대 인원 ' + b.getAttribute('data-max') + '명');
+      }));
+      const orr = $('v42OriginRange');
+      if (orr) {
+        orr.addEventListener('input', () => { const l = orr.parentElement.querySelector('.v42-pct'); if (l) l.textContent = orr.value + '%'; });
+        orr.addEventListener('change', () => applyRules({ originPct: Number(orr.value) }, '태초 확률 ' + orr.value + '%'));
+      }
+      const cnr = $('v42ChainRange');
+      if (cnr) {
+        cnr.addEventListener('input', () => { const l = cnr.parentElement.querySelector('.v42-pct'); if (l) l.textContent = cnr.value; });
+        cnr.addEventListener('change', () => { CFG.chainMax = clamp(Number(cnr.value) || 210, 120, 340); saveCfg(); });
+      }
+      basic.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
+        const k = b.getAttribute('data-act');
+        if (k === 'weather') { CFG.weather = !CFG.weather; saveCfg(); renderRules(); return; }
+        if (k === 'boss') { CFG.boss = !CFG.boss; saveCfg(); renderRules(); return; }
+        applyRules({ [k]: !v[k] }, null);
+      }));
+    }
+    /* 버프·함정·날씨 */
+    const ex = $('v42RtExtras');
+    if (ex) {
+      const buffs = MD().BUFFS || [], traps = MD().TRAPS || [];
+      const onB = (b) => v.buffs && (!v.buffList || v.buffList.indexOf(b.id) >= 0);
+      const onT = (t) => v.traps && (!v.trapList || v.trapList.indexOf(t.id) >= 0);
+      let h = '<div class="v42-dup">' +
+        '<button type="button" class="v42-chip" data-all="on">전체 켜기</button>' +
+        '<button type="button" class="v42-chip" data-all="off">전체 끄기</button></div>';
+      h += '<div class="v42-sub">🎁 버프</div>';
+      h += buffs.map((b) => '<button type="button" class="v42-chk' + (onB(b) ? ' on' : '') + '" data-buff="' + b.id + '"><span class="ck">' + (onB(b) ? '✓' : '') + '</span><span class="tx"><b>' + b.icon + ' ' + b.name + '</b><i>' + b.desc + '</i></span></button>').join('');
+      h += '<div class="v42-sub">😈 함정</div>';
+      h += traps.map((t) => '<button type="button" class="v42-chk' + (onT(t) ? ' on' : '') + '" data-trap="' + t.id + '"><span class="ck">' + (onT(t) ? '✓' : '') + '</span><span class="tx"><b>' + t.icon + ' ' + t.name + '</b><i>' + t.desc + '</i></span></button>').join('');
+      h += '<div class="v42-sub">🌧️ 날씨 · 무대</div>' +
+        swRow('실시간 날씨 변화', '맑음·비·눈·번개가 번갈아 바뀝니다', !!CFG.weather, 'weather') +
+        '<details class="v42-details"><summary>🎲 이벤트 14종 직접 고르기</summary><div class="v42-evs">' +
+        (MD().EVENT_KEYS || []).map((k) => '<button type="button" class="v42-chkev' + (v.events && (!v.evList || v.evList.indexOf(k) >= 0) ? ' on' : '') + '" data-ev="' + k + '">' + (MD().EVENT_NAMES[k] || k) + '</button>').join('') +
+        '</div></details>';
+      ex.innerHTML = h;
+      ex.querySelectorAll('[data-all]').forEach((b) => b.addEventListener('click', () => {
+        const on = b.getAttribute('data-all') === 'on';
+        applyRules({ buffs: on, traps: on, buffList: on ? null : [], trapList: on ? null : [] }, on ? '버프·함정 전체 ON' : '버프·함정 전체 OFF');
+      }));
+      ex.querySelectorAll('[data-buff]').forEach((b) => b.addEventListener('click', () => {
+        const id = b.getAttribute('data-buff');
+        let list = v.buffList ? v.buffList.slice() : buffs.map((x) => x.id);
+        const i = list.indexOf(id); if (i >= 0) list.splice(i, 1); else list.push(id);
+        if (list.length === buffs.length) list = null;
+        applyRules({ buffList: list }, null);
+      }));
+      ex.querySelectorAll('[data-trap]').forEach((b) => b.addEventListener('click', () => {
+        const id = b.getAttribute('data-trap');
+        let list = v.trapList ? v.trapList.slice() : traps.map((x) => x.id);
+        const i = list.indexOf(id); if (i >= 0) list.splice(i, 1); else list.push(id);
+        if (list.length === traps.length) list = null;
+        applyRules({ trapList: list }, null);
+      }));
+      ex.querySelectorAll('[data-ev]').forEach((b) => b.addEventListener('click', () => {
+        const id = b.getAttribute('data-ev');
+        const keys = MD().EVENT_KEYS || [];
+        let list = v.evList ? v.evList.slice() : keys.slice();
+        const i = list.indexOf(id); if (i >= 0) list.splice(i, 1); else list.push(id);
+        if (list.length === keys.length) list = null;
+        applyRules({ evList: list }, null);
+      }));
+      ex.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
+        const k = b.getAttribute('data-act');
+        if (k === 'weather') { CFG.weather = !CFG.weather; saveCfg(); renderRules(); }
+      }));
+    }
+    setRuleTab(RU.tab);
+  }
+  function startFromRules() {
+    const b = $('v42Rules'); if (b) b.classList.add('hidden');
+    if (RU.scope === 'room') return;
+    const go = $('btnStartGame');
+    if (go) go.click();
+  }
+
+  /* ================================================================ 15. 타이틀 액션 그리드 (2 + 3 + 3) */
+  function injectTitleRow() {
+    const menu = $('btnOpenSettingsTitle') && $('btnOpenSettingsTitle').closest('div');
+    if (!menu || $('v42TitleRow')) return;
+    const mk = (id, kind, label) => '<button type="button" id="' + id + '"><canvas class="v42-tico" data-ico="' + kind + '" width="24" height="24"></canvas><span>' + label + '</span></button>';
+    const rowB = document.createElement('div');
+    rowB.id = 'v42TitleRow'; rowB.className = 'v42-trow';
+    rowB.innerHTML = mk('v42OpenSolo', 'solo', '싱글 모드') + mk('v42OpenSkin', 'skin', '스킨') + mk('v42OpenAI', 'ai', 'AI 대전');
+    const rowC = document.createElement('div');
+    rowC.id = 'v42TitleRow2'; rowC.className = 'v42-trow';
+    rowC.innerHTML = mk('v42OpenEditor', 'editor', '맵 에디터') + mk('v42OpenRank', 'rank', '랭킹보드') + mk('v42OpenCtrl', 'ctrl', '조작 설정');
+    const anchor = $('btnMultiplayer') ? $('btnMultiplayer').parentElement : null;
+    const host = anchor && anchor.parentElement ? anchor.parentElement : menu;
+    host.insertBefore(rowB, $('btnOpenSettingsTitle'));
+    host.insertBefore(rowC, $('btnOpenSettingsTitle'));
+    const st = $('btnOpenSettingsTitle');
+    if (st) st.style.display = 'none';
+    /* 세계 미리보기 스트립 (글자만 있는 타이틀에 도트 그림을 더한다) */
+    const world = document.createElement('div');
+    world.id = 'v42World'; world.className = 'v42-world';
+    const shorts = ['구름', '디저트', '공사장', '우주', '대나무'];
+    const mapsL = (MP() ? MP().list : []);
+    world.innerHTML = '<div class="v42-world-h">🗺️ 맵 ' + mapsL.length + '종 · 모드 9종 · 스킨 12종</div>' +
+      '<div class="v42-world-row">' + mapsL.map((m, i) =>
+        '<figure><canvas width="62" height="44"></canvas><figcaption>' + m.emoji + ' ' + (shorts[i] || m.name) + '</figcaption></figure>').join('') + '</div>';
+    if (menu.parentElement) menu.parentElement.insertBefore(world, menu.nextSibling);
+    world.querySelectorAll('canvas').forEach((cv, i) => { try { mapThumb(cv, mapsL[i].id); } catch (e) {} });
+    document.querySelectorAll('#v42TitleRow .v42-tico, #v42TitleRow2 .v42-tico').forEach((cv) => pixIcon(cv, cv.getAttribute('data-ico')));
+    $('v42OpenSolo').addEventListener('click', () => openRules('solo'));
+    $('v42OpenSkin').addEventListener('click', () => openSkin());
+    $('v42OpenAI').addEventListener('click', () => { renderAI(); $('v42AI').classList.remove('hidden'); });
+    $('v42OpenEditor').addEventListener('click', () => openEditor());
+    $('v42OpenRank').addEventListener('click', () => openRank());
+    $('v42OpenCtrl').addEventListener('click', () => {
+      const btn = document.getElementById('btnOpenSettingsTitle');
+      if (btn) btn.click();
+    });
+  }
+
+  /* ================================================================ 16. 설정창 탭 정리 */
+  function wrapSettingsTabs() {
+    const card = document.querySelector('#settingsModal .pixel-panel');
+    if (!card || card.querySelector('#v42SetTabs')) return;
+    const header = card.querySelector('.flex.items-center.justify-between');
+    if (!header) return;
+    const bar = document.createElement('div');
+    bar.id = 'v42SetTabs'; bar.className = 'v42-tabs v42-settabs';
+    bar.innerHTML = '<button type="button" data-stab="ctrl" class="v42-tab on">🎮 조작 배치</button>' +
+      '<button type="button" data-stab="opt" class="v42-tab">✨ 게임 옵션</button>' +
+      '<button type="button" data-stab="snd" class="v42-tab">🔊 사운드</button>';
+    header.insertAdjacentElement('afterend', bar);
+    const pane = (id) => { const d = document.createElement('div'); d.id = id; d.className = 'v42-setpane flex flex-col gap-2'; return d; };
+    const pCtrl = pane('v42SetCtrl'), pOpt = pane('v42SetOpt'), pSnd = pane('v42SetSnd');
+    const saveRow = document.getElementById('btnSaveSettings') ? document.getElementById('btnSaveSettings').closest('div') : null;
+    card.appendChild(pOpt); card.appendChild(pSnd); card.appendChild(pCtrl);
+    if (saveRow) card.appendChild(saveRow);
+    const presetBlock = card.querySelector('[data-preset]') ? card.querySelector('[data-preset]').closest('div').parentElement : null;
+    if (presetBlock) pCtrl.appendChild(presetBlock);
+    const sliders = document.getElementById('rngOffsetX') ? document.getElementById('rngOffsetX').closest('.space-y-3') : null;
+    if (sliders) {
+      const camRow = document.getElementById('btnCamToggleModal') ? document.getElementById('btnCamToggleModal').closest('div.flex') : null;
+      const sndRow = document.getElementById('btnSoundToggle') ? document.getElementById('btnSoundToggle').closest('div.flex') : null;
+      pCtrl.appendChild(sliders);
+      if (camRow) pCtrl.appendChild(camRow);
+      if (sndRow) {
+        const t = document.createElement('div');
+        t.className = 'text-[10.5px] font-bold text-slate-400 leading-snug';
+        t.textContent = '8비트 효과음은 점프·착지·이벤트에만 쓰입니다. 게임 중에도 설정에서 바로 바꿀 수 있어요.';
+        pSnd.appendChild(sndRow);
+        pSnd.appendChild(t);
+      }
+    }
+    const sg = document.getElementById('sgRulesBox');
+    if (sg) pOpt.appendChild(sg);
+    const v42box = document.getElementById('v42SetBox');
+    if (v42box) pOpt.appendChild(v42box);
+    const showTab = (k) => {
+      bar.querySelectorAll('[data-stab]').forEach((b) => b.classList.toggle('on', b.getAttribute('data-stab') === k));
+      pCtrl.classList.toggle('hidden', k !== 'ctrl');
+      pOpt.classList.toggle('hidden', k !== 'opt');
+      pSnd.classList.toggle('hidden', k !== 'snd');
+    };
+    bar.querySelectorAll('[data-stab]').forEach((b) => b.addEventListener('click', () => showTab(b.getAttribute('data-stab'))));
+    showTab('ctrl');
+  }
+
+  /* ================================================================ 17. AI 대전 = 실전 멀티처럼 */
+  function botRows() {
+    if (!V.inRun || !V.bots || !V.bots.length) return [];
+    return V.bots.map((b, i) => ({
+      pid: 'v42bot' + i, nick: b.name, color: b.color, y: b.y, fin: !!b.fin, time: b.time || 0,
+      me: false, ftag: null, ti: null, coll: 0, orig: 0, best: 0, elim: false, sk: b.skin || 'jaeu', order: 999, bot: true
+    }));
+  }
+  window.__jwgBotRows = botRows;
+
+  function countdown3(onDone) {
+    const el = $('v42Count');
+    const g = J() && J().game;
+    if (!el) { onDone(); return; }
+    const lab = el.firstElementChild || el;
+    let paused = false, done = false;
+    el.classList.remove('hidden');
+    const tryPause = () => { try { if (g && g.inPlay) { g.paused = true; paused = true; } } catch (e) {} };
+    const finish = () => {
+      if (done) return; done = true;
+      el.classList.add('hidden');
+      if (paused) { try { g.paused = false; } catch (e) {} }
+    };
+    const step = (txt, ms, f) => setTimeout(() => { if (done) return; lab.textContent = txt; try { f(); } catch (e) {} }, ms);
+    [0, 120, 300, 520, 800, 1100].forEach((ms) => setTimeout(tryPause, ms));
+    step('3', 0, () => beep(560, 0.1, 0.13));
+    step('2', 720, () => beep(620, 0.1, 0.13));
+    step('1', 1440, () => beep(700, 0.1, 0.13));
+    step('GO!', 2140, () => { beep(1046, 0.16, 0.15, 'square', 1568); onDone && onDone(); });
+    setTimeout(finish, 2620);
+    setTimeout(finish, 3600);   /* 안전장치: 어떤 경우에도 멈춘 채로 남지 않게 */
+  }
+
+  function renderAISeats() {
+    const wrap = $('v42AISeats');
+    if (!wrap || !W()) return;
+    const me = { name: nick() + ' (나)', color: W().meColor(), skin: W().meSkin(), me: true };
+    const n = AI.mode === 'chain' ? 1 : AI.n;
+    const seats = [me];
+    for (let i = 0; i < n; i++) seats.push({ name: '봇 ' + (i + 1), color: ['#f472b6', '#34d399', '#fbbf24'][i % 3], skin: BOT_SKINS[i % BOT_SKINS.length], me: false });
+    wrap.innerHTML = seats.map((s) =>
+      '<div class="v42-seat' + (s.me ? ' me' : '') + '"><canvas width="32" height="36"></canvas><span>' + s.name + '</span></div>').join('') +
+      '<div class="v42-seat empty"><span>빈 자리</span></div>';
+    wrap.querySelectorAll('canvas').forEach((cv, i) => drawSpriteTo(cv, W().spriteFor(seats[i].color, 'idle1', seats[i].skin)));
+  }
+
   /* ================================================================ 초기화 */
   function init() {
     if (!window.__jwg || !window.JWG || !window.JWMode) { setTimeout(init, 120); return; }
@@ -10772,11 +11797,14 @@ extends CanvasLayer
     setInterval(poll, 220);
     setTimeout(injectResultButtons, 1200);
     setTimeout(injectResultButtons, 3500);
+    setTimeout(() => { try { refreshTitleArt(); } catch (e) {} }, 900);
+    setTimeout(() => { try { wrapSettingsTabs(); } catch (e) {} }, 1400);
     console.log('[재우 4.2] 10종 신기능 로드 완료');
   }
   window.JW42 = {
     cfg: CFG, V, DIFFS,
     openRank, openEditor, openHL,
+    openSkin, openRules, mapThumb, modeIcon, pixIcon, renderSkinModal, refreshTitleArt,
     startAI: (opt) => { if (opt) { AI.mode = opt.mode || AI.mode; AI.n = opt.n || AI.n; AI.diff = opt.diff || AI.diff; AI.map = opt.map || AI.map; } startAI(); },
     setWeather: (k) => { CFG.weather = true; saveCfg(); wxSet(k); },
     fever: () => V.fever, bots: () => V.bots, bomb: () => V.bomb, boss: () => V.boss,
