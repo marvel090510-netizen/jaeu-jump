@@ -302,16 +302,16 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
     </a>
 
-    <a class="card" href="./gemini-v3/" data-ai="gemini" style="--a:#8ec9ff;--a2:#22d3ee;--glow:96,165,250">
+    <a class="card" href="./gemini-v4/" data-ai="gemini" style="--a:#8ec9ff;--a2:#22d3ee;--glow:96,165,250">
       <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
         <path d="M24 4Q26.8 21.2 44 24 26.8 26.8 24 44 21.2 26.8 4 24 21.2 21.2 24 4Z" fill="currentColor" opacity=".24"/>
         <path d="M24 4Q26.8 21.2 44 24 26.8 26.8 24 44 21.2 26.8 4 24 21.2 21.2 24 4Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
       </svg></span>
       <div class="tag">제미나이 버전</div>
-      <h2>제미나이 <small>별 코인·아이템 캔버스</small></h2>
-      <p>별 코인·보호막·회복 아이템과 표정 초상화가 들어간 버전. 버튼 배치와 태초 귀환 확률을 직접 맞출 수 있고 Godot 4 코드·도트 에셋 추출 도구도 있습니다.</p>
-      <div class="spec">발판 88개 · 구역 6개 · 이벤트 9종 · 별 코인</div>
-      <div class="go"><span class="count"><b>3</b>개 버전</span><span class="arrow">→</span></div>
+      <h2>제미나이 <small>실시간 멀티 레이스</small></h2>
+      <p>방 코드로 친구와 최대 6명이 같은 맵에서 동시에 오르는 실시간 레이스. 충돌하면 튕겨나가고, 방 채팅·관전·전적·태초 확률 설정까지 들어갔습니다.</p>
+      <div class="spec">발판 88개 · 구역 6개 · 이벤트 14종 · 멀티 2~6명</div>
+      <div class="go"><span class="count"><b>4</b>개 버전</span><span class="arrow">→</span></div>
     </a>
 
     <a class="card" href="./deepseek/" data-ai="deepseek" style="--a:#9db4ff;--a2:#4d6bfe;--glow:77,107,254">
@@ -488,8 +488,20 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       accent: '#8ec9ff', accent2: '#22d3ee', glow: '96,165,250',
       versions: [
         {
-          ver: 'v3.0', label: '별 코인·아이템 추가판', href: './gemini-v3/',
+          ver: 'v4.0', label: '실시간 멀티 레이스 (최신)', href: './gemini-v4/',
           date: '2026.11.17', latest: true,
+          spec: '발판 88개 · 구역 6개 · 이벤트 14종 · 멀티 2~6명',
+          notes: [
+            '방 코드 / 초대 링크로 최대 6명이 같은 시드 맵에서 동시에 출발하는 실시간 레이스',
+            '서로 부딪히면 튕겨나가고, 머리 밟기·방해 별 등 방해꾼 모드까지 (방장이 켜고 끔)',
+            '방 채팅·관전 모드·친구 코드·상대 전적·바로 재대결 지원',
+            '태초 귀환 확률 0~20%를 싱글/멀티에서 직접 설정 (방장 설정은 참가자에게 동기화)',
+            '이벤트 알림은 화면을 가리지 않는 우측 상단 토스트로 표시'
+          ]
+        },
+        {
+          ver: 'v3.0', label: '별 코인·아이템 추가판', href: './gemini-v3/',
+          date: '2026.11.17', latest: false,
           spec: '발판 88개 · 구역 6개 · 이벤트 9종 · 별 코인',
           notes: [
             '별 코인 수집·별빛 보호막·회복 아이템과 8가지 표정 초상화가 들어간 새 빌드',
