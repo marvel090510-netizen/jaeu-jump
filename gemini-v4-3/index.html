@@ -12266,7 +12266,7 @@ extends CanvasLayer
     M.drawBg = (id, ctx, camY, lh) => N.has(id) ? N.drawBg(id, ctx, camY, lh) : O.drawBg.call(M, id, ctx, camY, lh);
     M.drawPlat = (id, ctx, p, px0, py0) => {
       if (N.has(id)) {
-        const st = V43.mapSt || {};
+        const st = { hidePlatNum: !!(V43.QOL && V43.QOL.platformNums === false) };
         if (st.hidePlatNum && p.index > 0 && p.index % 5 === 0) {
           /* 발판 번호 끄기: 그림만 그리고 번호는 지운다 */
           N.drawPlat(id, ctx, p, px0, py0);
@@ -12277,7 +12277,7 @@ extends CanvasLayer
         }
         return N.drawPlat(id, ctx, p, px0, py0);
       }
-      const st = V43.mapSt || {};
+      const st = { hidePlatNum: !!(V43.QOL && V43.QOL.platformNums === false) };
       if (st.hidePlatNum && p.index > 0 && p.index % 5 === 0) {
         const r = O.drawPlat.call(M, id, ctx, p, px0, py0);
         ctx.fillStyle = 'rgba(5,3,10,.85)';
@@ -16435,7 +16435,7 @@ extends CanvasLayer
     if (sub) {
       const map = MP() ? MP().byId(c.map) : null;
       const mode = MD() && MD().modeById ? MD().modeById(c.mode) : null;
-      const W = V.api();
+      const W = J();
       const allBest = (W && W.stats && W.stats.bestHeight) || 0;
       const clears = (W && W.stats && W.stats.clearCount) || 0;
       sub.innerHTML = '🗺️ ' + (map ? map.emoji + ' ' + escapeHtml(map.name) : '기본') + ' · 🎮 ' + (mode ? mode.emoji + ' ' + escapeHtml(mode.name) : '일반') +
@@ -16863,22 +16863,23 @@ extends CanvasLayer
   function renderRoomFriendButtons() {
     const box = $('mpRoomPlayers');
     if (!box) return;
-    box.querySelectorAll('[data-v43fr]').forEach((b) => b.remove());
     const S = J() && V.st();
+    /* 4.2가 그려 둔 [친구+] 버튼을 가로채 '양방향 요청'으로 바꾼다 */
+    if (!box.__v43frHook) {
+      box.__v43frHook = true;
+      box.addEventListener('click', function (e) {
+        const b = e.target && e.target.closest ? e.target.closest('[data-addfr]') : null;
+        if (!b) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const parts = (b.getAttribute('data-addfr') || '').split('|');
+        addFriend(parts[0], parts[1] || '친구');
+      }, true);
+    }
     if (!S || !S.room) return;
-    [...S.players.values()].forEach((p) => {
-      if (p.pid === S.me.pid || !p.ftag || isFriend(p.ftag) || p.sp) return;
-      const row = box.querySelector('[data-pid="' + p.pid + '"]') || box.querySelector('[data-ftag="' + p.ftag + '"]');
-      const host = row || null;
-      if (!host) return;
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'mp-chip green';
-      b.style.cssText = 'padding:3px 7px;font-size:10px';
-      b.textContent = '+ 친구';
-      b.setAttribute('data-v43fr', p.ftag);
-      b.addEventListener('click', (e) => { e.stopPropagation(); addFriend(p.ftag, p.nick); });
-      host.appendChild(b);
+    box.querySelectorAll('[data-addfr]').forEach(function (b) {
+      const ftag = (b.getAttribute('data-addfr') || '').split('|')[0];
+      if (ftag && isFriend(ftag)) { b.textContent = '친구 ✓'; b.classList.add('green'); }
     });
   }
   V.renderRoomFriendButtons = renderRoomFriendButtons;
@@ -17396,7 +17397,7 @@ extends CanvasLayer
      공유 문구
      ================================================================ */
   V.shareText = function (extra) {
-    const W = V.api();
+    const W = J();
     const pl = W.player;
     const mode = V.curMode ? V.curMode() : 'normal';
     const map = MP() ? MP().byId(MP().current) : null;
@@ -17644,7 +17645,6 @@ extends CanvasLayer
       }
     }
     V.mapSt = V.mapSt || {};
-    V.mapSt.hidePlatNum = !Q.platformNums;
     document.body.classList.toggle('v43-nonum', !Q.platformNums);
     document.body.classList.toggle('v43-low', !!Q.lowSpec);
   }
