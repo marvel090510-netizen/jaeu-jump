@@ -19278,7 +19278,7 @@ extends CanvasLayer
     const list = MP().list.filter((m) => m.id !== 'custom');
     const head = w.querySelector('.v42-world-h');
     if (head && head.textContent.indexOf('맵 ' + (list.length - 1) + '종') >= 0) return;
-    if (head) head.textContent = '🗺️ 맵 ' + list.length + '종 · 모드 ' + (MD() ? MD().MODES.length : 13) + '종 · 스킨 12종';
+    if (head) head.textContent = '🗺️ 맵 ' + list.length + '종 · 모드 ' + (MD() ? MD().MODES.length : 13) + '종 · 스킨 ' + (MD() && MD().SKINS ? MD().SKINS.length : 22) + '종';
     const row = w.querySelector('.v42-world-row');
     if (!row) return;
     const show = list.slice(0, 10);
@@ -19420,7 +19420,7 @@ extends CanvasLayer
     console.log('[JW43] ui ready');
     /* 첫 진입 안내 (한 번만) */
     setTimeout(() => {
-      V.toast('🚀 v4.3 업데이트', 'lucky', '맵 16종 · 모드 13종 · 방 설정 10종', 3200);
+      V.toast('🚀 v4.3 업데이트', 'lucky', '맵 21종 · 모드 13종 · 스킨 22종 · 함정 14종', 3200);
     }, 1400);
   };
 })(window);
