@@ -302,16 +302,16 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
     </a>
 
-    <a class="card" href="./gemini-v4/" data-ai="gemini" style="--a:#8ec9ff;--a2:#22d3ee;--glow:96,165,250">
+    <a class="card" href="./gemini-v4-1/" data-ai="gemini" style="--a:#8ec9ff;--a2:#22d3ee;--glow:96,165,250">
       <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
         <path d="M24 4Q26.8 21.2 44 24 26.8 26.8 24 44 21.2 26.8 4 24 21.2 21.2 24 4Z" fill="currentColor" opacity=".24"/>
         <path d="M24 4Q26.8 21.2 44 24 26.8 26.8 24 44 21.2 26.8 4 24 21.2 21.2 24 4Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
       </svg></span>
       <div class="tag">제미나이 버전</div>
-      <h2>제미나이 <small>실시간 멀티 레이스</small></h2>
-      <p>방 코드로 친구와 최대 6명이 같은 맵에서 동시에 오르는 실시간 레이스. 충돌하면 튕겨나가고, 방 채팅·관전·전적·태초 확률 설정까지 들어갔습니다.</p>
-      <div class="spec">발판 88개 · 구역 6개 · 이벤트 14종 · 멀티 2~6명</div>
-      <div class="go"><span class="count"><b>4</b>개 버전</span><span class="arrow">→</span></div>
+      <h2>제미나이 <small>신규 맵 5종 · 모드 6종 레이스</small></h2>
+      <p>디저트 과자 탑·공사장·우주·대나무 숲까지 맵마다 다른 기믹, 타임어택·용암·AI 좀비·릴레이 모드, 친구 초대와 관전 입장까지. 친구와 최대 6명이 실시간으로 오릅니다.</p>
+      <div class="spec">맵 5종 · 모드 6종 · 발판 88개 · 멀티 2~6명</div>
+      <div class="go"><span class="count"><b>5</b>개 버전</span><span class="arrow">→</span></div>
     </a>
 
     <a class="card" href="./deepseek/" data-ai="deepseek" style="--a:#9db4ff;--a2:#4d6bfe;--glow:77,107,254">
@@ -488,8 +488,22 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       accent: '#8ec9ff', accent2: '#22d3ee', glow: '96,165,250',
       versions: [
         {
-          ver: 'v4.0', label: '실시간 멀티 레이스 (최신)', href: './gemini-v4/',
+          ver: 'v4.1', label: '초대형 업데이트 (최신)', href: './gemini-v4-1/',
           date: '2026.11.17', latest: true,
+          spec: '맵 5종 · 모드 6종 · 버프 4 · 함정 8 · 멀티 2~6명',
+          notes: [
+            '신규 맵 4종: 🍭 디저트 과자 탑(젤리 트램펄린·초코 시럽) · 🏗️ 고층 공사장(철골·크레인·강풍) · 🚀 우주 정거장(저중력·소행성·레이저) · 🏯 대나무 숲 & 구름 신사(휘는 대나무·사라지는 구름)',
+            '모드 6종: 일반 · 클래식(설정 잠금) · 2분 타임어택(+서든데스) · 용암 차오르기 · AI 좀비 추격 · 2인 릴레이 + 🎲 로비 랜덤 룰렛',
+            '태초 확률 0~100% 조절, 20초마다 0~50%로 흔들리는 실시간 랜덤 태초, 상대 태초에 원터치 놀리기(4초)',
+            '버프 4종·함정 8종과 이벤트까지 개별 체크 필터, 캐릭터 스킨 5종, PERFECT 착지 가속',
+            '멀티 이동을 60fps 예측 보간으로 부드럽게(공중 160ms·정지 350ms 가변 전송)',
+            '전용 친구창(코드·상태메시지·초대·합류), 진행 중인 방 관전 입장 + 채팅, 친구 방 생성 알림',
+            '정상 골인 슬로우 피니시·팡파르 엔딩, 등반 그래프·마의 구간 분석, 클리어 인증샷 카드 PNG 저장'
+          ]
+        },
+        {
+          ver: 'v4.0', label: '실시간 멀티 레이스', href: './gemini-v4/',
+          date: '2026.11.17', latest: false,
           spec: '발판 88개 · 구역 6개 · 이벤트 14종 · 멀티 2~6명',
           notes: [
             '방 코드 / 초대 링크로 최대 6명이 같은 시드 맵에서 동시에 출발하는 실시간 레이스',
