@@ -9535,7 +9535,7 @@ extends CanvasLayer
     ctx.font = 'bold 9px "Galmuri11", monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fde047';
-    ctx.fillText('88F 수문장', sx | 0, (sy - 78) | 0);
+    ctx.fillText('88F 수문장', sx | 0, (sy + 34) | 0);
     /* 예고 표식 */
     B.warn.forEach((w) => {
       const wy = w.y - camY;
@@ -10259,6 +10259,10 @@ extends CanvasLayer
     if (kind === 'mp' && V.map === 'custom' && V.custom) {
       send42({ t: 'm42', code: edCode() });
     }
+    if (kind === 'mp' && V.mode === 'chain') {
+      const S = W().state;
+      if (S && S.isHost) setTimeout(() => { if (V.inRun) send42({ t: 'c42', max: clamp(CFG.chainMax || 210, 120, 340) }); }, 500);
+    }
     if (kind === 'mp' && V.mode === 'bomb') {
       const S = W().state;
       if (S && S.isHost) {
@@ -10318,6 +10322,8 @@ extends CanvasLayer
       V.bomb.holder = m.h === 'me' ? 'me' : m.h;
       if (typeof m.c === 'number') V.bomb.t = m.c;
       V.bomb.round = m.r || V.bomb.round;
+    } else if (m.t === 'c42') {
+      if (V.mode === 'chain' && typeof m.max === 'number') { CFG.chainMax = clamp(m.max, 120, 340); saveCfg(); }
     } else if (m.t === 'm42') {
       const def = edDecode(m.code);
       if (def) {
@@ -10354,6 +10360,7 @@ extends CanvasLayer
     ORIG.gravity = w.gravity; ORIG.jumpPower = w.jumpPower;
     ORIG.buildMap = w.buildMap; ORIG.drawBg = w.drawBackground; ORIG.drawPlat = w.drawPlatform;
     ORIG.zoneName = w.zoneName;
+    ORIG.afterHud = w.afterHud;
 
     w.tick = function (dt) {
       try { v42Tick(dt); } catch (e) { console.warn('v42 tick', e); }
@@ -10425,6 +10432,19 @@ extends CanvasLayer
     w.zoneName = function (y, z) {
       if (MP() && MP().current === 'custom') return '🧩 커스텀 맵 · ' + m2f(-y / 13.4) + '층';
       return ORIG.zoneName.apply(this, arguments);
+    };
+    w.afterHud = function () {
+      try { ORIG.afterHud.apply(this, arguments); } catch (e) {}
+      try {
+        if (!V.inRun || !V.bots.length) return;
+        const bar = $('modeBar');
+        if (!bar || bar.classList.contains('hidden')) return;
+        const ex = $('modeBarExtra');
+        if (!ex) return;
+        const me = (J().player.plat && J().player.plat.index) || 1;
+        const best = V.bots.reduce((a, b) => Math.max(a, b.plat || 1), 1);
+        ex.textContent = '🤖 봇 ' + best + 'F · 나 ' + me + 'F';
+      } catch (e) {}
     };
     /* 모드 확장 */
     const md = MD();
@@ -10597,6 +10617,20 @@ extends CanvasLayer
       b1.textContent = '📸 하이라이트 보기';
       b1.addEventListener('click', () => openHL());
       grid.insertBefore(b1, grid.firstChild);
+    }
+    /* 로비: 랭킹보드 · 커스텀 맵 */
+    const lobbyCard = $('mpLobbyRules') && $('mpLobbyRules').closest('.mp-card');
+    if (lobbyCard && !$('v42LobbyRank')) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px';
+      row.innerHTML = '<button type="button" id="v42LobbyRank" class="mp-chip" style="font-size:10.5px">🏆 랭킹보드</button>' +
+        '<button type="button" id="v42LobbyGhost" class="mp-chip" style="font-size:10.5px">👻 고스트/날씨</button>';
+      lobbyCard.appendChild(row);
+      $('v42LobbyRank').addEventListener('click', () => openRank());
+      $('v42LobbyGhost').addEventListener('click', () => {
+        CFG.weather = !CFG.weather; saveCfg();
+        toast(CFG.weather ? '🌧️ 실시간 날씨 ON' : '☀️ 날씨 OFF', 'lucky', CFG.weather ? '맑음 → 비 → 눈 → 번개로 바뀝니다' : '날씨 변화를 껐습니다', 2200);
+      });
     }
     /* 일시정지 메뉴 */
     const pause = document.querySelector('#pauseModal .flex.flex-col.gap-2\\.5');
