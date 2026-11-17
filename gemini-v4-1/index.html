@@ -3171,6 +3171,27 @@ extends CanvasLayer
 </div>
 
 
+<!-- LP-GUARD-JS:START -->
+<script>
+/* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
+(function () {
+  if (window.__lpGuard) { return; }
+  window.__lpGuard = true;
+  var stop = function (e) { if (e && e.cancelable !== false) { e.preventDefault(); } };
+  document.addEventListener('contextmenu', stop, { passive: false });
+  document.addEventListener('selectstart', stop, { passive: false });
+  document.addEventListener('dragstart', stop, { passive: false });
+  document.addEventListener('gesturestart', stop, { passive: false });
+  document.addEventListener('gesturechange', stop, { passive: false });
+  document.addEventListener('gestureend', stop, { passive: false });
+  document.addEventListener('dblclick', stop, { passive: false });
+  /* 두 손가락 이상일 때만 스크롤/확대 제스처를 막는다(한 손가락 스크롤은 그대로). */
+  document.addEventListener('touchmove', function (e) {
+    if (e.touches && e.touches.length > 1) { stop(e); }
+  }, { passive: false });
+})();
+</script>
+<!-- LP-GUARD-JS:END -->
 <!-- ==================== 재우 4.1 멀티 레이스 엔진 ==================== -->
 <script>
 /* ===== 재우 4.0 실시간 통신 (공용 WSS 릴레이 풀 pub/sub) ===== */
@@ -5029,7 +5050,8 @@ extends CanvasLayer
     solo.active = true;
     solo.ended = false;
     solo.mode = modeId || rules.mode || 'normal';
-    solo.map = mapId || rules.map || 'default';
+    if (solo.mode === 'classic') { applyClassicLock(); solo.map = 'default'; if (root.JWMap) root.JWMap.current = 'default'; }
+    solo.map = solo.map || mapId || rules.map || 'default';
     solo.timeLeft = 120;
     solo.relayLeg = 1;
     solo.legTime = 0;
@@ -6027,6 +6049,14 @@ extends CanvasLayer
     S.wings = 0; S.safe = null; S.fallDist = 0; S.shakeUntil = 0; S.shakeIdx = 0;
     S.graphPts = []; S.worst = 0;
     S.sudden = false; S.suddenUntil = 0; S.suddenPeak = 0;
+    /* 릴레이 역할: 짝수 번째 = 1번 주자, 홀수 번째 = 2번 주자(바통 전까지 대기) */
+    (function () {
+      const arr = [...S.players.values()].filter((x) => !x.sp).sort((a2, b2) => (a2.pid < b2.pid ? -1 : 1));
+      const idx = arr.findIndex((x) => x.pid === S.me.pid);
+      S.relayRole = (idx >= 0 && idx % 2 === 1) ? 2 : 1;
+      S.relayLeg = (S.relayRole === 2) ? 2 : 1;
+      S.baton = (S.relayRole === 1);
+    })();
     S.tauntUntil = 0; S.tauntWho = null; S.lastOriginSeen = {};
     S.endedBy = '';
     $('mpLobby').classList.add('hidden');
@@ -6127,7 +6157,7 @@ extends CanvasLayer
     if (r.mode === 'timeattack') txt = '⏱ ' + fmt(S.modeState.timeLeft || 0);
     else if (r.mode === 'lava') txt = '🌋 ' + Math.max(0, Math.round((S.startY - (S.modeState.lavaY || S.startY)) / 13.4)) + 'm';
     else if (r.mode === 'zombie') txt = '🧟 추격';
-    else if (r.mode === 'relay') txt = S.relayLeg === 2 ? '🤝 2번 주자' : '🤝 44층에서 교대';
+    else if (r.mode === 'relay') txt = (S.relayRole === 2 && !S.baton) ? '⏳ 1번 주자 기다리는 중' : (S.relayLeg === 2 ? '🤝 2번 주자' : '🤝 44층에서 교대');
     if (S.room && S.room.originRandom) txt += (txt ? ' · ' : '') + '🎲 태초 ' + Math.round(S.liveOrigin) + '%';
     ex.textContent = txt;
     layoutModeBar();
@@ -6333,6 +6363,7 @@ extends CanvasLayer
         if (S.phase !== 'race') return;
         /* 파트너가 44층에서 바통을 넘겼다 → 나는 44층에서 이어 뛴다 */
         S.relayLeg = 2;
+        S.baton = true;
         const plats = JW().platforms || [];
         const p44 = plats[43] || plats[plats.length - 1];
         if (p44) {
@@ -6584,6 +6615,14 @@ extends CanvasLayer
 
     if (S.phase !== 'race') { updateModeHudMp(); return; }
 
+    /* 릴레이 2번 주자는 바통 받기 전까지 출발선에서 대기 */
+    if (S.room && S.room.mode === 'relay' && S.relayRole === 2 && !S.baton) {
+      JW().keys.left = JW().keys.right = JW().keys.jump = false;
+      p.vx = 0;
+      p.charging = false;
+      p.charge = 0;
+    }
+
     /* --- 버프/함정/젤리/PERFECT 등 4.1 효과 --- */
     if (MD()) MD().tickEffects(dt, JW());
     mapAmbientTick(dt);
@@ -6668,7 +6707,7 @@ extends CanvasLayer
         vx: Math.round(p.vx), vy: Math.round(p.vy), v: Math.round(p.vy),
         i: (p.plat && p.plat.index) || 0, g: p.onGround ? 1 : 0, f: p.facing,
         s: pose, c: Math.round(p.charge * 10) / 10, r: now() < S.fallReact ? 1 : 0,
-        o: S.rs.origin, k: S.rs.collide, sk: S.me.skin, tm: Math.round(g.time * 10) / 10
+        o: S.rs.origin, k: S.rs.collide, sk: S.me.skin, tm: Math.round(g.time * 10) / 10, ts: Date.now()
       });
     }
 
@@ -8173,6 +8212,7 @@ extends CanvasLayer
     const go = () => {
       if (!MD() || !MP()) return;
       const R = MD().rules;
+      if (R.mode === 'classic') MD().applyClassicLock();
       MP().current = R.map || 'default';
       MD().resetEffects();
       /* 모드 시작은 월드가 만들어진 뒤 */
@@ -8700,26 +8740,5 @@ extends CanvasLayer
 })();
 
 </script>
-<!-- LP-GUARD-JS:START -->
-<script>
-/* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
-(function () {
-  if (window.__lpGuard) { return; }
-  window.__lpGuard = true;
-  var stop = function (e) { if (e && e.cancelable !== false) { e.preventDefault(); } };
-  document.addEventListener('contextmenu', stop, { passive: false });
-  document.addEventListener('selectstart', stop, { passive: false });
-  document.addEventListener('dragstart', stop, { passive: false });
-  document.addEventListener('gesturestart', stop, { passive: false });
-  document.addEventListener('gesturechange', stop, { passive: false });
-  document.addEventListener('gestureend', stop, { passive: false });
-  document.addEventListener('dblclick', stop, { passive: false });
-  /* 두 손가락 이상일 때만 스크롤/확대 제스처를 막는다(한 손가락 스크롤은 그대로). */
-  document.addEventListener('touchmove', function (e) {
-    if (e.touches && e.touches.length > 1) { stop(e); }
-  }, { passive: false });
-})();
-</script>
-<!-- LP-GUARD-JS:END -->
 </body>
 </html>
