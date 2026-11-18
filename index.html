@@ -38868,13 +38868,39 @@ extends CanvasLayer
     if (!cv || !cv.getContext) return false;
     var a = null;
     try {
-      if (root.JW47 && JW47.art && JW47.art.full) a = JW47.art.full(id);
+      if (root.JW47 && JW47.art) {
+        if (JW47.art.thumb) a = JW47.art.thumb(id);        /* 작고 빠른 미리보기용 */
+        if ((!a || !a.ready) && JW47.art.full) a = JW47.art.full(id);
+      }
     } catch (e) {}
+    if (!a && id === 'default' && U._origThumb) {
+      /* 1번 기본 맵은 픽셀아트 미리보기를 쓴다 (배너와 같은 그림이 두 번 보이지 않게) */
+      try {
+        var off = U._off || (U._off = document.createElement('canvas'));
+        off.width = 320; off.height = 180;
+        var oc = off.getContext('2d');
+        oc.clearRect(0, 0, 320, 180);
+        U._origThumb('default', off);
+        var c2 = cv.getContext('2d');
+        var cw2 = cv.width, ch2 = cv.height;
+        c2.setTransform(1, 0, 0, 1, 0, 0);
+        c2.clearRect(0, 0, cw2, ch2);
+        var bg = c2.createLinearGradient(0, 0, 0, ch2);
+        bg.addColorStop(0, '#2a3f66'); bg.addColorStop(1, '#0e1830');
+        c2.fillStyle = bg; c2.fillRect(0, 0, cw2, ch2);
+        var si = Math.min(cw2 / 320, (ch2 * 0.62) / 180);
+        var dw2 = 320 * si, dh2 = 180 * si;
+        try { c2.imageSmoothingEnabled = false; } catch (e) {}
+        c2.drawImage(off, (cw2 - dw2) / 2, (ch2 - dh2) / 2, dw2, dh2);
+        return true;
+      } catch (e) {}
+    }
+    var usedCover = false;
     if (!a) {
       var coverEl = $('v43Cover');
       var src = (coverEl && coverEl.src) ? coverEl.src : 'cover.jpg';
       if (!COVERI || COVERI.__src !== src) { COVERI = new Image(); COVERI.__src = src; COVERI.src = src; }
-      if (COVERI.complete && COVERI.naturalWidth) a = { img: COVERI, w: COVERI.naturalWidth, h: COVERI.naturalHeight, ready: true };
+      if (COVERI.complete && COVERI.naturalWidth) { a = { img: COVERI, w: COVERI.naturalWidth, h: COVERI.naturalHeight, ready: true }; usedCover = true; }
       else return false;
     }
     if (!a.ready) return false;
@@ -38882,15 +38908,20 @@ extends CanvasLayer
     var cw = cv.width, ch = cv.height;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.clearRect(0, 0, cw, ch);
-    var sc = Math.max(cw / a.w, ch / a.h);
-    try { c.filter = 'blur(14px) brightness(.62) saturate(1.1)'; } catch (e) {}
-    c.drawImage(a.img, (cw - a.w * sc) / 2, (ch - a.h * sc) / 2, a.w * sc, a.h * sc);
-    try { c.filter = 'none'; } catch (e) {}
+    /* 배경: 어두운 그라데이션 (캔버스 필터를 쓰지 않아 어떤 브라우저에서도 동일) */
+    var bg = c.createLinearGradient(0, 0, 0, ch);
+    bg.addColorStop(0, '#2b3f66');
+    bg.addColorStop(0.55, '#141e34');
+    bg.addColorStop(1, '#0a1120');
+    c.fillStyle = bg;
+    c.fillRect(0, 0, cw, ch);
+    /* 본체: 일러스트 전체가 잘리지 않게 (contain) */
     var si = Math.min(cw / a.w, ch / a.h);
     var dw = a.w * si, dh = a.h * si;
     try { c.imageSmoothingEnabled = true; } catch (e) {}
     c.drawImage(a.img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
-    return true;
+    /* 일러스트가 아직 로딩 전이면(임시 커버) 다음 틱에 다시 시도한다 */
+    return !usedCover;
   }
 
   /* iPad 우측: 지금 고른 맵만 남기고 정리 + 큰 '빠른 시작' */
@@ -38941,6 +38972,7 @@ extends CanvasLayer
   function patchThumb() {
     if (typeof V.mapThumb43 !== 'function' || V.mapThumb43.__v49) return;
     var o = V.mapThumb43;
+    U._origThumb = o;
     var w = function (id, cv) {
       if (cv && cv.id === 'v43SideMap') {
         try { if (drawSidePreview(cv, id)) { cv.__map = id; return true; } } catch (e) {}
