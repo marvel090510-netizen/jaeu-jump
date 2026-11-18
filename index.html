@@ -6633,7 +6633,7 @@ extends CanvasLayer
     if (r.mode === 'timeattack') txt = '⏱ ' + fmt(S.modeState.timeLeft || 0);
     else if (r.mode === 'lava') txt = '🌋 ' + Math.max(0, Math.round((S.startY - (S.modeState.lavaY || S.startY)) / 13.4)) + 'm';
     else if (r.mode === 'zombie') txt = '🧟 추격';
-    else if (r.mode === 'relay') txt = (S.relayRole === 2 && !S.baton) ? '⏳ 1번 주자 기다리는 중' : (S.relayLeg === 2 ? '🤝 2번 주자' : '🤝 44층에서 교대');
+    else if (r.mode === 'relay') txt = (S.relayRole === 2 && !S.baton) ? '⏳ 1번 주자 기다리는 중' : ((S.relayLeg || 1) === 2 ? '🏃 2번 주자' : '🏃 1번 주자 · 44층에서 교대');
     if (S.room && S.room.originRandom) txt += (txt ? ' · ' : '') + '🎲 태초 ' + Math.round(S.liveOrigin) + '%';
     ex.textContent = txt;
     layoutModeBar();
@@ -40112,6 +40112,26 @@ extends CanvasLayer
       '  -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:.92;}',
       'body #gameHud #btnPauseHud:active,body #gameHud #v44FastRestart:active{background:rgba(15,23,42,.62) !important;opacity:1;}',
 
+      /* ---------- (14) 멀티 카운트다운: 화면 정중앙 크게 ---------- */
+      '#mpCount{position:fixed !important;inset:0 !important;z-index:13050 !important;display:flex !important;',
+      '  align-items:center !important;justify-content:center !important;background:rgba(3,5,12,.45) !important;}',
+      '#mpCount.hidden{display:none !important;}',
+      '#mpCount > div{font-size:clamp(72px,26vw,150px) !important;line-height:1 !important;font-weight:900 !important;',
+      '  color:#fde047 !important;text-align:center !important;',
+      '  text-shadow:5px 5px 0 #05030a,-4px -4px 0 #b45309,0 0 40px rgba(253,224,71,.5) !important;}',
+      /* ---------- (16) 고도 미니맵 봇 마커 ---------- */
+      '#v50AltBots{position:absolute;left:0;top:0;width:54px;height:210px;pointer-events:none;z-index:5;',
+      '  image-rendering:pixelated;}',
+      /* ---------- (15) 릴레이 현재 주자 배지 ---------- */
+      '#v50Baton{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 94px);',
+      '  z-index:40;display:none;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;',
+      '  font:900 13px -apple-system,system-ui,sans-serif;color:#fff;white-space:nowrap;',
+      '  background:linear-gradient(180deg,rgba(30,58,138,.9),rgba(15,23,42,.92));',
+      '  border:1px solid rgba(147,197,253,.65);box-shadow:0 10px 26px rgba(0,0,0,.5);}',
+      '#v50Baton.me{background:linear-gradient(180deg,rgba(251,191,36,.95),rgba(217,119,6,.95));',
+      '  color:#2b1a00;border-color:rgba(255,240,190,.95);}',
+      '#v50Baton .who{font-size:15px;font-weight:900;}',
+      '#v50Baton .tag{font-size:10.5px;font-weight:800;opacity:.85;}',
       /* ---------- (13) 기권 버튼: 상단 우측 [🏳️][🔄][⏸] 한 줄, 하단엔 채팅만 ---------- */
       'body #v47Forfeit{position:fixed !important;right:108px !important;left:auto !important;',
       '  top:calc(env(safe-area-inset-top,0px) + 8px) !important;bottom:auto !important;',
@@ -40898,6 +40918,147 @@ extends CanvasLayer
   }
 
   /* ======================================================================
+     15. 🤝 2인 릴레이: 현재 주자 배지 + 대기 주자(봇 포함) 완전 숨김
+     ====================================================================== */
+  function relayTick() {
+    var el = $('v50Baton');
+    if (!el) {
+      el = doc.createElement('div');
+      el.id = 'v50Baton';
+      doc.body.appendChild(el);
+    }
+    var S = null;
+    try { S = V.st(); } catch (e) {}
+    var isRelay = !!(S && S.room && S.room.mode === 'relay' && (S.phase === 'race' || S.phase === 'count'));
+    if (!isRelay) {
+      el.style.display = 'none';
+      try { (root.JW43.R && JW43.R.bots || []).forEach(function (b) { if (b) b.__v50hid = false; }); } catch (e) {}
+      return;
+    }
+    var leg = S.relayLeg || 1;
+    var myRole = S.relayRole || 1;
+    var myTurn = (myRole === leg);
+    /* 봇: 1번 주자 = 나, 나머지 봇은 2번 주자 역할 → 내 차례가 아니면 화면에서 완전히 숨긴다 */
+    var bots = [];
+    try { bots = (root.JW43.R && JW43.R.bots) ? JW43.R.bots : []; } catch (e) {}
+    var ps = null;
+    try { ps = root.__jwg && __jwg.platforms; } catch (e) {}
+    var mid = null;
+    if (ps && ps.length) mid = ps.filter(function (q) { return q.index === 44; })[0] || null;
+    bots.forEach(function (b) {
+      if (!b) return;
+      var botTurn = (leg === 2);           /* 봇은 2번 주자 역할 */
+      if (botTurn) {
+        if (b.__v50hid) {
+          b.__v50hid = false;
+          if (mid) { b.x = mid.x + mid.w / 2 - 12; b.y = mid.y - 34; b.idx = 44; b.vy = 0; b.onGround = true; b.wait = 0.4; b.chg = false; b.ch = 0; }
+        }
+      } else if (!b.__v50hid) {
+        b.__v50hid = true;
+        b.y = -99999; b.vy = 0; b.vx = 0; b.onGround = false; b.idx = 44;   /* 그리기/충돌 모두 화면 밖 */
+      }
+    });
+    /* 배지 문구 */
+    var who = '';
+    if (myTurn) {
+      who = '내 차례!';
+      el.className = 'me';
+      el.innerHTML = '<span>🏃</span><span class="who">' + who + '</span>' +
+        '<span class="tag">' + (leg === 1 ? '44층까지 · 바통 준비' : '2번 주자 · 정상까지') + '</span>';
+    } else {
+      var nm = '';
+      if (bots.length) nm = bots[0].name || bots[0].nick || '봇';
+      try { S.players.forEach(function (p) { if (!nm && p.pid !== S.me.pid) nm = p.nick; }); } catch (e) {}
+      el.className = '';
+      el.innerHTML = '<span>🏃</span><span class="who">' + (nm || '파트너') + '</span>' +
+        '<span class="tag">현재 주자 · 나는 대기(관전)</span>';
+    }
+    el.style.display = 'flex';
+  }
+
+  /* 고도 미니맵에 봇 마커 (엔진이 매 프레임 지우므로 별도 캔버스에 덧그린다) */
+  function altBots() {
+    var bar = $('mpAltBar'), cv = $('mpAltCv');
+    if (!bar || !cv || bar.classList.contains('hidden')) {
+      var off = $('v50AltBots'); if (off) off.style.display = 'none';
+      return;
+    }
+    var ov = $('v50AltBots');
+    if (!ov) {
+      ov = doc.createElement('canvas');
+      ov.id = 'v50AltBots';
+      ov.width = 54; ov.height = 210;
+      bar.appendChild(ov);
+      try { if (getComputedStyle(bar).position === 'static') bar.style.position = 'relative'; } catch (e) {}
+    }
+    ov.style.display = 'block';
+    var bots = [];
+    try { bots = (root.JW43.R && JW43.R.bots) ? JW43.R.bots : []; } catch (e) { return; }
+    var ctx = ov.getContext('2d');
+    ctx.clearRect(0, 0, 54, 210);
+    if (!bots.length) return;
+    var ps = null;
+    try { ps = root.__jwg && __jwg.platforms; } catch (e) { return; }
+    if (!ps || !ps.length) return;
+    var top = 18, bot = 194, span = bot - top;
+    var maxY = 0, minY = -1;
+    for (var i = 0; i < ps.length; i++) { var q = ps[i]; if (!q) continue; if (q.y > maxY) maxY = q.y; if (q.y < minY) minY = q.y; }
+    var posOf = function (y) { return Math.max(top, Math.min(bot, top + ((y - minY) / (maxY - minY || 1)) * span)); };
+    bots.forEach(function (b, idx) {
+      if (!b || b.y <= -9000) return;                 /* 릴레이 대기 주자는 숨김 */
+      var y = posOf(b.y);
+      var col = '#f472b6';
+      try { col = b.colorHex || b.color || '#f472b6'; } catch (e) {}
+      ctx.fillStyle = '#05030a';
+      ctx.fillRect(20, Math.round(y) - 2, 6, 6);
+      ctx.fillStyle = col;
+      ctx.fillRect(21, Math.round(y) - 1, 4, 4);
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(22, Math.round(y), 2, 2);
+    });
+  }
+
+  /* 매 프레임: 대기 주자(봇)는 화면 밖에 고정 (그리기·충돌 모두 사라짐) */
+  function relayFrame() {
+    var S = null;
+    try { S = V.st(); } catch (e) { return; }
+    if (!S || !S.room || S.room.mode !== 'relay' || (S.phase !== 'race' && S.phase !== 'count')) return;
+    var leg = S.relayLeg || 1;
+    var bots = [];
+    try { bots = (root.JW43.R && JW43.R.bots) ? JW43.R.bots : []; } catch (e) { return; }
+    /* 내가 대기 차례(2번 주자)면 봇 주자를 카메라가 따라간다 */
+    try {
+      var myRole = S.relayRole || 1;
+      var waiting = (myRole !== leg);
+      if (waiting && bots.length && bots[0] && bots[0].y > -9000) {
+        var g2 = root.__jwg && __jwg.game;
+        if (g2 && g2.inPlay) {
+          var ty = bots[0].y - 260;
+          if (Math.abs(ty - g2.camY) > 4) g2.camY += (ty - g2.camY) * 0.16;
+        }
+      }
+    } catch (e) {}
+    if (!bots.length) return;
+    var ps = null;
+    try { ps = root.__jwg && __jwg.platforms; } catch (e) {}
+    for (var i = 0; i < bots.length; i++) {
+      var b = bots[i];
+      if (!b) continue;
+      if (leg === 2) {
+        if (b.__v50hid) {
+          b.__v50hid = false;
+          var mid = null;
+          if (ps) { for (var k = 0; k < ps.length; k++) { if (ps[k].index === 44) { mid = ps[k]; break; } } }
+          if (mid) { b.x = mid.x + mid.w / 2 - 12; b.y = mid.y - 34; b.idx = 44; b.vy = 0; b.vx = 0; b.onGround = true; b.wait = 0.5; b.chg = false; b.ch = 0; }
+        }
+      } else {
+        b.__v50hid = true;
+        b.y = -99999; b.vy = 0; b.vx = 0;
+      }
+    }
+  }
+
+  /* ======================================================================
      틱
      ====================================================================== */
   function tick() {
@@ -40913,6 +41074,7 @@ extends CanvasLayer
     try { patchGlassDraw(); } catch (e) {}
     try { clearStale(); } catch (e) {}
     try { modePresets(); } catch (e) {}
+    try { relayTick(); } catch (e) {}
   }
 
   /* ======================================================================
@@ -40966,6 +41128,8 @@ extends CanvasLayer
     setInterval(tick, 700);
     var loop = function () {
       try { fallGuard(performance.now()); } catch (e) {}
+      try { relayFrame(); } catch (e) {}
+      try { altBots(); } catch (e) {}
       requestAnimationFrame(loop);
     };
     try { requestAnimationFrame(loop); } catch (e) { setInterval(function () { fallGuard(performance.now()); }, 60); }
