@@ -24239,7 +24239,7 @@ extends CanvasLayer
         if (localStorage.getItem('jw484_update_toast') === '4.8.5-2') return;
         localStorage.setItem('jw484_update_toast', '4.8.5-2');
       } catch (e) { return; }
-      V.toast('🚀 v4.8.5-3 정식판', 'lucky', '친구 소셜 허브 · 싱글 관전 수리 · 실시간 훈수 · 맵 카드 개편', 3200);
+      V.toast('🚀 v4.8.5-3 테스트판', 'lucky', '21맵 일러스트 통일 · 맵/모드 카테고리 · 제안하기 · 방 설정 4탭 · 칭호 도감', 3200);
     }, 1400);
   };
 })(window);
@@ -44811,6 +44811,8 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
+
 <!-- ===== v4.8.5-3 PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -45066,7 +45068,13 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   function paintModeGrid(force) {
     var grid = $('v53ModeGrid'), bar = $('v53ModeBar'), box = $('v43WizModes');
     if (!grid || !bar || !box || $('v43WizStep1').classList.contains('hidden')) return;
+    var CATORD = { basic: 0, speed: 1, survive: 2, sense: 3, versus: 4 };
     var list = modeList().filter(function (m) { return m && m.id && m.id !== 'custom-mix'; });
+    list.sort(function (a, b) {
+      var d = (CATORD[MODE_CAT[a.id]] === undefined ? 9 : CATORD[MODE_CAT[a.id]]) - (CATORD[MODE_CAT[b.id]] === undefined ? 9 : CATORD[MODE_CAT[b.id]]);
+      if (d) return d;
+      return 0;
+    });
     var cur = '';
     try { var on = box.querySelector('[data-wmode].on'); cur = on ? on.getAttribute('data-wmode') : ''; } catch (e) {}
     var sig = MODE_FILTER + '|' + cur + '|' + list.length;
