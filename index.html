@@ -35732,6 +35732,10 @@ extends CanvasLayer
   function tick(dt) {
     tickN++;
     var S = st();
+    /* v4.6: 좀비 아래 위험 카운트다운은 좀비 모드에서만 (다른 모드로 바꾸면 즉시 숨김) */
+    try {
+      if (cur() !== 'zombie') { var zb = $('v46ZombBelow'); if (zb && zb.style.display !== 'none') zb.style.display = 'none'; }
+    } catch (e) {}
     /* kbLockT 감소 */
     var p = pl();
     if (p && p.kbLockT > 0) p.kbLockT = Math.max(0, p.kbLockT - dt);
