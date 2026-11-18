@@ -40862,6 +40862,42 @@ extends CanvasLayer
   }
 
   /* ======================================================================
+     14. 모드별 권장 기본 세팅 (모드를 바꾸면 한 번만 자동 적용 · 방장이 이후 자유롭게 변경)
+     ====================================================================== */
+  var PRESET = {
+    classic: { events: false, items: false, buffs: false, traps: false },
+    pureclassic: { events: false, items: false, buffs: false, traps: false },
+    chain: { collide: false },
+    tag: { collide: true, originPct: 0 },
+    zombie: { collide: true },
+    dive: { originPct: 0 },
+    timeattack: { originPct: 0 },
+    paint: { collide: false },
+    flag: { collide: true },
+    relay: { collide: false },
+    bomb: { collide: true },
+    boss: { traps: true },
+    raid: { traps: true }
+  };
+  var lastModeSeen = '';
+  function modePresets() {
+    var st = null;
+    try { st = V.st(); } catch (e) { return; }
+    if (!st || !st.room || st.phase !== 'lobby' || !st.isHost) return;
+    var m = st.room.mode || '';
+    if (!lastModeSeen) { lastModeSeen = m; return; }
+    if (m === lastModeSeen) return;
+    lastModeSeen = m;
+    var patch = PRESET[m];
+    if (!patch) return;
+    try {
+      if (V.api && V.api().setRoomRulesBulk) V.api().setRoomRulesBulk(patch, '모드 추천 세팅');
+      V.toast('⚙️ 모드 추천 세팅 적용', 'lucky', '필요하면 방 설정에서 다시 바꿀 수 있어요', 2400);
+    } catch (e) {}
+    setTimeout(paintSummary, 300);
+  }
+
+  /* ======================================================================
      틱
      ====================================================================== */
   function tick() {
@@ -40876,6 +40912,7 @@ extends CanvasLayer
     try { titleBalance(); } catch (e) {}
     try { patchGlassDraw(); } catch (e) {}
     try { clearStale(); } catch (e) {}
+    try { modePresets(); } catch (e) {}
   }
 
   /* ======================================================================
