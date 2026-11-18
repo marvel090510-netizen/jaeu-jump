@@ -44266,6 +44266,27 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   setInterval(fixStartBtn, 500);
 
   /* 정원이 덜 찼어도 (봇 포함 2명+) 방장이 시작할 수 있게 hostStart 앞에서 잠깐 정원을 맞춘다 */
+  /* 방장 시작: 정원이 덜 찼어도 (봇 포함 2명+) 시작할 수 있게 정원을 잠깐 맞춘다 */
+  document.addEventListener('click', function (e) {
+    const b = e.target && e.target.closest ? e.target.closest('#mpStartBtn') : null;
+    if (!b) return;
+    let S = null; try { S = V.st(); } catch (err) { return; }
+    if (!S || !S.isHost || S.phase !== 'lobby' || !S.room) return;
+    const humans = Array.from(S.players.values()).filter((p) => !p.sp);
+    const botN = (V.R && V.R.bots) ? V.R.bots.length : 0;
+    const total = humans.length + botN;
+    const maxN = Number(S.room.max) || 4;
+    if (total < 2 || total >= maxN) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    try { V.api().setRoomRulesBulk({ max: total }, '레이스 시작 준비'); } catch (err) {}
+    S.players.forEach((p) => { if (p && p.pid !== S.me.pid && !p.sp) p.ready = true; });
+    setTimeout(function () {
+      try { b.click(); } catch (err) {}
+      setTimeout(function () { try { V.api().setRoomRulesBulk({ max: maxN }, '최대 인원'); } catch (err) {} }, 1500);
+    }, 90);
+  }, true);
+
   /* 다시 참여하기: 코드 입력·입장을 3번까지 재시도 (실기기 먹통 방지) */
   let rjTry = 0;
   function robustRejoin() {
@@ -44720,6 +44741,49 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   setTimeout(() => { try { dedupeLegacy(); } catch (e) {} }, 2000);
 
   root.JW485RANK = { autoPush, upsert, dedupeLegacy };
+})(window);
+
+
+/* ==========================================================================
+   v4.8.5-2 : 멀티 사망/관전 안전 탈출 버튼 — 어떤 상황에서도 로비로 나갈 수 있게
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  const V = root.JW43;
+  if (!V) return;
+  const $ = (id) => document.getElementById(id);
+  function ensure() {
+    let b = $('v485LobbyBtn');
+    if (!b) {
+      b = document.createElement('button');
+      b.id = 'v485LobbyBtn';
+      b.type = 'button';
+      b.textContent = '🚪 로비로';
+      b.style.cssText = 'position:fixed;right:8px;top:64px;z-index:70;padding:8px 12px;font-size:12px;font-weight:900;' +
+        'color:#e0f2fe;background:#0c4a6e;border:2px solid #38bdf8;box-shadow:0 3px 0 #05030a;display:none';
+      b.addEventListener('click', () => {
+        const res = $('mpResultLobbyBtn');
+        if (res && res.offsetParent !== null) { res.click(); return; }
+        const leave = $('mpSpecLeave');
+        if (leave) { leave.click(); return; }
+        const back = $('mpBackBtn');
+        if (back) back.click();
+      });
+      document.body.appendChild(b);
+    }
+    return b;
+  }
+  setInterval(() => {
+    const b = ensure();
+    let S = null; try { S = V.st(); } catch (e) { return; }
+    const show = !!(S && S.room && (S.deadSpec || S.spectating || (S.eliminated && S.phase === 'race')));
+    b.style.display = show ? 'block' : 'none';
+    /* 관전 중에도 ⏸(일시정지)는 항상 보이게 */
+    if (show) {
+      const hud = $('gameHud'); if (hud) hud.classList.remove('hidden');
+      const p = $('btnPauseHud'); if (p) p.style.display = '';
+    }
+  }, 700);
 })(window);
 
 </script>
