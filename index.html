@@ -38873,25 +38873,34 @@ extends CanvasLayer
         if ((!a || !a.ready) && JW47.art.full) a = JW47.art.full(id);
       }
     } catch (e) {}
-    if (!a && id === 'default' && U._origThumb) {
-      /* 1번 기본 맵은 픽셀아트 미리보기를 쓴다 (배너와 같은 그림이 두 번 보이지 않게) */
+    if (!a && id === 'default') {
+      /* 1번 기본 맵은 일러스트가 없다 → 깔끔한 세로 액자 플레이스홀더 */
       try {
-        var off = U._off || (U._off = document.createElement('canvas'));
-        off.width = 320; off.height = 180;
-        var oc = off.getContext('2d');
-        oc.clearRect(0, 0, 320, 180);
-        U._origThumb('default', off);
-        var c2 = cv.getContext('2d');
-        var cw2 = cv.width, ch2 = cv.height;
-        c2.setTransform(1, 0, 0, 1, 0, 0);
-        c2.clearRect(0, 0, cw2, ch2);
-        var bg = c2.createLinearGradient(0, 0, 0, ch2);
-        bg.addColorStop(0, '#2a3f66'); bg.addColorStop(1, '#0e1830');
-        c2.fillStyle = bg; c2.fillRect(0, 0, cw2, ch2);
-        var si = Math.min(cw2 / 320, (ch2 * 0.62) / 180);
-        var dw2 = 320 * si, dh2 = 180 * si;
-        try { c2.imageSmoothingEnabled = false; } catch (e) {}
-        c2.drawImage(off, (cw2 - dw2) / 2, (ch2 - dh2) / 2, dw2, dh2);
+        var c0 = cv.getContext('2d');
+        var w0 = cv.width, h0 = cv.height;
+        c0.setTransform(1, 0, 0, 1, 0, 0);
+        c0.clearRect(0, 0, w0, h0);
+        var g0 = c0.createLinearGradient(0, 0, 0, h0);
+        g0.addColorStop(0, '#26395c');
+        g0.addColorStop(0.55, '#16233c');
+        g0.addColorStop(1, '#0b1220');
+        c0.fillStyle = g0;
+        c0.fillRect(0, 0, w0, h0);
+        /* 별 */
+        for (var k = 0; k < 26; k++) {
+          c0.fillStyle = k % 3 ? 'rgba(255,255,255,.35)' : 'rgba(253,224,71,.55)';
+          c0.fillRect((k * 97 + 23) % w0, (k * 53 + 17) % h0, 2, 2);
+        }
+        c0.textAlign = 'center';
+        c0.fillStyle = 'rgba(226,238,255,.92)';
+        c0.font = 'bold 46px -apple-system,system-ui,sans-serif';
+        c0.fillText('☁️', w0 / 2, h0 * 0.44);
+        c0.fillStyle = 'rgba(186,222,255,.9)';
+        c0.font = 'bold 15px -apple-system,system-ui,sans-serif';
+        c0.fillText('1번 기본 맵', w0 / 2, h0 * 0.58);
+        c0.fillStyle = 'rgba(147,167,198,.9)';
+        c0.font = 'bold 11px -apple-system,system-ui,sans-serif';
+        c0.fillText('구름 계곡 → 별빛 정상', w0 / 2, h0 * 0.58 + 20);
         return true;
       } catch (e) {}
     }
