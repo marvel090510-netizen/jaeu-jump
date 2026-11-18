@@ -320,7 +320,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       <h2>클로드 <small>단일 HTML</small></h2>
       <p>배경 그림까지 HTML 파일 하나에 다 담아, 파일 하나만 있어도 그대로 돌아가는 버전. 최고 기록은 브라우저에 저장됩니다.</p>
       <div class="spec">단일 파일 1.8MB · 구역 6개 · 발판 86개 · 이벤트 9종</div>
-      <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
+      <div class="go"><span class="count"><b>2</b>개 버전</span><span class="arrow">→</span></div>
     </a>
 
     <a class="card latest" href="../gemini-v4-4/" data-ai="gemini" style="--a:#8ec9ff;--a2:#22d3ee;--glow:96,165,250"><span class="pix" aria-hidden="true"></span>
@@ -497,8 +497,14 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       accent: '#ffb08a', accent2: '#d97757', glow: '217,119,87',
       versions: [
         {
+          ver: 'v4.8.4 (테스트)', label: '보안·버그 수정 테스트판 (최신)', href: '../claude-v4-8-4/', latest: true,
+          date: '2026.11.18',
+          spec: '정식 v4.8.3-2 기반 · 보안/멀티/BGM 수정 · 정식 배포 전 테스트용',
+          notes: ['🔒 공개방·닉네임 코드 주입 차단, 방 비밀번호 해시 비교', '👑 방장 전용 신호 발신자 검증, 비번 맞힌 사람 재강퇴 버그 수정', '🎵 BGM 음소거 통일, 화면 숨기면 전곡 정지', '⚠️ 기록은 메인 게임과 같은 브라우저 저장소를 씁니다']
+        },
+        {
           ver: 'v1.0', label: '단일 HTML 버전', href: '../claude/',
-          date: '2026.11.16', latest: true,
+          date: '2026.11.16',
           spec: '단일 파일 1.8MB · 구역 6개 · 발판 86개 · 이벤트 9종',
           notes: ['배경 그림까지 HTML 파일 하나에 담은 버전', '최고 기록은 브라우저에 저장됩니다']
         }
