@@ -228,8 +228,8 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
   <div class="launcher">
     <span class="lamp" aria-hidden="true"></span>
     <div class="ltext">
-      <b>최신 빌드 <span class="lbadge">v4.5</span> · 맵 21종 · 모드 29종</b>
-      <span>20맵 고퀄 일러스트 배경 · 모던 버튼 · 비주얼 맵 에디터 · 친구 싱글 관전 · 공개 방 목록</span>
+      <b>최신 빌드 <span class="lbadge">v4.7</span> · 맵 21종 · 모드 29종</b>
+      <span>아기자기 16비트 20맵 정상등반 배경 · 맵별 도트 발판 · 모바일 게임 UI</span>
     </div>
     <a class="play" href="../gemini-v4-5/">▶ 바로 플레이</a>
   </div>
@@ -496,6 +496,19 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       name: '제미나이', tag: '제미나이 버전', tagClass: 'e',
       accent: '#8ec9ff', accent2: '#22d3ee', glow: '96,165,250',
       versions: [
+        {
+          ver: 'v4.7', label: '아기자기 16비트 리뉴얼 · 20맵 정상등반 일러스트 · 도트 발판 · 모바일 UI (최신)', href: '../gemini-v4-5/', latest: true,
+          date: '2026.11.18',
+          spec: '맵 21종(1번 기본 맵 원본 보존) · 20맵 아기자기 16비트 등반 배경 · 맵별 도트 발판 · 고정배율 세로 패닝 · 모바일 게임 UI',
+          notes: [
+            '🎨 20개 맵 배경을 아래(바닥)→위(정상)로 올라가는 아기자기 16비트 GBA/SNES 픽셀 아트로 전면 교체 (뉴욕은 승인 시안 그대로, 1번 기본 맵은 손대지 않음)',
+            '🧱 맵마다 배경 색감에 맞춘 16비트 도트 발판(선명한 외곽선 · 윗면 하이라이트 · 도트 무늬)으로 통일',
+            '🎥 배경 배율 고정 + 세로 패닝만 — 오르내려도 랜드마크가 커졌다 작아지지 않습니다',
+            '📱 폰트·카드·버튼·여백을 모바일 게임 톤으로 통일, 상단 HUD 콤팩트 정리 (작은 폰·표준 폰·아이패드 대응)',
+            '🐞 싱글 함정(바나나) 미등장 · 관전 입력 차단 · 술래 5초 유예 · 재대결 수락 투표 · 대기실 정원/준비 게이팅',
+            '🔁 결과창 재시작 확인창 제거(즉시 재시작) · BGM 토글 실제 음소거 연동'
+          ]
+        },
         {
           ver: 'v4.5', label: '대형 업데이트 · 20맵 고퀄 배경 · 모던 버튼 · 비주얼 에디터 · 친구 관전 (최신)', href: '../gemini-v4-5/',
           date: '2026.11.18', latest: true,
