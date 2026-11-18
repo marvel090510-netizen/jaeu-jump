@@ -23514,7 +23514,7 @@ extends CanvasLayer
     const rec = V.recOf ? V.recOf() : null;
     const rank = V.rankOf ? V.rankOf() : '';
     const lines = [
-      '🎮 성공하고싶은 재우 v4.8.5-2',
+      '🎮 성공하고싶은 재우 v4.8.5-3',
       '🗺️ ' + (map ? map.emoji + ' ' + map.name : '기본 맵') + ' · 🎮 ' + ((MD().modeById(mode) || {}).name || '일반'),
       '📏 ' + m + 'm · ⏱️ ' + t + (rank ? ' · ' + rank : ''),
       (rec && rec.m ? '🏆 내 최고 ' + rec.m.toFixed(1) + 'm' : ''),
@@ -24239,7 +24239,7 @@ extends CanvasLayer
         if (localStorage.getItem('jw484_update_toast') === '4.8.5-2') return;
         localStorage.setItem('jw484_update_toast', '4.8.5-2');
       } catch (e) { return; }
-      V.toast('🚀 v4.8.5-2 테스트판', 'lucky', '친구 소셜 허브 · 싱글 관전 수리 · 실시간 훈수 · 맵 카드 개편', 3200);
+      V.toast('🚀 v4.8.5-3 정식판', 'lucky', '친구 소셜 허브 · 싱글 관전 수리 · 실시간 훈수 · 맵 카드 개편', 3200);
     }, 1400);
   };
 })(window);
@@ -42016,7 +42016,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v4.8.5-2 · 21 MAPS';
+      sp[1].textContent = '★ v4.8.5-3 · 21 MAPS';
     }
   }
 
@@ -44482,10 +44482,12 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       (String(sel[key]) === String(o[0]) ? ' class="on"' : '') + '>' + o[1] + '</button>').join('');
   }
   function modeCat(id) {
-    if (['normal', 'classic', 'pureclassic', 'timeattack'].indexOf(id) >= 0) return 'basic';
-    if (['lava', 'zombie', 'dive', 'blackout', 'burning', 'oneheart', 'glass', 'descend', 'endless', 'sense', 'memory', 'minjump', 'randomtgt', 'walljump', 'rhythm', 'coins', 'lift'].indexOf(id) >= 0) return 'thrill';
-    if (['relay', 'chain', 'bomb', 'tag', 'paint', 'flag', 'raid', 'bossrush', 'boss'].indexOf(id) >= 0) return 'coop';
-    return 'special';
+    /* v4.8.5-3: 6개 카테고리 */
+    if (['normal', 'classic', 'pureclassic'].indexOf(id) >= 0) return 'basic';
+    if (['timeattack', 'randomtgt', 'minjump', 'coins', 'endless', 'descend'].indexOf(id) >= 0) return 'speed';
+    if (['lava', 'zombie', 'dive', 'burning', 'oneheart', 'glass', 'boss', 'bossrush', 'raid'].indexOf(id) >= 0) return 'survive';
+    if (['relay', 'chain', 'bomb', 'tag', 'paint', 'flag'].indexOf(id) >= 0) return 'versus';
+    return 'sense';
   }
   function buildPropose() {
     const body = $('v43PropBody');
@@ -44499,7 +44501,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     const sel = PROP.sel;
     const maps = (MP() && MP().list) || [];
     const modes = (MD() && MD().MODES) || [];
-    const cats = [['basic', '🏁 기본 · 레이스'], ['thrill', '🔥 스릴 · 생존'], ['coop', '🤝 협동 · 대결'], ['special', '🌀 특수 · 도전']];
+    const cats = [['basic', '🏁 기본 · 클래식'], ['speed', '⏱️ 스피드 · 기록'], ['survive', '🔥 서바이벌 · 보스'], ['sense', '🌀 특수 · 감각'], ['versus', '🤝 멀티 대전 · 협동']];
     let h = '<div class="v43-note">바꾸고 싶은 값을 <b>한 번에 여러 개</b> 골라서 제안하세요. 방장이 [수락]하면 방에 그대로 적용됩니다.</div>' +
       '<div class="v485p-tabs">' +
       '<button type="button" data-pt="map"' + (PROP.tab === 'map' ? ' class="on"' : '') + '>🗺️ 맵</button>' +
@@ -44788,5 +44790,1261 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 </script>
 <!-- ===== v4.8.5-2 PATCH END ===== -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- ===== v4.8.5-3 PATCH START ===== -->
+<script>
+/* ==========================================================================
+   v4.8.5-3 : A. 공통 · 맵 16비트 썸네일 · 싱글 위저드 카테고리(맵/모드)
+   - 21개 맵 전부 assets/maps 일러스트로 통일 (캔버스 프리뷰 → 일러스트)
+   - ① 모드 고르기: 6개 카테고리 (기본·클래식 / 스피드·기록 / 서바이벌·보스 / 특수·감각 / 멀티 대전·협동)
+   - ② 맵 고르기: 거리 · 난이도 · 테마 필터
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var MAPHAS = { arcade: 1, arctic: 1, atlantis: 1, bamboo: 1, clock: 1, default: 1, dessert: 1, egypt: 1, fuji: 1, kitchen: 1, mansion: 1, newyork: 1, paris: 1, rainbow: 1, school: 1, seoul: 1, site: 1, space: 1, train: 1, volcano: 1, wuxia: 1 };
+  var MAP_ORDER = ['default', 'dessert', 'site', 'space', 'bamboo', 'custom', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano', 'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji'];
+  var THEME = {
+    default: 'nature', dessert: 'nature', site: 'city', space: 'special', bamboo: 'nature', custom: 'special',
+    atlantis: 'nature', arcade: 'city', arctic: 'nature', mansion: 'special', volcano: 'nature', school: 'city',
+    clock: 'special', kitchen: 'city', train: 'special', wuxia: 'nature', rainbow: 'nature', newyork: 'city',
+    seoul: 'city', paris: 'city', egypt: 'city', fuji: 'city'
+  };
+  var MODE_CAT = {
+    normal: 'basic', classic: 'basic', pureclassic: 'basic',
+    timeattack: 'speed', randomtgt: 'speed', minjump: 'speed', coins: 'speed', endless: 'speed', descend: 'speed',
+    lava: 'survive', zombie: 'survive', dive: 'survive', burning: 'survive', oneheart: 'survive', glass: 'survive',
+    boss: 'survive', bossrush: 'survive', raid: 'survive',
+    sense: 'sense', memory: 'sense', rhythm: 'sense', blackout: 'sense', walljump: 'sense', lift: 'sense', custom: 'sense',
+    relay: 'versus', chain: 'versus', bomb: 'versus', tag: 'versus', paint: 'versus', flag: 'versus'
+  };
+  var MODE_CATS = [
+    ['all', '🌐 전체'],
+    ['basic', '🏁 기본 · 클래식'],
+    ['speed', '⏱️ 스피드 · 기록'],
+    ['survive', '🔥 서바이벌 · 보스'],
+    ['sense', '🌀 특수 · 감각'],
+    ['versus', '🤝 멀티 대전 · 협동']
+  ];
+  var MAP_CATS = [
+    ['all', '🗺️ 전체'],
+    ['short', '⚡ 단거리'],
+    ['mid', '⚖️ 중거리'],
+    ['long', '🏔️ 장거리'],
+    ['easy', '🌱 쉬움 · 보통'],
+    ['hard', '🔥 어려움 · 극악'],
+    ['city', '🏙️ 도시 · 세계'],
+    ['nature', '🌸 판타지 · 자연'],
+    ['special', '🛸 특수 · 테마']
+  ];
+  function tierOf(id) {
+    var t = 0; try { t = V.mapTotal(id) || 0; } catch (e) {}
+    if (!t) { try { var m = root.JWMap.byId(id); t = (m && m.total) || 88; } catch (e2) {} }
+    return t <= 65 ? 'short' : t <= 89 ? 'mid' : 'long';
+  }
+  function easyOf(id) {
+    var d = '';
+    try { var m = root.JWMap.byId(id); d = (m && m.diff) || ''; } catch (e) {}
+    return /어려움|극악/.test(d) ? 'hard' : 'easy';
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;'; });
+  }
+  function mapInfo(id) {
+    var m = null;
+    try { m = root.JWMap.byId(id); } catch (e) {}
+    return m || { id: id, name: id, emoji: '🗺️', diff: '', desc: '', total: 88 };
+  }
+  function thumbSrc(id) { return 'assets/maps/t/' + (MAPHAS[id] ? id : 'default') + '.jpg'; }
+  function fullSrc(id) {
+    if (id === 'default') return 'assets/maps/t/default.jpg';   /* 기본 맵은 큰 원본이 없어 썸네일 사용 */
+    return 'assets/maps/' + (MAPHAS[id] ? id : 'default') + '.jpg';
+  }
+
+  root.JW53 = root.JW53 || {};
+  root.JW53.MAPHAS = MAPHAS; root.JW53.THEME = THEME; root.JW53.MODE_CAT = MODE_CAT;
+  root.JW53.tierOf = tierOf; root.JW53.easyOf = easyOf; root.JW53.MODE_CATS = MODE_CATS; root.JW53.MAP_CATS = MAP_CATS;
+  root.JW53.thumbSrc = thumbSrc; root.JW53.mapInfo = mapInfo;
+
+  /* ---------------------------------------------------------------- CSS */
+  var s = doc.createElement('style');
+  s.id = 'v53css';
+  s.textContent = [
+    /* 공통 픽셀 3D 버튼 (v4.8.5-1 홈 버튼과 같은 입체감) */
+    '.v53btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;position:relative;',
+    '  font-family:"Jua",sans-serif;font-size:12px;font-weight:400;color:#eaf3ff;padding:8px 11px;',
+    '  background:linear-gradient(180deg,#39496f,#232f52);border:2px solid #0a0f1e;border-radius:10px;',
+    '  box-shadow:inset 0 -4px 0 #141c33,inset 0 2px 0 rgba(255,255,255,.16),0 4px 0 #05030a;',
+    '  text-shadow:0 1px 0 rgba(0,0,0,.45);cursor:pointer;transition:transform .07s ease,box-shadow .07s ease;}',
+    '.v53btn:active{transform:translateY(4px);box-shadow:inset 0 -4px 0 #141c33,inset 0 2px 0 rgba(255,255,255,.16),0 0 0 #05030a;}',
+    '.v53btn.gold{background:linear-gradient(180deg,#ffe08a,#ffc23a 45%,#f39a1c);color:#3a2205;border-color:#5a3204;',
+    '  box-shadow:inset 0 -5px 0 #c46d0b,inset 0 2px 0 rgba(255,255,255,.7),0 4px 0 #5a3204;text-shadow:0 1px 0 rgba(255,255,255,.4);}',
+    '.v53btn.green{background:linear-gradient(180deg,#a7f3d0,#34d399 48%,#059669);color:#04231a;border-color:#043b2b;',
+    '  box-shadow:inset 0 -5px 0 #047857,inset 0 2px 0 rgba(255,255,255,.45),0 4px 0 #043b2b;}',
+    '.v53btn.blue{background:linear-gradient(180deg,#bfe0ff,#60a5fa 48%,#2563eb);color:#041a3a;border-color:#0b2c5c;',
+    '  box-shadow:inset 0 -5px 0 #1d4ed8,inset 0 2px 0 rgba(255,255,255,.45),0 4px 0 #0b2c5c;}',
+    '.v53btn.purple{background:linear-gradient(180deg,#d8c8ff,#a78bfa 48%,#7c3aed);color:#1b0a3a;border-color:#2c1060;',
+    '  box-shadow:inset 0 -5px 0 #5b21b6,inset 0 2px 0 rgba(255,255,255,.45),0 4px 0 #2c1060;}',
+    '.v53btn.small{font-size:11px;padding:6px 9px;border-radius:8px;}',
+    '.v53btn[disabled]{opacity:.45;filter:saturate(.5);}',
+
+    /* 카테고리 칩 줄 */
+    '.v53bar{display:flex;flex-wrap:wrap;gap:4px;padding:1px 1px 3px;margin:3px 0 2px;}',
+    '.v53chip{flex:0 0 auto;font-family:"Jua",sans-serif;font-size:10.5px;font-weight:400;color:#aebbd4;',
+    '  padding:5px 7px;background:linear-gradient(180deg,#1c2745,#141c33);border:2px solid #0a0f1e;border-radius:8px;',
+    '  box-shadow:inset 0 -3px 0 #0a0f1e,0 2px 0 #05030a;white-space:nowrap;cursor:pointer;}',
+    '.v53chip.on{color:#3a2205;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;',
+    '  box-shadow:inset 0 -3px 0 #b5750b,0 2px 0 #5a3204;}',
+
+    /* 싱글 ② 맵 그리드 */
+    '#v53MapGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:50dvh;overflow-y:auto;',
+    '  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:1px;}',
+    '@media(min-width:600px){#v53MapGrid{grid-template-columns:repeat(3,minmax(0,1fr));max-height:none;}}',
+    '.v53m{position:relative;display:flex;flex-direction:column;gap:2px;padding:0 0 6px;overflow:hidden;text-align:left;',
+    '  background:linear-gradient(180deg,#1e2a4a,#141c33);border:2px solid #0a0f1e;border-radius:10px;',
+    '  box-shadow:inset 0 -4px 0 rgba(0,0,0,.35),0 3px 0 #05030a;cursor:pointer;min-width:0;}',
+    '.v53m:active{transform:translateY(2px);}',
+    '.v53m.on{box-shadow:inset 0 0 0 2px #fbbf24,0 3px 0 #05030a;}',
+    '.v53m img{width:100%;aspect-ratio:4/3;object-fit:cover;object-position:50% 8%;display:block;background:#0a1020;image-rendering:pixelated;}',
+    '.v53m .nm{font-family:"Jua",sans-serif;font-size:12.5px;color:#fff;padding:3px 6px 0;line-height:1.2;',
+    '  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    '.v53m .bd{display:flex;gap:3px;flex-wrap:wrap;padding:0 6px;}',
+    '.v53m .bd i{font-style:normal;font-size:8.5px;font-weight:900;padding:1px 4px;border-radius:4px;',
+    '  background:#0b1122;border:1px solid #334155;color:#a5b4fc;white-space:nowrap;}',
+    '.v53m .bd i.df{color:#fecaca;border-color:#7f1d1d;background:#2a0b0b;}',
+    '.v53m .bd i.ds{color:#bbf7d0;border-color:#14532d;background:#052e1b;}',
+    '.v53m .bd i.tl{color:#fde68a;border-color:#78350f;background:#2a1a04;}',
+    '.v53m .ds{font-size:9px;color:#93a4c4;padding:0 6px;line-height:1.35;max-height:24px;overflow:hidden;}',
+    '.v53m .rc{font-size:9px;font-weight:900;color:#fde68a;padding:0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    '.v53m .fav{position:absolute;top:4px;left:5px;font-size:11px;text-shadow:0 1px 2px #000;}',
+
+    /* 싱글 ① 모드 그리드 */
+    '#v53ModeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:48dvh;overflow-y:auto;',
+    '  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:1px;}',
+    '@media(min-width:600px){#v53ModeGrid{grid-template-columns:repeat(3,minmax(0,1fr));max-height:none;}}',
+    '.v53mm{display:flex;align-items:center;gap:7px;padding:7px 8px;min-height:52px;text-align:left;min-width:0;',
+    '  background:linear-gradient(180deg,#22305a,#18213f);border:2px solid #0b1022;border-radius:10px;',
+    '  box-shadow:inset 0 -4px 0 rgba(0,0,0,.3),inset 0 2px 0 rgba(255,255,255,.08),0 3px 0 #05030a;cursor:pointer;}',
+    '.v53mm:active{transform:translateY(2px);}',
+    '.v53mm .ic{flex:0 0 30px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:19px;',
+    '  background:rgba(8,12,24,.55);border:2px solid #0b1022;border-radius:8px;box-shadow:inset 0 -2px 0 rgba(0,0,0,.4);}',
+    '.v53mm .tx{min-width:0;display:flex;flex-direction:column;gap:1px;}',
+    '.v53mm .tx b{font-family:"Jua",sans-serif;font-size:13px;font-weight:400;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    '.v53mm .tx i{font-style:normal;font-size:9.5px;color:#a9b8d4;line-height:1.25;overflow:hidden;max-height:24px;}',
+    '.v53hide{display:none !important;}'
+  ].join('\n');
+  doc.head.appendChild(s);
+
+  /* ---------------------------------------------------------------- 맵 썸네일: 21개 전부 일러스트 */
+  var IMGC = {};
+  var pendingRedraw = {};
+  function artImg(id) {
+    if (IMGC[id]) return IMGC[id];
+    var rec = IMGC[id] = { img: new Image(), ready: false };
+    rec.img.onload = function () {
+      rec.ready = true;
+      try { redrawId(id); } catch (e) {}
+    };
+    rec.img.onerror = function () { rec.ready = false; };
+    try { rec.img.decoding = 'async'; } catch (e) {}
+    rec.img.src = fullSrc(id);
+    return rec;
+  }
+  function redrawId(id) {
+    var list = doc.querySelectorAll('canvas');
+    for (var i = 0; i < list.length; i++) {
+      var cv = list[i];
+      if (cv && cv.__v53map === id) {
+        try { drawArt(id, cv); } catch (e) {}
+      }
+    }
+    /* <img data-v53> 는 브라우저가 알아서 그린다 */
+  }
+  function drawArt(id, cv) {
+    var rec = artImg(id);
+    var g = cv.getContext('2d');
+    var W = cv.width, H = cv.height;
+    g.imageSmoothingEnabled = false;
+    if (!rec.ready) {
+      g.fillStyle = '#101a30'; g.fillRect(0, 0, W, H);
+      return true;
+    }
+    var iw = rec.img.naturalWidth || rec.img.width, ih = rec.img.naturalHeight || rec.img.height;
+    if (!iw || !ih) { g.fillStyle = '#101a30'; g.fillRect(0, 0, W, H); return true; }
+    var sc = Math.max(W / iw, H / ih);
+    var dw = iw * sc, dh = ih * sc;
+    g.clearRect(0, 0, W, H);
+    g.drawImage(rec.img, (W - dw) / 2, (H - dh) * 0.2, dw, dh);
+    return true;
+  }
+  (function wrapThumb() {
+    var orig = V.mapThumb43;
+    var wrapped = function (id, cv) {
+      if (!cv || !MAPHAS[id]) return orig ? orig.call(V, id, cv) : false;
+      try {
+        cv.__v53map = id;
+        cv.__v43drawn = id;
+        return drawArt(id, cv);
+      } catch (e) { return orig ? orig.call(V, id, cv) : false; }
+    };
+    wrapped.__v53 = true;
+    V.mapThumb43 = wrapped;
+  })();
+  root.JW53.drawArtInto = function (id, cv) { try { cv.__v53map = id; return drawArt(id, cv); } catch (e) { return false; } };
+
+  /* ---------------------------------------------------------------- 싱글 ① 모드 카테고리 */
+  var MODE_FILTER = 'all';
+  var MAP_FILTER = 'all';
+  root.JW53.modeFilter = function () { return MODE_FILTER; };
+
+  function modeList() {
+    var list = [];
+    try { list = ((root.JWMode && root.JWMode.MODES) || []).slice(); } catch (e) {}
+    /* JWMode.MODES에는 없는 🎛️ 커스텀 모드 카드를 직접 넣는다 (② 맵 → ⚙️ 규칙) */
+    if (!list.some(function (m) { return m && m.id === 'custom'; })) {
+      list.push({ id: 'custom', name: '커스텀 모드', emoji: '🎛️', desc: '원하는 규칙만 골라서 플레이' });
+    }
+    return list;
+  }
+  function buildModeGrid() {
+    var box = $('v43WizModes');
+    var step1 = $('v43WizStep1');
+    if (!box || !step1) return;
+    var grid = $('v53ModeGrid');
+    var bar = $('v53ModeBar');
+    if (!bar) {
+      bar = doc.createElement('div');
+      bar.id = 'v53ModeBar';
+      bar.className = 'v53bar';
+      step1.insertBefore(bar, box);
+      bar.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('[data-mcat]') : null;
+        if (!b) return;
+        MODE_FILTER = b.getAttribute('data-mcat');
+        paintModeGrid(true);
+      });
+    }
+    if (!grid) {
+      grid = doc.createElement('div');
+      grid.id = 'v53ModeGrid';
+      step1.insertBefore(grid, box);
+      grid.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('[data-m]') : null;
+        if (!b) return;
+        var id = b.getAttribute('data-m');
+        var src = id === 'custom' ? ($('v51Custom') || box.querySelector('[data-wmode="custom"]')) : box.querySelector('[data-wmode="' + id + '"]');
+        if (src) { try { src.click(); } catch (er) {} }
+      });
+    }
+    box.classList.add('v53hide');
+    var old = $('v50ModeTabs'); if (old) old.classList.add('v53hide');
+    paintModeGrid(true);
+  }
+  function paintModeGrid(force) {
+    var grid = $('v53ModeGrid'), bar = $('v53ModeBar'), box = $('v43WizModes');
+    if (!grid || !bar || !box || $('v43WizStep1').classList.contains('hidden')) return;
+    var list = modeList().filter(function (m) { return m && m.id && m.id !== 'custom-mix'; });
+    var cur = '';
+    try { var on = box.querySelector('[data-wmode].on'); cur = on ? on.getAttribute('data-wmode') : ''; } catch (e) {}
+    var sig = MODE_FILTER + '|' + cur + '|' + list.length;
+    if (!force && grid.getAttribute('data-sig') === sig) return;
+    grid.setAttribute('data-sig', sig);
+    if (bar.getAttribute('data-sig') !== MODE_FILTER) {
+      bar.setAttribute('data-sig', MODE_FILTER);
+      bar.innerHTML = MODE_CATS.map(function (c) {
+        return '<button type="button" class="v53chip' + (MODE_FILTER === c[0] ? ' on' : '') + '" data-mcat="' + c[0] + '">' + c[1] + '</button>';
+      }).join('');
+    }
+    var html = '';
+    list.forEach(function (m) {
+      var cat = MODE_CAT[m.id] || 'sense';
+      if (MODE_FILTER !== 'all' && MODE_FILTER !== cat) return;
+      var label = CAT_NAME[cat] || '';
+      var desc = (root.JW53.modeDesc && root.JW53.modeDesc(m.id)) || m.desc || '';
+      html += '<button type="button" class="v53mm' + (cur === m.id ? ' on' : '') + '" data-m="' + m.id + '">' +
+        '<span class="ic">' + (m.emoji || '🎮') + '</span>' +
+        '<span class="tx"><b>' + esc(m.name || m.id) + '</b><i>' + esc(desc) + '</i>' +
+        (MODE_FILTER === 'all' ? '<i style="color:#6b7c9c;font-size:8.5px">' + label + '</i>' : '') + '</span></button>';
+    });
+    if (!html) html = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;font-size:11px;padding:16px">이 카테고리에 모드가 없어요</div>';
+    grid.innerHTML = html;
+  }
+  var CAT_NAME = { basic: '기본 · 클래식', speed: '스피드 · 기록', survive: '서바이벌 · 보스', sense: '특수 · 감각', versus: '멀티 대전 · 협동' };
+  root.JW53.CAT_NAME = CAT_NAME;
+  var MODE_DESC = {
+    normal: '그냥 정상까지 (기본)', classic: '챌린지 · 기본 도전 규칙', pureclassic: '순수 피지컬 · 부가 요소 없음',
+    timeattack: '제한 시간 안에 최대 높이', randomtgt: '판마다 목표층이 랜덤', minjump: '최소 점프로 정상 도달',
+    coins: '코인 30개 싹쓸이', endless: '끝없는 발판을 계속 오른다', descend: '정상에서 1층까지 안전 하강',
+    lava: '용암이 따라 올라온다', zombie: '좀비가 아래서 쫓아온다', dive: '물이 차오른다 · 산소 5초',
+    burning: '밟은 발판이 3초 뒤 불탄다', oneheart: '하트 하나 · 한 번의 실수로 끝', glass: '2개 중 1개는 가짜 유리',
+    boss: '88층 수문장과 대결', bossrush: '수문장 패턴을 피해 격파', raid: '다 같이 보스 레이드',
+    sense: '게이지·숫자를 숨기고 감으로', memory: '3초만 보고 외워서 점프', rhythm: '타이밍에 맞춰 점프',
+    blackout: '손전등 좁은 시야', walljump: '벽을 차고 한 번 더', lift: '고속으로 움직이는 발판 탑',
+    relay: '2인 교대 릴레이', chain: '사슬로 묶여 함께 오르기', bomb: '폭탄을 주고받기',
+    tag: '술래가 도망자를 잡는다', paint: '밟은 발판을 내 색으로', flag: '중간 깃발 점령전',
+    custom: '원하는 규칙만 골라서 플레이'
+  };
+  root.JW53.modeDesc = function (id) { return MODE_DESC[id] || ''; };
+  root.JW53.MODE_DESC = MODE_DESC;
+
+  /* ---------------------------------------------------------------- 싱글 ② 맵 필터 */
+  function buildMapGrid() {
+    var box = $('v43WizMaps');
+    var step2 = $('v43WizStep2');
+    if (!box || !step2) return;
+    var bar = $('v53MapBar');
+    if (!bar) {
+      bar = doc.createElement('div');
+      bar.id = 'v53MapBar';
+      bar.className = 'v53bar';
+      step2.insertBefore(bar, box);
+      bar.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('[data-f]') : null;
+        if (!b) return;
+        MAP_FILTER = b.getAttribute('data-f');
+        paintMapGrid(true);
+      });
+    }
+    var grid = $('v53MapGrid');
+    if (!grid) {
+      grid = doc.createElement('div');
+      grid.id = 'v53MapGrid';
+      step2.insertBefore(grid, box);
+      grid.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('[data-map]') : null;
+        if (!b) return;
+        var id = b.getAttribute('data-map');
+        var src = box.querySelector('[data-wmap="' + id + '"]');
+        if (src) { try { src.click(); } catch (er) {} }
+      });
+    }
+    box.classList.add('v53hide');
+    var tb = $('v43TierBar'); if (tb) tb.classList.add('v53hide');
+    paintMapGrid(true);
+  }
+  function selMode() {
+    var on = doc.querySelector('#v43WizModes [data-wmode].on');
+    return on ? on.getAttribute('data-wmode') : '';
+  }
+  function paintMapGrid(force) {
+    var grid = $('v53MapGrid'), bar = $('v53MapBar'), box = $('v43WizMaps');
+    if (!grid || !bar || !box || $('v43WizStep2').classList.contains('hidden')) return;
+    var mode = selMode();
+    var fav = [];
+    try { fav = V.lsGet('jw43_fav_v1', []) || []; } catch (e) {}
+    var ids = MAP_ORDER.filter(function (id) { return !!mapInfo(id); });
+    var sig = MAP_FILTER + '|' + mode + '|' + ids.length + '|' + fav.join(',');
+    if (!force && grid.getAttribute('data-sig') === sig) return;
+    grid.setAttribute('data-sig', sig);
+    if (bar.getAttribute('data-sig') !== MAP_FILTER) {
+      bar.setAttribute('data-sig', MAP_FILTER);
+      bar.innerHTML = MAP_CATS.map(function (c) {
+        return '<button type="button" class="v53chip' + (MAP_FILTER === c[0] ? ' on' : '') + '" data-f="' + c[0] + '">' + c[1] + '</button>';
+      }).join('');
+    }
+    var html = '';
+    ids.forEach(function (id) {
+      if (!mapMatch(id)) return;
+      var m = mapInfo(id);
+      var tot = 0; try { tot = V.mapTotal(id) || m.total || 0; } catch (e) { tot = m.total || 0; }
+      var rec = '';
+      try { rec = V.recTitleFor ? (V.recTitleFor(id + ':' + (mode || 'normal')) || '') : ''; } catch (e) {}
+      var isFav = fav.indexOf(id) >= 0;
+      var hard = easyOf(id) === 'hard';
+      var tier = tierOf(id);
+      var tierName = tier === 'short' ? '단거리' : tier === 'mid' ? '중거리' : '장거리';
+      html += '<button type="button" class="v53m" data-map="' + id + '">' +
+        '<img loading="lazy" decoding="async" alt="" src="' + thumbSrc(id) + '">' +
+        (isFav ? '<span class="fav">★</span>' : '') +
+        '<b class="nm">' + esc((m.emoji || '') + ' ' + (m.name || id)) + '</b>' +
+        '<span class="bd"><i class="' + (hard ? 'df' : 'ds') + '">' + esc(m.diff || '기본') + '</i>' +
+        '<i class="tl">' + esc(tierName) + '</i><i>' + tot + '층</i></span>' +
+        '<span class="ds">' + esc(m.desc || '') + '</span>' +
+        (rec ? '<span class="rc">🏅 ' + esc(rec) + '</span>' : '') +
+        '</button>';
+    });
+    if (!html) html = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;font-size:11px;padding:16px">이 조건에 맞는 맵이 없어요</div>';
+    grid.innerHTML = html;
+  }
+  function mapMatch(id) {
+    if (MAP_FILTER === 'all') return true;
+    if (MAP_FILTER === 'short' || MAP_FILTER === 'mid' || MAP_FILTER === 'long') return tierOf(id) === MAP_FILTER;
+    if (MAP_FILTER === 'easy' || MAP_FILTER === 'hard') return easyOf(id) === MAP_FILTER;
+    return (THEME[id] || 'special') === MAP_FILTER;
+  }
+
+  /* ---------------------------------------------------------------- 주기 반영 */
+  function tick() {
+    var wiz = $('v43Wiz');
+    if (!wiz || wiz.classList.contains('hidden')) return;
+    buildModeGrid();
+    buildMapGrid();
+    paintModeGrid(false);
+    paintMapGrid(false);
+  }
+  setInterval(function () { try { tick(); } catch (e) {} }, 260);
+  root.JW53.repaintWizard = function () { try { paintModeGrid(true); paintMapGrid(true); } catch (e) {} };
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v4.8.5-3 : B. 멀티 대기실 — 💡 제안하기 버튼 복구 · 방 설정 4탭 개편 · 잔여 텍스트 제거
+   - 비방장(참가자)에게도 💡 제안하기 버튼 노출 → 🗺️맵 / 🎮모드 / ⚙️세부규칙 다중 선택 제안
+   - 방 설정: 🗺️ 맵 / 🎮 모드 / ⚙️ 세부규칙 / 😈 닉변빵 4탭, 맵·모드 카테고리 필터
+   - 대기실 아래에 삐져나오던 잔여 안내 텍스트 정리
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var J53 = root.JW53 || {};
+  var MAP_CATS = J53.MAP_CATS || [['all', '전체']];
+  var MODE_CATS = J53.MODE_CATS || [['all', '전체']];
+  var MODE_CAT = J53.MODE_CAT || {};
+  var MAPHAS = J53.MAPHAS || {};
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;'; }); };
+  var thumbSrc = J53.thumbSrc || function (id) { return 'assets/maps/t/' + id + '.jpg'; };
+  var MODE_DESC = J53.MODE_DESC || {};
+
+  var STATE = { tab: 'map', mapFilter: 'all', modeFilter: 'all' };
+  root.JW53SET = STATE;
+
+  function room() { var S = null; try { S = V.st(); } catch (e) {} return (S && S.room) ? S.room : null; }
+  function isHost() { var S = null; try { S = V.st(); } catch (e) {} return !!(S && S.isHost); }
+  function maps() { try { return (root.JWMap && root.JWMap.list) || []; } catch (e) { return []; } }
+  function modes() { try { return (root.JWMode && root.JWMode.MODES) || []; } catch (e) { return []; } }
+  function mapById(id) { try { return root.JWMap.byId(id) || {}; } catch (e) { return {}; } }
+  function modeById(id) { try { return root.JWMode.modeById(id) || {}; } catch (e) { return {}; } }
+
+  /* ---------------------------------------------------------------- 설정 적용 */
+  function propPatch(patch, label) {
+    var S = null; try { S = V.st(); } catch (e) {}
+    if (!S || !S.room) return;
+    try { V.send({ t: 'v43prop', patch: patch, label: label, nick: S.me.nick, pid: S.me.pid }); } catch (e) {}
+    try { V.toast('🙋 방장에게 제안', 'lucky', label, 2400); } catch (e) {}
+    showStatus('🙋 ' + label + ' 제안을 보냈어요. 방장 수락을 기다리는 중...');
+  }
+  function setRule(patch, label) {
+    var S = null; try { S = V.st(); } catch (e) {}
+    if (!S || !S.room) return;
+    if (!S.isHost) { propPatch(patch, label); return; }
+    try {
+      var rk = Object.keys(patch);
+      var extra = {};
+      rk.forEach(function (k) { if (k !== 'map' && k !== 'mode') extra[k] = patch[k]; });
+      if (patch.map || patch.mode) {
+        var p2 = {};
+        if (patch.map) p2.map = patch.map;
+        if (patch.mode) p2.mode = patch.mode;
+        try { V.api().setRoomRulesBulk(p2, label); } catch (e) {}
+      }
+      if (Object.keys(extra).length) {
+        try { V.applyExtra(extra, label); } catch (e) {}
+      }
+      try { V.toast('✅ 적용', 'lucky', label, 1600); } catch (e) {}
+      paintSet();
+    } catch (e) { console.warn('v53 set', e); }
+  }
+  function showStatus(t) {
+    var el = $('mpLobbyStatus');
+    if (el) { el.textContent = t || ''; el.style.display = t ? '' : 'none'; }
+  }
+
+  /* ---------------------------------------------------------------- 방 설정 모달 */
+  function css() {
+    if ($('v53SetCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v53SetCss';
+    s.textContent = [
+      '#v53Set{position:fixed;inset:0;z-index:96;display:none;align-items:center;justify-content:center;',
+      '  background:rgba(4,7,16,.72);padding:8px;}',
+      '#v53Set.on{display:flex;}',
+      '#v53Set .card{width:min(96vw,560px);max-height:92dvh;display:flex;flex-direction:column;gap:7px;',
+      '  background:linear-gradient(180deg,#111c33,#0a1122);border:3px solid #0b1022;border-radius:16px;',
+      '  box-shadow:0 10px 0 rgba(0,0,0,.45),inset 0 2px 0 rgba(255,255,255,.08);padding:10px;}',
+      '#v53Set .hd{display:flex;align-items:flex-start;gap:8px;}',
+      '#v53Set .tt{font-family:"Jua",sans-serif;font-size:19px;color:#fff;line-height:1.1;}',
+      '#v53Set .sb{font-size:10.5px;font-weight:800;color:#9fb0cc;margin-top:2px;}',
+      '#v53Set .x{margin-left:auto;}',
+      '#v53SetTabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;}',
+      '#v53SetTabs button{font-family:"Jua",sans-serif;font-size:11.5px;color:#c7d6ee;padding:8px 2px;',
+      '  background:linear-gradient(180deg,#1b2745,#131c33);border:2px solid #0a0f1e;border-radius:9px;',
+      '  box-shadow:inset 0 -3px 0 #0a0f1e,0 2px 0 #05030a;}',
+      '#v53SetTabs button.on{color:#3a2205;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;',
+      '  box-shadow:inset 0 -3px 0 #b5750b,0 2px 0 #5a3204;}',
+      '#v53SetBody{display:flex;flex-direction:column;gap:6px;overflow-y:auto;overscroll-behavior:contain;',
+      '  padding-right:1px;min-height:0;}',
+      '#v53Set .ft{display:flex;gap:6px;}',
+      '#v53Set .ft .v53btn{flex:1;font-size:13px;padding:10px;}',
+      '.v53Mg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;}',
+      '.v53Mc{display:flex;flex-direction:column;gap:1px;padding:0 0 4px;overflow:hidden;text-align:left;',
+      '  background:linear-gradient(180deg,#1e2a4a,#141c33);border:2px solid #0a0f1e;border-radius:9px;',
+      '  box-shadow:inset 0 -3px 0 rgba(0,0,0,.35),0 2px 0 #05030a;min-width:0;}',
+      '.v53Mc.on{box-shadow:inset 0 0 0 2px #fbbf24,0 2px 0 #05030a;}',
+      '.v53Mc img{width:100%;aspect-ratio:4/3;object-fit:cover;object-position:50% 8%;display:block;background:#0a1020;}',
+      '.v53Mc b{font-family:"Jua",sans-serif;font-size:10px;color:#fff;padding:2px 4px 0;line-height:1.15;',
+      '  white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}',
+      '.v53Mc i{font-style:normal;font-size:8px;color:#8fa2c0;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '.v53Md{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;}',
+      '.v53Mo{display:flex;align-items:center;gap:6px;padding:7px 8px;min-height:44px;text-align:left;min-width:0;',
+      '  background:linear-gradient(180deg,#22305a,#18213f);border:2px solid #0b1022;border-radius:9px;',
+      '  box-shadow:inset 0 -3px 0 rgba(0,0,0,.3),0 2px 0 #05030a;}',
+      '.v53Mo.on{box-shadow:inset 0 0 0 2px #fbbf24,0 2px 0 #05030a;}',
+      '.v53Mo span.e{font-size:16px;flex:0 0 20px;}',
+      '.v53Mo span.t{min-width:0;display:flex;flex-direction:column;}',
+      '.v53Mo b{font-family:"Jua",sans-serif;font-size:11.5px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '.v53Mo i{font-style:normal;font-size:9px;color:#a9b8d4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '.v53Sec{font-family:"Jua",sans-serif;font-size:12px;color:#fde047;margin:4px 0 0;}',
+      '.v53R{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:9px;background:#0b1322;',
+      '  border:2px solid #16223c;}',
+      '.v53R > b{font-size:11px;font-weight:900;color:#dbe7f7;flex:0 0 auto;}',
+      '.v53R .op{display:flex;gap:3px;flex-wrap:wrap;margin-left:auto;}',
+      '.v53R .op button{font-family:"Jua",sans-serif;font-size:10.5px;color:#b9c9e4;padding:4px 7px;border-radius:7px;',
+      '  background:#111a30;border:2px solid #334155;}',
+      '.v53R .op button.on{color:#3a2205;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;}',
+      '.v53Note{font-size:9.5px;font-weight:800;color:#8fa2c0;line-height:1.4;}',
+      '#v53PropBtn{margin-left:auto;}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+  css();
+
+  function buildModal() {
+    var m = $('v53Set');
+    if (m) return m;
+    m = doc.createElement('div');
+    m.id = 'v53Set';
+    m.innerHTML = '<div class="card">' +
+      '<div class="hd"><div><div class="tt">⚙️ 방 설정</div><div class="sb" id="v53SetSub">방장이 바꾸면 참가자에게 바로 적용됩니다</div></div>' +
+      '<button type="button" class="v53btn small x" id="v53SetX">닫기 ✕</button></div>' +
+      '<div id="v53SetTabs"></div>' +
+      '<div id="v53SetBody"></div>' +
+      '<div class="ft"><button type="button" class="v53btn gold" id="v53SetOk">확인</button></div>' +
+      '</div>';
+    doc.body.appendChild(m);
+    m.querySelectorAll('#v53SetX,#v53SetOk').forEach(function (b) {
+      b.addEventListener('click', function () { m.classList.remove('on'); });
+    });
+    m.addEventListener('click', function (e) { if (e.target === m) m.classList.remove('on'); });
+    return m;
+  }
+
+  function paintSet() {
+    var m = $('v53Set');
+    if (!m || !m.classList.contains('on')) return;
+    var r = room();
+    if (!r) { m.classList.remove('on'); return; }
+    var tabs = $('v53SetTabs');
+    var T = [['map', '🗺️ 맵'], ['mode', '🎮 모드'], ['rule', '⚙️ 세부규칙'], ['bet', '😈 닉변빵']];
+    tabs.innerHTML = T.map(function (t) {
+      return '<button type="button" data-st="' + t[0] + '"' + (STATE.tab === t[0] ? ' class="on"' : '') + '>' + t[1] + '</button>';
+    }).join('');
+    tabs.querySelectorAll('[data-st]').forEach(function (b) {
+      b.addEventListener('click', function () { STATE.tab = b.getAttribute('data-st'); paintSet(); });
+    });
+    var sub = $('v53SetSub');
+    if (sub) sub.textContent = isHost() ? '방장이 바꾸면 참가자에게 바로 적용됩니다' : '방장만 바꿀 수 있어요 · 💡 제안하기로 요청하세요';
+    var body = $('v53SetBody');
+    if (STATE.tab === 'map') body.innerHTML = paneMap(r);
+    else if (STATE.tab === 'mode') body.innerHTML = paneMode(r);
+    else if (STATE.tab === 'rule') body.innerHTML = paneRule(r);
+    else body.innerHTML = paneBet();
+    wirePane(body);
+
+    if (STATE.tab === 'bet') {
+      /* 기존 닉변빵 카드(v44Bet)를 그대로 가져와 붙인다 */
+      try {
+        var btn = $('v44OpenBet2'); if (btn) btn.click();
+        var bm = $('v44Bet');
+        var card = bm ? bm.querySelector('.v44-card') : null;
+        if (card) {
+          bm.classList.add('hidden');
+          if (!card.__home) card.__home = card.parentElement;
+          var host = doc.createElement('div');
+          host.id = 'v53BetHost';
+          body.innerHTML = '';
+          body.appendChild(host);
+          host.appendChild(card);
+          /* 안쪽 카드의 중복 닫기 버튼은 숨긴다 */
+          Array.prototype.forEach.call(card.querySelectorAll('button'), function (b2) {
+            if ((b2.textContent || '').indexOf('닫기') >= 0) b2.style.display = 'none';
+          });
+        }
+      } catch (e) {}
+    }
+  }
+
+  function paneMap(r) {
+    var cur = r.map || 'default';
+    var h = '<div class="v53bar">' + MAP_CATS.map(function (c) {
+      return '<button type="button" class="v53chip' + (STATE.mapFilter === c[0] ? ' on' : '') + '" data-mf="' + c[0] + '">' + c[1] + '</button>';
+    }).join('') + '</div>';
+    h += '<div class="v53Mg">';
+    maps().forEach(function (m) {
+      if (!mapMatch(m.id)) return;
+      h += '<button type="button" class="v53Mc' + (cur === m.id ? ' on' : '') + '" data-sm="' + m.id + '">' +
+        '<img loading="lazy" alt="" src="' + thumbSrc(m.id) + '">' +
+        '<b>' + esc((m.emoji || '') + ' ' + (m.name || m.id)) + '</b>' +
+        '<i>' + esc(m.diff || '') + ' · ' + (mapTotal(m.id) || '') + '층</i></button>';
+    });
+    h += '</div>';
+    return h;
+  }
+  function mapMatch(id) {
+    var f = STATE.mapFilter;
+    if (f === 'all') return true;
+    var J = root.JW53;
+    if (f === 'short' || f === 'mid' || f === 'long') return J.tierOf(id) === f;
+    if (f === 'easy' || f === 'hard') return J.easyOf(id) === f;
+    return (J.THEME[id] || 'special') === f;
+  }
+  function mapTotal(id) {
+    try { return V.mapTotal ? V.mapTotal(id) : 0; } catch (e) { return 0; }
+  }
+  function paneMode(r) {
+    var cur = r.mode || 'normal';
+    var h = '<div class="v53bar">' + MODE_CATS.map(function (c) {
+      return '<button type="button" class="v53chip' + (STATE.modeFilter === c[0] ? ' on' : '') + '" data-mdf="' + c[0] + '">' + c[1] + '</button>';
+    }).join('') + '</div>';
+    var groups = STATE.modeFilter === 'all' ? ['basic', 'speed', 'survive', 'sense', 'versus'] : [STATE.modeFilter];
+    groups.forEach(function (g) {
+      var list = modes().filter(function (m) { return (MODE_CAT[m.id] || 'sense') === g; });
+      if (!list.length) return;
+      h += '<div class="v53Sec">' + (J53.CAT_NAME && J53.CAT_NAME[g] || g) + '</div><div class="v53Md">';
+      list.forEach(function (m) {
+        h += '<button type="button" class="v53Mo' + (cur === m.id ? ' on' : '') + '" data-smd="' + m.id + '">' +
+          '<span class="e">' + (m.emoji || '🎮') + '</span><span class="t"><b>' + esc(m.name) + '</b>' +
+          '<i>' + esc(MODE_DESC[m.id] || m.desc || '') + '</i></span></button>';
+      });
+      h += '</div>';
+    });
+    return h;
+  }
+  function ex() { try { return V.ex() || {}; } catch (e) { return {}; } }
+  function paneRule(r) {
+    var x = ex();
+    var h = '';
+    h += row('👥 최대 인원', [['2', '2명'], ['3', '3명'], ['4', '4명'], ['6', '6명']], String(r.max || 4), 'max');
+    h += row('🌀 태초 확률', [['0', '0%'], ['3', '3%'], ['10', '10%'], ['25', '25%'], ['50', '50%']], String(r.originPct || 0), 'originPct');
+    h += row('🎲 랜덤 이벤트', [['1', 'ON'], ['0', 'OFF']], r.events ? '1' : '0', 'events');
+    h += row('✨ 아이템', [['1', 'ON'], ['0', 'OFF']], r.items ? '1' : '0', 'items');
+    h += row('🎁 버프', [['1', 'ON'], ['0', 'OFF']], r.buffs !== false ? '1' : '0', 'buffs');
+    h += row('😈 함정', [['1', 'ON'], ['0', 'OFF']], r.traps !== false ? '1' : '0', 'traps');
+    h += row('💥 플레이어 충돌', [['1', 'ON'], ['0', 'OFF']], r.collide ? '1' : '0', 'collide');
+    h += row('❤️ 하트', [['inf', '무제한'], ['3', '3개'], ['1', '1개']], String(x.hearts || 'inf'), 'hearts');
+    h += row('🧊 물리', [['basic', '기본'], ['lowgrav', '저중력'], ['fast', '1.5배속'], ['ice', '빙판']], String(x.phys || 'basic'), 'phys');
+    h += row('🎯 목표 층수', [['30', '30층'], ['50', '50층'], ['88', '88층'], ['120', '120층']], String(x.tgt || 88), 'tgt');
+    h += row('🤖 빈자리 봇', [['0', '없음'], ['1', '1명'], ['2', '2명'], ['3', '3명']], String(x.bots || 0), 'bots');
+    h += '<div class="v53Note">아이템·함정 개별 선택, 세트 점수, 고스트 같은 고급 규칙은 예전 창에서 바꿀 수 있어요.</div>';
+    h += '<button type="button" class="v53btn small" id="v53AdvRule">🎛️ 고급 규칙 스위치 열기</button>';
+    return h;
+  }
+  function row(label, opts, cur, key) {
+    return '<div class="v53R"><b>' + label + '</b><div class="op">' + opts.map(function (o) {
+      return '<button type="button" data-rk="' + key + '" data-rv="' + o[0] + '"' + (String(cur) === String(o[0]) ? ' class="on"' : '') + '>' + o[1] + '</button>';
+    }).join('') + '</div></div>';
+  }
+  function paneBet() {
+    return '<div class="v53Note">😈 닉변빵 설정을 불러오는 중...</div>';
+  }
+
+  function wirePane(body) {
+    body.querySelectorAll('[data-mf]').forEach(function (b) {
+      b.addEventListener('click', function () { STATE.mapFilter = b.getAttribute('data-mf'); paintSet(); });
+    });
+    body.querySelectorAll('[data-mdf]').forEach(function (b) {
+      b.addEventListener('click', function () { STATE.modeFilter = b.getAttribute('data-mdf'); paintSet(); });
+    });
+    body.querySelectorAll('[data-sm]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-sm');
+        var m = mapById(id);
+        setRule({ map: id }, '🗺️ 맵 → ' + (m.emoji || '') + ' ' + (m.name || id));
+      });
+    });
+    body.querySelectorAll('[data-smd]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-smd');
+        var m = modeById(id);
+        var patch = { mode: id };
+        if (id === 'classic') { patch.map = 'default'; patch.originPct = 3; patch.events = false; patch.items = false; patch.buffs = false; patch.traps = false; }
+        setRule(patch, '🎮 모드 → ' + (m.emoji || '') + ' ' + (m.name || id));
+      });
+    });
+    body.querySelectorAll('[data-rk]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-rk');
+        var v = b.getAttribute('data-rv');
+        var patch = {};
+        var label = '';
+        var LBL = { max: '👥 최대 인원', originPct: '🌀 태초 확률', events: '🎲 이벤트', items: '✨ 아이템', buffs: '🎁 버프', traps: '😈 함정', collide: '💥 충돌', hearts: '❤️ 하트', phys: '🧊 물리', tgt: '🎯 목표', bots: '🤖 봇' };
+        if (k === 'max' || k === 'originPct') { patch[k] = Number(v); }
+        else if (k === 'events' || k === 'items' || k === 'buffs' || k === 'traps' || k === 'collide') { patch[k] = v === '1'; }
+        else if (k === 'bots' || k === 'tgt') patch[k] = Number(v);
+        else patch[k] = v;
+        label = (LBL[k] || k) + ' → ' + (v === '1' ? 'ON' : v === '0' ? 'OFF' : v);
+        setRule(patch, label);
+      });
+    });
+    var adv = $('v53AdvRule');
+    if (adv) adv.addEventListener('click', function () {
+      var b = $('v44OpenRules');
+      if (b) { try { b.click(); } catch (e) {} }
+    });
+  }
+
+  function openSet(tab) {
+    var m = buildModal();
+    if (!room()) { try { V.toast('방 설정', 'chat', '먼저 방을 만들어 주세요', 1800); } catch (e) {} return; }
+    STATE.tab = tab || 'map';
+    m.classList.add('on');
+    paintSet();
+  }
+  root.JW53SET.open = openSet;
+
+  /* #v50SetBtn(방장용) → 새 모달로 연결 */
+  function rebindSetBtn() {
+    var b = $('v50SetBtn');
+    if (!b || b.__v53) return;
+    b.__v53 = true;
+    var clone = b.cloneNode(true);
+    b.parentNode.replaceChild(clone, b);
+    clone.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); openSet('map'); });
+  }
+
+  /* ---------------------------------------------------------------- 대기실: 💡 제안하기 */
+  function ensurePropBtn() {
+    var lobby = $('mpLobby');
+    var S = null; try { S = V.st(); } catch (e) {}
+    var inLobby = !!(lobby && !lobby.classList.contains('hidden') && S && S.room && S.phase === 'lobby');
+    var btn = $('v53PropBtn');
+    if (!inLobby || S.isHost) {
+      if (btn) btn.style.display = 'none';
+      return;
+    }
+    if (!btn) {
+      btn = doc.createElement('button');
+      btn.type = 'button';
+      btn.id = 'v53PropBtn';
+      btn.className = 'v53btn purple small';
+      btn.innerHTML = '💡 제안하기';
+      btn.addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        var m = $('v43Prop');
+        if (!m) { try { V.toast('제안', 'chat', '잠시 후 다시 눌러 주세요', 1600); } catch (er) {} return; }
+        m.classList.remove('hidden');
+        try { if (root.JW485PROP) root.JW485PROP.key = ''; } catch (er) {}
+      });
+    }
+    var sum = lobby.querySelector('.mpb-summary');
+    var head = sum ? sum.firstElementChild : null;
+    if (head && btn.parentElement !== head) head.appendChild(btn);
+    else if (!head && lobby && btn.parentElement !== lobby) lobby.insertBefore(btn, lobby.firstChild);
+    btn.style.display = '';
+  }
+
+  /* ---------------------------------------------------------------- 대기실 잔여 텍스트 정리 */
+  function tidyStatus() {
+    var st = $('mpLobbyStatus');
+    if (!st) return;
+    var t = (st.textContent || '').trim();
+    var noise = !t || /연결됨|코드\s*[A-Z0-9]{4,}|참가자에게 바로 반영|^설정$|^\d+(\.\d+)?\s*설정$/.test(t);
+    if (noise) { if (st.style.display !== 'none') st.style.display = 'none'; }
+    else if (st.style.display === 'none') st.style.display = '';
+  }
+
+  /* ---------------------------------------------------------------- 주기 */
+  function tick() {
+    try { rebindSetBtn(); } catch (e) {}
+    try { ensurePropBtn(); } catch (e) {}
+    try { tidyStatus(); } catch (e) {}
+    var m = $('v53Set');
+    if (m && m.classList.contains('on')) {
+      /* 값이 바뀌면 다시 그린다 (다른 참가자가 바꾼 경우) */
+      var r = room();
+      var sig = r ? [r.map, r.mode, r.max, r.originPct, r.events, r.items, r.buffs, r.traps, r.collide, r.phase].join('|') : 'none';
+      if (m.__sig !== sig) { m.__sig = sig; try { paintSet(); } catch (e) {} }
+    }
+  }
+  setInterval(function () { try { tick(); } catch (e) {} }, 600);
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v4.8.5-3 : C. 칭호 대개편 — 등급 배지 · 카테고리 탭 · 해금 진행도 + 즉시 갱신
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;'; }); };
+
+  var GRADE = {
+    rookie: 'common', origin: 'rare', collide: 'rare', streak: 'epic',
+    king: 'epic', conquer: 'legend', legend: 'hidden'
+  };
+  var GRADE_NAME = { common: '일반', rare: '레어', epic: '에픽', legend: '전설', hidden: '히든' };
+  var CAT = {
+    rookie: 'climb', origin: 'climb', king: 'race', streak: 'race', collide: 'race',
+    conquer: 'collect', legend: 'hidden'
+  };
+  var CATS = [['all', '🏅 전체'], ['climb', '🧗 등반 · 기록'], ['race', '🏁 레이스 · 승리'], ['collect', '🧭 수집 · 탐험'], ['hidden', '✨ 히든']];
+  /* 목표 수치 (진행도 바) */
+  var GOAL = {
+    rookie: ['기본 지급', 1],
+    origin: ['태초 귀환', 10],
+    collide: ['충돌', 10],
+    streak: ['최고 연승', 3],
+    king: ['1등 우승', 3],
+    conquer: ['클리어한 맵', 5],
+    legend: ['우승 + 클리어 맵', 10]
+  };
+  var TSTATE = { cat: 'all' };
+
+  function css() {
+    if ($('v53TitleCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v53TitleCss';
+    s.textContent = [
+      '#v53TitlePane{display:none;flex-direction:column;gap:6px;}',
+      '#v53TitlePane.on{display:flex;}',
+      '#v44Codex.v53-title #v44CodexBody, #v44Codex.v53-title #v44CodexAch, #v44Codex.v53-title #v50CxTabs{display:none !important;}',
+      'html body #v44CodexTabs{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr)) !important;gap:5px !important;overflow:visible !important;}',
+      'html body #v44CodexTabs button{font-size:10px !important;padding:6px 7px !important;min-width:0 !important;flex:0 0 auto !important;letter-spacing:-.3px;',
+      '  background:linear-gradient(180deg,#1b2745,#131c33) !important;color:#94a3b8 !important;border:2px solid #26324f !important;}',
+      'html body #v44CodexTabs[data-v53on="codex"] button[data-ctab="codex"],',
+      'html body #v44CodexTabs[data-v53on="ach"] button[data-ctab="ach"],',
+      'html body #v44CodexTabs[data-v53on="trophy"] button[data-ctab="trophy"],',
+      'html body #v44CodexTabs[data-v53on="rank"] button[data-ctab="rank"],',
+      'html body #v44CodexTabs[data-v53on="frames"] button[data-ctab="frames"],',
+      'html body #v44CodexTabs[data-v53on="title"] button[data-ctab="title"]{',
+      '  background:linear-gradient(180deg,#a8ecff,#5cc6ee) !important;color:#08313f !important;border-color:#7dd3fc !important;}',
+      '#v44Codex.v53-title #v44CodexTabs [data-ctab="title"]{background:#1e293b !important;border-color:#fbbf24 !important;color:#fde047 !important;}',
+      '#v44Codex.v53-title #v44CodexTabs [data-ctab="codex"]{background:transparent !important;border-color:#26324f !important;color:#94a3b8 !important;}',
+      '.v53THead{display:flex;align-items:center;gap:7px;background:linear-gradient(180deg,#1a2440,#101828);',
+      '  border:2px solid #26324f;border-radius:10px;padding:7px 9px;}',
+      '.v53THead .big{font-family:"Jua",sans-serif;font-size:15px;color:#fde047;}',
+      '.v53THead .sm{font-size:9.5px;font-weight:900;color:#9fb0cc;}',
+      '.v53THead .cnt{margin-left:auto;font-family:"Jua",sans-serif;font-size:14px;color:#a7f3d0;}',
+      '.v53TCat{display:flex;gap:4px;flex-wrap:wrap;}',
+      '.v53TCat button{font-family:"Jua",sans-serif;font-size:10.5px;color:#aebbd4;padding:5px 7px;border-radius:8px;',
+      '  background:linear-gradient(180deg,#1c2745,#141c33);border:2px solid #0a0f1e;box-shadow:inset 0 -3px 0 #0a0f1e;}',
+      '.v53TCat button.on{color:#3a2205;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;}',
+      '.v53TList{display:flex;flex-direction:column;gap:5px;max-height:46dvh;overflow-y:auto;overscroll-behavior:contain;}',
+      '.v53T{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:10px;min-width:0;text-align:left;',
+      '  background:linear-gradient(180deg,#1b2540,#121a2e);border:2px solid #0b1022;',
+      '  box-shadow:inset 0 -3px 0 rgba(0,0,0,.35),0 2px 0 #05030a;}',
+      '.v53T .ic{width:34px;height:34px;flex:0 0 34px;display:flex;align-items:center;justify-content:center;font-size:19px;',
+      '  border-radius:9px;background:#0a1020;border:2px solid #1e2b47;}',
+      '.v53T .bd{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px;}',
+      '.v53T .nm{font-family:"Jua",sans-serif;font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '.v53T .cd{font-size:9px;font-weight:900;color:#93a4c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '.v53T .pb{height:7px;border-radius:4px;background:#0a1020;border:1px solid #1c2740;overflow:hidden;}',
+      '.v53T .pb i{display:block;height:100%;background:linear-gradient(90deg,#34d399,#a7f3d0);}',
+      '.v53T .pg{font-size:8.5px;font-weight:900;color:#86efac;}',
+      '.v53T .gr{flex:0 0 auto;font-family:"Jua",sans-serif;font-size:9.5px;padding:3px 6px;border-radius:6px;border:2px solid;}',
+      '.v53T.g-common{border-color:#334155;} .v53T.g-common .gr{color:#cbd5e1;border-color:#475569;background:#111827;}',
+      '.v53T.g-rare{border-color:#1d4ed8;} .v53T.g-rare .gr{color:#bfdbfe;border-color:#2563eb;background:#0b2148;}',
+      '.v53T.g-epic{border-color:#7c3aed;} .v53T.g-epic .gr{color:#e9d5ff;border-color:#8b5cf6;background:#241046;}',
+      '.v53T.g-legend{border-color:#b45309;} .v53T.g-legend .gr{color:#fde68a;border-color:#f59e0b;background:#3a2404;}',
+      '.v53T.g-hidden{border-color:#0e7490;} .v53T.g-hidden .gr{color:#a5f3fc;border-color:#22d3ee;background:#052832;}',
+      '.v53T.lock{opacity:.62;filter:saturate(.6);}',
+      '.v53T.on{box-shadow:inset 0 0 0 2px #fde047,0 2px 0 #05030a;}',
+      '.v53T .eq{flex:0 0 auto;font-size:9px;font-weight:900;color:#052e16;background:#4ade80;border-radius:5px;padding:2px 5px;}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+  css();
+
+  function prof() { try { return V.api().internals().prof || {}; } catch (e) { return {}; } }
+  function ident() { try { return V.api().internals().ident || {}; } catch (e) { return {}; } }
+  function titles() { try { return V.api().titles() || []; } catch (e) { return []; } }
+  function curTitleId() {
+    var id = ident().title || 'auto';
+    if (id !== 'auto') return id;
+    try {
+      var p = prof();
+      var un = V.api().unlockedTitles() || [];
+      var best = un.length ? un[un.length - 1] : null;
+      return best ? best.id : 'rookie';
+    } catch (e) { return 'rookie'; }
+  }
+  function progress(id) {
+    var p = prof();
+    var maps = (p.mapsCleared || []).length;
+    var d = { origin: [p.origin || 0, 10], collide: [p.collide || 0, 10], streak: [p.bestStreak || 0, 3], king: [p.clears || 0, 3], conquer: [maps, 5], legend: [Math.min(p.wins || 0, 10), 10], rookie: [1, 1] }[id] || [0, 1];
+    return { cur: Math.min(d[0], d[1]), max: d[1], raw: d[0] };
+  }
+  function unlocked(id) { try { var un = V.api().unlockedTitles() || []; return un.some(function (t) { return t.id === id; }); } catch (e) { return false; } }
+
+  function ensureTab() {
+    var tabs = $('v44CodexTabs');
+    if (!tabs) return;
+    if (tabs.querySelector('[data-ctab="title"]')) return;
+    if (!tabs.__v53click) {
+      tabs.__v53click = true;
+      tabs.addEventListener('click', function (e) {
+      var b = e.target && e.target.closest ? e.target.closest('[data-ctab]') : null;
+      var codex = $('v44Codex');
+      if (!b || !codex) return;
+      tabs.setAttribute('data-v53on', b.getAttribute('data-ctab') || 'codex');
+      if (b.getAttribute('data-ctab') !== 'title') {
+        codex.classList.remove('v53-title');
+        var pane = $('v53TitlePane');
+        if (pane) pane.classList.remove('on');
+      }
+      }, true);
+    }
+    var b = doc.createElement('button');
+    b.type = 'button';
+    b.setAttribute('data-ctab', 'title');
+    b.textContent = '🏅칭호';
+    tabs.appendChild(b);
+    b.addEventListener('click', function () {
+      try { tabs.setAttribute('data-v53on', 'title'); } catch (e) {}
+      try { openTitle(); } catch (e) {}
+    });
+  }
+  setInterval(function () { try { ensureTab(); } catch (e) {} }, 500);
+
+  function buildPane() {
+    var card = $('v44Codex') && $('v44Codex').querySelector('.v44-card');
+    if (!card) return null;
+    ensureTab();
+    var pane = $('v53TitlePane');
+    if (!pane) {
+      pane = doc.createElement('div');
+      pane.id = 'v53TitlePane';
+      var body = $('v44CodexBody');
+      if (body && body.parentNode) body.parentNode.insertBefore(pane, body.nextSibling);
+      else card.appendChild(pane);
+    }
+    return pane;
+  }
+  function openTitle() {
+    var pane = buildPane();
+    var codex = $('v44Codex');
+    if (!pane || !codex) return;
+    codex.classList.remove('hidden');
+    var body = $('v44CodexBody'), ach = $('v44CodexAch');
+    if (body) { body.classList.add('hidden'); body.style.display = 'none'; }
+    if (ach) { ach.classList.add('hidden'); ach.style.display = 'none'; }
+    pane.classList.add('on');
+    codex.classList.add('v53-title');
+    var tabs = $('v44CodexTabs');
+    if (tabs) tabs.setAttribute('data-v53on', 'title');
+    if (tabs) Array.prototype.forEach.call(tabs.querySelectorAll('[data-ctab]'), function (b) { b.classList.toggle('on', b.getAttribute('data-ctab') === 'title'); });
+    paintTitle(true);
+  }
+  root.JW53TITLE = { open: openTitle };
+
+  function paintTitle(force) {
+    var pane = $('v53TitlePane');
+    if (!pane || !pane.classList.contains('on')) return;
+    var p = prof();
+    var all = titles();
+    var sig = [TSTATE.cat, ident().title, p.origin, p.collide, p.bestStreak, p.clears, p.wins, (p.mapsCleared || []).join(','), all.length].join('|');
+    if (!force && pane.__sig === sig) return;
+    pane.__sig = sig;
+    var cur = curTitleId();
+    var mine = all.filter(function (t) { return t.id !== 'rec'; });
+    var openN = mine.filter(function (t) { return unlocked(t.id); }).length;
+    var h = '<div class="v53THead"><div><div class="big">🏅 칭호 도감</div>' +
+      '<div class="sm">레이스 기록으로 열립니다 · 지금 장착: ' + esc((all.filter(function (t) { return t.id === cur; })[0] || {}).short || '—') + '</div></div>' +
+      '<div class="cnt">' + openN + ' / ' + mine.length + '</div></div>';
+    h += '<div class="v53TCat">' + CATS.map(function (c) {
+      return '<button type="button" data-tc="' + c[0] + '"' + (TSTATE.cat === c[0] ? ' class="on"' : '') + '>' + c[1] + '</button>';
+    }).join('') + '</div>';
+    h += '<div class="v53TList">';
+    mine.forEach(function (t) {
+      if (TSTATE.cat !== 'all' && (CAT[t.id] || 'climb') !== TSTATE.cat) return;
+      var g = GRADE[t.id] || 'common';
+      var ok = unlocked(t.id);
+      var pr = progress(t.id);
+      var pct = Math.max(4, Math.round(pr.cur / pr.max * 100));
+      var goal = GOAL[t.id] || ['', 1];
+      h += '<button type="button" class="v53T g-' + g + (ok ? '' : ' lock') + (cur === t.id ? ' on' : '') + '" data-tid="' + t.id + '">' +
+        '<span class="ic">' + esc((t.short || t.name || '').split(' ')[0] || '🏅') + '</span>' +
+        '<span class="bd"><span class="nm">' + esc(t.name || t.id) + '</span>' +
+        '<span class="cd">' + (ok ? '✅ 해금 · ' : '🔒 ') + esc((t.why || goal[0]) + ' ' + pr.raw + '/' + pr.max) + '</span>' +
+        '<span class="pb"><i style="width:' + pct + '%"></i></span></span>' +
+        '<span class="gr">' + GRADE_NAME[g] + '</span>' +
+        (cur === t.id ? '<span class="eq">장착</span>' : '') + '</button>';
+    });
+    h += '</div>';
+    pane.innerHTML = h;
+    pane.querySelectorAll('[data-tc]').forEach(function (b) {
+      b.addEventListener('click', function () { TSTATE.cat = b.getAttribute('data-tc'); paintTitle(true); });
+    });
+    pane.querySelectorAll('[data-tid]').forEach(function (b) {
+      b.addEventListener('click', function () { equip(b.getAttribute('data-tid')); });
+    });
+  }
+
+  function equip(id) {
+    if (!id) return;
+    if (!unlocked(id)) {
+      var t = titles().filter(function (x) { return x.id === id; })[0] || {};
+      try { V.toast('🔒 잠긴 칭호', 'danger', t.why || '조건을 달성하면 열립니다', 2400); } catch (e) {}
+      return;
+    }
+    try {
+      var inst = V.api().internals();
+      if (inst.ident) inst.ident.title = id;
+      var raw = V.lsGet('jw41_identity_v1', {}) || {};
+      raw.title = id;
+      V.lsSet('jw41_identity_v1', raw);
+      if (V.lsGet('jw43_rectitle_v1', '')) V.lsSet('jw43_rectitle_v1', '');
+      try { V.api().renderLobby && V.api().renderLobby(); } catch (e) {}
+      try { V.api().renderProfileCard && V.api().renderProfileCard(); } catch (e) {}
+      var box = $('v43ProfTitles');
+      if (box) box.__v43fix = false;
+      var t2 = titles().filter(function (x) { return x.id === id; })[0] || {};
+      V.toast('🏅 칭호 장착', 'lucky', t2.short || t2.name || id, 1600);
+      paintTitle(true);
+    } catch (e) {}
+  }
+
+  /* 해금 즉시 반영: 프로필 칭호 목록도 데이터가 바뀌면 다시 그리게 한다 */
+  var lastProfSig = '';
+  setInterval(function () {
+    try {
+      var p = prof();
+      var sig = [p.origin, p.collide, p.bestStreak, p.clears, p.wins, (p.mapsCleared || []).length, ident().title].join('|');
+      if (sig !== lastProfSig) {
+        lastProfSig = sig;
+        var box = $('v43ProfTitles');
+        if (box) box.__v43fix = false;
+        if ($('v53TitlePane') && $('v53TitlePane').classList.contains('on')) paintTitle(false);
+      }
+    } catch (e) {}
+  }, 900);
+
+  /* 프로필 창이 열려 있으면 칭호 칩을 새로 그린다 (기존 가드 해제) */
+  setInterval(function () {
+    try {
+      var pm = $('v43Profile');
+      var box = $('v43ProfTitles');
+      if (pm && !pm.classList.contains('hidden') && box && box.__v43fix && box.innerHTML.indexOf('사용 가능') < 0) box.__v43fix = false;
+    } catch (e) {}
+  }, 1200);
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v4.8.5-3 : D. 친구창 3D 픽셀 버튼 · 모달 깜빡임 0 · 모드 금지요소 차단
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+
+  /* ---------------------------------------------------------------- 1. 친구창 버튼 스타일 */
+  var st = doc.createElement('style');
+  st.id = 'v53FriendCss';
+  st.textContent = [
+    /* 3D 픽셀 버튼 공통 (게임 내 다른 화면과 같은 입체감) */
+    'html body #v43Friends .v485btn, html body #v485Hub .v485btn, html body #v485hDetail .v485btn{',
+    '  font-family:"Jua",sans-serif !important;font-size:11px !important;font-weight:400 !important;',
+    '  color:#e6eefc !important;padding:7px 9px !important;border-radius:9px !important;',
+    '  border:2px solid #0a0f1e !important;background:linear-gradient(180deg,#33415f,#1d2740) !important;',
+    '  box-shadow:inset 0 -3px 0 #101728,inset 0 2px 0 rgba(255,255,255,.14),0 3px 0 #05030a !important;',
+    '  text-shadow:0 1px 0 rgba(0,0,0,.45);transition:transform .06s ease,box-shadow .06s ease;}',
+    'html body #v43Friends .v485btn:active, html body #485Hub .v485btn:active, html body #v485hDetail .v485btn:active{',
+    '  transform:translateY(3px) !important;box-shadow:inset 0 -3px 0 #101728,0 0 0 #05030a !important;}',
+    'html body #v43Friends .v485btn.gold, html body #v485hDetail .v485btn.gold{',
+    '  color:#3a2205 !important;background:linear-gradient(180deg,#ffe08a,#ffc23a 45%,#f39a1c) !important;',
+    '  border-color:#5a3204 !important;box-shadow:inset 0 -4px 0 #c46d0b,inset 0 2px 0 rgba(255,255,255,.7),0 3px 0 #5a3204 !important;}',
+    'html body #v43Friends .v485btn.green, html body #v485hDetail .v485btn.green{',
+    '  color:#04231a !important;background:linear-gradient(180deg,#a7f3d0,#34d399 48%,#059669) !important;',
+    '  border-color:#043b2b !important;box-shadow:inset 0 -4px 0 #047857,inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 #043b2b !important;}',
+    'html body #v43Friends .v485btn.blue, html body #v485hDetail .v485btn.blue{',
+    '  color:#041a3a !important;background:linear-gradient(180deg,#bfe0ff,#60a5fa 48%,#2563eb) !important;',
+    '  border-color:#0b2c5c !important;box-shadow:inset 0 -4px 0 #1d4ed8,inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 #0b2c5c !important;}',
+    'html body #v43Friends .v485btn.danger, html body #v485hDetail .v485btn.danger{',
+    '  color:#fee2e2 !important;background:linear-gradient(180deg,#fca5a5,#ef4444 50%,#b91c1c) !important;',
+    '  border-color:#5c0f0f !important;box-shadow:inset 0 -4px 0 #7f1d1d,inset 0 2px 0 rgba(255,255,255,.4),0 3px 0 #5c0f0f !important;}',
+    /* 친구 요청 추가 버튼 */
+    'html body #v485hAddBtn{font-family:"Jua",sans-serif !important;font-size:11.5px !important;font-weight:400 !important;',
+    '  color:#04231a !important;padding:0 12px !important;border:2px solid #043b2b !important;border-radius:9px !important;',
+    '  background:linear-gradient(180deg,#a7f3d0,#34d399 48%,#059669) !important;',
+    '  box-shadow:inset 0 -4px 0 #047857,inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 #043b2b !important;}',
+    'html body #v485hAddBtn:active{transform:translateY(3px) !important;box-shadow:inset 0 -4px 0 #047857,0 0 0 #043b2b !important;}',
+    /* 친구 / 요청 탭 */
+    'html body .v485fh-tab{font-family:"Jua",sans-serif !important;font-size:12px !important;font-weight:400 !important;',
+    '  color:#b9c9e4 !important;padding:9px 4px !important;border-radius:9px !important;',
+    '  border:2px solid #0a0f1e !important;background:linear-gradient(180deg,#28365a,#18213c) !important;',
+    '  box-shadow:inset 0 -3px 0 #0a0f1e,0 3px 0 #05030a !important;}',
+    'html body .v485fh-tab.on{color:#3a2205 !important;background:linear-gradient(180deg,#ffe08a,#f5b21c) !important;',
+    '  border-color:#5a3204 !important;box-shadow:inset 0 -4px 0 #b5750b,0 3px 0 #5a3204 !important;}',
+    'html body .v485fh-tab.on b{color:#5a3204 !important;}',
+    /* 내 코드 버튼 */
+    'html body #v485hCode{font-family:"Jua",sans-serif !important;font-size:10.5px !important;color:#3a2205 !important;',
+    '  background:linear-gradient(180deg,#ffe08a,#f5b21c) !important;border:2px solid #5a3204 !important;border-radius:7px !important;',
+    '  box-shadow:inset 0 -3px 0 #b5750b,0 2px 0 #5a3204 !important;padding:3px 7px !important;}',
+    /* 친구카드 안의 작은 버튼(요청 수락/거절/취소) */
+    'html body .v485fc-btns .v485btn{font-size:10px !important;padding:5px 7px !important;}',
+    /* 옛 친구 패널 버튼(있으면) */
+    'html body #v43FriendList button, html body #v43FrDetail button{',
+    '  border-radius:9px !important;border:2px solid #0a0f1e !important;',
+    '  background:linear-gradient(180deg,#33415f,#1d2740) !important;color:#e6eefc !important;',
+    '  box-shadow:inset 0 -3px 0 #101728,0 3px 0 #05030a !important;font-family:"Jua",sans-serif !important;}',
+    'html body #v43Friends .mp-chip{border-radius:9px !important;font-family:"Jua",sans-serif !important;',
+    '  border:2px solid #0a0f1e !important;box-shadow:inset 0 -3px 0 rgba(0,0,0,.35),0 2px 0 #05030a !important;}',
+
+    /* ---------------------------------------------------------------- 2. 모달 깜빡임 0 */
+    /* iOS Safari: backdrop-filter + 캔버스 재합성 → 깜빡임. 모달 표면의 blur를 끈다 */
+    'html body .v43-modal, html body .v44-modal, html body #v43Profile, html body #v43Friends, html body #v44Codex,',
+    'html body #v44Trophy, html body #v44Frames, html body #v43Prop, html body #v50Set, html body #v53Set{',
+    '  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;}',
+    'html body .v43-card, html body .v44-card, html body #v43Friends .v43-card, html body .mp-card,',
+    'html body .v44-panel, html body #v43Wiz .v43-card{',
+    '  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;',
+    '  contain:layout paint style;transform:translateZ(0);backface-visibility:hidden;}',
+    'html body #v44CodexBody, html body #v44CodexAch, html body #v53TitlePane, html body #v485hList,',
+    'html body #v43ProfTitles, html body #v485hDetail{contain:content;transform:translateZ(0);}',
+    /* 대기실 카드도 blur 때문에 깜빡이므로 불투명 배경으로 */
+    'html body #mpLobby .mp-card, html body #mpLobby .mpb-summary{-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}',
+    /* 방 정보 카드: 옛 캔버스가 잠깐씩 되살아나 깜빡이던 문제 → 캔버스는 항상 숨김 */
+    'html body #mpLobby canvas.mpb-thumb, html body #mpLobbyRules canvas.mpb-thumb{display:none !important;}',
+    'html body #mpLobby img.mpb-thumb-img{display:block !important;}',
+    /* 대기실 아래로 삐져나오던 잔여 안내줄 제거 (필요한 안내는 토스트로) */
+    'html body #mpLobbyStatus{display:none !important;}'
+  ].join('\n');
+  doc.head.appendChild(st);
+
+  /* ---------------------------------------------------------------- 3. 자주 덮어쓰는 영역: 같은 내용이면 다시 그리지 않는다 */
+  var GUARD_IDS = ['v44CodexBody', 'v44CodexAch', 'v44TrophyBody', 'v44FramesBody', 'v43ProfTitles',
+    'v485hList', 'v43FriendList', 'v43PropBody', 'v42MapList', 'v42ModeList', 'v53MapGrid', 'v53ModeGrid',
+    'v43LobbySum', 'v46PubBtn', 'mpLobbyStatus', 'v43RoomTitle'];
+  try {
+    var desc = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+    if (desc && desc.set && !desc.set.__v53) {
+      var origSet = desc.set;
+      var guardSet = function (v) {
+        try {
+          var id = this.id;
+          if (id && GUARD_IDS.indexOf(id) >= 0 && this.__v53h === v && this.__v53n === this.childNodes.length) {
+            /* 내용이 똑같으면 DOM을 갈아엎지 않는다 (깜빡임·스크롤 튐 방지) */
+            return;
+          }
+          this.__v53h = v;
+          this.__v53n = this.childNodes.length;
+        } catch (e) {}
+        return origSet.call(this, v);
+      };
+      guardSet.__v53 = true;
+      Object.defineProperty(Element.prototype, 'innerHTML', { get: desc.get, set: guardSet, configurable: true, enumerable: desc.enumerable });
+    }
+  } catch (e) {}
+
+  /* ---------------------------------------------------------------- 4. 모드 금지요소 차단 */
+  /* 한 판에 위험 요소가 겹치지 않게: 좀비/용암/잠수 등에서는 88층 수문장 보스를 끈다 */
+  var BOSS_CONFLICT = ['zombie', 'lava', 'dive', 'tag', 'paint', 'flag', 'bomb', 'relay', 'chain', 'raid', 'bossrush', 'boss', 'blackout', 'endless', 'memory', 'glass'];
+  var bossSaved = null;
+  function cfg() { try { return root.__v42cfg || null; } catch (e) { return null; } }
+  function curMode() { try { return V.curMode ? V.curMode() : ''; } catch (e) { return ''; } }
+  function inPlay() { try { var g = V.J() && V.J().game; return !!(g && g.inPlay && !g.victory); } catch (e) { return false; } }
+  function modeGuard() {
+    var c = cfg();
+    if (!c) return;
+    var playing = inPlay();
+    var m = curMode() || '';
+    if (playing) {
+      if (BOSS_CONFLICT.indexOf(m) >= 0) {
+        if (bossSaved === null && c.boss) { bossSaved = !!c.boss; }
+        if (c.boss) { c.boss = false; try { root.__v42saveCfg && root.__v42saveCfg(); } catch (e) {} }
+      }
+    } else if (bossSaved !== null) {
+      c.boss = bossSaved;
+      bossSaved = null;
+      try { root.__v42saveCfg && root.__v42saveCfg(); } catch (e) {}
+    }
+    /* 감각 모드: 충전 게이지·숫자 숨김 유지 (다른 모드로 돌아오면 해제) */
+    if (playing) {
+      doc.body.classList.toggle('v44-sense', m === 'sense');
+      /* 리듬 모드가 아니면 리듬 표시를 끈다 */
+      var rp = doc.querySelector('#v44ModePill.perfect');
+      if (rp && m !== 'rhythm') rp.classList.remove('perfect');
+    }
+  }
+  setInterval(function () { try { modeGuard(); } catch (e) {} }, 700);
+
+  /* ---------------------------------------------------------------- 5. 커스텀 모드 위저드 진입 보정 */
+  /* v4.8.5-1의 커스텀 카드는 클릭하면 규칙 패널만 열고 위저드를 닫아 버렸다.
+     v4.8.5-3: 누르면 무조건 ② 맵 단계로 넘어가고, ② 단계의 ⚙️ 규칙 버튼으로 세부 규칙을 연다. */
+  function fixCustomCard() {
+    var wiz = $('v43Wiz');
+    if (!wiz || wiz.classList.contains('hidden')) return;
+    var b = $('v51Custom');
+    if (!b || b.__v53fix) return;
+    b.__v53fix = true;
+    var clone = b.cloneNode(true);
+    clone.__v53fix = true;
+    b.parentNode.replaceChild(clone, b);
+    clone.addEventListener('click', function (ev) {
+      ev.preventDefault(); ev.stopPropagation();
+      try { if (root.JW50) root.JW50.customPending = false; } catch (e) {}
+      var nm = document.querySelector('#v43WizModes [data-wmode="normal"]');
+      if (nm) { try { nm.click(); } catch (e) {} }
+      setTimeout(function () {
+        var lbl = $('v43WizModeName');
+        if (lbl) lbl.textContent = '🎛️ 커스텀 모드';
+        var sub = $('v43WizSub');
+        if (sub) sub.textContent = '커스텀 규칙으로 플레이 · 맵을 누르면 바로 출발!';
+        doc.body.classList.add('v485-custom');
+        var rb = $('v43WizRules');
+        if (rb) { rb.style.display = ''; rb.classList.add('on'); }
+        try { V.toast('🎛️ 커스텀 모드', 'lucky', '맵을 고른 뒤 [⚙️ 규칙]에서 세부 규칙을 바꿀 수 있어요', 2400); } catch (e) {}
+      }, 90);
+    });
+  }
+  setInterval(function () { try { fixCustomCard(); } catch (e) {} }, 320);
+  function customGate() {
+    var wiz = $('v43Wiz');
+    if (!wiz || wiz.classList.contains('hidden')) return;
+    var step2 = $('v43WizStep2');
+    if (!step2 || step2.classList.contains('hidden')) return;
+    var nm = ($('v43WizModeName') && $('v43WizModeName').textContent) || '';
+    var custom = /커스텀/.test(nm);
+    doc.body.classList.toggle('v485-custom', custom);
+  }
+  setInterval(function () { try { customGate(); } catch (e) {} }, 400);
+})(window);
+
+</script>
+<!-- ===== v4.8.5-3 PATCH END ===== -->
 </body>
 </html>
