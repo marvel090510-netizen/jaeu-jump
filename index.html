@@ -41707,6 +41707,39 @@ extends CanvasLayer
   }
 
   /* ======================================================================
+     5e. 🌈 무지개 이름표: 홈 카드에서 빼고 꾸미기(스킨) 안으로 옮긴다
+     ====================================================================== */
+  function rainbowMove() {
+    var R = root.JW46_RAINBOW;
+    if (!R) return;
+    var deco = $('v44Deco');
+    if (!deco || deco.classList.contains('hidden')) return;
+    var card = deco.querySelector('.v44-card') || deco.firstElementChild;
+    if (!card) return;
+    var b = $('v51RainbowBtn');
+    if (!b) {
+      if (R.unlocked && !R.unlocked()) return;
+      b = doc.createElement('button');
+      b.id = 'v51RainbowBtn';
+      b.type = 'button';
+      b.className = 'v44-btn';
+      b.style.cssText = 'width:100%;margin-top:8px;padding:8px;font-size:11.5px';
+      b.addEventListener('click', function () { try { R.toggle(); } catch (e) {} rainbowLabel(); });
+      card.appendChild(b);
+    }
+    rainbowLabel();
+  }
+  function rainbowLabel() {
+    var b = $('v51RainbowBtn'), R = root.JW46_RAINBOW;
+    if (!b || !R) return;
+    var on = false;
+    try { on = !!R.on(); } catch (e) {}
+    var txt = on ? '🌈 무지개 이름 ON' : '🌈 무지개 이름 OFF';
+    if (b.textContent !== txt) b.textContent = txt;
+    b.classList.toggle('off', !on);
+  }
+
+  /* ======================================================================
      6. 기본 맵(default) 썸네일 → 카드·미리보기
      ====================================================================== */
   var DEF = { img: null, ready: false };
@@ -41757,6 +41790,7 @@ extends CanvasLayer
         customFlow();
         titleChip();
         titleFill();
+        rainbowMove();
         paintRankHud();
         paintBoard();
       }
