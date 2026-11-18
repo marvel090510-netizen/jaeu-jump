@@ -46115,6 +46115,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -54658,10 +54659,11 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var g = V.G || null;
     var b = g && g.boss;
     var live = !!(b && b.spec && !b.dead && b.ai && inPlay());
+    var party = !!(B.__celT && (Date.now() - B.__celT) < 4000);
     el.classList.toggle('on', live);
     var chip = $('v44Chip');
     if (chip) {
-      try { chip.style.setProperty('display', live ? 'none' : '', live ? 'important' : ''); } catch (e) {}
+      try { chip.style.setProperty('display', (live || party) ? 'none' : '', (live || party) ? 'important' : ''); } catch (e) {}
     }
     /* 보스전에선 등반 보조 버튼·중계 자막은 필요 없다 — 보스 가리지 않게 숨김 */
     ['v48c2ui', 'v48c2sub'].forEach(function (id) {
