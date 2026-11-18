@@ -40233,23 +40233,34 @@ extends CanvasLayer
         if (s2 && ex.getAttribute('src') !== s2) ex.src = s2;
         if (!s2) { ex.remove(); }
       }
-      /* 태그 → 알약 칩 */
+      /* 태그 → 알약 칩 (방 상태에서 바로 다시 만든다 → 설정 변경이 즉시 반영) */
       var tags = body.querySelector('.mpb-tags');
-      if (tags && !tags.querySelector('.v50-chip')) {
-        var raw = (tags.textContent || '').split('·').map(function (t) { return t.trim(); }).filter(Boolean);
+      var R = null;
+      try { R = (root.JW43 && JW43.R) ? JW43.R : null; } catch (e) {}
+      var rm = null;
+      try { var stt = V.st(); rm = stt && stt.room; } catch (e) {}
+      if (tags && rm) {
+        var modeDef = null;
+        try { modeDef = (root.JWMode && JWMode.modeById) ? JWMode.modeById(rm.mode) : null; } catch (e) {}
         var bots = 0;
-        try { bots = (root.JW43 && JW43.R && JW43.R.bots) ? JW43.R.bots.length : 0; } catch (e) {}
-        raw.push('🤖 봇 ' + bots + '명');
-        tags.innerHTML = raw.map(function (t) {
-          var off = t.indexOf('🚫') === 0 || t.indexOf('👻') === 0;
-          var on = t.indexOf('🎲') === 0 || t.indexOf('✨') === 0 || t.indexOf('🎁') === 0 || t.indexOf('😈') === 0 || t.indexOf('💥') === 0;
-          return '<i class="v50-chip' + (off ? ' off' : (on ? ' on' : '')) + '">' + t.replace(/[🚫👻]/g, '').trim() + '</i>';
-        }).join('');
-      } else if (tags) {
-        var lastChip = tags.lastElementChild;
-        var bn = 0;
-        try { bn = (root.JW43 && JW43.R && JW43.R.bots) ? JW43.R.bots.length : 0; } catch (e) {}
-        if (lastChip && /봇/.test(lastChip.textContent) && lastChip.textContent !== ('🤖 봇 ' + bn + '명')) lastChip.textContent = '🤖 봇 ' + bn + '명';
+        try { bots = (R && R.bots) ? R.bots.length : 0; } catch (e) {}
+        var chips = [];
+        if (modeDef) chips.push(['<b>' + (modeDef.emoji || '🏁') + ' ' + modeDef.name + '</b>', '']);
+        chips.push(['🌀 태초 ' + (rm.originRandom ? '🎲랜덤' : (Number(rm.originPct) || 0) + '%'), '']);
+        chips.push(['👥 최대 ' + (rm.max || 4) + '명', '']);
+        chips.push(['이벤트 ' + (rm.events ? 'ON' : 'OFF'), rm.events ? 'on' : 'off']);
+        chips.push(['아이템 ' + (rm.items ? 'ON' : 'OFF'), rm.items ? 'on' : 'off']);
+        chips.push(['버프 ' + (rm.buffs !== false ? 'ON' : 'OFF'), rm.buffs !== false ? 'on' : 'off']);
+        chips.push(['함정 ' + (rm.traps !== false ? 'ON' : 'OFF'), rm.traps !== false ? 'on' : 'off']);
+        chips.push(['충돌 ' + (rm.collide ? 'ON' : 'OFF'), rm.collide ? 'on' : 'off']);
+        chips.push(['🤖 봇 ' + bots + '명', '']);
+        var sig = chips.map(function (c) { return c[0] + c[1]; }).join('|');
+        if (tags.getAttribute('data-v50sig') !== sig) {
+          tags.setAttribute('data-v50sig', sig);
+          tags.innerHTML = chips.map(function (c) {
+            return '<i class="v50-chip ' + c[1] + '">' + c[0] + '</i>';
+          }).join('');
+        }
       }
     }
     /* 참가자 헤더 봇 컨트롤 */
