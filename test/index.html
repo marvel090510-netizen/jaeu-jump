@@ -186,6 +186,18 @@
     a.card,.sheet,.sheet-back,.latest-btn,.vrow{transition:none}
     a.card:hover{transform:none}
   }
+  /* 최신 빌드 런처 */
+  .launcher{display:flex;align-items:center;gap:12px;margin:18px auto 0;max-width:840px;
+    padding:12px 14px;border-radius:16px;background:linear-gradient(180deg,rgba(38,58,107,.55),rgba(14,22,44,.78));
+    border:1px solid rgba(120,160,220,.28);box-shadow:0 10px 26px rgba(3,7,18,.35)}
+  .lamp{width:10px;height:10px;border-radius:50%;background:#34d399;box-shadow:0 0 10px #34d399;flex:0 0 auto}
+  .ltext{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+  .ltext b{font-size:13.5px;color:#eaf1ff;line-height:1.35}
+  .ltext span{font-size:12px;color:#9fb0cc;line-height:1.45}
+  .lbadge{display:inline-block;padding:1px 7px;border-radius:999px;background:#fbbf24;color:#22160a;font-size:11px;font-weight:900}
+  .play{flex:0 0 auto;padding:9px 14px;border-radius:12px;background:linear-gradient(180deg,#ffd76a,#f5a623);
+    color:#241703;font-weight:900;font-size:13px;text-decoration:none;white-space:nowrap}
+  @media(max-width:560px){.launcher{flex-wrap:wrap}.play{width:100%;text-align:center}}
 </style>
 <!-- LP-GUARD:START --><style>
 /* 꾹 누르기(롱프레스) 방지: iOS/iPadOS Safari 텍스트 선택·콜아웃·확대 차단 */
@@ -510,8 +522,8 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
           ]
         },
         {
-          ver: 'v4.5', label: '대형 업데이트 · 20맵 고퀄 배경 · 모던 버튼 · 비주얼 에디터 · 친구 관전 (최신)', href: '../gemini-v4-5/',
-          date: '2026.11.18', latest: true,
+          ver: 'v4.5', label: '대형 업데이트 · 20맵 고퀄 배경 · 모던 버튼 · 비주얼 에디터 · 친구 관전 (이전 빌드)', href: '../gemini-v4-5/',
+          date: '2026.11.18', latest: false,
           spec: '맵 21종(1번 기본 맵 원본 보존) · 모드 29종 · 20맵 신규 일러스트 배경 · 공개 방 · 관전',
           notes: [
             '🎨 20개 맵 배경을 바닥→중단→정상까지 반복 0번으로 이어지는 고퀄 일러스트로 전면 교체 (1번 기본 맵은 그대로)',
