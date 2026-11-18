@@ -38443,6 +38443,19 @@ extends CanvasLayer
     if (!card || card.offsetParent === null) return;
     var r = card.getBoundingClientRect();
     var line = $('v44HudLine'), best = $('v43BestChip'), chip = $('v44Chip');
+    /* 층/보호막 알약은 일시정지 버튼 바로 아래로 */
+    try {
+      var pause = $('btnPauseHud');
+      var pill = document.querySelector('#gameHud div.pixel-panel[class*="md:hidden"]');
+      if (pause && pill) {
+        var pr2 = pause.getBoundingClientRect();
+        pill.style.setProperty('position', 'fixed', 'important');
+        pill.style.setProperty('left', 'auto', 'important');
+        pill.style.setProperty('right', '8px', 'important');
+        pill.style.setProperty('top', Math.round(pr2.bottom + 6) + 'px', 'important');
+        pill.style.setProperty('z-index', '21', 'important');
+      }
+    } catch (e) {}
     /* 숫자 줄은 한 줄로 정리 (전체 높이 중복 문구는 숨김) */
     try {
       var row = $('hudCurHeight') && $('hudCurHeight').closest('.mt-1');
