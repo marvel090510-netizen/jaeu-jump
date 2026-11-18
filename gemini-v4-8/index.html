@@ -31354,7 +31354,7 @@ extends CanvasLayer
   function modeLocks(mode) {
     if (mode === 'pureclassic') return { keys: ['events', 'items', 'buffs', 'traps', 'origin'], why: '🏛️ 순수 피지컬 모드는 부가 요소가 잠깁니다' };
     if (mode === 'classic') return { keys: ['events', 'items', 'buffs', 'traps', 'origin'], why: '🔥 챌린지 표준 규칙이 고정됩니다' };
-    if (['tag', 'paint', 'flag', 'chain', 'bomb', 'raid'].indexOf(mode) >= 0) return { keys: ['collide'], why: '이 모드는 충돌이 필수입니다' };
+    if (['tag', 'paint', 'flag', 'bomb', 'raid'].indexOf(mode) >= 0) return { keys: ['collide'], why: '이 모드는 충돌이 필수입니다' };
     return null;
   }
   function paintModeLocks() {
@@ -40152,6 +40152,12 @@ extends CanvasLayer
       '  color:#fef3c7;background:linear-gradient(180deg,rgba(38,20,8,.86),rgba(18,10,6,.82));',
       '  border:1px solid rgba(251,191,36,.6);box-shadow:0 8px 20px rgba(0,0,0,.4);}',
       'body.v50-ta-mp #v50TaPill{display:flex;}',
+      /* 아레나 모드(땅따먹기·깃발·술래) 진행 바는 게임 자체 HUD를 되살려 쓴다 */
+      'body #v45Arena:not(.hidden){display:block !important;position:fixed !important;left:8px !important;right:8px !important;',
+      '  transform:none !important;width:auto !important;max-width:420px;top:calc(env(safe-area-inset-top,0px) + 100px) !important;',
+      '  z-index:39 !important;border-radius:14px !important;}',
+      'body #v45Arena:not(.hidden) #v45aTitle{font-size:12px !important;font-weight:900 !important;}',
+      'body #v45Arena:not(.hidden) #v45aBar,body #v45Arena:not(.hidden) #v45aBarO{height:9px !important;}',
       '#v50ArenaPill{position:fixed;left:8px;top:calc(env(safe-area-inset-top,0px) + 100px);z-index:39;display:none;',
       '  align-items:center;gap:6px;padding:7px 13px;border-radius:14px;font:900 12px -apple-system,system-ui,sans-serif;',
       '  color:#ffe8f5;background:linear-gradient(180deg,rgba(88,20,90,.86),rgba(40,10,48,.86));',
@@ -40749,18 +40755,50 @@ extends CanvasLayer
     var showA = false, txt = '';
     try {
       var G2 = root.JW44 && JW44.G;
-      if (inPlay && G2 && (curMode === 'paint' || curMode === 'flag' || curMode === 'tag')) {
+      if (inPlay && G2 && (curMode === 'flag' || curMode === 'tag')) {
         showA = true;
         if (curMode === 'paint') {
-          var pr2 = (G2.paint && G2.paint.target) ? G2.paint.target : 0;
-          var mine = 0;
-          try { mine = Math.round(((G2.claimCount || 0) / (pr2 || 1)) * 100); } catch (e) {}
-          var t2 = (G2.paint && G2.paint.t) ? Math.max(0, Math.round(G2.paint.t)) : 0;
-          txt = '🎨 내 점령 <b>' + mine + '%</b> · ⏱ <b>' + t2 + 's</b>';
+          /* 참가자별 점령 % + 남은 시간 (팀 정보가 있으면 팀으로 묶는다) */
+          var A2 = (root.JW45 && JW45.A) ? JW45.A : null;
+          var left = 0, line = '';
+          try {
+            var pf = (root.JW44 && JW44.G && JW44.G.paint) ? null : null;
+            var AP = null;
+            try { AP = (window.JW45 && JW45.A && JW45.A.paint) ? JW45.A.paint : null; } catch (e) {}
+            if (AP) {
+              left = Math.max(0, Math.round(AP.t || 0));
+              var total = AP.total || 25;
+              var counts = {};
+              Object.keys(AP.claims || {}).forEach(function (k) {
+                var ow = AP.claims[k] || 'me';
+                counts[ow] = (counts[ow] || 0) + 1;
+              });
+              var rows = [];
+              Object.keys(counts).forEach(function (ow) {
+                var nm = '';
+                try {
+                  var S2 = V.st();
+                  if (!ow || ow === 'me' || (S2 && S2.me && ow === S2.me.pid)) nm = '나';
+                  else if (S2 && S2.players && S2.players.get && S2.players.get(ow)) nm = S2.players.get(ow).nick;
+                  else if (S2 && S2.players) { S2.players.forEach(function (pp) { if (pp.pid === ow) nm = pp.nick; }); }
+                } catch (e) {}
+                if (!nm) { try { var b2 = (JW43.R && JW43.R.bots) ? JW43.R.bots.filter(function (bb) { return bb.id === ow; }) : []; if (b2.length) nm = b2[0].nick || b2[0].name; } catch (e) {} }
+                if (!nm) nm = '상대';
+                rows.push([nm, Math.round((counts[ow] / total) * 100)]);
+              });
+              rows.sort(function (a, b) { return b[1] - a[1]; });
+              line = rows.slice(0, 3).map(function (r) { return r[0] + ' <b>' + r[1] + '%</b>'; }).join(' · ');
+            }
+          } catch (e) {}
+          txt = '🎨 ' + (line || '내 점령 <b>0%</b>') + ' · ⏱ <b>' + left + '초</b>';
         } else if (curMode === 'flag') {
-          txt = '🚩 ' + (G2.flag && G2.flag.owner ? '깃발 빼앗기는 중!' : '깃발을 먼저 잡아라');
+          var lf = 0;
+          try { var AF = (window.JW45 && JW45.A && JW45.A.flag) ? JW45.A.flag : null; lf = AF && AF.t ? Math.max(0, Math.round(AF.t)) : 0; } catch (e) {}
+          txt = '🚩 ' + (G2.flag && G2.flag.owner ? '깃발 빼앗기는 중!' : '깃발을 먼저 잡아라') + ' · ⏱ <b>' + lf + '초</b>';
         } else {
-          txt = '🏃 ' + (G2.tag && G2.tag.role === 'chaser' ? '술래' : '도망자');
+          var lt = 0;
+          try { lt = (G2.tag && G2.tag.dur) ? Math.max(0, Math.round(G2.tag.dur - (G2.tag.t || 0))) : 0; } catch (e) {}
+          txt = '🏃 ' + (G2.tag && G2.tag.role === 'chaser' ? '술래' : '도망자') + ' · ⏱ <b>' + lt + '초</b>';
         }
       }
       var _unused = 0;
