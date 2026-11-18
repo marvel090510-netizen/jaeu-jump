@@ -26512,16 +26512,18 @@ extends CanvasLayer
   /* ---------- 벽 차기 ---------- */
   function wallKick(dt) {
     const p = pl(), g = game();
-    if (!p || p.onGround) return;
+    if (!p) return;
+    /* v4.8.2: 착지하면 벽차기 횟수 초기화 (예전엔 한 판에 6번 쓰면 영영 안 됐다) */
+    if (p.onGround) { p._wallCount = 0; return; }
     const WW = worldW(), wallL = 42, wallR = WW - 42;
-    const left = p.x <= wallL + 2, right = p.x + p.w >= wallR - 2;
+    const left = p.x <= wallL + 3, right = p.x + p.w >= wallR - 3;
     if (!left && !right) return;
-    if (performance.now() - (p._wallT || 0) < 260) return;
-    if (p._wallCount > 6) return;
+    if (performance.now() - (p._wallT || 0) < 200) return;
+    if ((p._wallCount || 0) >= 3) return;      /* 연속 3회까지 (2단 벽차기 + 여유) */
     p._wallT = performance.now();
     p._wallCount = (p._wallCount || 0) + 1;
-    p.vy = -Math.max(520, Math.abs(p.vy) * 0.55 + 420);
-    p.vx = (left ? 1 : -1) * 300;
+    p.vy = -Math.max(560, Math.abs(p.vy) * 0.5 + 440);
+    p.vx = (left ? 1 : -1) * 320;
     p.onGround = false;
     V.parts(left ? wallL + 4 : wallR - 4, p.y + 16, '#a5f3fc', 14, 160);
     V.text(p.x + 14, p.y - 20, '🥷 벽 차기!', '#a5f3fc');
