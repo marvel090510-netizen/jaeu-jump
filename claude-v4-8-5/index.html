@@ -23514,7 +23514,7 @@ extends CanvasLayer
     const rec = V.recOf ? V.recOf() : null;
     const rank = V.rankOf ? V.rankOf() : '';
     const lines = [
-      '🎮 성공하고싶은 재우 v4.8.5',
+      '🎮 성공하고싶은 재우 v4.8.5-1',
       '🗺️ ' + (map ? map.emoji + ' ' + map.name : '기본 맵') + ' · 🎮 ' + ((MD().modeById(mode) || {}).name || '일반'),
       '📏 ' + m + 'm · ⏱️ ' + t + (rank ? ' · ' + rank : ''),
       (rec && rec.m ? '🏆 내 최고 ' + rec.m.toFixed(1) + 'm' : ''),
@@ -24236,10 +24236,10 @@ extends CanvasLayer
     /* v4.8.4: 예전 'v4.3 업데이트' 안내는 매번 뜨던 버그 → 현재 버전 안내를 버전당 한 번만 */
     setTimeout(() => {
       try {
-        if (localStorage.getItem('jw484_update_toast') === '4.8.5') return;
-        localStorage.setItem('jw484_update_toast', '4.8.5');
+        if (localStorage.getItem('jw484_update_toast') === '4.8.5-1') return;
+        localStorage.setItem('jw484_update_toast', '4.8.5-1');
       } catch (e) { return; }
-      V.toast('🚀 v4.8.5 테스트판', 'lucky', '버그 수정 · 한눈에 보이는 HUD · 큰 조작 버튼', 3200);
+      V.toast('🚀 v4.8.5-1 테스트판', 'lucky', 'HUD 크기·모드 칩 겹침·용암 경고·멀티 다시하기 수정', 3200);
     }, 1400);
   };
 })(window);
@@ -42016,7 +42016,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v4.8.5 · 21 MAPS';
+      sp[1].textContent = '★ v4.8.5-1 · 21 MAPS';
     }
   }
 
@@ -42140,7 +42140,7 @@ extends CanvasLayer
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', boot);
   else setTimeout(boot, 240);
 
-  U.version = '4.8.5';
+  U.version = '4.8.5-1';
 })(window);
 
 </script>
@@ -42157,13 +42157,13 @@ extends CanvasLayer
   --px-cream:#f7ecd0; --px-cream-d:#cdb98d; --px-brown:#3a2614;
   --px-gold:#ffc23a; --px-gold-d:#d9861a; --px-sky:#5cc0ff; --px-sky-d:#2577c9;
   --px-green:#4fd17f; --px-green-d:#1f8f4c; --px-red:#ff6b5e; --px-red-d:#bf3226;
-  --hs:1; --k:68px; --j:96px; --tb:48px;
+  --hs:1; --hc:1; --k:68px; --j:96px; --tb:48px;
   --sa-t:env(safe-area-inset-top,0px); --sa-b:env(safe-area-inset-bottom,0px);
   --sa-l:env(safe-area-inset-left,0px); --sa-r:env(safe-area-inset-right,0px);
 }
-@media (max-width:374px), (max-height:700px){ :root{ --hs:.92; --k:62px; --j:86px; --tb:46px; } }
-@media (orientation:landscape) and (max-height:520px){ :root{ --hs:.9; --k:64px; --j:88px; --tb:46px; } }
-@media (min-width:700px) and (min-height:700px){ :root{ --hs:1.32; --k:86px; --j:118px; --tb:56px; } }
+@media (max-width:374px), (max-height:700px){ :root{ --hs:.92; --hc:.94; --k:62px; --j:86px; --tb:46px; } }
+@media (orientation:landscape) and (max-height:520px){ :root{ --hs:.9; --hc:.9; --k:64px; --j:88px; --tb:46px; } }
+@media (min-width:700px) and (min-height:700px){ :root{ --hs:1.18; --hc:1.08; --k:86px; --j:118px; --tb:52px; } }
 
 /* ---------- 폰트 ---------- */
 html body, html body *:not(canvas):not(svg):not(svg *){ font-family:"Galmuri11","Jua","Apple SD Gothic Neo",system-ui,sans-serif !important; letter-spacing:0 !important; }
@@ -42176,34 +42176,37 @@ html body input, html body textarea{ font-family:"Galmuri11","Apple SD Gothic Ne
 /* ==========================================================================
    1. 인게임 HUD (왼쪽 위 카드) — 층수 크게 · 게이지 굵게 · 높이/최고 한 줄
    ========================================================================== */
-body.v47-play #v49Hud{
+html body.v47-play #v49Hud{
   position:fixed !important; left:calc(var(--sa-l) + 10px) !important; top:calc(var(--sa-t) + 10px) !important;
-  width:calc(212px * var(--hs)) !important; max-width:calc(100vw - var(--tb) * 3 - 44px) !important;
-  display:grid !important; grid-template-columns:calc(46px * var(--hs)) 1fr !important;
-  grid-template-areas:"por l1" "por l2" "gau gau" "hgt hgt" !important; column-gap:calc(8px * var(--hs)) !important; row-gap:calc(5px * var(--hs)) !important;
-  padding:calc(8px * var(--hs)) calc(10px * var(--hs)) calc(9px * var(--hs)) !important; box-sizing:border-box !important;
-  background:linear-gradient(180deg,#1c2645,#121a31) !important; border:2px solid var(--px-ink) !important; border-radius:calc(8px * var(--hs)) !important;
+  width:auto !important; min-width:calc(176px * var(--hc)) !important; max-width:min(calc(100vw - var(--tb) * 3 - 56px), calc(250px * var(--hc))) !important;
+  display:grid !important; grid-template-columns:auto minmax(0,1fr) auto !important;
+  grid-template-areas:"por cnt shd" "zone zone zone" "gau gau hrt" "hgt hgt hgt" !important;
+  column-gap:calc(7px * var(--hc)) !important; row-gap:calc(4px * var(--hc)) !important; align-items:center !important;
+  padding:calc(7px * var(--hc)) calc(9px * var(--hc)) calc(8px * var(--hc)) !important; box-sizing:border-box !important;
+  background:linear-gradient(180deg,#1c2645,#121a31) !important; border:2px solid var(--px-ink) !important; border-radius:8px !important;
   box-shadow:inset 0 0 0 2px #34477e, inset 0 3px 0 rgba(255,255,255,.10), 0 4px 0 var(--px-ink) !important;
   backdrop-filter:none !important; -webkit-backdrop-filter:none !important; z-index:24 !important;
 }
-body.v47-play #v49Hud .por{ grid-area:por !important; width:calc(46px * var(--hs)) !important; height:calc(46px * var(--hs)) !important; align-self:center; }
-body.v47-play #v49Hud .por img{ width:100% !important; height:100% !important; border:2px solid var(--px-ink) !important; border-radius:6px !important; box-shadow:inset 0 0 0 2px #5b78c4; }
-body.v47-play #v49Hud #hudMoodBadge{ display:none !important; }
-body.v47-play #v49Hud .l1{ grid-area:l1 !important; align-self:end; display:flex !important; gap:6px; align-items:baseline; min-width:0; }
-body.v47-play #v49Hud .l1 #hudStageCounterMobile{ font-family:"Galmuri11","Jua",monospace !important; font-weight:700 !important; font-size:calc(17px * var(--hs)) !important; line-height:1 !important; color:var(--px-gold) !important; white-space:nowrap !important; }
-body.v47-play #v49Hud .l1 #hudShieldMobile{ font-size:calc(11px * var(--hs)) !important; color:#86efac !important; }
-body.v47-play #v49Hud .l2{ grid-area:l2 !important; align-self:start; min-width:0; display:flex !important; align-items:center; gap:4px; }
-body.v47-play #v49Hud #hudZoneName{ font-size:calc(11px * var(--hs)) !important; line-height:1.2 !important; color:#ffd88a !important; max-width:none !important; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-shadow:1px 1px 0 var(--px-ink) !important; }
-body.v47-play #v49Hud #hudHearts img{ width:calc(12px * var(--hs)) !important; height:auto !important; }
-body.v47-play #v49Hud .gau{ grid-area:gau !important; }
-body.v47-play #v49Hud .gau > div{ height:calc(16px * var(--hs)) !important; border:2px solid var(--px-ink) !important; background:#070b18 !important; border-radius:4px !important; padding:2px !important; box-shadow:inset 0 0 0 1px #3a5aa8 !important; }
-body.v47-play #v49Hud #hudChargeBar{ border-radius:2px !important; background:linear-gradient(180deg,#9be7ff,#38bdf8 55%,#1d8fd8) !important; box-shadow:none !important; }
-body.v47-play #v49Hud #hudChargeLabel{ font-size:calc(10px * var(--hs)) !important; font-weight:700 !important; color:#fff !important; text-shadow:1px 1px 0 var(--px-ink),-1px 0 0 var(--px-ink),0 -1px 0 var(--px-ink) !important; }
-body.v47-play #v49Hud .hgt{ grid-area:hgt !important; display:flex !important; justify-content:space-between !important; gap:6px; font-size:calc(11px * var(--hs)) !important; color:#c9d6f2 !important; line-height:1.15 !important; }
-body.v47-play #v49Hud .hgt span{ font-size:calc(11px * var(--hs)) !important; white-space:nowrap; }
-body.v47-play #v49Hud .hgt strong{ font-family:"Galmuri11",monospace !important; font-size:calc(13px * var(--hs)) !important; font-weight:700 !important; }
-body.v47-play #v49Hud .hgt #hudCurHeight{ color:#8fdcff !important; }
-body.v47-play #v49Hud .hgt #hudBestHeight{ color:var(--px-gold) !important; }
+html body.v47-play #v49Hud .l1, html body.v47-play #v49Hud .l2{ display:contents !important; }
+html body.v47-play #v49Hud .por{ grid-area:por !important; width:calc(30px * var(--hc)) !important; height:calc(30px * var(--hc)) !important; }
+html body.v47-play #v49Hud .por > div{ width:100% !important; height:100% !important; }
+html body.v47-play #v49Hud .por img{ width:100% !important; height:100% !important; border:2px solid var(--px-ink) !important; border-radius:5px !important; box-shadow:inset 0 0 0 1px #5b78c4; image-rendering:pixelated; }
+html body.v47-play #v49Hud #hudMoodBadge{ display:none !important; }
+html body.v47-play #v49Hud #hudStageCounterMobile{ grid-area:cnt !important; font-family:"Galmuri11",monospace !important; font-weight:700 !important; font-size:calc(16px * var(--hc)) !important; line-height:1 !important; color:var(--px-gold) !important; white-space:nowrap !important;
+  text-shadow:2px 0 0 var(--px-ink),-2px 0 0 var(--px-ink),0 2px 0 var(--px-ink),0 -2px 0 var(--px-ink),2px 2px 0 var(--px-ink) !important; }
+html body.v47-play #v49Hud #hudShieldMobile{ grid-area:shd !important; font-family:"Galmuri11",monospace !important; font-size:calc(11px * var(--hc)) !important; color:#86efac !important; white-space:nowrap !important; }
+html body.v47-play #v49Hud #hudZoneName{ grid-area:zone !important; font-family:"Galmuri11",sans-serif !important; font-size:calc(11px * var(--hc)) !important; line-height:1.2 !important; color:#ffd88a !important;
+  max-width:100% !important; min-width:0 !important; overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important; text-shadow:1px 1px 0 var(--px-ink) !important; }
+html body.v47-play #v49Hud #hudHearts{ grid-area:hrt !important; display:flex !important; gap:1px !important; align-items:center !important; white-space:nowrap !important; }
+html body.v47-play #v49Hud #hudHearts:empty{ display:none !important; }
+html body.v47-play #v49Hud #hudHearts img{ width:calc(11px * var(--hc)) !important; height:auto !important; image-rendering:pixelated; }
+html body.v47-play #v49Hud .gau{ grid-area:gau !important; min-width:0 !important; }
+html body.v47-play #v49Hud:has(#hudHearts:empty) .gau, html body.v47-play #v49Hud:not(:has(#hudHearts img)) .gau{ grid-column:1 / -1 !important; }
+html body.v47-play #v49Hud .gau > div{ height:calc(14px * var(--hc)) !important; border:2px solid var(--px-ink) !important; background:#070b18 !important; border-radius:4px !important; padding:2px !important; box-shadow:inset 0 0 0 1px #3a5aa8 !important; }
+html body.v47-play #v49Hud #hudChargeBar{ border-radius:2px !important; background:linear-gradient(180deg,#9be7ff,#38bdf8 55%,#1d8fd8) !important; box-shadow:none !important; }
+html body.v47-play #v49Hud #hudChargeLabel{ font-family:"Galmuri11",monospace !important; font-size:calc(9.5px * var(--hc)) !important; font-weight:700 !important; color:#fff !important; white-space:nowrap !important; text-shadow:1px 1px 0 var(--px-ink),-1px 0 0 var(--px-ink),0 -1px 0 var(--px-ink) !important; }
+html body.v47-play #v49Hud .hgt{ grid-area:hgt !important; display:flex !important; justify-content:space-between !important; gap:8px; color:#c9d6f2 !important; line-height:1.1 !important; }
+html body.v47-play #v49Hud .hgt span{ font-family:"Galmuri11",sans-serif !important; font-size:calc(10.5px * var(--hc)) !important; white-space:nowrap; }
 
 /* ---------- 오른쪽 위 버튼 (재시작 · 일시정지 · 기권) : 두툼한 픽셀 버튼 ---------- */
 html body.v47-play #gameHud #btnPauseHud, html body.v47-play #gameHud #v44FastRestart, html body.v47-play #v47Forfeit, html body.v47-play #btnPauseHud, html body.v47-play #v44FastRestart{
@@ -42218,8 +42221,6 @@ html body.v47-play #gameHud #btnPauseHud, html body.v47-play #gameHud #v44FastRe
 html body.v47-play #gameHud #btnPauseHud{ right:calc(var(--sa-r) + 10px) !important; left:auto !important; }
 html body.v47-play #gameHud #v44FastRestart{ right:calc(var(--sa-r) + 18px + var(--tb)) !important; left:auto !important; }
 html body.v47-play #v47Forfeit{ right:calc(var(--sa-r) + 26px + var(--tb) * 2) !important; left:auto !important; font-size:calc(var(--tb) * .42) !important; color:var(--px-brown) !important; }
-html body.v485-multi.v47-play #gameHud #v44FastRestart{ display:none !important; }
-html body.v485-multi.v47-play #v47Forfeit{ right:calc(var(--sa-r) + 18px + var(--tb)) !important; }
 body.v47-play #btnPauseHud svg, body.v47-play #v44FastRestart svg{ stroke:var(--px-brown) !important; stroke-width:3 !important; width:48% !important; height:48% !important; filter:none !important; }
 body.v47-play #btnPauseHud::after, body.v47-play #v44FastRestart::after{ display:none !important; }
 body.v47-play #btnPauseHud:active, body.v47-play #v44FastRestart:active, body.v47-play #v47Forfeit:active{ transform:translateY(3px) !important; box-shadow:inset 0 -2px 0 #bda36b, 0 1px 0 var(--px-ink) !important; }
@@ -42273,17 +42274,17 @@ body.v44-lefty #mpChatFab{ right:auto !important; left:calc(var(--sa-l) + 14px +
 /* ---------- 칩/알림 공통(레이아웃 매니저가 위치를 정함) ---------- */
 .v485-chip{ position:fixed; z-index:30; display:none; align-items:center; gap:8px; padding:6px 12px; border-radius:8px;
   background:linear-gradient(180deg,#2a1a0c,#1a1008); border:2px solid var(--px-ink); box-shadow:inset 0 0 0 2px #a8641c, 0 3px 0 var(--px-ink);
-  color:#ffe3a3; font-size:calc(12px * var(--hs)); white-space:nowrap; pointer-events:none; }
-.v485-chip b{ font-family:"Galmuri11",monospace !important; font-size:calc(17px * var(--hs)); color:#fff; }
+  color:#ffe3a3; font-size:calc(12px * var(--hc)); white-space:nowrap; pointer-events:none; }
+.v485-chip b{ font-family:"Galmuri11",monospace !important; font-size:calc(17px * var(--hc)); color:#fff; }
 .v485-chip.urgent{ box-shadow:inset 0 0 0 2px #ef4444, 0 3px 0 var(--px-ink); color:#fecaca; }
 body.v485-solo #v51Rank, body.v485-solo #mpRankLine{ display:none !important; }
 body.v485-oneheart #hudShieldMobile{ display:none !important; }
 body.v47-play #v51Rank, body.v47-play #v44Chip, body.v47-play #v43ModeChip, body.v47-play #v44Ping, body.v47-play #v47Timer, body.v47-play #v44HudLine{
-  font-size:calc(12px * var(--hs)) !important; }
+  font-size:calc(12px * var(--hc)) !important; }
 body.v47-play #v51Rank{ max-width:calc(100vw - 24px) !important; }
-body.v47-play #v51Rank *{ font-size:calc(12px * var(--hs)) !important; }
-body.v47-play #v44Chip b, body.v47-play #v43ModeChip b{ font-size:calc(12.5px * var(--hs)) !important; }
-body.v47-play #v44Chip span, body.v47-play #v43ModeChip span{ font-size:calc(11px * var(--hs)) !important; }
+body.v47-play #v51Rank *{ font-size:calc(12px * var(--hc)) !important; }
+body.v47-play #v44Chip b, body.v47-play #v43ModeChip b{ font-size:calc(12.5px * var(--hc)) !important; }
+body.v47-play #v44Chip span, body.v47-play #v43ModeChip span{ font-size:calc(11px * var(--hc)) !important; }
 html body.v485-solo #v47Forfeit{ display:none !important; }
 
 /* ==========================================================================
@@ -42356,7 +42357,7 @@ html body.v485-guest [data-v50slot="bot"], html body.v485-guest [data-v50bot], h
 html body #v50Set #v42RulesDone, html body #v50Set #v42RulesStart{ display:none !important; }
 html body #v50Set .v50s-ok{ min-width:160px !important; min-height:48px !important; background:linear-gradient(180deg,#ffd257,#ffb02e 50%,#f08a1a) !important; color:#3a1d00 !important; }
 /* 빠른 채팅 4개: 2×2 로 접어 높이를 줄인다 */
-html body.v47-play #v43QuickChat{ display:grid !important; grid-template-columns:1fr 1fr; gap:6px !important; width:auto !important; }
+html body.v47-play #v43QuickChat{ display:flex !important; flex-direction:column !important; gap:6px !important; width:auto !important; align-items:stretch !important; }
 html body.v47-play #v43QuickChat.hidden{ display:none !important; }
 html body.v47-play #v43QuickChat button{ min-height:44px !important; padding:0 8px !important; font-size:12px !important; white-space:nowrap; }
 html body #pauseModal #v47BgmNow{ position:static !important; transform:none !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important;
@@ -42427,9 +42428,59 @@ html body #mpLobby [data-addfr], html body #mpLobby [data-mkhost]{ font-size:12p
   html body #v43Wiz button:not(#v43WizModes > button):not(#v43WizModes button){ font-size:15px !important; }
   html body #v43Wiz .v43-sub, html body #v43Wiz select{ font-size:13.5px !important; }
 }
-html body.v47-play #v49Hud .hgt #hudCurHeight, html body.v47-play #v49Hud .hgt #hudBestHeight{ font-size:calc(13px * var(--hs)) !important; font-family:"Galmuri11",monospace !important; font-weight:700 !important; }
+html body.v47-play #v49Hud .hgt #hudCurHeight, html body.v47-play #v49Hud .hgt #hudBestHeight{ font-size:calc(12.5px * var(--hc)) !important; font-family:"Galmuri11",monospace !important; font-weight:700 !important; }
 html body.v47-play #v49Hud .hgt #hudCurHeight{ color:#8fdcff !important; }
 html body.v47-play #v49Hud .hgt #hudBestHeight{ color:#ffc23a !important; }
+
+/* ==========================================================================
+   v4.8.5-1
+   ========================================================================== */
+/* 모드 칩·배지·타이머: 같은 픽셀 칩 모양으로 통일 (붙여 넣은 듯 따로 놀던 스타일 정리) */
+html body.v47-play #v44Chip, html body.v47-play #v43ModeChip, html body.v47-play #v50GtPill, html body.v47-play #v43Oxy,
+html body.v47-play #v47Timer, html body.v47-play #v44HudLine, html body.v47-play #v44Ping, html body.v47-play #v44Mission{
+  border-radius:6px !important; border:2px solid var(--px-ink) !important; background:linear-gradient(180deg,#1a2442,#111830) !important;
+  box-shadow:inset 0 0 0 1px #3b5290, 0 3px 0 var(--px-ink) !important; backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+  padding:calc(4px * var(--hc)) calc(9px * var(--hc)) !important; min-height:0 !important; gap:calc(6px * var(--hc)) !important;
+  font-family:"Galmuri11",sans-serif !important; font-size:calc(11.5px * var(--hc)) !important; font-weight:700 !important; line-height:1.25 !important;
+  white-space:nowrap !important; color:#e8effc !important; text-shadow:1px 1px 0 var(--px-ink) !important; }
+html body.v47-play #v44Chip *, html body.v47-play #v43ModeChip *, html body.v47-play #v50GtPill *, html body.v47-play #v43Oxy *, html body.v47-play #v47Timer *, html body.v47-play #v44Mission *{
+  font-family:"Galmuri11",sans-serif !important; font-size:calc(11.5px * var(--hc)) !important; font-weight:700 !important; white-space:nowrap !important; }
+html body.v47-play #v44Chip b, html body.v47-play #v43ModeChip b{ color:#ffffff !important; }
+html body.v47-play #v44Chip span, html body.v47-play #v43ModeChip span{ color:var(--px-gold) !important; }
+html body.v47-play #v47Timer b{ font-size:calc(14px * var(--hc)) !important; color:var(--px-gold) !important; }
+html body.v47-play #v50GtPill{ color:#fde68a !important; }
+/* 위험 거리는 화면 아래 경고로 옮겼으므로 위쪽 칩에서는 거리 숫자를 뺀다 (중복 제거) */
+html body.v485-hz #v43ModeChip span{ display:none !important; }
+html body #v43Heat{ display:none !important; }
+/* 하단 위험 경고 (용암·물·좀비) — 위험이 올라오는 아래쪽, 조작 버튼 위 */
+#v485Hazard{ position:fixed; z-index:32; display:none; align-items:center; gap:8px; pointer-events:none; white-space:nowrap;
+  padding:calc(6px * var(--hc)) calc(14px * var(--hc)); border-radius:8px; border:2px solid var(--px-ink);
+  background:linear-gradient(180deg,#5a1a0c,#33100a); box-shadow:inset 0 0 0 2px #ff7a3d, 0 4px 0 var(--px-ink);
+  color:#ffe1c7; font-family:"Jua",sans-serif !important; font-size:calc(15px * var(--hc)); text-shadow:1px 1px 0 var(--px-ink); }
+#v485Hazard b{ font-family:"Galmuri11",monospace !important; font-weight:700; font-size:calc(18px * var(--hc)); color:#fff; }
+#v485Hazard.water{ background:linear-gradient(180deg,#0c3a5a,#0a2033); box-shadow:inset 0 0 0 2px #38bdf8, 0 4px 0 var(--px-ink); color:#d6f1ff; }
+#v485Hazard.zomb{ background:linear-gradient(180deg,#22401a,#13260f); box-shadow:inset 0 0 0 2px #86efac, 0 4px 0 var(--px-ink); color:#e2ffd9; }
+#v485Hazard.urgent{ animation:v485blink .6s steps(2) infinite; box-shadow:inset 0 0 0 2px #ef4444, 0 4px 0 var(--px-ink); }
+@keyframes v485blink{ 50%{ filter:brightness(1.35); } }
+html body.v47-play #v46ZombBelow{ border-radius:8px !important; border:2px solid var(--px-ink) !important; box-shadow:inset 0 0 0 2px #f87171, 0 4px 0 var(--px-ink) !important;
+  backdrop-filter:none !important; font-size:calc(13px * var(--hc)) !important; }
+html body.v47-play #v44MemNote{ border-radius:8px !important; border:2px solid var(--px-ink) !important; box-shadow:inset 0 0 0 2px #22d3ee, 0 3px 0 var(--px-ink) !important;
+  font-family:"Galmuri11",sans-serif !important; font-size:calc(12px * var(--hc)) !important; }
+/* 멀티 🔄 다시하기(태초로) 복구: 숨김 규칙 제거, 원래 조건(.hidden · 탈락 시 숨김)을 따른다 */
+html body.v47-play #gameHud #v44FastRestart.hidden, html body.v46-norestart.v47-play #gameHud #v44FastRestart{ display:none !important; }
+html body.v485-multi.v47-play #v47Forfeit{ right:calc(var(--sa-r) + 26px + var(--tb) * 2) !important; }
+html body.v485-multi.v46-norestart.v47-play #v47Forfeit{ right:calc(var(--sa-r) + 18px + var(--tb)) !important; }
+#mpRaceMenu #v485RaceRestart{ background:linear-gradient(180deg,#f9efd6,#e2cf9f) !important; color:var(--px-brown) !important; }
+/* 버튼 글씨: 줄바꿈 대신 한 줄 (가로 일시정지 2단 버튼 포함) */
+html body #pauseModal button{ white-space:nowrap !important; overflow:hidden; text-overflow:ellipsis; }
+
+/* 술래잡기·땅따먹기 등: 같은 내용 칩이 3개(v44Chip · v50ArenaPill · v45Arena) 겹쳐 뜨던 것 → 가장 자세한 v45Arena 하나만 */
+html body.v485-arena.v47-play #v44Chip, html body.v485-arena.v47-play #v50ArenaPill{ display:none !important; }
+html body.v47-play #v45Arena, html body.v47-play #v50ArenaPill{ border-radius:6px !important; border:2px solid var(--px-ink) !important; box-shadow:inset 0 0 0 1px #3b5290, 0 3px 0 var(--px-ink) !important;
+  backdrop-filter:none !important; font-family:"Galmuri11",sans-serif !important; font-size:calc(11.5px * var(--hc)) !important; }
+html body.v47-play #v45Arena *, html body.v47-play #v50ArenaPill *{ font-family:"Galmuri11",sans-serif !important; }
+html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important; font-size:13px !important; border-radius:8px !important; border:2px solid var(--px-ink) !important;
+  background:linear-gradient(180deg,#24335e,#18213f) !important; box-shadow:inset 0 -3px 0 rgba(0,0,0,.3), 0 3px 0 var(--px-ink) !important; color:#e8effc !important; }
 
 </style>
 <script>
@@ -42593,7 +42644,26 @@ html body.v47-play #v49Hud .hgt #hudBestHeight{ color:#ffc23a !important; }
     ['position', 'transform', 'margin', 'left', 'right', 'top', 'bottom', 'max-width', 'max-height'].forEach(function (k) { el.style.removeProperty(k); });
     el.__v485placed = false;
   }
-  var LEFT = ['v51Rank', 'v44TopLeft', 'v43ModeChip', 'modeBar', 'v44HudLine', 'v47Timer', 'v485FinCd', 'v43Heat', 'v44Mission', 'v44MemNote', 'v43RelayToggle'];
+  var LEFT = ['v51Rank', 'v44TopLeft', 'v44Chip', 'v43ModeChip', 'v50GtPill', 'v43Oxy', 'modeBar', 'v44HudLine', 'v47Timer', 'v485FinCd', 'v44Mission', 'v43RelayToggle'];
+  var BOTTOM = ['v485Hazard', 'v46ZombBelow', 'v44MemNote', 'v43SpecBtns', 'mpSpectateBar'];
+  /* 그 밖에 HUD 카드·우상단 버튼과 부딪히는 '떠 있는' 칩은 자동으로 왼쪽 차선에 넣는다 */
+  var NEVER = /^(gameCanvas|touchLayer|touchBtnLeft|touchBtnRight|touchBtnJump|btnPauseHud|v44FastRestart|v47Forfeit|v49Hud|mpChatFab|mpChatPanel|v43QuickChat|mpToasts|v44Ping|mpAltBar|v50AltBots|v485Hazard|v46ZombBelow|v44MemNote|v43SpecBtns|mpSpectateBar|pauseModal|settingsModal|mpRaceMenu|mpResult|soloEnd|mpCount)$/;
+  function strays(known) {
+    var out = [];
+    var kids = [].slice.call(document.body.children).concat([].slice.call(($('gameHud') || document.body).children));
+    kids.forEach(function (e) {
+      if (!e.id || NEVER.test(e.id) || known.indexOf(e.id) >= 0 || /^(CANVAS|SCRIPT|STYLE)$/.test(e.tagName)) return;
+      var cs = getComputedStyle(e);
+      if (!(cs.position === 'fixed' || cs.position === 'absolute')) return;
+      if (!shown(e)) return;
+      var r = e.getBoundingClientRect();
+      if (r.width * r.height > innerWidth * innerHeight * 0.12 || r.height > innerHeight * 0.3) return;
+      if (!(e.innerText || '').trim()) return;
+      out.push(e);
+    });
+    return out;
+  }
+  function hit(a, b) { return Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1; }
   var RIGHT = ['v44Ping', 'mpToasts'];
   var ALT = ['mpAltBar', 'v50AltBots'];
   function gameCol() {
@@ -42604,8 +42674,8 @@ html body.v47-play #v49Hud .hgt #hudBestHeight{ color:#ffc23a !important; }
   }
   function layout() {
     var play = body.classList.contains('v47-play');
-    var all = LEFT.concat(RIGHT, ALT, ['v43QuickChat']);
-    if (!play) { all.forEach(function (id) { unplace($(id)); }); layoutIdle(); return; }
+    var all = LEFT.concat(RIGHT, ALT, BOTTOM, ['v43QuickChat']);
+    if (!play) { all.forEach(function (id) { unplace($(id)); }); (layout.__strays || []).forEach(unplace); layoutIdle(); return; }
     var vw = innerWidth, vh = innerHeight;
     var card = $('v49Hud');
     var cr = card && shown(card) ? card.getBoundingClientRect() : { left: 10, bottom: 10, right: 10 };
@@ -42618,16 +42688,33 @@ html body.v47-play #v49Hud .hgt #hudBestHeight{ color:#ffc23a !important; }
     var leftMax = side ? Math.max(140, side - 24) : Math.floor(vw * 0.56);
     var rightMax = side ? Math.max(120, side - 24) : Math.floor(vw * 0.36);
     var y = cr.bottom + 8, x = Math.max(10, cr.left);
-    LEFT.forEach(function (id) {
-      var el = $(id);
+    var top0 = { left: 0, right: vw, top: 0, bottom: Math.max(cr.bottom, tb.bottom) + 4 };
+    var extra = strays(LEFT).filter(function (e) { var r = e.getBoundingClientRect(); return e.__v485placed || hit(r, cr) || hit(r, { left: tb.left - 140, right: vw, top: 0, bottom: tb.bottom }); });
+    layout.__strays = (layout.__strays || []).concat(extra.filter(function (e) { return (layout.__strays || []).indexOf(e) < 0; }));
+    LEFT.map($).concat(extra).forEach(function (el) {
       if (!shown(el)) return;
       place(el, { left: x, top: y, maxW: leftMax });
       var r = el.getBoundingClientRect();
       y = r.bottom + 6;
     });
+    /* 아래 차선: 위험 경고는 조작 버튼 바로 위 가운데 */
+    var by = ctrlTop - 10;
+    if (side) by = vh - 14;
+    BOTTOM.forEach(function (id) {
+      var el = $(id);
+      if (!shown(el)) return;
+      var r = el.getBoundingClientRect();
+      var fabEl = $('mpChatFab'), lim = vw - 24;
+      if (shown(fabEl)) { var fq = fabEl.getBoundingClientRect(); if (fq.bottom > by - r.height - 4) lim = Math.min(lim, vw - 2 * (vw - fq.left + 8)); }
+      el.style.setProperty('max-width', lim + 'px', 'important');
+      r = el.getBoundingClientRect();
+      var w = Math.min(r.width, lim);
+      place(el, { left: Math.round((vw - w) / 2), top: Math.round(by - r.height), maxW: lim });
+      by = by - r.height - 6;
+    });
     /* 고도 타워: 왼쪽 차선 아래 ~ 조작 버튼 위 사이에만 */
     var altTop = y + 4;
-    var room = (side ? vh - 16 : ctrlTop - 12) - altTop;
+    var room = (side ? vh - 16 : by - 6) - altTop;
     ALT.forEach(function (id) {
       var el = $(id);
       if (!shown(el) && !el) return;
@@ -42714,6 +42801,105 @@ html body.v47-play #v49Hud .hgt #hudBestHeight{ color:#ffc23a !important; }
     document.body.classList.toggle('v485-chatopen', !!open);
   }
   setInterval(function () { try { fixTouch(); pauseMusic(); roomSet(); quickChat(); } catch (e) {} }, 300);
+})();
+
+
+/* ==========================================================================
+   v4.8.5-1 : 하단 위험 경고 (용암 · 물 · 좀비) + 레이스 메뉴 '태초에서 다시하기'
+   ========================================================================== */
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  function el() {
+    var h = $('v485Hazard');
+    if (!h) { h = document.createElement('div'); h.id = 'v485Hazard'; document.body.appendChild(h); }
+    return h;
+  }
+  var NEAR = 45;     /* 이 거리(m) 안으로 들어오면 경고 */
+  function tick() {
+    var h = el();
+    var body = document.body;
+    var V = window.JW43, J = window.__jwg;
+    var mode = '';
+    try { mode = (window.JWMode && JWMode.rules && JWMode.rules.mode) || (V && V.M && V.M.mode) || ''; } catch (e) {}
+    var hzMode = mode === 'lava' || mode === 'dive' || mode === 'zombie';
+    body.classList.toggle('v485-hz', hzMode && body.classList.contains('v47-play'));
+    var show = false, txt = '', cls = '', urgent = false;
+    try {
+      var M = V && V.M, pl = J && J.player, g = J && J.game;
+      if (hzMode && M && pl && g && g.inPlay && body.classList.contains('v47-play')) {
+        var feet = pl.y + pl.h, gap = null;
+        if (mode === 'lava' && M.lava) { gap = (M.lava - feet) / 13.4; txt = '🌋 용암 <b>' + Math.max(0, Math.round(gap)) + 'm</b> 아래'; cls = ''; }
+        else if (mode === 'dive' && (M.wY || M.waterY)) { gap = ((M.wY || M.waterY) - feet) / 13.4; txt = '🌊 물 <b>' + Math.max(0, Math.round(gap)) + 'm</b> 아래'; cls = 'water'; }
+        else if (mode === 'zombie' && M.zombs && M.zombs.length) {
+          var low = null; for (var i = 0; i < M.zombs.length; i++) { var z = M.zombs[i]; if (z && z.y > pl.y && (low === null || z.y < low.y)) low = z; }
+          if (low) { gap = (low.y - pl.y) / 13.4; txt = '🧟 좀비 <b>' + Math.max(0, Math.round(gap)) + 'm</b> 아래'; cls = 'zomb'; }
+        }
+        var zb = $('v46ZombBelow');
+        var zbOn = zb && zb.style.display !== 'none';
+        if (gap !== null && gap < NEAR && gap > -6 && !zbOn) { show = true; urgent = gap < 12; }
+      }
+    } catch (e) {}
+    if (show) {
+      if (h.__t !== txt) { h.innerHTML = txt; h.__t = txt; }
+      h.className = (cls ? cls + ' ' : '') + (urgent ? 'urgent' : '');
+      h.style.display = 'flex';
+    } else if (h.style.display !== 'none') h.style.display = 'none';
+  }
+  function raceMenu() {
+    var m = $('mpRaceMenu');
+    if (!m || $('v485RaceRestart')) return;
+    var resume = $('mpRaceResume');
+    if (!resume) return;
+    var b = document.createElement('button');
+    b.id = 'v485RaceRestart'; b.type = 'button'; b.className = 'mp-btn';
+    b.textContent = '🔄 태초(1번 발판)에서 다시하기';
+    b.addEventListener('click', function () {
+      var fr = $('v44FastRestart');
+      try { resume.click(); } catch (e) {}
+      if (fr) fr.click();
+    });
+    resume.parentNode.insertBefore(b, resume.nextSibling);
+  }
+  function raceMenuSync() {
+    var b = $('v485RaceRestart'); if (!b) return;
+    var fr = $('v44FastRestart');
+    var ok = fr && !document.body.classList.contains('v46-norestart');
+    b.style.display = ok ? '' : 'none';
+  }
+  function arena() {
+    var a = $('v45Arena');
+    var on = !!(a && !a.classList.contains('hidden') && getComputedStyle(a).display !== 'none' && (a.innerText || '').trim());
+    document.body.classList.toggle('v485-arena', on);
+  }
+  setInterval(function () { try { tick(); raceMenu(); raceMenuSync(); arena(); } catch (e) {} }, 150);
+})();
+
+/* ==========================================================================
+   v4.8.5-1 : 글씨 크기 하한 — Galmuri 픽셀 글꼴은 11px 아래에서 뭉개진다 (폰 11px · 패드 12px)
+   ========================================================================== */
+(function () {
+  'use strict';
+  function floorPx() { return (innerWidth >= 700 && innerHeight >= 700) ? 12 : 11; }
+  function run() {
+    var f = floorPx();
+    var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    var n, seen = new Set();
+    while ((n = w.nextNode())) {
+      var e = n.parentElement;
+      if (!e || seen.has(e) || !n.nodeValue.trim()) continue;
+      seen.add(e);
+      if (/^(SCRIPT|STYLE|OPTION)$/.test(e.tagName) || e.closest('[data-v485-tiny]')) continue;
+      if (!e.offsetParent && getComputedStyle(e).position !== 'fixed') continue;
+      var fs = parseFloat(getComputedStyle(e).fontSize);
+      if (fs && fs < f - 0.2) { e.style.setProperty('font-size', f + 'px', 'important'); e.__v485fs = true; }
+    }
+  }
+  setInterval(function () { try { run(); } catch (e) {} }, 700);
+  window.addEventListener('resize', function () {
+    document.querySelectorAll('*').forEach(function (e) { if (e.__v485fs) { e.style.removeProperty('font-size'); e.__v485fs = false; } });
+    setTimeout(run, 60);
+  });
 })();
 
 </script>
