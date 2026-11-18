@@ -230,7 +230,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
 </style><!-- LP-GUARD:END -->
 </head>
 <body>
-<div class="wrap"><a href="../" style="display:inline-block;margin-bottom:14px;font-size:13px;font-weight:800;color:#fde047;text-decoration:none;border:2px solid #a16207;background:#1a1206;padding:6px 12px">← 메인 게임으로 (v4.3)</a>
+<div class="wrap"><a href="../" style="display:inline-block;margin-bottom:14px;font-size:13px;font-weight:800;color:#fde047;text-decoration:none;border:2px solid #a16207;background:#1a1206;padding:6px 12px">← 메인 게임으로 (v4.8)</a>
   <header>
     <div class="kicker">JUMP TO THE SUMMIT</div>
     <h1>성공하고싶은 재우</h1>
@@ -240,10 +240,10 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
   <div class="launcher">
     <span class="lamp" aria-hidden="true"></span>
     <div class="ltext">
-      <b>최신 빌드 <span class="lbadge">v4.7</span> · 맵 21종 · 모드 29종</b>
-      <span>아기자기 16비트 20맵 정상등반 배경 · 맵별 도트 발판 · 모바일 게임 UI</span>
+      <b>최신 빌드 <span class="lbadge">v4.8</span> · 맵 21종 · 모드 30종</b>
+      <span>모바일 게임 UI 대청소 · 미니멀 타이틀 · 인게임 HUD · 결과창 전용 히어로</span>
     </div>
-    <a class="play" href="../gemini-v4-5/">▶ 바로 플레이</a>
+    <a class="play" href="../gemini-v4-8/">▶ 바로 플레이</a>
   </div>
 
   <div class="cards">
@@ -509,7 +509,23 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       accent: '#8ec9ff', accent2: '#22d3ee', glow: '96,165,250',
       versions: [
         {
-          ver: 'v4.7', label: '아기자기 16비트 리뉴얼 · 20맵 정상등반 일러스트 · 도트 발판 · 모바일 UI (최신)', href: '../gemini-v4-5/', latest: true,
+          ver: 'v4.8', label: '모바일 UI 대청소 · 미니멀 타이틀 · 인게임 HUD · 결과창 전용 히어로 (최신)', href: '../gemini-v4-8/', latest: true,
+          date: '2026.11.18',
+          spec: '맵 21종(1번 기본 맵 원본 보존) · 모드 30종 · 미니멀 타이틀/HUD · 결과창 히어로 · 조작 드래그 에디터',
+          notes: [
+            '🏠 타이틀 대청소: 배너 + 내 재우 카드 + 시작 버튼 2개 + 하단 5아이콘만 (프리셋·통계 칩·맵 그리드는 안으로)',
+            '🎯 인게임 HUD: 좌측 카드 1개(층·높이·충전) + 우측 원형 버튼 2개(🔄·⏸)만, 겹침 0',
+            '🏆 결과창: 모드별 전용 히어로 헤더(좀비/보스 스프라이트·황금 클리어) + 3스탯 + 버튼 위계 통일',
+            '🕹️ 조작 설정: 실제 화면 비율 프리뷰에서 ◀▶⤒ 직접 드래그 + 크기·투명도 + 프리셋 3종',
+            '🙋 비방장 제안: 누가 · 항목 현재값 → 제안값 상세 표시 + 수락/거절',
+            '🗂️ 모드 3묶음(기본·도전/스피드·특수/협동·대전) · 설정 2탭(게임·조작/소리·화면)',
+            '🌄 배경 패럴랙스: 올라갈수록 랜드마크가 발 밑으로 확실히 내려가는 상승감',
+            '💡 밝기: 모달 블러 딤 · 인게임 어둡기 최소화 · 태초 섬광 제거(파스텔 소용돌이)',
+            '🐞 잠수 산소 게이지 알약화·로직 정비 · 암전 손전등 좌표/발동 조건 수정 · 추락 텍스트 겹침 방지'
+          ]
+        },
+        {
+          ver: 'v4.7', label: '아기자기 16비트 리뉴얼 · 20맵 정상등반 일러스트 · 도트 발판 · 모바일 UI (이전 빌드)', href: '../gemini-v4-5/', latest: false,
           date: '2026.11.18',
           spec: '맵 21종(1번 기본 맵 원본 보존) · 20맵 아기자기 16비트 등반 배경 · 맵별 도트 발판 · 고정배율 세로 패닝 · 모바일 게임 UI',
           notes: [
