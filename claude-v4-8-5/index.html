@@ -46093,6 +46093,10 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
+
+
+
 <!-- ===== v4.8-mg2 PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -50996,7 +51000,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
         },
         draw: function (g) {
           g.fillStyle = '#05070d'; g.fillRect(0, 0, 360, 600);
-          var R = 62;
+          var R = 68;
           g.save();
           /* 미로 (시야 안쪽만) */
           g.beginPath(); g.arc(S.x, S.y, R, 0, 6.2832); g.clip();
@@ -52143,7 +52147,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     s.id = 'v48c2css';
     s.textContent = [
       '#v48c2ui{position:fixed;left:8px;top:calc(env(safe-area-inset-top,0px) + 226px);z-index:36;',
-      '  display:none;flex-direction:column;gap:4px;align-items:flex-start;',
+      '  display:none;flex-direction:row;flex-wrap:wrap;gap:4px;align-items:flex-start;max-width:calc(100vw - 16px);',
       '  font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;}',
       '#v48c2ui .c2b{pointer-events:auto;display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;',
       '  border-radius:9px;border:1px solid rgba(160,200,255,.34);background:rgba(8,13,26,.82);',
@@ -52155,11 +52159,11 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       '  border-radius:8px;background:rgba(8,13,26,.62);border:1px solid rgba(160,200,255,.18);',
       '  color:#cbd5e1;font-size:10px;font-weight:700;}',
       '#v48c2sub{position:fixed;left:50%;transform:translateX(-50%) translateY(-8px);top:calc(env(safe-area-inset-top,0px) + 96px);',
-      '  z-index:37;max-width:min(92vw,520px);display:flex;align-items:center;gap:7px;padding:6px 12px;',
+      '  z-index:37;width:min(92vw,420px);display:flex;align-items:center;justify-content:center;gap:7px;padding:6px 12px;',
       '  border-radius:11px;background:linear-gradient(180deg,rgba(20,32,54,.94),rgba(12,20,36,.94));',
       '  border:1px solid rgba(150,215,255,.5);box-shadow:0 8px 22px rgba(0,0,0,.45);',
       '  color:#eaf4ff;font-size:12.5px;font-weight:800;font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;',
-      '  opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;text-align:left;}',
+      '  opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;text-align:center;line-height:1.3;}',
       '#v48c2sub.on{opacity:1;transform:translateX(-50%) translateY(0);}',
       '#v48c2sub .ic{font-size:15px;}',
       '#v48c2sub .ln{color:#7dd3fc;font-size:9.5px;font-weight:900;letter-spacing:.06em;display:block;}',
@@ -52202,6 +52206,18 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   }
 
   /* ---------------------------------------------------------------- 자막 */
+  function hudBottom() {
+    try {
+      var a = doc.getElementById('hudCurHeight');
+      var r = a && a.getBoundingClientRect();
+      if (r && r.bottom > 60 && r.bottom < 400) return r.bottom + 12;
+      var hud = doc.getElementById('gameHud');
+      var p = hud && hud.querySelector('.pixel-panel');
+      var r2 = p && p.getBoundingClientRect();
+      if (r2 && r2.bottom > 60 && r2.bottom < 400) return r2.bottom + 6;
+    } catch (e) {}
+    return 110;
+  }
   function banner() {
     var el = $('v48c2sub');
     if (el) return el;
@@ -52225,6 +52241,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (!live()) { C2.subQ.length = 0; hideSub(); return; }
     var s = C2.subQ.shift();
     var el = banner();
+    el.style.top = Math.round(hudBottom() + 8) + 'px';
     el.innerHTML = '<span class="ic">' + s.icon + '</span><span>' +
       (s.line ? '<span class="ln">' + s.line + '</span>' : '') + s.text + '</span>';
     el.classList.add('on');
@@ -52544,6 +52561,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (!u) return;
     if (!live()) { u.style.display = 'none'; return; }
     u.style.display = 'flex';
+    u.style.top = Math.round(hudBottom() + 54) + 'px';
     var rw = $('v48c2rwN'); if (rw) rw.textContent = String(C2.rewindLeft);
     var rwb = $('v48c2rw');
     if (rwb) rwb.classList.toggle('off', C2.rewindLeft <= 0);
@@ -52746,6 +52764,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   else setTimeout(boot, 220);
 
   /* 테스트/디버그용 */
+  C2.say = say;
   C2.doRewind = doRewind;
   C2.openGate = openGate;
   C2.forceSwitch = function () { openGate(8, '테스트 스위치'); };
