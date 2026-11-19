@@ -46127,6 +46127,9 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
+
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -52466,8 +52469,9 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       g.botT += dt;
       if (g.botT > 11) { g.botT = 0; openGate(8, '🤖 봇 동료가 스위치를 밟았습니다! 문이 열립니다!'); }
     }
-    /* 닫힌 문 발판은 딛을 수 없다 */
-    if (g.open <= 0 && p.onGround && p.plat === g.gate) {
+    /* 닫힌 문 발판은 딛을 수 없다 (맵이 바뀐 뒤 남은 참조면 건드리지 않는다) */
+    var psNow = (J() && J().platforms) || [];
+    if (g.open <= 0 && p.onGround && p.plat === g.gate && psNow.indexOf(g.gate) >= 0) {
       var gcx = g.gate.x + g.gate.w / 2;
       p.onGround = false;
       p.plat = null;
@@ -52554,7 +52558,9 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (!target) target = C2.snap[0];
     p.x = target.x; p.y = target.y;
     p.vx = 0; p.vy = 0;
-    p.onGround = target.on; p.plat = target.plat;
+    var psLive = (J() && J().platforms) || [];
+    var okPlat = !!(target.plat && psLive.indexOf(target.plat) >= 0);
+    p.onGround = okPlat && !!target.on; p.plat = okPlat ? target.plat : null;
     p.charge = 0; p.charging = false; p.peakFallVy = 0;
     p.splatT = 0;
     try { p.invulnT = Math.max(p.invulnT || 0, 1.2); } catch (e) {}
@@ -56220,6 +56226,498 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   try { build(); } catch (e) {}
   setInterval(function () { try { autoWatch(); } catch (e) {} }, 400);
   setInterval(function () { try { autoLink(); } catch (e) {} }, 1500);
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v4.8-rank : 48 🏆 명예의 전당 대개편
+   - Top3 포디움(금·은·동 · 캐릭터 스킨 미리보기 · 기록 · 날짜) + 4위~ 정리된 리스트
+   - 상단 필터: 맵별 / 모드별 / 정렬(최고 도달 · 최단 클리어) + 내 순위 요약 배너
+   - 🕹️ 미니게임 25종 기록 탭
+   - 깜빡임 0 (시그니처가 같으면 다시 그리지 않음) · 모바일/iPad 대응
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var RK = root.JW48RK = root.JW48RK || {};
+  var LS_RANK = 'jw43_rank_v1';
+  var SORT = 'm';          /* m = 최고 도달, time = 최단 클리어 */
+  var MAP = 'default', MODE = 'normal', TAB = 'climb';
+  var OPEN = false;
+  var sig = '';
+
+  function st() { try { return V.st() || null; } catch (e) { return null; } }
+  function myNick() { try { var s = st(); return (s && s.me && s.me.nick) || '나'; } catch (e) { return '나'; } }
+  function esc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;'; }); }
+  function mapList() { try { return (root.JWMap && root.JWMap.list) || []; } catch (e) { return []; } }
+  function modeList() { try { return (root.JWMode && root.JWMode.MODES) || []; } catch (e) { return []; } }
+  function mapById(id) { try { return root.JWMap.byId(id) || null; } catch (e) { return null; } }
+  function modeById(id) { try { return root.JWMode.modeById(id) || null; } catch (e) { return null; } }
+  function total(id) { try { return V.mapTotal ? V.mapTotal(id) : 0; } catch (e) { return 0; } }
+  function rankAll() { try { var r = V.lsGet(LS_RANK, []); return Array.isArray(r) ? r : []; } catch (e) { return []; } }
+  function rel(ts) {
+    var d = Date.now() - (ts || 0);
+    if (!ts) return '';
+    if (d < 60000) return '방금';
+    if (d < 3600000) return Math.floor(d / 60000) + '분 전';
+    if (d < 86400000) return Math.floor(d / 3600000) + '시간 전';
+    if (d < 86400000 * 30) return Math.floor(d / 86400000) + '일 전';
+    var dt = new Date(ts);
+    return (dt.getMonth() + 1) + '/' + dt.getDate();
+  }
+  function fmtT(t) {
+    if (!t) return '-';
+    var m = Math.floor(t / 60), s = (t % 60);
+    return m + ':' + (s < 10 ? '0' : '') + (Math.round(s * 10) / 10);
+  }
+  function floorOf(m) {
+    try { if (V.m2f) return V.m2f(m); } catch (e) {}
+    return Math.max(1, Math.round((m || 0) / 3.4));
+  }
+
+  /* ---------------------------------------------------------------- CSS */
+  function css() {
+    if ($('v48rkCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v48rkCss';
+    s.textContent = [
+      '#v48rk{position:fixed;inset:0;z-index:12500;display:flex;align-items:center;justify-content:center;',
+      '  background:rgba(3,6,13,.86);padding:6px;padding-top:calc(6px + env(safe-area-inset-top,0px));',
+      '  padding-bottom:calc(6px + env(safe-area-inset-bottom,0px));',
+      '  font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-user-select:none;user-select:none;}',
+      '#v48rk.hidden{display:none;}',
+      '#v48rk .sh{width:min(100%,560px);max-height:96dvh;display:flex;flex-direction:column;min-height:0;',
+      '  background:linear-gradient(180deg,#101a30,#080e1a 60%,#070b14);border:2px solid #1d2b46;border-radius:18px;',
+      '  box-shadow:0 16px 44px rgba(0,0,0,.7),inset 0 2px 0 rgba(255,255,255,.06);overflow:hidden;}',
+      '#v48rk .hd{display:flex;align-items:center;gap:8px;padding:11px 12px 9px;border-bottom:1px solid #17233a;',
+      '  background:linear-gradient(180deg,rgba(56,89,140,.28),rgba(12,20,34,0));}',
+      '#v48rk .tt{font-family:"Jua",sans-serif;font-size:19px;color:#fff;line-height:1.1;}',
+      '#v48rk .tt small{display:block;font-family:system-ui,sans-serif;font-size:9.5px;font-weight:800;color:#8fa3c4;margin-top:2px;}',
+      '#v48rk .x{margin-left:auto;flex:0 0 auto;height:34px;padding:0 12px;border-radius:11px;border:1px solid #2b3a58;',
+      '  background:rgba(255,255,255,.06);color:#cfe0f6;font-size:12px;font-weight:900;}',
+      '#v48rk .scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;',
+      '  padding:10px 12px 12px;display:flex;flex-direction:column;gap:9px;}',
+      /* 내 순위 배너 */
+      '#v48rk .me{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:13px;',
+      '  background:linear-gradient(180deg,rgba(37,99,235,.28),rgba(12,24,46,.9));border:2px solid rgba(96,165,250,.55);}',
+      '#v48rk .me .lbl{font-size:9.5px;font-weight:900;color:#93c5fd;letter-spacing:.04em;}',
+      '#v48rk .me .rk{font-family:"Jua",sans-serif;font-size:22px;color:#fff;line-height:1;}',
+      '#v48rk .me .rk i{font-style:normal;font-size:11px;color:#bfdbfe;margin-left:2px;}',
+      '#v48rk .me .val{font-family:"Jua",sans-serif;font-size:15px;color:#fde047;text-align:right;line-height:1.15;}',
+      '#v48rk .me .val small{display:block;font-family:system-ui,sans-serif;font-size:9.5px;font-weight:800;color:#a5b4c8;}',
+      '#v48rk .me .none{font-size:11.5px;font-weight:800;color:#c7d6ee;line-height:1.35;}',
+      /* 탭 */
+      '#v48rk .tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;}',
+      '#v48rk .tab{height:36px;border-radius:11px;border:2px solid #22304a;background:#111a2c;color:#9fb0cc;',
+      '  font-family:"Jua",sans-serif;font-size:13px;}',
+      '#v48rk .tab.on{background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;color:#3a2205;}',
+      /* 필터 */
+      '#v48rk .fl{display:flex;flex-direction:column;gap:5px;}',
+      '#v48rk .frow{display:flex;align-items:center;gap:5px;}',
+      '#v48rk .flb{flex:0 0 auto;width:26px;font-size:11px;font-weight:900;color:#7f93b3;text-align:center;}',
+      '#v48rk .chips{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px;flex:1 1 auto;}',
+      '#v48rk .chips::-webkit-scrollbar{display:none;}',
+      '#v48rk .chip{flex:0 0 auto;font-family:"Jua",sans-serif;font-size:11px;color:#aebbd4;padding:5px 8px;',
+      '  background:linear-gradient(180deg,#1c2745,#141c33);border:2px solid #0a0f1e;border-radius:9px;white-space:nowrap;}',
+      '#v48rk .chip.on{color:#3a2205;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;}',
+      /* 포디움 */
+      '#v48rk .pod{display:grid;grid-template-columns:1fr 1.14fr 1fr;gap:6px;align-items:end;margin-top:2px;}',
+      '#v48rk .pc{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px 9px;',
+      '  border-radius:14px;border:2px solid #24314a;background:linear-gradient(180deg,#16223a,#0d1424);min-width:0;}',
+      '#v48rk .pc .md{font-size:20px;line-height:1;}',
+      '#v48rk .pc .ava{width:52px;height:60px;display:flex;align-items:flex-end;justify-content:center;}',
+      '#v48rk .pc .ava canvas{image-rendering:pixelated;width:46px;height:54px;}',
+      '#v48rk .pc .nm{max-width:100%;font-family:"Jua",sans-serif;font-size:12px;color:#f4f8ff;text-align:center;',
+      '  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '#v48rk .pc .ti{font-size:8.5px;font-weight:900;color:#93c5fd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}',
+      '#v48rk .pc .vv{font-family:"Jua",sans-serif;font-size:16px;color:#fff;line-height:1.15;text-align:center;}',
+      '#v48rk .pc .vv small{display:block;font-family:system-ui,sans-serif;font-size:8.5px;font-weight:800;color:#94a3b8;}',
+      '#v48rk .pc .dt{font-size:8.5px;font-weight:800;color:#7f93b3;}',
+      '#v48rk .pc.p1{border-color:#fbbf24;background:linear-gradient(180deg,#3a2c0c,#1a1408);box-shadow:0 0 0 1px rgba(251,191,36,.35),0 6px 18px rgba(251,191,36,.16);}',
+      '#v48rk .pc.p2{border-color:#cbd5e1;background:linear-gradient(180deg,#26303f,#121924);}',
+      '#v48rk .pc.p3{border-color:#c2864a;background:linear-gradient(180deg,#31241a,#17110c);}',
+      '#v48rk .pc.p1 .nm{font-size:13.5px;}',
+      '#v48rk .pc.p1 .vv{font-size:18px;color:#fde047;}',
+      '#v48rk .pc.me{box-shadow:inset 0 0 0 2px #38bdf8;}',
+      /* 리스트 */
+      '#v48rk .lst{display:flex;flex-direction:column;gap:4px;}',
+      '#v48rk .row{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:10px;',
+      '  background:#0d1424;border:1px solid #182338;min-width:0;}',
+      '#v48rk .row.me{background:linear-gradient(180deg,rgba(37,99,235,.22),rgba(13,20,36,.9));border-color:rgba(96,165,250,.6);}',
+      '#v48rk .row .n{flex:0 0 22px;text-align:center;font-family:"Jua",sans-serif;font-size:12.5px;color:#93a4c4;}',
+      '#v48rk .row .av{flex:0 0 22px;width:22px;height:26px;}',
+      '#v48rk .row .av canvas{image-rendering:pixelated;width:22px;height:26px;}',
+      '#v48rk .row .nm{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:900;color:#eaf2ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '#v48rk .row .nm i{font-style:normal;font-size:9px;font-weight:800;color:#7dd3fc;margin-left:5px;opacity:.95;}',
+      '#v48rk .row .vv{flex:0 0 auto;font-family:"Jua",sans-serif;font-size:13px;color:#fde047;}',
+      '#v48rk .row .dt{flex:0 0 auto;font-size:9px;font-weight:800;color:#7f93b3;min-width:34px;text-align:right;}',
+      '#v48rk .empty{padding:18px 10px;text-align:center;font-size:11.5px;font-weight:800;color:#8fa3c4;line-height:1.5;}',
+      '#v48rk .sec{display:flex;align-items:center;gap:6px;font-family:"Jua",sans-serif;font-size:12px;color:#fde047;margin-top:2px;}',
+      '#v48rk .sec small{font-family:system-ui,sans-serif;font-size:9.5px;font-weight:800;color:#8fa3c4;}',
+      '#v48rk .net{font-size:9.5px;font-weight:800;color:#7f93b3;text-align:center;}',
+      '#v48rk .ft{display:flex;gap:6px;padding:9px 12px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid #17233a;background:#070c16;}',
+      '#v48rk .ft button{flex:1;padding:10px;border-radius:11px;font-size:12px;font-weight:900;border:2px solid #2b3a58;',
+      '  background:#141d30;color:#cfe0f6;}',
+      '#v48rk .ft button.pri{background:linear-gradient(180deg,#bfe0ff,#60a5fa 55%,#2563eb);color:#041a3a;border-color:#0b2c5c;}',
+      '@media(min-width:700px){',
+      '  #v48rk .sh{width:min(96vw,760px);}',
+      '  #v48rk .tt{font-size:22px;}',
+      '  #v48rk .scroll{padding:14px 18px 16px;gap:11px;}',
+      '  #v48rk .pod{grid-template-columns:1fr 1.2fr 1fr;gap:10px;}',
+      '  #v48rk .pc .ava canvas{width:62px;height:72px;}',
+      '  #v48rk .pc .nm{font-size:13.5px;}',
+      '  #v48rk .pc .vv{font-size:18px;}',
+      '  #v48rk .row{padding:9px 12px;}',
+      '  #v48rk .row .nm{font-size:13.5px;}',
+      '}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+
+  /* ---------------------------------------------------------------- 데이터 */
+  function entries() {
+    var all = rankAll().slice();
+    try { (V.rank && V.rank.live ? V.rank.live : []).forEach(function (e) { all.push(e); }); } catch (e) {}
+    var seen = {};
+    var out = [];
+    all.forEach(function (e) {
+      if (!e || e.map !== MAP || e.mode !== MODE || !e.n) return;
+      if (SORT === 'time' && !(e.clear && e.t > 0)) return;
+      var k = String(e.n);
+      var prev = seen[k];
+      var better = !prev ||
+        (SORT === 'time' ? (e.t || 9999) < (prev.t || 9999) : (e.m || 0) > (prev.m || 0));
+      if (better) seen[k] = e;
+    });
+    Object.keys(seen).forEach(function (k) { out.push(seen[k]); });
+    out.sort(function (a, b) {
+      return SORT === 'time' ? (a.t || 9999) - (b.t || 9999) : (b.m || 0) - (a.m || 0);
+    });
+    return out;
+  }
+
+  function valText(e) {
+    if (!e) return '-';
+    if (SORT === 'time') return fmtT(e.t);
+    return Math.round(e.m || 0) + 'm';
+  }
+  function valSub(e) {
+    if (!e) return '';
+    if (SORT === 'time') return Math.round(e.m || 0) + 'm 도달';
+    return '#' + floorOf(e.m) + '층';
+  }
+
+  /* 아바타: 스킨을 모르면 이름 해시로 색을 고정 */
+  function colorFor(name) {
+    var cols = [];
+    try { cols = (V.api().colors() || []).map(function (c) { return c.id; }); } catch (e) {}
+    if (!cols.length) cols = ['blue', 'green', 'red', 'purple', 'amber'];
+    var h = 0, s = String(name || '');
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffff;
+    return cols[h % cols.length];
+  }
+  function paintAvas(scope) {
+    var list = scope.querySelectorAll('canvas[data-rkava]');
+    for (var i = 0; i < list.length; i++) {
+      var cv = list[i];
+      var nm = cv.getAttribute('data-rkava') || '';
+      var mine = nm === myNick();
+      var col = mine ? (V.api().meColor ? V.api().meColor() : colorFor(nm)) : colorFor(nm);
+      var sk = mine && V.api().meSkin ? V.api().meSkin() : 'jaeu';
+      var sp = null;
+      try { sp = V.api().spriteFor(col, 'idle1', sk); } catch (e) {}
+      var g = cv.getContext('2d');
+      if (!g) continue;
+      var W = cv.width, H = cv.height;
+      g.clearRect(0, 0, W, H);
+      if (sp) { g.imageSmoothingEnabled = false; try { g.drawImage(sp, 0, 0, W, H); } catch (e) {} }
+      else { g.fillStyle = '#38bdf8'; g.fillRect(W * 0.25, H * 0.2, W * 0.5, H * 0.6); }
+    }
+  }
+
+  /* ---------------------------------------------------------------- 렌더 */
+  function build() {
+    css();
+    var d = $('v48rk');
+    if (d) return d;
+    d = doc.createElement('div');
+    d.id = 'v48rk';
+    d.className = 'hidden';
+    d.innerHTML =
+      '<div class="sh">' +
+      '<div class="hd"><div class="tt">🏆 명예의 전당<small id="v48rkSub">맵 · 모드별 순위</small></div>' +
+      '<button type="button" class="x" id="v48rkX">닫기 ✕</button></div>' +
+      '<div class="scroll" id="v48rkScroll"></div>' +
+      '<div class="ft"><button type="button" id="v48rkRef">🔄 새로고침</button>' +
+      '<button type="button" class="pri" id="v48rkMine">📡 내 기록 올리기</button></div>' +
+      '</div>';
+    doc.body.appendChild(d);
+    $('v48rkX').addEventListener('click', close);
+    d.addEventListener('click', function (e) { if (e.target === d) close(); });
+    $('v48rkRef').addEventListener('click', function () { refresh(true); });
+    $('v48rkMine').addEventListener('click', publishMine);
+    var scroll = $('v48rkScroll');
+    scroll.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      var c = t.closest('[data-rkmap]');
+      if (c) { MAP = c.getAttribute('data-rkmap'); paint(true); try { V.beep(880, 0.04, 0.06, 'square', 1180); } catch (er) {} return; }
+      var m = t.closest('[data-rkmode]');
+      if (m) { MODE = m.getAttribute('data-rkmode'); paint(true); try { V.beep(880, 0.04, 0.06, 'square', 1180); } catch (er) {} return; }
+      var sd = t.closest('[data-rksort]');
+      if (sd) { SORT = sd.getAttribute('data-rksort'); paint(true); return; }
+      var tb = t.closest('[data-rktab]');
+      if (tb) { TAB = tb.getAttribute('data-rktab'); paint(true); return; }
+    });
+    return d;
+  }
+
+  function paint(force) {
+    var box = $('v48rkScroll');
+    if (!box) return;
+    var rows = entries();
+    var meIdx = -1;
+    var myName = myNick();
+    for (var i = 0; i < rows.length; i++) { if (String(rows[i].n) === myName) { meIdx = i; break; } }
+    var my = meIdx >= 0 ? rows[meIdx] : null;
+    var md = modeById(MODE) || { emoji: '🏁', name: MODE };
+    var mp = mapById(MAP) || { emoji: '🗺️', name: MAP };
+    var mgs = [];
+    var mgSig = '';
+    if (TAB === 'mg') {
+      var best = (root.JW48MG && root.JW48MG.best) || {};
+      var order = (root.JW48MG && root.JW48MG.order) || [];
+      order.forEach(function (id) {
+        var g = root.JW48MG.games[id];
+        var b = best[id];
+        mgs.push({ id: id, g: g, b: b });
+      });
+      mgSig = mgs.map(function (x) { return x.id + ':' + (x.b && x.b.value) + ':' + (x.b && x.b.at); }).join(',');
+    }
+    var s = [TAB, MAP, MODE, SORT, myName, rows.length, rows.map(function (r) { return r.n + r.m + r.t + (r.ts || ''); }).join('|'),
+      V.rank && V.rank.status, mgSig].join('#');
+    if (!force && s === sig) { paintAvas(box); return; }
+    sig = s;
+
+    var h = '';
+    /* 내 순위 배너 */
+    if (TAB === 'mg') {
+      var withRec = mgs.filter(function (x) { return x.b && x.b.value != null; }).length;
+      h += '<div class="me"><div style="flex:1;min-width:0"><div class="lbl">🕹️ 미니게임 내 기록</div>' +
+        '<div class="none">25종 중 <b style="color:#fde047">' + withRec + '종</b> 기록 보유 · 게임을 고르면 최고 기록이 쌓입니다</div></div>' +
+        '<div class="val">' + withRec + '<small>/ 25</small></div></div>';
+    } else if (my) {
+      h += '<div class="me">' +
+        '<div style="flex:1;min-width:0"><div class="lbl">내 순위 · ' + esc(mp.emoji + ' ' + mp.name) + ' / ' + esc(md.emoji + ' ' + md.name) + '</div>' +
+        '<div class="rk">' + (meIdx + 1) + '<i>위</i> <span style="font-size:10.5px;color:#bfdbfe">/ ' + rows.length + '명</span></div></div>' +
+        '<div class="val">' + valText(my) + '<small>' + esc(valSub(my)) + '</small></div></div>';
+    } else {
+      h += '<div class="me"><div style="flex:1;min-width:0"><div class="lbl">내 순위 · ' + esc(mp.emoji + ' ' + mp.name) + ' / ' + esc(md.emoji + ' ' + md.name) + '</div>' +
+        '<div class="none">아직 기록이 없어요 · 한 번 도전하면 바로 올라갑니다</div></div>' +
+        '<div class="val" style="color:#94a3b8">—</div></div>';
+    }
+
+    /* 탭 */
+    h += '<div class="tabs">' +
+      '<button type="button" class="tab' + (TAB === 'climb' ? ' on' : '') + '" data-rktab="climb">🏔️ 등반 기록</button>' +
+      '<button type="button" class="tab' + (TAB === 'mg' ? ' on' : '') + '" data-rktab="mg">🕹️ 미니게임 25종</button></div>';
+
+    if (TAB === 'climb') {
+      /* 필터 */
+      h += '<div class="fl">';
+      h += '<div class="frow"><div class="flb">🗺️</div><div class="chips">' +
+        mapList().map(function (m) {
+          return '<button type="button" class="chip' + (MAP === m.id ? ' on' : '') + '" data-rkmap="' + esc(m.id) + '">' + (m.emoji || '') + ' ' + esc(m.name) + '</button>';
+        }).join('') + '</div></div>';
+      h += '<div class="frow"><div class="flb">🎮</div><div class="chips">' +
+        modeList().map(function (m) {
+          return '<button type="button" class="chip' + (MODE === m.id ? ' on' : '') + '" data-rkmode="' + esc(m.id) + '">' + (m.emoji || '') + ' ' + esc(m.name) + '</button>';
+        }).join('') + '</div></div>';
+      h += '<div class="frow"><div class="flb">↕️</div><div class="chips">' +
+        '<button type="button" class="chip' + (SORT === 'm' ? ' on' : '') + '" data-rksort="m">📏 최고 도달</button>' +
+        '<button type="button" class="chip' + (SORT === 'time' ? ' on' : '') + '" data-rksort="time">⏱ 최단 클리어</button>' +
+        '</div></div></div>';
+
+      if (!rows.length) {
+        h += '<div class="empty">' + (SORT === 'time' ? '아직 클리어 기록이 없어요.<br>정상에 골인하면 최단 기록이 올라갑니다.' : '아직 기록이 없어요.<br>한 번 도전하면 최고 도달이 올라갑니다.') + '</div>';
+      } else {
+        var top = rows.slice(0, 3);
+        var order = [1, 0, 2];   /* 2위 · 1위 · 3위 배치 */
+        h += '<div class="pod">';
+        order.forEach(function (idx) {
+          var e = top[idx];
+          if (!e) { h += '<div class="pc" style="opacity:.35"><div class="md">—</div><div class="ava"></div><div class="nm">빈 자리</div></div>'; return; }
+          var cls = 'pc p' + (idx + 1) + (String(e.n) === myName ? ' me' : '');
+          var title = (String(e.n) === myName) ? myTitleName() : (e.live ? '실시간' : '');
+          h += '<div class="' + cls + '">' +
+            '<div class="md">' + ['🥇', '🥈', '🥉'][idx] + '</div>' +
+            '<div class="ava"><canvas width="46" height="54" data-rkava="' + esc(e.n) + '"></canvas></div>' +
+            '<div class="nm">' + esc(e.n) + '</div>' +
+            (title ? '<div class="ti">' + esc(title) + '</div>' : '<div class="ti">&nbsp;</div>') +
+            '<div class="vv">' + valText(e) + '<small>' + esc(valSub(e)) + '</small></div>' +
+            '<div class="dt">' + esc(rel(e.ts)) + '</div></div>';
+        });
+        h += '</div>';
+        if (rows.length > 3) {
+          h += '<div class="sec">' + (rows.length > 4 ? ('4위 ~ ' + rows.length + '위') : '4위') + ' <small>' + (SORT === 'time' ? '빠른 순' : '높은 순') + '</small></div><div class="lst">';
+          rows.slice(3, 30).forEach(function (e, i) {
+            var me = String(e.n) === myName;
+            h += '<div class="row' + (me ? ' me' : '') + '">' +
+              '<div class="n">' + (i + 4) + '</div>' +
+              '<div class="av"><canvas width="22" height="26" data-rkava="' + esc(e.n) + '"></canvas></div>' +
+              '<div class="nm">' + esc(e.n) + (me ? '<i>나</i>' : '') + (e.live ? '<i>📡</i>' : '') + '</div>' +
+              '<div class="vv">' + valText(e) + '</div>' +
+              '<div class="dt">' + esc(rel(e.ts)) + '</div></div>';
+          });
+          h += '</div>';
+        }
+      }
+      h += '<div class="net">' + esc((V.rank && V.rank.status) || '📡 접속자 기록과 합치는 중…') + '</div>';
+    } else {
+      /* 미니게임 기록 */
+      var has = mgs.filter(function (x) { return x.b && x.b.value != null; });
+      var rest = mgs.filter(function (x) { return !(x.b && x.b.value != null); });
+      has.sort(function (a, b) { return (b.b.at || 0) - (a.b.at || 0); });
+      rest.sort(function (a, b) { return (b.b && b.b.plays || 0) - (a.b && a.b.plays || 0); });
+      h += '<div class="sec">🏅 내 최고 기록<small>' + has.length + ' / ' + mgs.length + '종</small></div><div class="lst">';
+      has.forEach(function (x) {
+        var g = x.g || {};
+        var v = x.b.value;
+        var txt = (g.record && g.record.fmt) ? safeFmt(g.record.fmt, v) : (String(v) + (g.unit ? ' ' + g.unit : ''));
+        h += '<div class="row"><div class="n">' + (g.emoji || '🎮') + '</div>' +
+          '<div class="nm">' + esc(g.name || x.id) + (x.b.plays ? '<i>' + x.b.plays + '판</i>' : '') + '</div>' +
+          '<div class="vv">' + esc(txt) + '</div>' +
+          '<div class="dt">' + esc(rel(x.b.at)) + '</div></div>';
+      });
+      h += '</div>';
+      if (rest.length) {
+        h += '<div class="sec">아직 기록 없음<small>' + rest.length + '종</small></div><div class="lst">';
+        rest.forEach(function (x) {
+          var g = x.g || {};
+          h += '<div class="row" style="opacity:.55"><div class="n">' + (g.emoji || '🎮') + '</div>' +
+            '<div class="nm">' + esc(g.name || x.id) + '</div>' +
+            '<div class="vv" style="color:#64748b">기록 없음</div>' +
+            '<div class="dt"></div></div>';
+        });
+        h += '</div>';
+      }
+    }
+    /* 풋터: 탭에 따라 버튼 의미가 바뀐다 */
+    var mb = $('v48rkMine');
+    if (mb) {
+      var want = TAB === 'mg' ? '🕹️ 미니게임 하러 가기' : '📡 내 기록 올리기';
+      if (mb.textContent !== want) mb.textContent = want;
+    }
+    box.innerHTML = h;
+    paintAvas(box);
+  }
+  function safeFmt(fn, v) { try { return fn(v); } catch (e) { return String(v); } }
+  function myTitleName() {
+    try {
+      var t = V.api().titles ? V.api().titles() : null;
+      if (!t) return '';
+      var id = null;
+      try { var s = st(); id = s && s.me && s.me.ti; } catch (e) {}
+      var f = t.filter(function (x) { return x.id === id; })[0];
+      return f ? f.name : '';
+    } catch (e) { return ''; }
+  }
+
+  /* ---------------------------------------------------------------- 열기 · 새로고침 */
+  function ensureBus() {
+    var b = $('v42OpenRank');
+    if (!b) return;
+    b.__v48allow = true;
+    try { b.click(); } catch (e) {}
+    setTimeout(function () {
+      b.__v48allow = false;
+      var m = $('v42Rank');
+      if (m) m.classList.add('hidden');
+    }, 60);
+  }
+  function refresh(loud) {
+    ensureBus();
+    paint(true);
+    if (loud) { try { V.toast('🔄 새로고침', 'chat', '접속자 기록을 다시 받는 중', 1400); } catch (e) {} }
+  }
+  function publishMine() {
+    if (TAB === 'mg') {
+      close();
+      try {
+        if (root.JW43 && JW43.openWizard) JW43.openWizard();
+        setTimeout(function () { try { if (root.JW48I) { root.JW48I.on = true; JW48I.tick(); } } catch (e) {} }, 260);
+      } catch (e) {}
+      return;
+    }
+    var b = $('v42RankMine');
+    if (b) { b.click(); }
+    try { V.toast('📡 내 기록 올리기', 'lucky', '지금 기록을 랭킹에 올렸어요', 1800); } catch (e) {}
+    setTimeout(function () { paint(true); }, 300);
+  }
+  function open(opts) {
+    opts = opts || {};
+    if (!opts.keep) {
+      var cur = '';
+      try { cur = (root.JWMap && root.JWMap.current) || ''; } catch (e) {}
+      var cm = '';
+      try { cm = (root.JWMode && root.JWMode.rules && root.JWMode.rules.mode) || ''; } catch (e) {}
+      var s = st();
+      if (s && s.room) { cur = s.room.map || cur; cm = s.room.mode || cm; }
+      MAP = cur || 'default';
+      MODE = cm || 'normal';
+      if (!entries().length) {
+        var all = rankAll();
+        if (all.length) { MAP = all[all.length - 1].map; MODE = all[all.length - 1].mode; }
+      }
+    }
+    OPEN = true;
+    var d = build();
+    d.classList.remove('hidden');
+    sig = '';
+    paint(true);
+    ensureBus();
+    setTimeout(function () { if (OPEN) paint(true); }, 700);
+    try { V.beep(880, 0.07, 0.08, 'square', 1180); } catch (e) {}
+  }
+  function close() {
+    OPEN = false;
+    var d = $('v48rk');
+    if (d) d.classList.add('hidden');
+  }
+  RK.open = open;
+  RK.close = close;
+  RK.state = function () { return { open: OPEN, tab: TAB, map: MAP, mode: MODE, sort: SORT, sig: sig }; };
+
+  /* ---------------------------------------------------------------- 진입 가로채기 */
+  doc.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var b = t.closest('#v42OpenRank');
+    if (!b) return;
+    if (b.__v48allow) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    open();
+  }, true);
+
+  doc.addEventListener('keydown', function (e) {
+    if (!OPEN) return;
+    if (e.key === 'Escape') { e.preventDefault(); close(); }
+  }, true);
+
+  /* 다른 경로로 옛 랭킹 모달이 열리면 새 UI 로 넘긴다 */
+  setInterval(function () {
+    var old = $('v42Rank');
+    if (old && !old.classList.contains('hidden')) {
+      old.classList.add('hidden');
+      if (!OPEN) open({ keep: true });
+    }
+  }, 400);
 })(window);
 
 </script>
