@@ -46163,6 +46163,10 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
+
+
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -60356,6 +60360,257 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   paint();
   setTimeout(paint, 800);
   console.log('[JW50] minigames locked =', LOCK);
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.1-artbg : 인게임 배경 = 16비트 정상등반 일러스트(assets/maps/{id}.jpg)
+   - 45개 맵 전부, 실제 플레이 화면 배경으로 일러스트를 그린다.
+   - 기존 20맵(v4.7 artBg)과 같은 '고도 기반 세로 패럴랙스' 방식으로 통일해서
+     어떤 맵을 이어서 해도 배경 느낌이 튀지 않는다.
+   - 기존 엔진(JWMap.drawBg)은 그대로 두고 가장 바깥에서 한 겹만 덧댄다.
+   - 이미지가 아직 안 왔거나 실패하면 예전 배경으로 자연스럽게 넘어간다.
+   - JW51ART.SKIP[id]=true 로 특정 맵만 예전 배경으로 되돌릴 수 있다.
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW51ART) return;
+  var doc = document;
+  var W = 540;                     /* 월드 논리 폭 (엔진과 동일) */
+  var IMG_W = 720, IMG_H = 1280;   /* 원본 일러스트 크기 */
+
+  var S = {
+    zoom: 1.45,     /* 화면 높이 대비 일러스트 세로 배율 (클수록 배경이 더 길게 흐른다) */
+    anchor: 0.58,   /* 화면에서 시선이 머무는 지점 */
+    hue: 0.05       /* 전체 톤 다운 */
+  };
+
+  var IMG = {};      /* id -> {im, ok, at, err} */
+  var GEO = {};      /* id -> {top, bot} */
+  var CUR = '';
+  var STAT = { drawn: 0, last: '', lastAt: 0 };
+  var NO_ART = { custom: 1 };    /* 커스텀(내가 만든 맵)은 그림이 없다 → 404/콘솔 오류 방지 */
+
+  function subPath() {
+    var p = location.pathname.replace(/\/+$/, '');
+    if (/\/(gemini-v[0-9-]+|pickle[^/]*|gpt|grok[^/]*|claude[^/]*|manus|deepseek|perplexity|qwen|ai-studio)$/.test(p)) return '../';
+    return './';
+  }
+  function imgFor(id) {
+    var e = IMG[id];
+    if (e) return e;
+    e = IMG[id] = { im: null, ok: false, at: 0, err: 0 };
+    if (NO_ART[id]) { e.err = 3; return e; }
+    try {
+      var im = new Image();
+      im.decoding = 'async';
+      im.onload = function () {
+        e.ok = !!(im.naturalWidth && im.naturalHeight);
+        e.at = Date.now();
+        if (root.JW51ART && JW51ART.onload) { try { JW51ART.onload(id); } catch (er) {} }
+        /* 이 맵이 지금 화면이면 다음 프레임부터 바로 그려진다 */
+        try { if (root.JW43 && JW43.repaintMapThumbs) JW43.repaintMapThumbs(); } catch (er) {}
+      };
+      im.onerror = function () {
+        if (e.err === 0) { e.err = 1; try { im.src = subPath() + 'assets/maps/' + id + '.jpg?' + Date.now(); } catch (er) {} return; }
+        e.ok = false; e.err = 2;
+        console.warn('[JW51ART] image fail', id);
+      };
+      im.src = subPath() + 'assets/maps/' + id + '.jpg';
+      e.im = im;
+    } catch (er) { e.ok = false; }
+    return e;
+  }
+
+  /* 맵의 위/아래 월드 좌표 (배경이 흐를 구간) */
+  function geo(id) {
+    if (GEO[id]) return GEO[id];
+    var top = -10200, bot = 1760, ps = null;
+    try {
+      ps = root.__jwg && root.__jwg.platforms;
+      if (!ps || !ps.length || (root.JWMap && root.JWMap.current !== id)) {
+        var a = [], b = [];
+        root.JWMap.build(id, a, b);
+        ps = a;
+      }
+    } catch (e) { ps = null; }
+    if (ps && ps.length) {
+      top = 1e9; bot = -1e9;
+      for (var i = 0; i < ps.length; i++) {
+        var p = ps[i];
+        if (!p || p.index <= 0) continue;
+        if (p.y < top) top = p.y;
+        if (p.y > bot) bot = p.y;
+      }
+      if (top === 1e9) { top = -10200; bot = 1760; }
+      top -= 260; bot += 420;
+    }
+    GEO[id] = { top: top, bot: bot };
+    return GEO[id];
+  }
+  function elevOf(id, camY, H) {
+    var g = geo(id);
+    var yc = camY + H * S.anchor;
+    var span = Math.max(1, g.bot - g.top);
+    var t = (g.bot - yc) / span;
+    t = (t - 0.045) / 0.91;
+    return t < 0 ? 0 : t > 1 ? 1 : t;
+  }
+
+  var _gr = { H: 0, top: null, bot: null, vig: null };
+  function overlays(ctx, H) {
+    if (_gr.H !== H || !_gr.top) {
+      _gr.H = H;
+      var top = ctx.createLinearGradient(0, 0, 0, H * 0.30);
+      top.addColorStop(0, 'rgba(6,10,22,0.26)');
+      top.addColorStop(0.55, 'rgba(6,10,22,0.09)');
+      top.addColorStop(1, 'rgba(6,10,22,0)');
+      var bot = ctx.createLinearGradient(0, H * 0.64, 0, H);
+      bot.addColorStop(0, 'rgba(4,8,18,0)');
+      bot.addColorStop(1, 'rgba(4,8,18,0.22)');
+      var vig = ctx.createRadialGradient(W * 0.5, H * 0.46, Math.min(W, H) * 0.26, W * 0.5, H * 0.48, Math.max(W, H) * 0.82);
+      vig.addColorStop(0, 'rgba(0,0,0,0)');
+      vig.addColorStop(1, 'rgba(4,8,18,0.16)');
+      _gr.top = top; _gr.bot = bot; _gr.vig = vig;
+    }
+    ctx.fillStyle = _gr.top; ctx.fillRect(0, 0, W, H * 0.30);
+    ctx.fillStyle = _gr.bot; ctx.fillRect(0, H * 0.64, W, H * 0.36);
+    ctx.fillStyle = _gr.vig; ctx.fillRect(0, 0, W, H);
+  }
+
+  function skyOf(id) {
+    var m = null;
+    try { m = root.JWMap.byId(id); } catch (e) {}
+    var sky = (m && m.sky) || null;
+    return sky && sky.length >= 3 ? sky : ['#0b1024', '#1a2340', '#2a3350'];
+  }
+
+  /* 실제 그리기: 성공하면 true */
+  function draw(id, ctx, camY, lh, opt) {
+    if (!id) return false;
+    if (JW51ART.SKIP[id] || NO_ART[id]) return false;
+    var e = imgFor(id);
+    if (!e.ok) {
+      /* 이미지 오는 동안: 하늘만 깔아 검은 화면을 막는다 */
+      var sky = skyOf(id);
+      var gg = ctx.createLinearGradient(0, 0, 0, lh);
+      gg.addColorStop(0, sky[0]); gg.addColorStop(0.55, sky[1]); gg.addColorStop(1, sky[2]);
+      ctx.fillStyle = gg; ctx.fillRect(0, 0, W, lh);
+      return true;
+    }
+    var iw = e.im.naturalWidth || IMG_W, ih = e.im.naturalHeight || IMG_H;
+    var H = lh;
+    var t = elevOf(id, camY, H);
+    /* 화면보다 세로로 길게 그려서, 오를수록 일러스트가 발밑으로 천천히 흐른다 */
+    var s = Math.max(W / iw, (H * S.zoom) / ih);
+    var dw = iw * s, dh = ih * s;
+    var sy = (1 - t) * (dh - H);
+    if (sy < 0) sy = 0;
+    if (sy > dh - H) sy = dh - H;
+    var sx = (dw - W) / 2;
+    ctx.save();
+    try { ctx.imageSmoothingEnabled = true; } catch (er) {}
+    ctx.drawImage(e.im, -sx, -sy, dw, dh);
+    if (!(opt && opt.noVeil)) overlays(ctx, H);
+    ctx.restore();
+    STAT.drawn++; STAT.last = id; STAT.lastAt = Date.now();
+    try { if (CUR !== id) { CUR = id; } } catch (er) {}
+    return true;
+  }
+
+  /* ---------------------------------------------------------------- 래퍼 설치 */
+  function patch() {
+    var M = root.JWMap;
+    if (!M || typeof M.drawBg !== 'function') return false;
+    if (M.drawBg.__v51art) return true;
+    var o = M.drawBg;
+    var w = function (id, ctx, camY, lh) {
+      try { if (draw(id, ctx, camY, lh)) return true; } catch (e) {
+        if (!root.__v51arterr) { root.__v51arterr = String(e); console.warn('[JW51ART]', e); }
+      }
+      return o.apply(this, arguments);
+    };
+    w.__v51art = true;
+    M.drawBg = w;
+    try {
+      var P = root.JW43PANO;
+      if (P && typeof P.drawBg === 'function' && !P.drawBg.__v51art) {
+        var po = P.drawBg;
+        var pw = function (id, ctx, camY, lh) {
+          try { if (draw(id, ctx, camY, lh)) return true; } catch (e) {}
+          return po.apply(this, arguments);
+        };
+        pw.__v51art = true;
+        P.drawBg = pw;
+      }
+    } catch (e) {}
+    return true;
+  }
+  /* 다른 모듈(v4.7 artBg 등)이 위에 다시 감싸도 250ms 안에 다시 맨 위로 올라온다 */
+  setInterval(function () { try { patch(); } catch (e) {} }, 250);
+  setTimeout(patch, 60);
+
+  root.JW51ART = {
+    S: S,
+    SKIP: {},
+    has: function (id) { return !NO_ART[id] && !JW51ART.SKIP[id]; },
+    state: function (id) {
+      var e = IMG[id];
+      return { id: id, loaded: !!(e && e.ok), w: (e && e.im && e.im.naturalWidth) || 0, h: (e && e.im && e.im.naturalHeight) || 0, err: (e && e.err) || 0 };
+    },
+    stats: function () { return { drawn: STAT.drawn, last: STAT.last, imgCache: Object.keys(IMG).length, geo: GEO[STAT.last] || null }; },
+    warm: function (id) { return imgFor(id); },
+    geo: geo,
+    /* 검증용: 오프스크린 캔버스에 배경을 그린다 */
+    drawInto: function (id, cv, camY, lh) {
+      var c = cv.getContext('2d');
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.clearRect(0, 0, cv.width, cv.height);
+      var sx = cv.width / W, sy = cv.height / (lh || 740);
+      c.save(); c.setTransform(sx, 0, 0, sy, 0, 0);
+      var ok = draw(id, c, camY || 0, lh || 740);
+      c.restore();
+      return ok;
+    },
+    /* 검증용: 실제 엔진 체인(JWMap.drawBg)을 그대로 호출해 '일러스트가 그려졌는지' 본다 */
+    traceChain: function (id) {
+      var cv = doc.createElement('canvas'); cv.width = W; cv.height = 740;
+      var c = cv.getContext('2d');
+      var before = STAT.drawn;
+      var ok = false;
+      try { ok = !!root.JWMap.drawBg(id, c, -400, 740); } catch (e) { ok = false; }
+      return { id: id, chainOk: ok, artUsed: STAT.drawn > before };
+    },
+    /* 검증용: 그려진 배경 픽셀이 실제 일러스트와 얼마나 비슷한지(0~1) */
+    similarity: function (id, camY, lh) {
+      var e = imgFor(id);
+      if (!e.ok) return -1;
+      var cv = doc.createElement('canvas'); cv.width = W; cv.height = lh || 740;
+      var ok = JW51ART.drawInto(id, cv, camY, lh);
+      if (!ok) return -1;
+      var c = cv.getContext('2d');
+      var d = c.getImageData(0, 0, cv.width, cv.height).data;
+      /* 비교: 같은 고도에서 원본 이미지를 같은 배율로 그린 참조 캔버스 */
+      var rv = doc.createElement('canvas'); rv.width = cv.width; rv.height = cv.height;
+      var rc = rv.getContext('2d');
+      rc.drawImage(e.im, 0, 0, cv.width, cv.height);
+      var rd = rc.getImageData(0, 0, rv.width, rv.height).data;
+      var n = 0, same = 0, colors = {}, cn = 0;
+      for (var i = 0; i < d.length; i += 4 * 53) {
+        var k = (d[i] >> 4) + ',' + (d[i + 1] >> 4) + ',' + (d[i + 2] >> 4);
+        if (!colors[k]) { colors[k] = 1; cn++; }
+        n++;
+        var dr = Math.abs(d[i] - rd[i]) + Math.abs(d[i + 1] - rd[i + 1]) + Math.abs(d[i + 2] - rd[i + 2]);
+        if (dr < 300) same++;
+      }
+      return { id: id, colors: cn, similar: +(same / Math.max(1, n)).toFixed(2) };
+    },
+    repaint: function () { STAT.last = ''; }
+  };
+  console.log('[JW51ART] art backgrounds ready');
 })(window);
 
 </script>
