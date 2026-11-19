@@ -46162,6 +46162,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -56806,7 +56807,6 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (!f || f === 'all') return true;
     if (f === 'short' || f === 'mid' || f === 'long') return J.tierOf ? J.tierOf(id) === f : true;
     if (f === 'easy' || f === 'hard') return J.easyOf ? J.easyOf(id) === f : true;
-    if (f === 'easiest') return (window.__jw50easy ? window.__jw50easy(id) : false);
     return (J.THEME && J.THEME[id] || 'special') === f;
   }
   function modeCat(id) {
@@ -59760,7 +59760,17 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   }
   function pickPair() {
     var c = swapCandidates();
-    if (!c.length) return null;
+    if (!c.length) {
+      /* 혼자일 때(봇 없음): 3~7층 위/아래 발판으로 강제 이동 — 모드가 비지 않게 */
+      var P = plats().filter(function (q) { return q && q.index > 0; });
+      if (!P.length) return null;
+      var p = player();
+      var cur = 0;
+      for (var k = 0; k < P.length; k++) { if (Math.abs((P[k].y - 20) - p.y) < Math.abs((P[cur].y - 20) - p.y)) cur = k; }
+      var step = (Math.random() < 0.5 ? -1 : 1) * (3 + ((Math.random() * 5) | 0));
+      var tgt = P[Math.max(1, Math.min(P.length - 1, cur + step))];
+      return { pid: '', nick: '발판', me: true, other: { x: tgt.x + 10, y: tgt.y, plat: tgt.index } };
+    }
     var i = (Math.random() * c.length) | 0;
     return { pid: c[i].pid, nick: c[i].nick, me: true, other: c[i] };
   }
