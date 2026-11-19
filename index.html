@@ -46295,6 +46295,8 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -71071,6 +71073,37 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   var WIPE_FLAG = 'jw51_wipe_v1';
   function wipeDone() { try { return localStorage.getItem(WIPE_FLAG) === '1'; } catch (e) { return true; } }
 
+  /* ================================================================ 9. 정상 발판이 닿지 않는 맵 보정
+     (새 24맵 중 mushroom·santa·honey·cheese 는 마지막 발판과 정상(summit) 사이가 3,200px 넘게
+      벌어져 있어 정상에 도달할 수 없었다. 그런 '명백히 불가능한' 구간만 정상 발판을 끌어내린다.)
+      — 240~280px 수준의 어려운 점프는 손대지 않는다(난이도 보존). */
+  function summitFix() {
+    var M = root.JWMap;
+    if (!M || typeof M.build !== 'function' || M.build.__v51summit) return;
+    var ob = M.build;
+    var w = function (id, P, A) {
+      var ok = ob.apply(this, arguments);
+      try {
+        if (ok && P && P.length > 2) {
+          var last = P[P.length - 1];
+          var prev = P[P.length - 2];
+          if (last && prev && String(last.type) === 'summit') {
+            var gap = prev.y - last.y;
+            if (gap > 600) {
+              last.y = prev.y - 220;
+              last.baseY = last.y;
+              last.__v51moved = 1;
+              console.log('[JW51FIN] summit pulled down', id, Math.round(gap), '→ 220');
+            }
+          }
+        }
+      } catch (e) {}
+      return ok;
+    };
+    w.__v51summit = 1;
+    M.build = w;
+  }
+
   /* ================================================================ 부트 */
   var lastRank = 0;
   function ensureEndSolo() {
@@ -71079,6 +71112,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (!M.endSolo.__v51n) hookEndSolo();
   }
   function slowTick() {
+    try { summitFix(); } catch (e) {}
     try { ensureEndSolo(); } catch (e) {}
     try { rankGuard(); } catch (e) {}
     try { pauseFix(); } catch (e) {}
@@ -71107,6 +71141,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   }
   function boot() {
     css();
+    try { summitFix(); } catch (e) {}
     try { wipeSession(); } catch (e) {}
     hookEndSolo();
     slowTick();
