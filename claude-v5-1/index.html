@@ -46233,6 +46233,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -63390,6 +63391,8 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var best = null;
     rankAll().forEach(function (r) {
       if (!r || r.map !== mapId) return;
+      /* 🏛️ 1위 전용 칭호는 클래식(pureclassic) 기록만 인정 */
+      if (r.mode !== 'pureclassic') return;
       var n = String(r.n || r.nick || '').trim();
       if (!n) return;
       var m = Number(r.m) || 0;
@@ -63403,6 +63406,8 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (!me) return false;
     rankAll().forEach(function (r) {
       if (!r || r.map !== mapId) return;
+      /* 🏛️ 1위 전용 칭호는 클래식(pureclassic) 기록만 인정 */
+      if (r.mode !== 'pureclassic') return;
       var n = String(r.n || r.nick || '').trim();
       if (!n) return;
       var m = Number(r.m) || 0;
@@ -63441,11 +63446,11 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
         var kt = {
           id: kid, name: '👑 ' + pair[1], short: pair[1], rank: 3,
           need: function () { return isChamp(mid); },
-          why: nm + ' 랭킹 1등 유지 시 사용 가능', map: mid, grade: 'champion'
+          why: nm + ' 클래식 랭킹 1등 유지 시 사용 가능', map: mid, grade: 'champion'
         };
         titles.push(kt);
-        reg(kid, { id: kid, map: mid, kind: 'champ', name: pair[1], grade: 'champion', why: nm + ' 랭킹 1등 유지 시 사용 가능', icon: badgeIcon(mid) });
-      } else reg(kid, { id: kid, map: mid, kind: 'champ', name: pair[1], grade: 'champion', why: nm + ' 랭킹 1등 유지 시 사용 가능', icon: badgeIcon(mid) });
+        reg(kid, { id: kid, map: mid, kind: 'champ', name: pair[1], grade: 'champion', why: nm + ' 클래식 랭킹 1등 유지 시 사용 가능', icon: badgeIcon(mid) });
+      } else reg(kid, { id: kid, map: mid, kind: 'champ', name: pair[1], grade: 'champion', why: nm + ' 클래식 랭킹 1등 유지 시 사용 가능', icon: badgeIcon(mid) });
     });
 
     /* 일러스트 전용 특수 칭호 */
@@ -68656,6 +68661,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var best = {};
     rankAll().forEach(function (r) {
       if (!r || !r.map) return;
+      if (r.mode !== 'pureclassic') return;    /* 🏛️ 클래식 1위만 인정 */
       var n = String(r.n || '').trim(), m = Number(r.m) || 0;
       if (!best[r.map] || m > best[r.map].m) best[r.map] = { n: n, m: m };
     });
@@ -68676,7 +68682,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     { id: 'cyber', name: '💜 사이버 네온', cls: 'v57-pl-cyber', why: '⏱️ 타임어택 40층 이상', need: function () { return timeattackBest() >= 40; }, prog: function () { return Math.round(timeattackBest()) + ' / 40층'; } },
     { id: 'blood', name: '🩸 블러드 문', cls: 'v57-pl-blood', why: '🥊 보스 러시 격파', need: function () { return bossCleared(); }, prog: function () { return bossCleared() ? '달성' : '보스 러시 격파 필요'; } },
     { id: 'prism', name: '💎 천상 프리즘', cls: 'v57-pl-prism', why: '45맵 클래식 올클리어', need: function () { return board().length >= 45; }, prog: function () { return board().length + ' / 45 맵'; } },
-    { id: 'emperor', name: '👑 정상의 황제', cls: 'v57-pl-emperor', king: true, why: '아무 맵이나 랭킹 1등', need: function () { return isChampAny(); }, prog: function () { return isChampAny() ? '1등 유지 중' : '랭킹 1등 필요'; } }
+    { id: 'emperor', name: '👑 정상의 황제', cls: 'v57-pl-emperor', king: true, why: '클래식 모드 랭킹 1등', need: function () { return isChampAny(); }, prog: function () { return isChampAny() ? '1등 유지 중' : '랭킹 1등 필요'; } }
   ];
   /* ---------- 테두리 ---------- */
   var FRAMES = [
@@ -68688,7 +68694,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     { id: 'fire', name: '🔥 용암 불꽃', cls: 'v57-fr-fire', why: '보스 러시 격파', need: function () { return bossCleared(); }, prog: function () { return bossCleared() ? '달성' : '보스 러시 격파 필요'; } },
     { id: 'holo', name: '🪩 홀로그램', cls: 'v57-fr-holo', why: '타임어택 40층', need: function () { return timeattackBest() >= 40; }, prog: function () { return Math.round(timeattackBest()) + ' / 40층'; } },
     { id: 'knight', name: '🛡️ 황금 기사단', cls: 'v57-fr-knight', why: '45맵 올클리어', need: function () { return board().length >= 45; }, prog: function () { return board().length + ' / 45 맵'; } },
-    { id: 'crown', name: '👑 왕좌의 황금', cls: 'v57-fr-crown', king: true, why: '아무 맵이나 랭킹 1등', need: function () { return isChampAny(); }, prog: function () { return isChampAny() ? '1등 유지 중' : '랭킹 1등 필요'; } }
+    { id: 'crown', name: '👑 왕좌의 황금', cls: 'v57-fr-crown', king: true, why: '클래식 모드 랭킹 1등', need: function () { return isChampAny(); }, prog: function () { return isChampAny() ? '1등 유지 중' : '랭킹 1등 필요'; } }
   ];
   function byId(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return list[0]; }
   function plateOn() { return byId(PLATES, ls(K_PLATE, 'none') || 'none'); }
