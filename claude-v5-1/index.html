@@ -46231,6 +46231,8 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -68495,6 +68497,621 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
   root.JW57NF = { sel: SEL, settle: settle };
   console.log('[JW57NF] no-flicker ready');
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.7-plate : 🌈 이름표 · 🖼️ 테두리를 칭호와 똑같이 5곳 전체에
+     - 무지개 이름표(JW46_RAINBOW) + 프로필 픽셀 테두리(JW44.G.frame)를
+       ① 인게임 HUD/캐릭터 머리 위  ② 타이틀  ③ 랭킹  ④ 친구창·프로필 시트  ⑤ 채팅
+       에서 모두 같은 모습으로 보여 준다
+     - 비주얼 업그레이드: 부드러운 그라데이션 흐름 + 은은한 네온/골드 광택 (가벼운 CSS만 사용)
+     - 인게임 칭호/이름표 ON-OFF 설정(83_ingame_tag) 과 함께 동작
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW57PLATE) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+
+  function rainbowOn() {
+    try { return !!(root.JW46_RAINBOW && root.JW46_RAINBOW.on && root.JW46_RAINBOW.on()); } catch (e) { return false; }
+  }
+  function frameId() {
+    try { if (V.G && V.G.frame) return V.G.frame; } catch (e) {}
+    try { return V.lsGet('jw44_frame_v1', 'none') || 'none'; } catch (e) { return 'none'; }
+  }
+  function myNick() { try { var s = V.st(); return (s && s.me && s.me.nick) || ''; } catch (e) { return ''; } }
+  function plateCls() { return rainbowOn() ? 'v57-rainbow' : ''; }
+  function frameCls() { var f = frameId(); return f && f !== 'none' ? ('v57-fr-' + f) : ''; }
+
+  function css() {
+    if ($('v57plateCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v57plateCss';
+    s.textContent = [
+      /* 🌈 무지개 이름표 — 부드러운 그라데이션 흐름 + 은은한 광택 (transform 없이 배경 위치만 이동) */
+      '@keyframes v57rb{0%{background-position:0% 50%}100%{background-position:200% 50%}}',
+      '.v57-rainbow{background-image:linear-gradient(92deg,#ff9ec4,#ffd28a 18%,#a8ff9e 36%,#8ce3ff 54%,#c6a4ff 72%,#ff9ec4 90%);',
+      '  background-size:220% 100%;animation:v57rb 6s linear infinite;-webkit-background-clip:text;background-clip:text;',
+      '  color:transparent !important;-webkit-text-fill-color:transparent;',
+      '  filter:drop-shadow(0 0 4px rgba(255,180,220,.45));}',
+      /* 채팅·랭킹의 <b> 닉에도 자연스럽게 */
+      '.mp-msg b.v57-rainbow,#v48rk .v57-rainbow,#v485hList .v57-rainbow{color:transparent !important;}',
+      /* 🖼️ 테두리 링 (이름표 옆 아바타에 얇게) */
+      '.v57-fr-gold{box-shadow:0 0 0 2px #fbbf24,0 0 10px rgba(251,191,36,.55) !important;border-radius:10px;}',
+      '.v57-fr-neon{box-shadow:0 0 0 2px #22d3ee,0 0 12px rgba(34,211,238,.6) !important;border-radius:10px;}',
+      '.v57-fr-leaf{box-shadow:0 0 0 2px #34d399,0 0 10px rgba(52,211,153,.5) !important;border-radius:10px;}',
+      '.v57-fr-star{box-shadow:0 0 0 2px #c084fc,0 0 12px rgba(192,132,252,.6) !important;border-radius:10px;}',
+      '.v57-fr-fire{box-shadow:0 0 0 2px #fb923c,0 0 12px rgba(251,146,60,.6) !important;border-radius:10px;}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+
+  /* 내 이름표/테두리를 요소에 적용 (이미 같으면 건드리지 않음) */
+  function paint(el, withFrame) {
+    if (!el) return;
+    var pc = plateCls();
+    if (pc && !el.classList.contains(pc)) el.classList.add(pc);
+    if (!pc && el.classList.contains('v57-rainbow')) el.classList.remove('v57-rainbow');
+    if (withFrame) {
+      var fc = frameCls();
+      ['gold', 'neon', 'leaf', 'star', 'fire'].forEach(function (k) {
+        var c = 'v57-fr-' + k;
+        if (c !== fc && el.classList.contains(c)) el.classList.remove(c);
+      });
+      if (fc && !el.classList.contains(fc)) el.classList.add(fc);
+    }
+  }
+
+  function apply() {
+    var nick = myNick();
+    /* ① 타이틀 · 친구창 내 카드 · 프로필 */
+    paint($('v43TPNick')); paint($('v485hNick')); paint($('v43ProfNick')); paint($('mpNick') && null);
+    /* ② 인게임 HUD 배지 옆 닉네임 / 캐릭터 머리 위 태그 */
+    var ig = $('v51IGTag');
+    if (ig) {
+      var span = ig.querySelector('span');
+      if (span) paint(span, true);
+    }
+    var hb = $('v485hNick');
+    if (hb) { var pw = hb.parentElement; if (pw) { var av = pw.parentElement && pw.parentElement.querySelector('.v485h-ava'); if (av) paint(av, true); } }
+    /* ③ 5곳: 랭킹 — 내 닉네임 */
+    if (nick) {
+      doc.querySelectorAll('#v48rk .pc .nm, #v48rk .row .nm').forEach(function (el) {
+        if (String(el.textContent || '').replace('나', '').trim() === String(nick).trim()) paint(el);
+      });
+      /* ④ 채팅 — 내가 보낸 메시지의 닉네임 */
+      doc.querySelectorAll('#mpLobbyChatLog .mp-msg b, #mpChatLog .mp-msg b').forEach(function (el) {
+        if (String(el.textContent || '').trim() === String(nick).trim()) paint(el);
+      });
+      /* ⑤ 친구 프로필 시트 / 친구 목록 */
+      var fs = $('v56FS');
+      if (fs) { fs.querySelectorAll('.hero .nm').forEach(function (el) {
+        if (String(el.textContent || '').trim() === String(nick).trim()) paint(el);
+      }); }
+    }
+    /* 내 아바타 테두리: 타이틀/친구창/스킨 모달 */
+    var avatars = ['hudPortrait', 'v43ProfBig', 'v42SkinBig'];
+    avatars.forEach(function (id) {
+      var el = $(id);
+      if (el) paint(el, true);
+    });
+  }
+
+  function boot() {
+    css();
+    apply();
+    setInterval(function () { try { apply(); } catch (e) {} }, 900);
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 800); });
+  else setTimeout(boot, 800);
+
+  root.JW57PLATE = { apply: apply, rainbow: rainbowOn, frame: frameId };
+  console.log('[JW57PLATE] nameplate & frame ready');
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.8-plates : 🌈 이름표 · 🖼️ 테두리 해금 시스템 (칭호와 같은 결)
+     - 도전/업적으로 열리는 이름표·테두리 + 기록 1등 전용(👑) 이름표·테두리
+     - 잠긴 항목은 조건과 내 진행도를 보여 주고, 조건 달성 시 자동 해금 + 알림
+     - 장착한 이름표/테두리는 5곳(인게임·메인·랭킹·친구창·채팅)에 그대로 표시 (87_nameplate 가 그림)
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW57PL) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;'; }); }
+
+  var K_PLATE = 'v57_plate_v1';    /* 장착한 이름표 id */
+  var K_FRAME = 'v57_frame_v1';    /* 장착한 테두리 id */
+  var K_SEEN = 'v57_unlock_seen_v1';
+
+  function ls(k, d) { try { var v = V.lsGet(k, d); return v === undefined || v === null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { V.lsSet(k, v); } catch (e) {} }
+
+  /* ---------- 내 진행도 ---------- */
+  function board() { var a = ls('jw51_board_v2', []); return Array.isArray(a) ? a : []; }
+  function prof() { try { var i = V.api().internals ? V.api().internals() : null; return (i && i.prof) || {}; } catch (e) { return {}; } }
+  function ach() { var a = ls('jw43_ach_v1', {}); return a && typeof a === 'object' ? a : {}; }
+  function climb() { try { return (V.STAT43 && V.STAT43.climbM) || 0; } catch (e) { return 0; } }
+  function rankAll() {
+    var out = [];
+    try { out = (V.lsGet('jw43_rank_v1', []) || []).slice(); } catch (e) {}
+    try { (V.rank && V.rank.live || []).forEach(function (r) { out.push(r); }); } catch (e) {}
+    return out;
+  }
+  function myNick() { try { var s = V.st(); return (s && s.me && s.me.nick) || ''; } catch (e) { return ''; } }
+  function isChampAny() {
+    var me = String(myNick()).trim();
+    if (!me) return false;
+    var best = {};
+    rankAll().forEach(function (r) {
+      if (!r || !r.map) return;
+      var n = String(r.n || '').trim(), m = Number(r.m) || 0;
+      if (!best[r.map] || m > best[r.map].m) best[r.map] = { n: n, m: m };
+    });
+    return Object.keys(best).length > 0 && Object.keys(best).some(function (k) { return best[k].n === me; });
+  }
+  function bossCleared() { var a = ach(); return !!(a.clear1 || a.boss || a.bossrush || a.raid); }
+  function timeattackBest() {
+    var me = String(myNick()).trim(), best = 0;
+    rankAll().forEach(function (r) { if (r && r.mode === 'timeattack' && String(r.n || '').trim() === me) best = Math.max(best, Number(r.m) || 0); });
+    return best;
+  }
+
+  /* ---------- 이름표 ---------- */
+  var PLATES = [
+    { id: 'none', name: '기본', cls: '', why: '기본 이름표', need: function () { return true; }, prog: function () { return ''; } },
+    { id: 'rainbow', name: '🌈 무지개', cls: 'v57-rainbow', why: '누적 등반 15,000m', need: function () { return climb() >= 15000; }, prog: function () { return Math.round(climb()) + ' / 15,000m'; } },
+    { id: 'emerald', name: '💚 에메랄드 오라', cls: 'v57-pl-emerald', why: '🏛️ 클래식 모드 첫 완등', need: function () { return board().length >= 1; }, prog: function () { return board().length + ' / 1 맵'; } },
+    { id: 'cyber', name: '💜 사이버 네온', cls: 'v57-pl-cyber', why: '⏱️ 타임어택 40층 이상', need: function () { return timeattackBest() >= 40; }, prog: function () { return Math.round(timeattackBest()) + ' / 40층'; } },
+    { id: 'blood', name: '🩸 블러드 문', cls: 'v57-pl-blood', why: '🥊 보스 러시 격파', need: function () { return bossCleared(); }, prog: function () { return bossCleared() ? '달성' : '보스 러시 격파 필요'; } },
+    { id: 'prism', name: '💎 천상 프리즘', cls: 'v57-pl-prism', why: '45맵 클래식 올클리어', need: function () { return board().length >= 45; }, prog: function () { return board().length + ' / 45 맵'; } },
+    { id: 'emperor', name: '👑 정상의 황제', cls: 'v57-pl-emperor', king: true, why: '아무 맵이나 랭킹 1등', need: function () { return isChampAny(); }, prog: function () { return isChampAny() ? '1등 유지 중' : '랭킹 1등 필요'; } }
+  ];
+  /* ---------- 테두리 ---------- */
+  var FRAMES = [
+    { id: 'none', name: '기본', cls: '', why: '기본 테두리', need: function () { return true; }, prog: function () { return ''; } },
+    { id: 'gold', name: '🏅 황금', cls: 'v57-fr-gold', why: '3개 맵 클리어', need: function () { return (prof().mapsCleared || []).length >= 3 || board().length >= 3; }, prog: function () { return Math.max((prof().mapsCleared || []).length, board().length) + ' / 3 맵'; } },
+    { id: 'neon', name: '💠 네온', cls: 'v57-fr-neon', why: '10개 맵 클리어', need: function () { return (prof().mapsCleared || []).length >= 10 || board().length >= 10; }, prog: function () { return Math.max((prof().mapsCleared || []).length, board().length) + ' / 10 맵'; } },
+    { id: 'leaf', name: '🌿 새싹', cls: 'v57-fr-leaf', why: '첫 완등', need: function () { return (prof().clears || 0) >= 1 || board().length >= 1; }, prog: function () { return ((prof().clears || 0) || board().length) + ' / 1회'; } },
+    { id: 'star', name: '✨ 별빛 픽셀', cls: 'v57-fr-star', why: '누적 5,000m', need: function () { return climb() >= 5000; }, prog: function () { return Math.round(climb()) + ' / 5,000m'; } },
+    { id: 'fire', name: '🔥 용암 불꽃', cls: 'v57-fr-fire', why: '보스 러시 격파', need: function () { return bossCleared(); }, prog: function () { return bossCleared() ? '달성' : '보스 러시 격파 필요'; } },
+    { id: 'holo', name: '🪩 홀로그램', cls: 'v57-fr-holo', why: '타임어택 40층', need: function () { return timeattackBest() >= 40; }, prog: function () { return Math.round(timeattackBest()) + ' / 40층'; } },
+    { id: 'knight', name: '🛡️ 황금 기사단', cls: 'v57-fr-knight', why: '45맵 올클리어', need: function () { return board().length >= 45; }, prog: function () { return board().length + ' / 45 맵'; } },
+    { id: 'crown', name: '👑 왕좌의 황금', cls: 'v57-fr-crown', king: true, why: '아무 맵이나 랭킹 1등', need: function () { return isChampAny(); }, prog: function () { return isChampAny() ? '1등 유지 중' : '랭킹 1등 필요'; } }
+  ];
+  function byId(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return list[0]; }
+  function plateOn() { return byId(PLATES, ls(K_PLATE, 'none') || 'none'); }
+  function frameOn() { return byId(FRAMES, ls(K_FRAME, 'none') || 'none'); }
+
+  function css() {
+    if ($('v57plCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v57plCss';
+    s.textContent = [
+      '@keyframes v57flow{0%{background-position:0% 50%}100%{background-position:200% 50%}}',
+      '.v57-rainbow,.v57-pl-emerald,.v57-pl-cyber,.v57-pl-blood,.v57-pl-prism,.v57-pl-emperor{',
+      '  background-size:220% 100%;animation:v57flow 6s linear infinite;-webkit-background-clip:text;background-clip:text;',
+      '  color:transparent !important;-webkit-text-fill-color:transparent;}',
+      '.v57-pl-emerald{background-image:linear-gradient(92deg,#a7f3d0,#34d399 40%,#6ee7b7 60%,#a7f3d0);filter:drop-shadow(0 0 5px rgba(52,211,153,.5));}',
+      '.v57-pl-cyber{background-image:linear-gradient(92deg,#22d3ee,#a855f7 45%,#f472b6 70%,#22d3ee);filter:drop-shadow(0 0 6px rgba(168,85,247,.55));}',
+      '.v57-pl-blood{background-image:linear-gradient(92deg,#fda4af,#dc2626 45%,#7f1d1d 60%,#f87171);filter:drop-shadow(0 0 6px rgba(220,38,38,.5));}',
+      '.v57-pl-prism{background-image:linear-gradient(92deg,#fff7cc,#fbbf24 20%,#7dd3fc 45%,#c084fc 70%,#fff7cc);filter:drop-shadow(0 0 7px rgba(251,191,36,.5));}',
+      '.v57-pl-emperor{background-image:linear-gradient(92deg,#fff3b0,#ffd24a 30%,#fffbe6 50%,#f0a72a 70%,#fff3b0);',
+      '  filter:drop-shadow(0 0 8px rgba(255,200,60,.75));}',
+      '.v57-fr-holo{box-shadow:0 0 0 2px #22d3ee,0 0 0 4px rgba(168,85,247,.55),0 0 14px rgba(34,211,238,.5) !important;border-radius:10px;}',
+      '.v57-fr-knight{box-shadow:0 0 0 2px #fbbf24,0 0 0 4px rgba(251,191,36,.4),0 0 14px rgba(251,191,36,.6) !important;border-radius:10px;}',
+      '.v57-fr-crown{box-shadow:0 0 0 2px #ffd24a,0 0 0 4px rgba(255,210,74,.5),0 0 18px rgba(255,200,60,.8) !important;border-radius:12px;}',
+      /* 해금 도감 UI */
+      '#v57PlM{position:fixed;inset:0;z-index:12600;display:flex;align-items:center;justify-content:center;background:rgba(6,10,20,.88);padding:8px;',
+      '  font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;}',
+      '#v57PlM.hide{display:none;}',
+      '#v57PlM .card{width:min(100%,480px);max-height:92dvh;display:flex;flex-direction:column;background:linear-gradient(180deg,#111c33,#0a1120 60%,#070c16);',
+      '  border:2px solid #2a3d5e;border-radius:18px;box-shadow:0 18px 48px rgba(0,0,0,.75);overflow:hidden;}',
+      '#v57PlM .hd{display:flex;align-items:center;gap:8px;padding:12px 13px;border-bottom:1px solid #1b2942;}',
+      '#v57PlM .hd b{font-family:"Jua",sans-serif;font-size:19px;color:#fff;flex:1;}',
+      '#v57PlM .x{height:38px;padding:0 12px;border-radius:11px;border:2px solid #33456a;background:linear-gradient(180deg,#28364f,#162032);',
+      '  color:#dbe7f8;font-size:13px;font-weight:900;box-shadow:0 3px 0 #0a101c;white-space:nowrap;}',
+      '#v57PlM .tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px 12px 0;}',
+      '#v57PlM .tab{height:40px;border-radius:12px;border:2px solid #2a3b58;background:linear-gradient(180deg,#1b2540,#121a2d);color:#a8bad5;',
+      '  font-family:"Jua",sans-serif;font-size:14px;box-shadow:0 3px 0 #070c16;}',
+      '#v57PlM .tab.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;color:#3a2205;}',
+      '#v57PlM .list{flex:1 1 auto;min-height:0;overflow-y:auto;padding:10px 12px 14px;display:flex;flex-direction:column;gap:8px;}',
+      '#v57PlM .row{display:flex;align-items:center;gap:10px;padding:11px;border-radius:13px;background:#0d1728;border:2px solid #1e2b44;}',
+      '#v57PlM .row.on{border-color:#38bdf8;background:linear-gradient(180deg,rgba(37,99,235,.2),rgba(13,23,40,.95));}',
+      '#v57PlM .row.lock{opacity:.72;}',
+      '#v57PlM .pv{flex:0 0 auto;font-family:"Jua",sans-serif;font-size:15px;padding:4px 8px;border-radius:9px;background:#0a1220;border:1.5px solid #24344f;}',
+      '#v57PlM .info{flex:1 1 auto;min-width:0;}',
+      '#v57PlM .info b{display:block;font-size:13px;font-weight:900;color:#eaf2ff;line-height:1.3;}',
+      '#v57PlM .info i{display:block;font-style:normal;font-size:11.5px;font-weight:800;color:#93a8c8;margin-top:3px;line-height:1.35;}',
+      '#v57PlM .info u{display:block;text-decoration:none;font-size:11px;font-weight:900;color:#fbbf24;margin-top:3px;}',
+      '#v57PlM .row button{flex:0 0 auto;min-height:40px;padding:0 12px;border-radius:11px;font-size:13px;font-weight:900;white-space:nowrap;',
+      '  border:2px solid #33456a;background:linear-gradient(180deg,#243654,#162032);color:#e6f0ff;box-shadow:0 3px 0 #070c16;}',
+      '#v57PlM .row button.pri{background:linear-gradient(180deg,#cfe6ff,#67a9fb 55%,#2f6fd0);color:#041a3a;border-color:#0b2c5c;}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+
+  /* ---------- 장착 ---------- */
+  function equip(kind, id) {
+    var list = kind === 'frame' ? FRAMES : PLATES;
+    var it = byId(list, id);
+    if (!it.need()) { try { V.toast('🔒 잠긴 ' + (kind === 'frame' ? '테두리' : '이름표'), 'danger', it.why, 2200); } catch (e) {} return false; }
+    lsSet(kind === 'frame' ? K_FRAME : K_PLATE, it.id);
+    try { V.toast(kind === 'frame' ? '🖼️ 테두리 장착' : '🌈 이름표 장착', 'lucky', it.name, 1500); } catch (e) {}
+    try { if (root.JW57PLATE) root.JW57PLATE.apply(); } catch (e) {}
+    paint();
+    return true;
+  }
+
+  /* ---------- 자동 해금 알림 ---------- */
+  function checkUnlock() {
+    var seen = ls(K_SEEN, {}) || {};
+    var changed = false;
+    PLATES.concat(FRAMES).forEach(function (it) {
+      if (seen[it.id]) return;
+      if (!it.need()) return;
+      seen[it.id] = 1; changed = true;
+      if (it.id === 'none') return;
+      try { V.toast('🎉 새 ' + (FRAMES.indexOf(it) >= 0 ? '테두리' : '이름표') + ' 해금!', 'lucky', it.name + ' · 프로필에서 장착', 2600); } catch (e) {}
+    });
+    if (changed) lsSet(K_SEEN, seen);
+  }
+
+  /* ---------- 도감 UI ---------- */
+  var TAB = 'plate';
+  function ensure() {
+    css();
+    var m = $('v57PlM');
+    if (m) return m;
+    m = doc.createElement('div');
+    m.id = 'v57PlM';
+    m.className = 'hide';
+    m.innerHTML = '<div class="card"><div class="hd"><b>🌈 이름표 · 🖼️ 테두리</b><button type="button" class="x" data-v57x="1">닫기 ✕</button></div>' +
+      '<div class="tabs"><button type="button" class="tab on" data-v57t="plate">🌈 이름표</button>' +
+      '<button type="button" class="tab" data-v57t="frame">🖼️ 테두리</button></div>' +
+      '<div class="list" id="v57PlList"></div></div>';
+    doc.body.appendChild(m);
+    m.addEventListener('click', function (e) {
+      if (e.target === m) close();
+      var x = e.target.closest ? e.target.closest('[data-v57x]') : null;
+      if (x) close();
+      var t = e.target.closest ? e.target.closest('[data-v57t]') : null;
+      if (t) { TAB = t.getAttribute('data-v57t'); paint(); return; }
+      var b = e.target.closest ? e.target.closest('[data-v57eq]') : null;
+      if (b) { equip(b.getAttribute('data-v57kind'), b.getAttribute('data-v57eq')); }
+    });
+    return m;
+  }
+  function paint() {
+    var box = $('v57PlList');
+    if (!box) return;
+    var m = $('v57PlM');
+    if (m) m.querySelectorAll('[data-v57t]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v57t') === TAB); });
+    var list = TAB === 'frame' ? FRAMES : PLATES;
+    var cur = TAB === 'frame' ? frameOn().id : plateOn().id;
+    box.innerHTML = list.map(function (it) {
+      var has = it.need();
+      var on = cur === it.id;
+      var cls = it.cls || '';
+      var pv = it.id === 'none' ? '<span style="color:#93a8c8">기본</span>'
+        : '<span class="' + cls + '">' + esc(it.name.replace(/^\S+\s/, '')) + '</span>';
+      return '<div class="row' + (on ? ' on' : '') + (has ? '' : ' lock') + '">' +
+        '<div class="pv">' + pv + '</div>' +
+        '<div class="info"><b>' + esc(it.name) + (it.king ? ' · 1등 전용' : '') + '</b>' +
+        '<i>' + esc(it.why) + '</i>' +
+        (has ? (on ? '<u>장착 중</u>' : '') : '<u>🔒 ' + esc(it.prog()) + '</u>') +
+        '</div>' +
+        (has
+          ? '<button type="button"' + (on ? '' : ' class="pri"') + ' data-v57eq="' + esc(it.id) + '" data-v57kind="' + (TAB === 'frame' ? 'frame' : 'plate') + '">' + (on ? '착용중' : '장착') + '</button>'
+          : '<button type="button" disabled style="opacity:.5">잠김</button>') +
+        '</div>';
+    }).join('');
+  }
+  function open(tab) { TAB = tab || TAB; var m = ensure(); m.classList.remove('hide'); paint(); }
+  function close() { var m = $('v57PlM'); if (m) m.classList.add('hide'); }
+
+  /* ---------- 진입 버튼 (프로필/스킨 창) ---------- */
+  function injectBtn() {
+    var host = $('v43ProfTitles') || $('v44DecoBody');
+    if (!host) return;
+    if ($('v57PlOpen')) return;
+    var b = doc.createElement('button');
+    b.id = 'v57PlOpen';
+    b.type = 'button';
+    b.style.cssText = 'margin-top:6px;min-height:40px;padding:0 12px;border-radius:11px;font-size:12.5px;font-weight:900;white-space:nowrap;' +
+      'border:2px solid #33456a;background:linear-gradient(180deg,#243654,#162032);color:#e6f0ff;box-shadow:0 3px 0 #070c16;';
+    b.textContent = '🌈 이름표 · 🖼️ 테두리';
+    b.addEventListener('click', function () { open('plate'); });
+    host.parentElement.appendChild(b);
+  }
+
+  function boot() {
+    css();
+    try { checkUnlock(); } catch (e) {}
+    setInterval(function () { try { checkUnlock(); } catch (e) {} }, 2000);
+    /* 기존 무지개 토글과 연결: 무지개가 켜져 있으면 무지개 이름표 장착으로 본다 */
+    try {
+      if (root.JW46_RAINBOW && root.JW46_RAINBOW.on && root.JW46_RAINBOW.on() && ls(K_PLATE, 'none') === 'none') lsSet(K_PLATE, 'rainbow');
+    } catch (e) {}
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 900); });
+  else setTimeout(boot, 900);
+
+  root.JW57PL = {
+    plates: PLATES, frames: FRAMES,
+    plate: plateOn, frame: frameOn,
+    equip: equip, open: open, close: close, check: checkUnlock
+  };
+  console.log('[JW57PL] plates ready');
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.9-profile : 👤 내 프로필 하나로 통합 (스킨 · 테두리 · 이름표 · 칭호)
+     - 4탭: [🎨 스킨] [🖼️ 테두리] [🏷️ 이름표] [🏅 칭호]
+     - 상단: 내 아바타 · 닉네임 · 장착 칭호 배지 · 최고 기록 요약
+     - 바깥에 흩어져 있던 '칭호 도감' · '이름표/테두리' 버튼은 숨긴다 (프로필에서만 변경)
+     - 장착 즉시 5곳(인게임·메인·랭킹·친구창·채팅)에 반영 (87_nameplate 가 그림)
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW57PROF) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;'; }); }
+
+  var TAB = 'skin';
+  function PL() { return root.JW57PL || null; }
+  function TI() { return root.JW51TITLES || null; }
+  function me() { try { return V.api() || {}; } catch (e) { return {}; } }
+  function myNick() { try { var s = V.st(); return (s && s.me && s.me.nick) || '재우'; } catch (e) { return '재우'; } }
+  function prof() { try { var i = V.api().internals ? V.api().internals() : null; return (i && i.prof) || {}; } catch (e) { return {}; } }
+  function titleBadge() {
+    try {
+      var id = root.JW56T5 ? root.JW56T5.myTitleId() : 'auto';
+      if (id && id !== 'auto' && TI()) return TI().badge(id, true);
+    } catch (e) {}
+    return '<span style="font-size:12px;font-weight:800;color:#93a8c8">칭호 없음</span>';
+  }
+  function bestM() {
+    var me = String(myNick()).trim(), best = 0;
+    try {
+      (V.lsGet('jw43_rank_v1', []) || []).forEach(function (r) {
+        if (r && String(r.n || '').trim() === me) best = Math.max(best, Number(r.m) || 0);
+      });
+    } catch (e) {}
+    return Math.round(best);
+  }
+
+  function css() {
+    if ($('v57prCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v57prCss';
+    s.textContent = [
+      '#v57Prof{position:fixed;inset:0;z-index:12700;display:flex;align-items:center;justify-content:center;background:rgba(6,10,20,.88);padding:8px;',
+      '  font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;}',
+      '#v57Prof.hide{display:none;}',
+      '#v57Prof .card{width:min(100%,520px);max-height:93dvh;display:flex;flex-direction:column;overflow:hidden;',
+      '  background:linear-gradient(180deg,#121e36,#0a1120 60%,#070c16);border:2px solid #2a3d5e;border-radius:18px;',
+      '  box-shadow:0 20px 56px rgba(0,0,0,.8),inset 0 2px 0 rgba(255,255,255,.07);}',
+      '#v57Prof .hd{display:flex;align-items:center;gap:8px;padding:12px 13px;border-bottom:1px solid #1b2942;}',
+      '#v57Prof .hd b{font-family:"Jua",sans-serif;font-size:19px;color:#fff;flex:1;}',
+      '#v57Prof .x{height:38px;padding:0 12px;border-radius:11px;border:2px solid #33456a;background:linear-gradient(180deg,#28364f,#162032);',
+      '  color:#dbe7f8;font-size:13px;font-weight:900;box-shadow:0 3px 0 #0a101c;white-space:nowrap;}',
+      '#v57Prof .hero{display:flex;align-items:center;gap:12px;margin:10px 12px 0;padding:11px;border-radius:15px;',
+      '  background:radial-gradient(130% 150% at 50% 0%,rgba(56,89,140,.4),rgba(9,15,27,.95));border:2px solid #33456a;}',
+      '#v57Prof .hero canvas{width:64px;height:74px;image-rendering:pixelated;flex:0 0 auto;}',
+      '#v57Prof .hero .who{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:5px;}',
+      '#v57Prof .hero .nm{font-family:"Jua",sans-serif;font-size:19px;color:#fff;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '#v57Prof .hero .rec{font-size:12px;font-weight:800;color:#a9bcd6;line-height:1.4;}',
+      '#v57Prof .hero .rec b{color:#fde047;font-family:"Jua",sans-serif;font-size:14px;}',
+      '#v57Prof .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 12px 0;}',
+      '#v57Prof .tab{height:40px;border-radius:11px;border:2px solid #2a3b58;background:linear-gradient(180deg,#1b2540,#121a2d);color:#a8bad5;',
+      '  font-family:"Jua",sans-serif;font-size:13px;box-shadow:0 3px 0 #070c16;white-space:nowrap;}',
+      '#v57Prof .tab.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;color:#3a2205;box-shadow:0 3px 0 #6b4405;}',
+      '#v57Prof .body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:10px 12px 14px;display:flex;flex-direction:column;gap:7px;}',
+      '#v57Prof .skgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}',
+      '#v57Prof .skcard{display:flex;flex-direction:column;align-items:center;gap:4px;padding:9px 5px;border-radius:12px;',
+      '  border:2px solid #22304a;background:#0d1728;color:#dbe7f8;min-height:74px;}',
+      '#v57Prof .skcard b{font-size:12px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}',
+      '#v57Prof .skcard.on{border-color:#38bdf8;background:linear-gradient(180deg,rgba(37,99,235,.25),rgba(13,23,40,.95));}',
+      '#v57Prof .skcard canvas{width:32px;height:36px;image-rendering:pixelated;}',
+      '#v57Prof .row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:#0d1728;border:2px solid #1e2b44;}',
+      '#v57Prof .row.on{border-color:#38bdf8;background:linear-gradient(180deg,rgba(37,99,235,.2),rgba(13,23,40,.95));}',
+      '#v57Prof .row.lock{opacity:.72;}',
+      '#v57Prof .pv{flex:0 0 auto;font-family:"Jua",sans-serif;font-size:14px;padding:4px 8px;border-radius:9px;background:#0a1220;border:1.5px solid #24344f;}',
+      '#v57Prof .info{flex:1 1 auto;min-width:0;}',
+      '#v57Prof .info b{display:block;font-size:12.5px;font-weight:900;color:#eaf2ff;line-height:1.3;}',
+      '#v57Prof .info i{display:block;font-style:normal;font-size:11px;font-weight:800;color:#93a8c8;margin-top:3px;line-height:1.35;}',
+      '#v57Prof .info u{display:block;text-decoration:none;font-size:11px;font-weight:900;color:#fbbf24;margin-top:3px;}',
+      '#v57Prof .row button{flex:0 0 auto;min-height:40px;padding:0 12px;border-radius:11px;font-size:12.5px;font-weight:900;white-space:nowrap;',
+      '  border:2px solid #33456a;background:linear-gradient(180deg,#243654,#162032);color:#e6f0ff;box-shadow:0 3px 0 #070c16;}',
+      '#v57Prof .row button.pri{background:linear-gradient(180deg,#cfe6ff,#67a9fb 55%,#2f6fd0);color:#041a3a;border-color:#0b2c5c;}',
+      '#v57Prof .note{font-size:11px;font-weight:800;color:#8fa3c4;line-height:1.45;}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+
+  function ensure() {
+    css();
+    var m = $('v57Prof');
+    if (m) return m;
+    m = doc.createElement('div');
+    m.id = 'v57Prof';
+    m.className = 'hide';
+    m.innerHTML = '<div class="card">' +
+      '<div class="hd"><b>👤 내 프로필</b><button type="button" class="x" data-v57px="1">닫기 ✕</button></div>' +
+      '<div class="hero"><canvas width="64" height="74"></canvas><div class="who">' +
+        '<div class="nm" id="v57PrNick">재우</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:4px" id="v57PrTitle"></div>' +
+        '<div class="rec" id="v57PrRec"></div>' +
+      '</div></div>' +
+      '<div class="tabs">' +
+        '<button type="button" class="tab on" data-v57pt="skin">🎨 스킨</button>' +
+        '<button type="button" class="tab" data-v57pt="frame">🖼️ 테두리</button>' +
+        '<button type="button" class="tab" data-v57pt="plate">🏷️ 이름표</button>' +
+        '<button type="button" class="tab" data-v57pt="title">🏅 칭호</button>' +
+      '</div>' +
+      '<div class="body" id="v57PrBody"></div></div>';
+    doc.body.appendChild(m);
+    m.addEventListener('click', function (e) {
+      if (e.target === m) return close();
+      var x = e.target.closest ? e.target.closest('[data-v57px]') : null;
+      if (x) return close();
+      var tb = e.target.closest ? e.target.closest('[data-v57pt]') : null;
+      if (tb) { TAB = tb.getAttribute('data-v57pt'); paint(); return; }
+      var sk = e.target.closest ? e.target.closest('[data-v57sk]') : null;
+      if (sk) { try { V.api().setSkin(sk.getAttribute('data-v57sk')); } catch (er) {} paint(); try { root.JW57PLATE && JW57PLATE.apply(); } catch (er) {} return; }
+      var eq = e.target.closest ? e.target.closest('[data-v57pq]') : null;
+      if (eq) {
+        var kind = eq.getAttribute('data-v57kind');
+        if (kind === 'title') { try { TI() && TI().equip(eq.getAttribute('data-v57pq')); } catch (er) {} }
+        else if (PL()) { PL().equip(kind, eq.getAttribute('data-v57pq')); }
+        paint();
+        return;
+      }
+    });
+    return m;
+  }
+
+  function paint() {
+    var m = ensure();
+    var body = $('v57PrBody');
+    if (!body) return;
+    m.querySelectorAll('[data-v57pt]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v57pt') === TAB); });
+    /* 상단 */
+    var cv = m.querySelector('.hero canvas');
+    if (cv) {
+      var sp = null;
+      try { sp = V.api().spriteFor(V.api().meColor(), 'idle1', V.api().meSkin()); } catch (e) {}
+      var g = cv.getContext('2d');
+      if (g) { g.clearRect(0, 0, cv.width, cv.height); if (sp) { g.imageSmoothingEnabled = false; try { g.drawImage(sp, 0, 0, cv.width, cv.height); } catch (e) {} } }
+    }
+    var nk = $('v57PrNick'); if (nk) nk.textContent = myNick();
+    var tb = $('v57PrTitle'); if (tb) tb.innerHTML = titleBadge();
+    var rc = $('v57PrRec');
+    if (rc) rc.innerHTML = '최고 <b>' + bestM() + 'm</b> · 클리어 <b>' + ((prof().mapsCleared || []).length) + '</b>맵 · 완등 <b>' + (prof().clears || 0) + '</b>회';
+
+    var h = '';
+    if (TAB === 'skin') {
+      var skins = [];
+      try { skins = V.api().skins() || []; } catch (e) {}
+      var cur = ''; try { cur = V.api().meSkin(); } catch (e) {}
+      h += '<div class="skgrid">' + skins.map(function (s) {
+        return '<button type="button" class="skcard' + (s.id === cur ? ' on' : '') + '" data-v57sk="' + esc(s.id) + '">' +
+          '<canvas width="32" height="36" data-v57skcv="' + esc(s.id) + '"></canvas><b>' + (s.emoji || '') + ' ' + esc(s.name) + '</b></button>';
+      }).join('') + '</div>';
+      h += '<div class="note">스킨을 누르면 바로 적용됩니다 · 인게임·멀티·타이틀에 즉시 반영</div>';
+    } else if (TAB === 'frame' || TAB === 'plate') {
+      var P = PL();
+      var list = P ? (TAB === 'frame' ? P.frames : P.plates) : [];
+      var curId = P ? (TAB === 'frame' ? P.frame().id : P.plate().id) : 'none';
+      h += list.map(function (it) {
+        var has = it.need();
+        var on = curId === it.id;
+        var pv = it.id === 'none' ? '<span style="color:#93a8c8">기본</span>' : '<span class="' + (it.cls || '') + '">' + esc(it.name.replace(/^\S+\s/, '')) + '</span>';
+        return '<div class="row' + (on ? ' on' : '') + (has ? '' : ' lock') + '">' +
+          '<div class="pv">' + pv + '</div>' +
+          '<div class="info"><b>' + esc(it.name) + (it.king ? ' · 1등 전용' : '') + '</b><i>' + esc(it.why) + '</i>' +
+          (has ? (on ? '<u>장착 중</u>' : '') : '<u>🔒 ' + esc(it.prog()) + '</u>') + '</div>' +
+          (has ? '<button type="button"' + (on ? '' : ' class="pri"') + ' data-v57pq="' + esc(it.id) + '" data-v57kind="' + TAB + '">' + (on ? '착용중' : '장착') + '</button>'
+               : '<button type="button" disabled style="opacity:.5">잠김</button>') + '</div>';
+      }).join('');
+      h += '<div class="note">' + (TAB === 'frame' ? '🖼️ 테두리는 프로필·HUD·인게임 아바타에 표시됩니다.' : '🏷️ 이름표는 인게임·타이틀·랭킹·친구창·채팅 5곳에 그대로 보입니다.') + '</div>';
+    } else {
+      var titles = [];
+      try { titles = (V.api().titles() || []); } catch (e) {}
+      var un = [];
+      try { un = (V.api().unlockedTitles ? V.api().unlockedTitles() : titles).map(function (t) { return t.id; }); } catch (e) { un = []; }
+      var curT = root.JW56T5 ? root.JW56T5.myTitleId() : 'auto';
+      titles.slice(0, 60).forEach(function (t) {
+        var has = un.indexOf(t.id) >= 0;
+        var on = curT === t.id;
+        var meta = {};
+        try { meta = (TI() && TI().meta) ? TI().meta(t.id) : {}; } catch (e) {}
+        var g = meta.grade || 'common';
+        var pv = TI() ? TI().badge(t.id, true) : esc(t.short || t.name);
+        h += '<div class="row' + (on ? ' on' : '') + (has ? '' : ' lock') + '">' +
+          '<div class="pv">' + pv + '</div>' +
+          '<div class="info"><b>' + esc(t.short || t.name) + '</b><i>' + esc(meta.why || t.why || '') + '</i>' +
+          (on ? '<u>장착 중</u>' : '') + '</div>' +
+          (has ? '<button type="button"' + (on ? '' : ' class="pri"') + ' data-v57pq="' + esc(t.id) + '" data-v57kind="title">' + (on ? '착용중' : '장착') + '</button>'
+               : '<button type="button" disabled style="opacity:.5">🔒 잠김</button>') + '</div>';
+      });
+      if (!titles.length) h += '<div class="note">아직 표시할 칭호가 없어요.</div>';
+    }
+    body.innerHTML = h;
+    /* 스킨 미니 아바타 */
+    body.querySelectorAll('canvas[data-v57skcv]').forEach(function (cv) {
+      var id = cv.getAttribute('data-v57skcv');
+      var sp = null;
+      try { sp = V.api().spriteFor(V.api().meColor(), 'idle1', id); } catch (e) {}
+      var g = cv.getContext('2d');
+      if (g && sp) { g.imageSmoothingEnabled = false; try { g.drawImage(sp, 0, 0, cv.width, cv.height); } catch (e) {} }
+    });
+    try { root.JW57PLATE && JW57PLATE.apply(); } catch (e) {}
+  }
+
+  function open(tab) { TAB = tab || TAB; var m = ensure(); m.classList.remove('hide'); paint(); }
+  function close() { var m = $('v57Prof'); if (m) m.classList.add('hide'); }
+
+  /* 바깥 중복 진입점 정리: 칭호 도감·이름표/테두리 별도 버튼 숨김 */
+  function tidy() {
+    ['v51OpenTitles', 'v57PlOpen'].forEach(function (id) {
+      var b = $(id);
+      if (b) b.style.display = 'none';
+    });
+    var fs = $('v56MeExtra');
+    if (fs) {
+      var bs = fs.querySelectorAll('button');
+      if (bs.length >= 2) {
+        bs[0].textContent = '👤 내 프로필';
+        bs[1].style.display = 'none';
+      }
+    }
+  }
+
+  /* 프로필 열기 가로채기 */
+  doc.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var b = t.closest('#v43ProfEdit, #v43TPTitle, #v56MeSkin, #v43ProfTitle');
+    if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    open('skin');
+  }, true);
+
+  function boot() {
+    css();
+    tidy();
+    setInterval(function () { try { tidy(); } catch (e) {} }, 1500);
+    var o = V.openProfile;
+    if (typeof o === 'function' && !o.__v57) {
+      var w = function () { open('skin'); };
+      w.__v57 = 1;
+      V.openProfile = w;
+    }
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 1000); });
+  else setTimeout(boot, 1000);
+
+  root.JW57PROF = { open: open, close: close, paint: paint };
+  console.log('[JW57PROF] unified profile ready');
 })(window);
 
 </script>
