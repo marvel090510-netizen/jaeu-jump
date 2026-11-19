@@ -388,6 +388,16 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       <div class="spec">발판 91개 · 구역 6개 · 이벤트 9종 · 단일 파일 122KB</div>
       <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
     </a>
+    <a class="card" href="../muse-v5-6/" data-ai="muse" style="--a:#7dd3fc;--a2:#6366f1;--glow:125,211,252">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
+        <path d="M24 4l5 14 14 5-14 5-5 14-5-14-14-5 14-5z" fill="currentColor"/>
+      </svg></span>
+      <div class="tag">Muse 버전</div>
+      <h2>Muse <small>버그 싹 다 잡기 테스트판</small></h2>
+      <p>v5.5에서 남긴 10건까지 전부 수정 — 호스트 권위 판정, 릴레이·깃발·좀비·보스·이벤트·전적.</p>
+      <div class="spec">v5.1-final2 기반 · v5.5 버그 수정 포함 · 루트 미반영</div>
+      <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
+    </a>
     <a class="card" href="../muse-v5-3/" data-ai="muse" style="--a:#7dd3fc;--a2:#6366f1;--glow:125,211,252">
       <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
         <path d="M24 4l5 14 14 5-14 5-5 14-5-14-14-5 14-5z" fill="currentColor"/>
@@ -776,6 +786,18 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       name: 'Muse', tag: 'Muse 버전', tagClass: 'u',
       accent: '#7dd3fc', accent2: '#6366f1', glow: '125,211,252',
       versions: [
+        {
+          ver: 'v5.6 (테스트)', label: '버그 싹 다 잡기 — v5.5 잔여 10건 전부 수정 · 호스트 권위 판정 · 릴레이·깃발·좀비·보스·이벤트·전적', href: '../muse-v5-6/', latest: false,
+          date: '2026.11.20',
+          spec: 'v5.1-final2 기반 · v5.5 수정 포함 · 루트 미반영',
+          notes: [
+            '🛡️ 호스트 권위 판정: 좀비·타임어택 서든데스·보스·랜덤 이벤트·전적을 호스트가 판정하고 방송 · 구버전 폴백 있음',
+            '🔄 릴레이: 바통 보낸 사람은 멈춤 · 깃발: 싱글은 정상 골인만, 멀티는 30점 선승만',
+            '👑 호스트 이탈 시 방장 자동 이관 · 보스 격파는 기여 + 생존한 사람만 승리',
+            '🧹 G6 wipe 진행 기록 보존 · 싱글 모드 선택기 29종으로 단일 출처 통일',
+            '⚠️ 루트 index.html 미반영 테스트판 — 정식 반영은 OK 후에만'
+          ]
+        },
         {
           ver: 'v5.3 (테스트)', label: 'UI 다시하기 — v5-2 되돌리기 · Galmuri만 · 각진 픽셀 · 하단 네비 "스킨·꾸미기" 잘림 수정 · Jua 없음', href: '../muse-v5-3/', latest: false,
           date: '2026.11.20',
