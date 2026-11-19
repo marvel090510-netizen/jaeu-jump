@@ -46268,6 +46268,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -62299,11 +62300,11 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     /* 6b) 픽셀 텍스처 — 재질별로 아주 은은하게 (노이즈 도트 대신 결) */
     c.save();
     if (k === 'grass' || k === 'moss' || k === 'turf' || k === 'snow' || k === 'snowrock' || k === 'mush' || k === 'honey' || k === 'cheese' || k === 'candy') {
-      /* 윗면 들숙날숙한 픽셀 터프 */
-      c.globalAlpha = 0.95;
-      for (var tf = 5; tf < w - 6; tf += 13) {
-        R(c, tf, 0, 4, 2, mix(top, '#000000', 0.22));
-        R(c, tf + 1, 0, 2, 1, mix(top, '#ffffff', 0.45));
+      /* 윗면 들숙날숙한 픽셀 터프 (연속 라인 위에 살짝만) */
+      c.globalAlpha = 0.7;
+      for (var tf = 6; tf < w - 8; tf += 19) {
+        R(c, tf, 0, 3, 2, mix(top, '#000000', 0.18));
+        if (((tf / 19) | 0) % 3 === 0) { c.globalAlpha = 0.5; R(c, tf + 1, 0, 1, 1, mix(top, '#ffffff', 0.6)); c.globalAlpha = 0.7; }
       }
       c.globalAlpha = 0.10;
       for (var gl = 9; gl < w - 8; gl += 21) R(c, gl, hh - 5, 7, 1, mix(top, '#ffffff', 0.4));
