@@ -89,36 +89,6 @@
   </style>
 
 
-<!-- LP-GUARD:START --><style>
-/* 꾹 누르기(롱프레스) 방지: iOS/iPadOS Safari 텍스트 선택·콜아웃·확대 차단 */
-html, body, body * {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-}
-html, body {
-  overscroll-behavior: none;
-  overscroll-behavior-x: none;
-  overscroll-behavior-y: none;
-  /* 한 손가락 세로 스크롤(타이틀·모달 내부)은 허용, 확대/두 손가락 제스처만 차단 */
-  touch-action: manipulation;
-}
-/* 복사가 필요한 코드/입력 필드만 선택 허용(게임 조작부 보호에는 영향 없음) */
-pre, code, textarea, input {
-  -webkit-user-select: text;
-  user-select: text;
-  -webkit-touch-callout: default;
-}
-canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
-#leftBtn, #rightBtn, #jumpBtn, #touchBtnLeft, #touchBtnRight, #touchBtnJump {
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-}
-</style><!-- LP-GUARD:END -->
 <style id="v43-theme">/* ==========================================================================
    재우 4.3 : 눈 편한 UI 톤 (소프트 다크 / 눈 편한 라이트) + 타이틀 사이드 패널
    - 게임 캔버스(맵)는 건드리지 않고 UI 판·패널·글자만 조정한다.
@@ -247,7 +217,36 @@ html.theme-light #v43SideArt .sa-quick button { background: #fff; border-color: 
   font-size: 15px; background: #0b1222; border: 2px solid #26324f; cursor: pointer; color: #e2e8f0; }
 #v43SideArt .sa-map.on { border-color: #fbbf24; background: #1c1917; }
 html.theme-light #v43SideArt .sa-map { background: #fff; border-color: #c8d2e2; }
-</style><style id="v43-fs">html,body{height:100%;min-height:100dvh;height:100dvh;overflow:hidden;overscroll-behavior:none}#gameCanvas{width:100vw;height:100dvh;display:block}body.v43-fs #gameCanvas{width:100vw;height:100vh}</style></head>
+</style><style id="v43-fs">html,body{height:100%;min-height:100dvh;height:100dvh;overflow:hidden;overscroll-behavior:none}#gameCanvas{width:100vw;height:100dvh;display:block}body.v43-fs #gameCanvas{width:100vw;height:100vh}</style><!-- LP-GUARD:START --><style>
+/* 꾹 누르기(롱프레스) 방지: iOS/iPadOS Safari 텍스트 선택·콜아웃·확대 차단 */
+html, body, body * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html, body {
+  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
+  touch-action: manipulation;
+}
+/* 복사가 필요한 코드/입력 필드만 선택 허용(게임 조작부 보호에는 영향 없음) */
+pre, code, textarea, input {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
+#leftBtn, #rightBtn, #jumpBtn, #touchBtnLeft, #touchBtnRight, #touchBtnJump {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+</style><!-- LP-GUARD:END -->
+</head>
 <body class="relative w-full h-full overflow-hidden select-none">
 
   <!-- ALWAYS-LIVE GAME CANVAS -->
@@ -13592,27 +13591,6 @@ extends CanvasLayer
   </div>
 </div>
 
-<!-- LP-GUARD-JS:START -->
-<script>
-/* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
-(function () {
-  if (window.__lpGuard) { return; }
-  window.__lpGuard = true;
-  var stop = function (e) { if (e && e.cancelable !== false) { e.preventDefault(); } };
-  document.addEventListener('contextmenu', stop, { passive: false });
-  document.addEventListener('selectstart', stop, { passive: false });
-  document.addEventListener('dragstart', stop, { passive: false });
-  document.addEventListener('gesturestart', stop, { passive: false });
-  document.addEventListener('gesturechange', stop, { passive: false });
-  document.addEventListener('gestureend', stop, { passive: false });
-  document.addEventListener('dblclick', stop, { passive: false });
-  /* 두 손가락 이상일 때만 스크롤/확대 제스처를 막는다(한 손가락 스크롤은 그대로). */
-  document.addEventListener('touchmove', function (e) {
-    if (e.touches && e.touches.length > 1) { stop(e); }
-  }, { passive: false });
-})();
-</script>
-<!-- LP-GUARD-JS:END -->
 <!-- ==================== 재우 4.3 엔진 ==================== -->
 <script>
 /* ==========================================================================
@@ -41814,5 +41792,26 @@ extends CanvasLayer
 })(window);
 
 </script>
+<!-- LP-GUARD-JS:START -->
+<script>
+/* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
+(function () {
+  if (window.__lpGuard) { return; }
+  window.__lpGuard = true;
+  var stop = function (e) { if (e && e.cancelable !== false) { e.preventDefault(); } };
+  document.addEventListener('contextmenu', stop, { passive: false });
+  document.addEventListener('selectstart', stop, { passive: false });
+  document.addEventListener('dragstart', stop, { passive: false });
+  document.addEventListener('gesturestart', stop, { passive: false });
+  document.addEventListener('gesturechange', stop, { passive: false });
+  document.addEventListener('gestureend', stop, { passive: false });
+  document.addEventListener('dblclick', stop, { passive: false });
+  /* 두 손가락 이상일 때만 스크롤/확대 제스처를 막는다(한 손가락 스크롤은 그대로). */
+  document.addEventListener('touchmove', function (e) {
+    if (e.touches && e.touches.length > 1) { stop(e); }
+  }, { passive: false });
+})();
+</script>
+<!-- LP-GUARD-JS:END -->
 </body>
 </html>

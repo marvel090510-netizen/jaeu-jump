@@ -230,7 +230,7 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
 </style><!-- LP-GUARD:END -->
 </head>
 <body>
-<div class="wrap"><a href="../" style="display:inline-block;margin-bottom:14px;font-size:13px;font-weight:800;color:#fde047;text-decoration:none;border:2px solid #a16207;background:#1a1206;padding:6px 12px">← 메인 게임으로 (v4.8.5-3)</a>
+<div class="wrap"><a href="../" style="display:inline-block;margin-bottom:14px;font-size:13px;font-weight:800;color:#fde047;text-decoration:none;border:2px solid #a16207;background:#1a1206;padding:6px 12px">← 메인 게임으로 (v5.1)</a>
   <header>
     <div class="kicker">JUMP TO THE SUMMIT</div>
     <h1>성공하고싶은 재우</h1>
@@ -497,7 +497,13 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       accent: '#ffb08a', accent2: '#d97757', glow: '217,119,87',
       versions: [
         {
-          ver: 'v4.8.5-3 (테스트)', label: '맵 일러스트 21개·모드/맵 카테고리·제안하기·방 설정 4탭·칭호 개편 (최신)', href: '../claude-v4-8-5/', latest: true,
+          ver: 'v5.1 (테스트)', label: '실제 게임 튜토리얼·궤적 1줄·렉 최적화·발판 재디자인·즐겨찾기 탭·BGM·칭호 화려화 (최신)', href: '../claude-v5-1/', latest: true,
+          date: '2026.11.19',
+          spec: 'v5.0 1.5차 기반 · 45맵 · 실제 엔진 튜토리얼(◀▶⏫) · 배경/발판 최적화 · 즐겨찾기 상단 정렬 · BGM 단일 재생 · 칭호 등급 연출 · 전환 깜빡임 제거',
+          notes: ['🎓 튜토리얼을 실제 1번 구름 맵·실제 재우·실제 조작 버튼으로 다시 만듦 (3단계, 떨어져도 같은 단계에서 재시도)', '📐 점프 궤적은 벽에 닿기 전 첫 포물선 한 줄만 (반사 궤적 제거)', '🚀 배경 일러스트를 미리 구워 1:1로 붙이고, 발판은 오프스크린 캐시 + 톤온톤 16비트 재질로 다시 그림', '⭐ 즐겨찾기(★) 누르면 즉시 맨 위로 · 맵/모드 선택창에 ★ 즐겨찾기 탭 추가', '🎛 조작 버튼 기본 배치(◀ ▶ 왼쪽 · ⏫ 오른쪽) 복구 + 크기 조절이 배치를 망가뜨리지 않음', '🎵 BGM 끄면 즉시 정지 · 한 번에 한 곡만 · 주크박스 45맵 트랙', '🏅 칭호 1위 판정 수정 + 등급별 금속/무지개/순금 연출 · 도감 UI 정돈', '✨ 창·모달·탭 전환 깜빡임 제거'],
+        },
+        {
+          ver: 'v4.8.5-3 (테스트)', label: '맵 일러스트 21개·모드/맵 카테고리·제안하기·방 설정 4탭·칭호 개편', href: '../claude-v4-8-5/',
           date: '2026.11.18',
           spec: 'v4.8.4 기반 · 멀티/모드 버그 수정 · 픽셀 HUD·큰 조작 버튼 · 폰/패드 5개 화면 겹침 0',
           notes: ['🩹 4.8.5-1: HUD 카드 작게(패드), 모드 칩·배지가 HUD에 가려지던 문제 전 모드 정리, 용암·물·좀비 거리 경고를 화면 아래로, 멀티 🔄 다시하기(태초) 복구, 글씨 크기·글꼴 정리', '🏳️ 기권 시 우승으로 뜨던 버그·늦게 완주한 사람 0.0m 표시 수정, 방장 로비 복귀 시 참가자도 같이 복귀', '🎮 크림색 방향키 + 주황 점프(충전 게이지 내장), HUD 글씨 크게 · 패드 확대', '🧩 모드 버그 정리: 하트1개·잠수·용암·유리다리·정전·무한타워·타임어택 등', '📐 폰 세로/가로·패드 세로/가로에서 버튼·글씨 겹침 없음, 터치 영역 44px 이상', '⚠️ 기록은 메인 게임과 같은 브라우저 저장소를 씁니다']
