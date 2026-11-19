@@ -46263,6 +46263,9 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
+
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -69997,6 +70000,8 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
     /* ---------- ④ 도감 ---------- */
     'html body #v44CodexAch{background:transparent !important;}',
+    'html body .v44-codextabs{display:grid !important;grid-template-columns:repeat(4,minmax(0,1fr)) !important;gap:6px !important;padding:8px 8px 2px !important;}',
+    'html body .v44-codextabs button{flex:none !important;min-width:0 !important;}',
 
     /* ---------- ⑤ 랭킹/도감 시트 ---------- */
     'html body #v97Pick{position:fixed;inset:0;z-index:12000;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(4,7,14,.78);}',
@@ -70313,7 +70318,22 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     }
     /* 랭킹 탭은 되살린다 (명예의 전당 진입) */
     var rk = tabs ? tabs.querySelector('[data-ctab="rank"]') : null;
-    if (rk && rk.style.display === 'none') rk.style.display = '';
+    if (rk) {
+      rk.style.setProperty('display', 'block', 'important');
+      rk.style.setProperty('flex', '1 1 0', 'important');
+      rk.style.setProperty('min-width', '0', 'important');
+    }
+    if (tabs && !closed) {
+      tabs.style.setProperty('display', 'grid', 'important');
+      tabs.style.setProperty('grid-template-columns', 'repeat(4,minmax(0,1fr))', 'important');
+      tabs.style.setProperty('gap', '6px', 'important');
+      Array.prototype.forEach.call(tabs.querySelectorAll('[data-ctab]'), function (b) {
+        if (b.style.display === 'none') return;
+        b.style.setProperty('width', '100%', 'important');
+        b.style.setProperty('min-width', '0', 'important');
+        b.style.setProperty('flex', 'none', 'important');
+      });
+    }
   }
   function hookTabs() {
     if (document.__v97tabs) return;
