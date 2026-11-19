@@ -46191,6 +46191,28 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+<!-- LP-GUARD-JS:START -->
+<script>
+/* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
+(function () {
+  if (window.__lpGuard) { return; }
+  window.__lpGuard = true;
+  var stop = function (e) { if (e && e.cancelable !== false) { e.preventDefault(); } };
+  document.addEventListener('contextmenu', stop, { passive: false });
+  document.addEventListener('selectstart', stop, { passive: false });
+  document.addEventListener('dragstart', stop, { passive: false });
+  document.addEventListener('gesturestart', stop, { passive: false });
+  document.addEventListener('gesturechange', stop, { passive: false });
+  document.addEventListener('gestureend', stop, { passive: false });
+  document.addEventListener('dblclick', stop, { passive: false });
+  /* 두 손가락 이상일 때만 스크롤/확대 제스처를 막는다(한 손가락 스크롤은 그대로). */
+  document.addEventListener('touchmove', function (e) {
+    if (e.touches && e.touches.length > 1) { stop(e); }
+  }, { passive: false });
+})();
+</script>
+<!-- LP-GUARD-JS:END -->
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -66082,27 +66104,165 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 })(window);
 
 </script>
-<!-- ===== v4.8-boss PATCH END ===== -->
-<!-- LP-GUARD-JS:START -->
 <script>
-/* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
-(function () {
-  if (window.__lpGuard) { return; }
-  window.__lpGuard = true;
-  var stop = function (e) { if (e && e.cancelable !== false) { e.preventDefault(); } };
-  document.addEventListener('contextmenu', stop, { passive: false });
-  document.addEventListener('selectstart', stop, { passive: false });
-  document.addEventListener('dragstart', stop, { passive: false });
-  document.addEventListener('gesturestart', stop, { passive: false });
-  document.addEventListener('gesturechange', stop, { passive: false });
-  document.addEventListener('gestureend', stop, { passive: false });
-  document.addEventListener('dblclick', stop, { passive: false });
-  /* 두 손가락 이상일 때만 스크롤/확대 제스처를 막는다(한 손가락 스크롤은 그대로). */
-  document.addEventListener('touchmove', function (e) {
-    if (e.touches && e.touches.length > 1) { stop(e); }
-  }, { passive: false });
-})();
+/* ==========================================================================
+   v5.1-fullscreen : 강제 전체 화면 + 풀블리드(100dvh) 레이아웃
+   - 지원 브라우저: 첫 터치/클릭에서 requestFullscreen, 전체 화면에서 나가면 다음 터치에 즉시 재진입
+   - 미지원(iPhone Safari): 주소창/여백 없이 100dvh 풀블리드 + safe-area 유지
+   - 설정에 '전체 화면' 토글 추가
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW51FULL) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var ST = { tried: 0, on: false, denied: 0, last: 0 };
+
+  function ensureMeta() {
+    var need = [
+      ['apple-mobile-web-app-capable', 'yes'],
+      ['mobile-web-app-capable', 'yes'],
+      ['apple-mobile-web-app-status-bar-style', 'black-translucent']
+    ];
+    need.forEach(function (m) {
+      var el = doc.querySelector('meta[name="' + m[0] + '"]');
+      if (!el) {
+        el = doc.createElement('meta');
+        el.setAttribute('name', m[0]);
+        doc.head.appendChild(el);
+      }
+      el.setAttribute('content', m[1]);
+    });
+    var vp = doc.querySelector('meta[name="viewport"]');
+    if (vp) {
+      var c = vp.getAttribute('content') || '';
+      if (c.indexOf('viewport-fit=cover') < 0) vp.setAttribute('content', c + ', viewport-fit=cover');
+    }
+  }
+
+  var CSS = [
+    /* 풀블리드: 주소창/여백 없이 화면 끝까지 */
+    'html{height:100% ;height:100dvh; width:100%; overflow:hidden; overscroll-behavior:none;}',
+    'body{height:100%; height:100dvh; width:100%; overflow:hidden; overscroll-behavior:none;',
+    '  padding-left:env(safe-area-inset-left,0px); padding-right:env(safe-area-inset-right,0px);}',
+    'body > #gameWrap, body > .game-wrap, body > main{height:100%;}',
+    /* 전체 화면일 때는 노치 영역까지 */
+    'html:fullscreen body, html:-webkit-full-screen body{height:100vh; height:100dvh;}',
+    /* 모달은 내부 스크롤 유지 */
+    '.v43-modal,.v44-modal,.v51m{overscroll-behavior:contain;}',
+    /* 전체 화면 버튼 */
+    '#v51FsBtn{position:fixed;right:calc(env(safe-area-inset-right,0px) + 10px);top:calc(env(safe-area-inset-top,0px) + 64px);',
+    '  z-index:39;display:none;align-items:center;gap:5px;height:30px;padding:0 10px;border-radius:10px;border:1.5px solid rgba(150,180,240,.45);',
+    '  background:rgba(10,16,30,.86);color:#dbeafe;font-size:11px;font-weight:900;font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;}',
+    'body.v47-play #v51FsBtn{display:flex;}',
+    '#v51FsBtn:active{transform:scale(.97);}'
+  ].join('\n');
+  function injectCss() {
+    if ($('v51fsCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v51fsCss';
+    s.textContent = CSS;
+    doc.head.appendChild(s);
+  }
+
+  function fsEl() { return doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement || null; }
+  function supported() {
+    var e = doc.documentElement;
+    return !!(e.requestFullscreen || e.webkitRequestFullscreen || e.webkitRequestFullScreen || e.mozRequestFullScreen || e.msRequestFullscreen);
+  }
+  function enter() {
+    if (fsEl()) return true;
+    if (!supported()) { ST.denied++; return false; }
+    var e = doc.documentElement;
+    var fn = e.requestFullscreen || e.webkitRequestFullscreen || e.webkitRequestFullScreen || e.mozRequestFullScreen || e.msRequestFullscreen;
+    try {
+      var p = fn.call(e, { navigationUI: 'hide' });
+      if (p && p.then) p.then(function () { ST.on = true; ST.tried++; paintBtn(); }).catch(function () { ST.denied++; });
+      else { ST.on = true; ST.tried++; }
+    } catch (err) { ST.denied++; }
+    paintBtn();
+    return !!fsEl();
+  }
+  function exit() {
+    try {
+      var fn = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+      if (fn) fn.call(doc);
+    } catch (e) {}
+  }
+  function toggle() { if (fsEl()) exit(); else enter(); }
+
+  /* 첫 제스처 + 전체 화면에서 나간 뒤 다음 제스처에 즉시 재진입 */
+  function onGesture() {
+    var now = Date.now();
+    if (!ST.want && now - ST.last < 700) return;
+    ST.last = now;
+    ST.want = false;
+    if (!fsEl()) enter();
+  }
+  ['pointerdown', 'touchstart', 'click', 'touchend', 'keydown'].forEach(function (ev) {
+    doc.addEventListener(ev, function () { try { onGesture(); } catch (e) {} }, { passive: true, capture: true });
+  });
+  function leftFullscreen() {
+    ST.on = !!fsEl();
+    paintBtn();
+    if (!fsEl()) {
+      /* 나가려 하면 즉시 재진입 시도 (제스처가 필요하면 다음 입력에서 바로 잠금) */
+      ST.want = true;
+      setTimeout(function () { try { if (!fsEl()) enter(); } catch (e) {} }, 40);
+    }
+  }
+  doc.addEventListener('fullscreenchange', leftFullscreen);
+  doc.addEventListener('webkitfullscreenchange', leftFullscreen);
+  doc.addEventListener('mozfullscreenchange', leftFullscreen);
+  doc.addEventListener('MSFullscreenChange', leftFullscreen);
+
+  /* 인게임 전체 화면 버튼 */
+  function paintBtn() {
+    var b = $('v51FsBtn');
+    if (!b) return;
+    b.textContent = fsEl() ? '⛶ 전체화면 ON' : '⛶ 전체화면';
+  }
+  function makeBtn() {
+    if ($('v51FsBtn')) return;
+    var b = doc.createElement('button');
+    b.type = 'button';
+    b.id = 'v51FsBtn';
+    b.textContent = '⛶ 전체화면';
+    b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); toggle(); });
+    doc.body.appendChild(b);
+  }
+
+  /* 설정 행 추가 */
+  function settingsRow() {
+    var box = $('v51SetBox');
+    if (!box || $('v51FsRow')) return;
+    var b = doc.createElement('button');
+    b.type = 'button';
+    b.id = 'v51FsRow';
+    b.className = 'mp-chip';
+    b.style.cssText = 'padding:7px;font-weight:900';
+    b.textContent = '⛶ 전체 화면 켜기 / 끄기';
+    b.addEventListener('click', function () { toggle(); });
+    box.appendChild(b);
+  }
+
+  function boot() {
+    ensureMeta(); injectCss(); makeBtn(); settingsRow(); paintBtn();
+    setInterval(function () { try { settingsRow(); paintBtn(); } catch (e) {} }, 1500);
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 400); });
+  else setTimeout(boot, 400);
+
+  root.JW51FULL = {
+    enter: enter, exit: exit, toggle: toggle,
+    state: function () { return { supported: supported(), on: !!fsEl(), tried: ST.tried, denied: ST.denied }; }
+  };
+  console.log('[JW51FULL] fullscreen ready');
+})(window);
+
 </script>
-<!-- LP-GUARD-JS:END -->
+<!-- ===== v4.8-boss PATCH END ===== -->
 </body>
 </html>
