@@ -4719,14 +4719,14 @@ extends CanvasLayer
   function trapOn(id) { return rules.traps && (!rules.trapList || rules.trapList.indexOf(id) >= 0); }
 
   /* 규칙 잠금(클래식): 바꿀 수 없는 값을 강제한다 */
-  function applyClassicLock() {
+  function applyClassicLock() {   /* __v486classic */
     if (rules.mode !== 'classic') return;
     rules.originPct = 3;
     rules.originRandom = false;
     rules.events = true;
-    rules.buffs = false;
-    rules.traps = false;
-    rules.items = false;
+    rules.buffs = true;
+    rules.traps = true;
+    rules.items = true;
     rules.collide = true;
     rules.evList = null;
     rules.buffList = [];
