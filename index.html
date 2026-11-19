@@ -46218,6 +46218,17 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -51509,7 +51520,12 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   var MG = root.JW48MG || {};
   var JU = root.JW48JUKE = root.JW48JUKE || { override: null, cur: '', audio: null, openPrev: false };
   var K = 'jw48_juke_v1';
-  var PREFIX = /\/claude-v4-8-5\//.test(location.pathname) ? '../audio/' : 'audio/';
+  function subPrefix() {
+    var p = location.pathname.replace(/\/+$/, '');
+    if (/\/(gemini-v[0-9-]+|pickle[^/]*|gpt|grok[^/]*|claude[^/]*|manus|deepseek|perplexity|qwen|ai-studio)$/.test(p)) return '../audio/';
+    return 'audio/';
+  }
+  var PREFIX = subPrefix();
 
   var MAPS_BASE = ['default', 'dessert', 'site', 'space', 'bamboo', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano',
     'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji',
@@ -51529,10 +51545,18 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   function mapName(id) {
     try { var m = root.JWMap && root.JWMap.byId ? root.JWMap.byId(id) : null; return m ? (m.emoji || '🗺️') + ' ' + m.name : id; } catch (e) { return id; }
   }
+  /* 실제 jaeu-jump-site/audio 에 있는 파일만 (404 방지) */
+  var HAS = ('alien arcade arctic atlantis bamboo baseball boss canyon carnival cheese clock cyberpunk default dessert dino egypt ' +
+    'fireworks fuji gyeongju honey kitchen lab library lobby london main mansion mushroom newyork olympus onsen paris pirate ' +
+    'rainbow retro20 rockfest santa school seoul site skycastle snowclock space stadium train venice volcano wuxia').split(' ');
+  function has(key) { return HAS.indexOf(key) >= 0; }
   function tracks() {
     var out = [['lobby', NAMES.lobby], ['boss', NAMES.boss], ['main', NAMES.main]];
-    mapIds().forEach(function (id) { out.push([id, mapName(id)]); });
-    return out;
+    mapIds().forEach(function (id) { if (has(id)) out.push([id, mapName(id)]); });
+    /* 같은 키가 두 번 들어가지 않게 (맵 목록 중복 방지) */
+    var seen = {}, uniq = [];
+    out.forEach(function (t) { if (!t || seen[t[0]]) return; if (!has(t[0])) return; seen[t[0]] = 1; uniq.push(t); });
+    return uniq;
   }
   function load() {
     var o = V.lsGet(K, {}) || {};
@@ -51611,6 +51635,13 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   function enforce() {
     var c = ctx();
     var want = pick(c);
+    /* 미리듣기 재생 중에도 엔진 BGM 은 반드시 멈춘다 (중복 재생 0) */
+    try {
+      if (JU.audio && !JU.audio.paused && vol() > 0) {
+        var el = (root.JW43MP3 && JW43MP3.list) ? JW43MP3.list() : [];
+        el.forEach(function (t) { if (t && !t.paused) { try { t.pause(); } catch (e) {} } });
+      }
+    } catch (e) {}
     if (!want) {
       if (wasOverride) {
         wasOverride = false;
@@ -51632,6 +51663,20 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (a && Math.abs((a.volume || 0) - v) > 0.01) a.volume = v;
     if (a && a.paused && vol() > 0) { try { a.play().catch(function () {}); } catch (e) {} }
   }
+  /* 지정곡이 있는 동안 엔진 BGM 이 다시 시작되지 않게 (중복 재생 0) */
+  try {
+    var M3 = root.JW43MP3;
+    if (M3 && typeof M3.sync === 'function' && !M3.sync.__v48ju) {
+      var osync = M3.sync;
+      var wsync = function () {
+        try { if (pick(ctx())) { enginePause(); return; } } catch (e) {}
+        return osync.apply(this, arguments);
+      };
+      wsync.__v48ju = 1;
+      M3.sync = wsync;
+    }
+  } catch (e) {}
+
   setInterval(function () { try { enforce(); } catch (e) {} }, 400);
 
   /* ---------------------------------------------------------------- UI */
@@ -51648,21 +51693,23 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       '  border-radius:18px 18px 0 0;padding:12px 12px calc(12px + env(safe-area-inset-bottom,0px));',
       '  box-shadow:0 -12px 40px rgba(0,0,0,.6);color:#e8effc;}',
       '#v48ju .hd{display:flex;align-items:center;gap:8px;margin-bottom:6px;}',
-      '#v48ju .hd b{font-family:"Jua",sans-serif;font-size:16px;font-weight:400;flex:1;}',
-      '#v48ju .x{height:30px;padding:0 10px;border-radius:9px;border:1px solid rgba(160,190,235,.3);',
+      '#v48ju .hd b{font-family:"Jua",sans-serif;font-size:18px;font-weight:400;flex:1;}',
+      '#v48ju .x{height:38px;padding:0 12px;border-radius:11px;border:2px solid rgba(160,190,235,.3);box-shadow:0 3px 0 #070c16;white-space:nowrap;font-size:13px;',
       '  background:rgba(255,255,255,.06);color:#e8effc;font-size:12px;font-weight:800;}',
       '#v48ju .tabs{display:flex;gap:4px;margin-bottom:6px;}',
-      '#v48ju .tabs button{flex:1;height:30px;border-radius:9px;border:1px solid rgba(160,190,235,.2);',
-      '  background:rgba(255,255,255,.05);color:#a9bad6;font-size:11px;font-weight:800;}',
+      '#v48ju .tabs button{flex:1;height:38px;border-radius:11px;border:2px solid rgba(160,190,235,.24);',
+      '  background:linear-gradient(180deg,#1d2a44,#141d31);color:#b6c6de;font-size:13px;font-weight:900;box-shadow:0 3px 0 #070c16;white-space:nowrap;}',
       '#v48ju .tabs button.on{background:linear-gradient(180deg,#3a6ea8,#264a75);color:#eaf6ff;border-color:rgba(150,215,255,.5);}',
       '#v48ju .list{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:4px;padding:2px;}',
       '#v48ju .row{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:10px;',
       '  background:rgba(255,255,255,.045);border:1px solid rgba(160,190,235,.14);}',
       '#v48ju .row.on{border-color:#fbbf24;background:rgba(251,191,36,.12);}',
-      '#v48ju .row .nm{flex:1;min-width:0;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-      '#v48ju .row .nm small{display:block;font-size:9.5px;color:#8fa3c4;font-weight:600;}',
-      '#v48ju .row button{height:28px;padding:0 9px;border-radius:8px;font-size:10.5px;font-weight:800;',
-      '  border:1px solid rgba(160,190,235,.26);background:rgba(255,255,255,.07);color:#e8effc;}',
+      '#v48ju .row .nm{flex:1;min-width:0;font-size:13px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '#v48ju .row .nm small{display:block;font-size:11px;color:#9fb3d2;font-weight:800;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '#v48ju .row{padding:9px 10px;min-height:52px;}',
+      '#v48ju .row button{height:38px;min-width:44px;padding:0 11px;border-radius:11px;font-size:12.5px;font-weight:900;white-space:nowrap;',
+      '  border:2px solid rgba(160,190,235,.3);background:linear-gradient(180deg,#243654,#162032);color:#e8effc;',
+      '  box-shadow:0 3px 0 #070c16;}',
       '#v48ju .row button.play{background:linear-gradient(180deg,#63b8f6,#2f7fd0);color:#052036;border-color:#2a6aa8;}',
       '#v48ju .row button.on{background:linear-gradient(180deg,#ffd66e,#f0a72a);color:#3a2205;border-color:#c98a17;}',
       '#v48ju .note{font-size:10px;color:#8fa3c4;line-height:1.4;margin-top:4px;}'
@@ -51703,6 +51750,39 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   }
   JU.open = open; JU.close = close;
 
+  function bindRows(list) {
+      list.querySelectorAll('[data-juplay]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var key = b.getAttribute('data-juplay');
+          if (JU.cur === key && JU.audio && !JU.audio.paused) { stopMine(); paint(); return; }
+          JU.cur = '';
+          playTrack(key);
+          paint();
+          beep(760, 0.05, 0.08, 'square');
+        });
+      });
+      list.querySelectorAll('[data-juset]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var key = b.getAttribute('data-jk');
+          var cc = ctx();
+          var already = pick(cc) === key;
+          if (cc.kind === 'lobby') JU.override.lobby = already ? '' : key;
+          else if (cc.kind === 'boss') JU.override.boss = already ? '' : key;
+          else {
+            JU.override.maps = JU.override.maps || {};
+            if (JU.override.maps[cc.id] === key) delete JU.override.maps[cc.id];
+            else JU.override.maps[cc.id] = key;
+          }
+          save();
+          paint();
+          try { enforce(); } catch (e) {}
+          toast(already ? '↺ 지정 해제' : '🎵 BGM 지정', 'chat',
+            already ? '원래 BGM 으로 돌아갑니다' : (cc.kind === 'lobby' ? '타이틀·로비 BGM' : cc.kind === 'boss' ? '보스전 BGM' : mapName(cc.id) + ' BGM') + '으로 지정했어요', 1800);
+          beep(980, 0.07, 0.09, 'square', 1240);
+        });
+      });
+  }
+
   function paint() {
     var tabs = $('v48juTabs'), list = $('v48juList'), note = $('v48juNote');
     if (!tabs || !list) return;
@@ -51720,48 +51800,28 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       var kind = key === 'lobby' ? 'lobby' : key === 'boss' ? 'boss' : 'map';
       if (TAB !== 'all' && TAB !== kind) return;
       var isPlaying = JU.cur === key && JU.audio && !JU.audio.paused;
-      var assignedLobby = JU.override.lobby === key;
-      var assignedBoss = JU.override.boss === key;
-      var assignedMap = (JU.override.maps || {})[c.id] === key && c.kind === 'map';
+      var assignedNow = pick(c) === key;
       html += '<div class="row' + (isPlaying ? ' on' : '') + '">' +
         '<span class="nm">' + (isPlaying ? '▶ ' : '') + t[1] +
         '<small>' + (kind === 'lobby' ? '타이틀 · 로비' : kind === 'boss' ? '보스전' : '맵 BGM') +
-        (assignedLobby ? ' · 로비 지정' : '') + (assignedBoss ? ' · 보스 지정' : '') + (assignedMap ? ' · 이 맵 지정' : '') +
-        '</small></span>' +
+        (assignedNow ? ' · 이 상황 지정됨' : '') + '</small></span>' +
         '<button type="button" class="play" data-juplay="' + key + '">' + (isPlaying ? '❚❚' : '▶') + '</button>' +
-        '<button type="button"' + (assignedLobby ? ' class="on"' : '') + ' data-juset="lobby" data-jk="' + key + '">로비</button>' +
-        '<button type="button"' + (assignedBoss ? ' class="on"' : '') + ' data-juset="boss" data-jk="' + key + '">보스</button>' +
-        (c.kind === 'map' ? '<button type="button"' + (assignedMap ? ' class="on"' : '') + ' data-juset="map" data-jk="' + key + '">이 맵</button>' : '') +
+        '<button type="button"' + (assignedNow ? ' class="on"' : '') + ' data-juset="ctx" data-jk="' + key + '">' +
+          (assignedNow ? '지정됨' : '지정') + '</button>' +
         '</div>';
     });
     list.innerHTML = html;
-    list.querySelectorAll('[data-juplay]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var key = b.getAttribute('data-juplay');
-        if (JU.cur === key && JU.audio && !JU.audio.paused) { stopMine(); paint(); return; }
-        JU.cur = '';
-        playTrack(key);
-        paint();
-        beep(760, 0.05, 0.08, 'square');
-      });
-    });
-    list.querySelectorAll('[data-juset]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var where = b.getAttribute('data-juset'), key = b.getAttribute('data-jk');
-        if (where === 'lobby') JU.override.lobby = JU.override.lobby === key ? '' : key;
-        else if (where === 'boss') JU.override.boss = JU.override.boss === key ? '' : key;
-        else {
-          JU.override.maps = JU.override.maps || {};
-          if (JU.override.maps[c.id] === key) delete JU.override.maps[c.id];
-          else JU.override.maps[c.id] = key;
-        }
-        save();
-        paint();
-        toast('🎵 BGM 지정', 'chat', where === 'lobby' ? '로비 BGM을 바꿨어요' : where === 'boss' ? '보스 BGM을 바꿨어요' : '이 맵 BGM을 바꿨어요', 1800);
-        beep(980, 0.07, 0.09, 'square', 1240);
-      });
-    });
+    bindRows(list);
     if (note) {
+      if (vol() <= 0) {
+        note.innerHTML = '<b style="color:#fecaca">🔇 BGM이 꺼져 있어요</b> · 설정 → 소리에서 BGM을 켜면 지정한 곡이 재생됩니다.' +
+          ' <button type="button" id="v48juReset" style="height:30px;padding:0 10px;border-radius:9px;font-size:12px;font-weight:900;border:2px solid rgba(160,190,235,.3);background:rgba(255,255,255,.07);color:#e8effc">↺ 원래 BGM으로</button>';
+        var r0 = $('v48juReset');
+        if (r0) r0.addEventListener('click', function () {
+          JU.override = { lobby: '', boss: '', maps: {}, play: '' }; save(); stopMine(); paint();
+        });
+        return;
+      }
       note.innerHTML = '지금 상황: <b style="color:#fde68a">' +
         (c.kind === 'lobby' ? '로비/타이틀' : c.kind === 'boss' ? '보스전' : mapName(c.id)) + '</b>' +
         ' · 지정한 곡이 자동으로 재생됩니다. <button type="button" id="v48juReset" style="height:24px;padding:0 8px;border-radius:7px;font-size:10px;font-weight:800;border:1px solid rgba(160,190,235,.3);background:rgba(255,255,255,.07);color:#e8effc">↺ 원래 BGM으로</button>';
@@ -56400,11 +56460,13 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 </script>
 <script>
 /* ==========================================================================
-   v4.8-rank : 48 🏆 명예의 전당 대개편
-   - Top3 포디움(금·은·동 · 캐릭터 스킨 미리보기 · 기록 · 날짜) + 4위~ 정리된 리스트
-   - 상단 필터: 맵별 / 모드별 / 정렬(최고 도달 · 최단 클리어) + 내 순위 요약 배너
-   - 🕹️ 미니게임 25종 기록 탭
-   - 깜빡임 0 (시그니처가 같으면 다시 그리지 않음) · 모바일/iPad 대응
+   v4.8-rank (v5.6 대개편) : 🏆 명예의 전당
+   - 내 순위 요약 배너 (순위 · 최고 기록 · 내 장착 칭호 배지)
+   - Top3 왕좌 포디움 (왕관/메달 · 스킨 미니 캐릭터 · 화려한 칭호 배지 · 기록 · 날짜)
+   - 깔끔한 필터: 45맵 드롭다운 + 모드 탭 + 정렬 2버튼 (버튼 50개 늘어놓지 않음)
+   - 4위 이하 리스트: 순위 · 스킨 · 칭호 배지 · 닉네임 · 기록 · 날짜 (390px 에서 줄바꿈 안 깨짐)
+   - 버튼은 입체 3D(하단 테두리·하이라이트·최소 38px), 글씨는 12~18px 굵게
+   - 깜빡임 0 (시그니처 동일하면 다시 그리지 않음)
    ========================================================================== */
 (function (root) {
   'use strict';
@@ -56414,7 +56476,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   var $ = function (id) { return doc.getElementById(id); };
   var RK = root.JW48RK = root.JW48RK || {};
   var LS_RANK = 'jw43_rank_v1';
-  var SORT = 'm';          /* m = 최고 도달, time = 최단 클리어 */
+  var SORT = 'm';
   var MAP = 'default', MODE = 'normal', TAB = 'climb';
   var OPEN = false;
   var sig = '';
@@ -56426,7 +56488,6 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   function modeList() { try { return (root.JWMode && root.JWMode.MODES) || []; } catch (e) { return []; } }
   function mapById(id) { try { return root.JWMap.byId(id) || null; } catch (e) { return null; } }
   function modeById(id) { try { return root.JWMode.modeById(id) || null; } catch (e) { return null; } }
-  function total(id) { try { return V.mapTotal ? V.mapTotal(id) : 0; } catch (e) { return 0; } }
   function rankAll() { try { var r = V.lsGet(LS_RANK, []); return Array.isArray(r) ? r : []; } catch (e) { return []; } }
   function rel(ts) {
     var d = Date.now() - (ts || 0);
@@ -56441,11 +56502,24 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   function fmtT(t) {
     if (!t) return '-';
     var m = Math.floor(t / 60), s = (t % 60);
-    return m + ':' + (s < 10 ? '0' : '') + (Math.round(s * 10) / 10);
+    return m + ':' + (s < 10 ? '0' : '') + Math.round(s * 10) / 10;
   }
-  function floorOf(m) {
-    try { if (V.m2f) return V.m2f(m); } catch (e) {}
-    return Math.max(1, Math.round((m || 0) / 3.4));
+  function floorOf(m) { try { if (V.m2f) return V.m2f(m); } catch (e) {} return Math.max(1, Math.round((m || 0) / 3.4)); }
+
+  /* 칭호 배지 */
+  function badgeOf(rec) {
+    if (!rec) return '';
+    var id = rec.ti || '';
+    if (!id) {
+      try {
+        var n = String(rec.n || '').trim();
+        if (n && n === String(myNick()).trim() && root.JW56T5) id = root.JW56T5.myTitleId();
+        else if (root.JW56T5) id = root.JW56T5.tiOf(n);
+      } catch (e) {}
+    }
+    if (!id || id === 'auto') return '';
+    try { if (root.JW51TITLES) return root.JW51TITLES.badge(id, true); } catch (e) {}
+    return '';
   }
 
   /* ---------------------------------------------------------------- CSS */
@@ -56455,93 +56529,112 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     s.id = 'v48rkCss';
     s.textContent = [
       '#v48rk{position:fixed;inset:0;z-index:12500;display:flex;align-items:center;justify-content:center;',
-      '  background:rgba(3,6,13,.86);padding:6px;padding-top:calc(6px + env(safe-area-inset-top,0px));',
+      '  background:rgba(3,6,13,.9);padding:6px;padding-top:calc(6px + env(safe-area-inset-top,0px));',
       '  padding-bottom:calc(6px + env(safe-area-inset-bottom,0px));',
       '  font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;-webkit-user-select:none;user-select:none;}',
       '#v48rk.hidden{display:none;}',
-      '#v48rk .sh{width:min(100%,560px);max-height:96dvh;display:flex;flex-direction:column;min-height:0;',
-      '  background:linear-gradient(180deg,#101a30,#080e1a 60%,#070b14);border:2px solid #1d2b46;border-radius:18px;',
-      '  box-shadow:0 16px 44px rgba(0,0,0,.7),inset 0 2px 0 rgba(255,255,255,.06);overflow:hidden;}',
-      '#v48rk .hd{display:flex;align-items:center;gap:8px;padding:11px 12px 9px;border-bottom:1px solid #17233a;',
-      '  background:linear-gradient(180deg,rgba(56,89,140,.28),rgba(12,20,34,0));}',
-      '#v48rk .tt{font-family:"Jua",sans-serif;font-size:19px;color:#fff;line-height:1.1;}',
-      '#v48rk .tt small{display:block;font-family:system-ui,sans-serif;font-size:9.5px;font-weight:800;color:#8fa3c4;margin-top:2px;}',
-      '#v48rk .x{margin-left:auto;flex:0 0 auto;height:34px;padding:0 12px;border-radius:11px;border:1px solid #2b3a58;',
-      '  background:rgba(255,255,255,.06);color:#cfe0f6;font-size:12px;font-weight:900;}',
+      '#v48rk .sh{width:min(100%,560px);max-height:97dvh;display:flex;flex-direction:column;min-height:0;',
+      '  background:linear-gradient(180deg,#111c33,#0a1120 55%,#070b14);border:2px solid #24344f;border-radius:18px;',
+      '  box-shadow:0 18px 48px rgba(0,0,0,.75),inset 0 2px 0 rgba(255,255,255,.07);overflow:hidden;}',
+      '#v48rk .hd{display:flex;align-items:center;gap:8px;padding:12px 13px 10px;border-bottom:1px solid #1b2942;',
+      '  background:linear-gradient(180deg,rgba(56,89,140,.32),rgba(12,20,34,0));}',
+      '#v48rk .tt{font-family:"Jua","Apple SD Gothic Neo",sans-serif;font-size:20px;color:#fff;line-height:1.15;letter-spacing:-.2px;}',
+      '#v48rk .tt small{display:block;font-family:system-ui,sans-serif;font-size:11.5px;font-weight:800;color:#9fb2d0;margin-top:3px;}',
+      '#v48rk .x{margin-left:auto;flex:0 0 auto;height:38px;min-width:64px;padding:0 13px;border-radius:11px;border:2px solid #33456a;',
+      '  background:linear-gradient(180deg,#28364f,#162032);color:#dbe7f8;font-size:13px;font-weight:900;',
+      '  box-shadow:0 3px 0 #0a101c,inset 0 1px 0 rgba(255,255,255,.12);white-space:nowrap;}',
       '#v48rk .scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;',
-      '  padding:10px 12px 12px;display:flex;flex-direction:column;gap:9px;}',
+      '  padding:10px 12px 14px;display:flex;flex-direction:column;gap:10px;}',
       /* 내 순위 배너 */
-      '#v48rk .me{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:13px;',
-      '  background:linear-gradient(180deg,rgba(37,99,235,.28),rgba(12,24,46,.9));border:2px solid rgba(96,165,250,.55);}',
-      '#v48rk .me .lbl{font-size:9.5px;font-weight:900;color:#93c5fd;letter-spacing:.04em;}',
-      '#v48rk .me .rk{font-family:"Jua",sans-serif;font-size:22px;color:#fff;line-height:1;}',
-      '#v48rk .me .rk i{font-style:normal;font-size:11px;color:#bfdbfe;margin-left:2px;}',
-      '#v48rk .me .val{font-family:"Jua",sans-serif;font-size:15px;color:#fde047;text-align:right;line-height:1.15;}',
-      '#v48rk .me .val small{display:block;font-family:system-ui,sans-serif;font-size:9.5px;font-weight:800;color:#a5b4c8;}',
-      '#v48rk .me .none{font-size:11.5px;font-weight:800;color:#c7d6ee;line-height:1.35;}',
+      '#v48rk .me{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:14px;',
+      '  background:linear-gradient(180deg,rgba(37,99,235,.3),rgba(12,24,46,.92));border:2px solid rgba(96,165,250,.6);',
+      '  box-shadow:inset 0 1px 0 rgba(255,255,255,.1);}',
+      '#v48rk .me .lbl{font-size:11.5px;font-weight:900;color:#bcd7ff;letter-spacing:-.1px;line-height:1.35;}',
+      '#v48rk .me .rk{font-family:"Jua",sans-serif;font-size:24px;color:#fff;line-height:1.1;display:flex;align-items:baseline;gap:4px;}',
+      '#v48rk .me .rk i{font-style:normal;font-size:12.5px;color:#c7ddff;}',
+      '#v48rk .me .rk em{font-style:normal;font-size:12px;font-weight:800;color:#93b4de;}',
+      '#v48rk .me .val{font-family:"Jua",sans-serif;font-size:17px;color:#fde047;text-align:right;line-height:1.2;white-space:nowrap;}',
+      '#v48rk .me .val small{display:block;font-family:system-ui,sans-serif;font-size:11px;font-weight:800;color:#a9bcd6;}',
+      '#v48rk .me .none{font-size:12.5px;font-weight:800;color:#cfdcee;line-height:1.45;}',
+      '#v48rk .me .bt{margin-top:3px;display:flex;}',
       /* 탭 */
-      '#v48rk .tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;}',
-      '#v48rk .tab{height:36px;border-radius:11px;border:2px solid #22304a;background:#111a2c;color:#9fb0cc;',
-      '  font-family:"Jua",sans-serif;font-size:13px;}',
-      '#v48rk .tab.on{background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;color:#3a2205;}',
+      '#v48rk .tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;}',
+      '#v48rk .tab{height:40px;border-radius:12px;border:2px solid #2a3b58;background:linear-gradient(180deg,#1b2540,#121a2d);color:#a8bad5;',
+      '  font-family:"Jua",sans-serif;font-size:14px;box-shadow:0 3px 0 #070c16,inset 0 1px 0 rgba(255,255,255,.08);white-space:nowrap;}',
+      '#v48rk .tab.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;color:#3a2205;',
+      '  box-shadow:0 3px 0 #6b4405,inset 0 1px 0 rgba(255,255,255,.5);}',
       /* 필터 */
-      '#v48rk .fl{display:flex;flex-direction:column;gap:5px;}',
-      '#v48rk .frow{display:flex;align-items:center;gap:5px;}',
-      '#v48rk .flb{flex:0 0 auto;width:26px;font-size:11px;font-weight:900;color:#7f93b3;text-align:center;}',
-      '#v48rk .chips{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px;flex:1 1 auto;}',
+      '#v48rk .flt{display:flex;flex-direction:column;gap:7px;padding:9px 10px;border-radius:13px;background:#0c1524;border:1.5px solid #1b2942;}',
+      '#v48rk .frow{display:flex;align-items:center;gap:8px;min-width:0;}',
+      '#v48rk .flb{flex:0 0 auto;width:34px;font-size:12px;font-weight:900;color:#93a8c8;text-align:center;}',
+      '#v48rk select.v56sel{flex:1 1 auto;min-width:0;height:40px;border-radius:11px;border:2px solid #33456a;',
+      '  background:linear-gradient(180deg,#1d2a44,#141d31);color:#eaf2ff;font-size:13.5px;font-weight:900;padding:0 10px;',
+      '  font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;-webkit-appearance:none;appearance:none;',
+      '  background-image:linear-gradient(45deg,transparent 50%,#8fb2e0 50%),linear-gradient(135deg,#8fb2e0 50%,transparent 50%);',
+      '  background-position:calc(100% - 17px) 17px,calc(100% - 11px) 17px;background-size:6px 6px,6px 6px;background-repeat:no-repeat;',
+      '  box-shadow:0 3px 0 #070c16,inset 0 1px 0 rgba(255,255,255,.08);}',
+      '#v48rk .chips{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding:1px 0 2px;flex:1 1 auto;}',
       '#v48rk .chips::-webkit-scrollbar{display:none;}',
-      '#v48rk .chip{flex:0 0 auto;font-family:"Jua",sans-serif;font-size:11px;color:#aebbd4;padding:5px 8px;',
-      '  background:linear-gradient(180deg,#1c2745,#141c33);border:2px solid #0a0f1e;border-radius:9px;white-space:nowrap;}',
-      '#v48rk .chip.on{color:#3a2205;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;}',
+      '#v48rk .chip{flex:0 0 auto;font-family:"Jua",sans-serif;font-size:12.5px;color:#b6c6de;padding:8px 11px;min-height:36px;',
+      '  background:linear-gradient(180deg,#1d2a44,#141d31);border:2px solid #22304a;border-radius:10px;white-space:nowrap;',
+      '  box-shadow:0 2px 0 #070c16,inset 0 1px 0 rgba(255,255,255,.07);display:flex;align-items:center;}',
+      '#v48rk .chip.on{color:#3a2205;background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;',
+      '  box-shadow:0 2px 0 #6b4405,inset 0 1px 0 rgba(255,255,255,.45);}',
       /* 포디움 */
-      '#v48rk .pod{display:grid;grid-template-columns:1fr 1.14fr 1fr;gap:6px;align-items:end;margin-top:2px;}',
-      '#v48rk .pc{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px 9px;',
-      '  border-radius:14px;border:2px solid #24314a;background:linear-gradient(180deg,#16223a,#0d1424);min-width:0;}',
-      '#v48rk .pc .md{font-size:20px;line-height:1;}',
-      '#v48rk .pc .ava{width:52px;height:60px;display:flex;align-items:flex-end;justify-content:center;}',
-      '#v48rk .pc .ava canvas{image-rendering:pixelated;width:46px;height:54px;}',
-      '#v48rk .pc .nm{max-width:100%;font-family:"Jua",sans-serif;font-size:12px;color:#f4f8ff;text-align:center;',
-      '  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-      '#v48rk .pc .ti{font-size:8.5px;font-weight:900;color:#93c5fd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}',
-      '#v48rk .pc .vv{font-family:"Jua",sans-serif;font-size:16px;color:#fff;line-height:1.15;text-align:center;}',
-      '#v48rk .pc .vv small{display:block;font-family:system-ui,sans-serif;font-size:8.5px;font-weight:800;color:#94a3b8;}',
-      '#v48rk .pc .dt{font-size:8.5px;font-weight:800;color:#7f93b3;}',
-      '#v48rk .pc.p1{border-color:#fbbf24;background:linear-gradient(180deg,#3a2c0c,#1a1408);box-shadow:0 0 0 1px rgba(251,191,36,.35),0 6px 18px rgba(251,191,36,.16);}',
-      '#v48rk .pc.p2{border-color:#cbd5e1;background:linear-gradient(180deg,#26303f,#121924);}',
-      '#v48rk .pc.p3{border-color:#c2864a;background:linear-gradient(180deg,#31241a,#17110c);}',
-      '#v48rk .pc.p1 .nm{font-size:13.5px;}',
-      '#v48rk .pc.p1 .vv{font-size:18px;color:#fde047;}',
+      '#v48rk .pod{display:grid;grid-template-columns:1fr 1.16fr 1fr;gap:7px;align-items:end;margin-top:2px;}',
+      '#v48rk .pc{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 5px 10px;',
+      '  border-radius:15px;border:2px solid #2a3a56;background:linear-gradient(180deg,#18253d,#0d1424);min-width:0;overflow:hidden;}',
+      '#v48rk .pc .md{font-size:19px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));}',
+      '#v48rk .pc .ava{width:54px;height:62px;display:flex;align-items:flex-end;justify-content:center;}',
+      '#v48rk .pc .ava canvas{image-rendering:pixelated;width:48px;height:56px;}',
+      '#v48rk .pc .nm{max-width:100%;font-family:"Jua",sans-serif;font-size:13px;color:#f4f8ff;text-align:center;',
+      '  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}',
+      '#v48rk .pc .bd{max-width:100%;display:flex;justify-content:center;overflow:hidden;}',
+      '#v48rk .pc .bd .v51badge{font-size:9.5px;padding:1px 5px;max-width:100%;}',
+      '#v48rk .pc .bd .v51badge img{width:11px;height:11px;}',
+      '#v48rk .pc .vv{font-family:"Jua",sans-serif;font-size:17px;color:#fff;line-height:1.2;text-align:center;white-space:nowrap;}',
+      '#v48rk .pc .vv small{display:block;font-family:system-ui,sans-serif;font-size:10.5px;font-weight:800;color:#9fb2d0;}',
+      '#v48rk .pc .dt{font-size:10px;font-weight:800;color:#8296b5;}',
+      '#v48rk .pc.p1{border-color:#fbbf24;background:linear-gradient(180deg,#3d2f0d,#1a1408);',
+      '  box-shadow:0 0 0 1px rgba(251,191,36,.4),0 8px 22px rgba(251,191,36,.2);}',
+      '#v48rk .pc.p2{border-color:#cbd5e1;background:linear-gradient(180deg,#2a3547,#141b28);}',
+      '#v48rk .pc.p3{border-color:#c2864a;background:linear-gradient(180deg,#35271b,#18120c);}',
+      '#v48rk .pc.p1 .nm{font-size:14.5px;}',
+      '#v48rk .pc.p1 .vv{font-size:19px;color:#fde047;}',
       '#v48rk .pc.me{box-shadow:inset 0 0 0 2px #38bdf8;}',
       /* 리스트 */
-      '#v48rk .lst{display:flex;flex-direction:column;gap:4px;}',
-      '#v48rk .row{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:10px;',
-      '  background:#0d1424;border:1px solid #182338;min-width:0;}',
-      '#v48rk .row.me{background:linear-gradient(180deg,rgba(37,99,235,.22),rgba(13,20,36,.9));border-color:rgba(96,165,250,.6);}',
-      '#v48rk .row .n{flex:0 0 22px;text-align:center;font-family:"Jua",sans-serif;font-size:12.5px;color:#93a4c4;}',
-      '#v48rk .row .av{flex:0 0 22px;width:22px;height:26px;}',
-      '#v48rk .row .av canvas{image-rendering:pixelated;width:22px;height:26px;}',
-      '#v48rk .row .nm{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:900;color:#eaf2ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-      '#v48rk .row .nm i{font-style:normal;font-size:9px;font-weight:800;color:#7dd3fc;margin-left:5px;opacity:.95;}',
-      '#v48rk .row .vv{flex:0 0 auto;font-family:"Jua",sans-serif;font-size:13px;color:#fde047;}',
-      '#v48rk .row .dt{flex:0 0 auto;font-size:9px;font-weight:800;color:#7f93b3;min-width:34px;text-align:right;}',
-      '#v48rk .empty{padding:18px 10px;text-align:center;font-size:11.5px;font-weight:800;color:#8fa3c4;line-height:1.5;}',
-      '#v48rk .sec{display:flex;align-items:center;gap:6px;font-family:"Jua",sans-serif;font-size:12px;color:#fde047;margin-top:2px;}',
-      '#v48rk .sec small{font-family:system-ui,sans-serif;font-size:9.5px;font-weight:800;color:#8fa3c4;}',
-      '#v48rk .net{font-size:9.5px;font-weight:800;color:#7f93b3;text-align:center;}',
-      '#v48rk .ft{display:flex;gap:6px;padding:9px 12px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid #17233a;background:#070c16;}',
-      '#v48rk .ft button{flex:1;padding:10px;border-radius:11px;font-size:12px;font-weight:900;border:2px solid #2b3a58;',
-      '  background:#141d30;color:#cfe0f6;}',
-      '#v48rk .ft button.pri{background:linear-gradient(180deg,#bfe0ff,#60a5fa 55%,#2563eb);color:#041a3a;border-color:#0b2c5c;}',
+      '#v48rk .lst{display:flex;flex-direction:column;gap:5px;}',
+      '#v48rk .row{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:11px;',
+      '  background:#0e1728;border:1.5px solid #1c2a42;min-width:0;}',
+      '#v48rk .row.me{background:linear-gradient(180deg,rgba(37,99,235,.24),rgba(14,23,40,.95));border-color:rgba(96,165,250,.65);}',
+      '#v48rk .row .n{flex:0 0 26px;text-align:center;font-family:"Jua",sans-serif;font-size:14px;color:#9db1d0;}',
+      '#v48rk .row .av{flex:0 0 24px;width:24px;height:28px;}',
+      '#v48rk .row .av canvas{image-rendering:pixelated;width:24px;height:28px;}',
+      '#v48rk .row .mid{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;}',
+      '#v48rk .row .nm{font-size:13px;font-weight:900;color:#eaf2ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;}',
+      '#v48rk .row .nm i{font-style:normal;font-size:10px;font-weight:900;color:#7dd3fc;margin-left:5px;}',
+      '#v48rk .row .bd{display:none;}',
+      '#v48rk .row .bd.on{display:flex;}',
+      '#v48rk .row .bd .v51badge{font-size:9.5px;padding:1px 5px;}',
+      '#v48rk .row .bd .v51badge img{width:11px;height:11px;}',
+      '#v48rk .row .vv{flex:0 0 auto;font-family:"Jua",sans-serif;font-size:14px;color:#fde047;white-space:nowrap;}',
+      '#v48rk .row .dt{flex:0 0 42px;font-size:10px;font-weight:800;color:#8296b5;text-align:right;line-height:1.2;}',
+      '#v48rk .empty{padding:22px 12px;text-align:center;font-size:13px;font-weight:800;color:#9fb2d0;line-height:1.6;}',
+      '#v48rk .sec{display:flex;align-items:center;gap:7px;font-family:"Jua",sans-serif;font-size:13.5px;color:#fde047;margin-top:3px;}',
+      '#v48rk .sec small{font-family:system-ui,sans-serif;font-size:11px;font-weight:800;color:#93a8c8;}',
+      '#v48rk .net{font-size:11px;font-weight:800;color:#8296b5;text-align:center;padding:2px 0 4px;line-height:1.4;}',
+      '#v48rk .ft{display:flex;gap:7px;padding:10px 12px calc(11px + env(safe-area-inset-bottom,0px));border-top:1px solid #1b2942;background:#070c16;}',
+      '#v48rk .ft button{flex:1;min-height:42px;border-radius:12px;font-size:13px;font-weight:900;border:2px solid #33456a;',
+      '  background:linear-gradient(180deg,#243450,#162032);color:#dbe7f8;box-shadow:0 3px 0 #070c16,inset 0 1px 0 rgba(255,255,255,.1);',
+      '  white-space:nowrap;padding:0 10px;}',
+      '#v48rk .ft button.pri{background:linear-gradient(180deg,#cfe6ff,#67a9fb 55%,#2f6fd0);color:#041a3a;border-color:#0b2c5c;',
+      '  box-shadow:0 3px 0 #0a2245,inset 0 1px 0 rgba(255,255,255,.55);}',
       '@media(min-width:700px){',
-      '  #v48rk .sh{width:min(96vw,760px);}',
-      '  #v48rk .tt{font-size:22px;}',
-      '  #v48rk .scroll{padding:14px 18px 16px;gap:11px;}',
-      '  #v48rk .pod{grid-template-columns:1fr 1.2fr 1fr;gap:10px;}',
-      '  #v48rk .pc .ava canvas{width:62px;height:72px;}',
-      '  #v48rk .pc .nm{font-size:13.5px;}',
-      '  #v48rk .pc .vv{font-size:18px;}',
-      '  #v48rk .row{padding:9px 12px;}',
-      '  #v48rk .row .nm{font-size:13.5px;}',
+      '  #v48rk .sh{width:min(96vw,820px);}',
+      '  #v48rk .tt{font-size:23px;}',
+      '  #v48rk .scroll{padding:14px 18px 18px;gap:12px;}',
+      '  #v48rk .pc .ava canvas{width:60px;height:70px;}',
+      '  #v48rk .row .nm{font-size:14px;}',
       '}'
     ].join('\n');
     doc.head.appendChild(s);
@@ -56551,36 +56644,22 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   function entries() {
     var all = rankAll().slice();
     try { (V.rank && V.rank.live ? V.rank.live : []).forEach(function (e) { all.push(e); }); } catch (e) {}
-    var seen = {};
-    var out = [];
+    var seen = {}, out = [];
     all.forEach(function (e) {
       if (!e || e.map !== MAP || e.mode !== MODE || !e.n) return;
       if (SORT === 'time' && !(e.clear && e.t > 0)) return;
       var k = String(e.n);
       var prev = seen[k];
-      var better = !prev ||
-        (SORT === 'time' ? (e.t || 9999) < (prev.t || 9999) : (e.m || 0) > (prev.m || 0));
+      var better = !prev || (SORT === 'time' ? (e.t || 9999) < (prev.t || 9999) : (e.m || 0) > (prev.m || 0));
       if (better) seen[k] = e;
     });
     Object.keys(seen).forEach(function (k) { out.push(seen[k]); });
-    out.sort(function (a, b) {
-      return SORT === 'time' ? (a.t || 9999) - (b.t || 9999) : (b.m || 0) - (a.m || 0);
-    });
+    out.sort(function (a, b) { return SORT === 'time' ? (a.t || 9999) - (b.t || 9999) : (b.m || 0) - (a.m || 0); });
     return out;
   }
+  function valText(e) { if (!e) return '-'; return SORT === 'time' ? fmtT(e.t) : Math.round(e.m || 0) + 'm'; }
+  function valSub(e) { if (!e) return ''; return SORT === 'time' ? Math.round(e.m || 0) + 'm 도달' : '#' + floorOf(e.m) + '층'; }
 
-  function valText(e) {
-    if (!e) return '-';
-    if (SORT === 'time') return fmtT(e.t);
-    return Math.round(e.m || 0) + 'm';
-  }
-  function valSub(e) {
-    if (!e) return '';
-    if (SORT === 'time') return Math.round(e.m || 0) + 'm 도달';
-    return '#' + floorOf(e.m) + '층';
-  }
-
-  /* 아바타: 스킨을 모르면 이름 해시로 색을 고정 */
   function colorFor(name) {
     var cols = [];
     try { cols = (V.api().colors() || []).map(function (c) { return c.id; }); } catch (e) {}
@@ -56596,7 +56675,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       var nm = cv.getAttribute('data-rkava') || '';
       var mine = nm === myNick();
       var col = mine ? (V.api().meColor ? V.api().meColor() : colorFor(nm)) : colorFor(nm);
-      var sk = mine && V.api().meSkin ? V.api().meSkin() : 'jaeu';
+      var sk = mine && V.api().meSkin ? V.api().meSkin() : (cv.getAttribute('data-rksk') || 'jaeu');
       var sp = null;
       try { sp = V.api().spriteFor(col, 'idle1', sk); } catch (e) {}
       var g = cv.getContext('2d');
@@ -56630,11 +56709,13 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     $('v48rkRef').addEventListener('click', function () { refresh(true); });
     $('v48rkMine').addEventListener('click', publishMine);
     var scroll = $('v48rkScroll');
+    scroll.addEventListener('change', function (e) {
+      var sel = e.target;
+      if (sel && sel.id === 'v56rkMap') { MAP = sel.value; paint(true); try { V.beep(880, 0.04, 0.06, 'square', 1180); } catch (er) {} }
+    });
     scroll.addEventListener('click', function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
-      var c = t.closest('[data-rkmap]');
-      if (c) { MAP = c.getAttribute('data-rkmap'); paint(true); try { V.beep(880, 0.04, 0.06, 'square', 1180); } catch (er) {} return; }
       var m = t.closest('[data-rkmode]');
       if (m) { MODE = m.getAttribute('data-rkmode'); paint(true); try { V.beep(880, 0.04, 0.06, 'square', 1180); } catch (er) {} return; }
       var sd = t.closest('[data-rksort]');
@@ -56645,49 +56726,55 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     return d;
   }
 
+  function myTitleBadge() {
+    try {
+      if (root.JW56T5) {
+        var id = root.JW56T5.myTitleId();
+        if (id && id !== 'auto' && root.JW51TITLES) return root.JW51TITLES.badge(id, true);
+      }
+    } catch (e) {}
+    return '';
+  }
+
   function paint(force) {
     var box = $('v48rkScroll');
     if (!box) return;
     var rows = entries();
-    var meIdx = -1;
-    var myName = myNick();
+    var meIdx = -1, myName = myNick();
     for (var i = 0; i < rows.length; i++) { if (String(rows[i].n) === myName) { meIdx = i; break; } }
     var my = meIdx >= 0 ? rows[meIdx] : null;
     var md = modeById(MODE) || { emoji: '🏁', name: MODE };
     var mp = mapById(MAP) || { emoji: '🗺️', name: MAP };
-    var mgs = [];
-    var mgSig = '';
+    var mgs = [], mgSig = '';
     if (TAB === 'mg') {
       var best = (root.JW48MG && root.JW48MG.best) || {};
       var order = (root.JW48MG && root.JW48MG.order) || [];
-      order.forEach(function (id) {
-        var g = root.JW48MG.games[id];
-        var b = best[id];
-        mgs.push({ id: id, g: g, b: b });
-      });
+      order.forEach(function (id) { mgs.push({ id: id, g: root.JW48MG.games[id], b: best[id] }); });
       mgSig = mgs.map(function (x) { return x.id + ':' + (x.b && x.b.value) + ':' + (x.b && x.b.at); }).join(',');
     }
-    var s = [TAB, MAP, MODE, SORT, myName, rows.length, rows.map(function (r) { return r.n + r.m + r.t + (r.ts || ''); }).join('|'),
+    var s = [TAB, MAP, MODE, SORT, myName, rows.length, rows.map(function (r) { return r.n + r.m + r.t + (r.ti || '') + (r.ts || ''); }).join('|'),
       V.rank && V.rank.status, mgSig].join('#');
     if (!force && s === sig) { paintAvas(box); return; }
     sig = s;
 
     var h = '';
+    var sub = $('v48rkSub');
+    if (sub) {
+      sub.textContent = TAB === 'mg' ? '미니게임 25종 최고 기록' : ((mp.emoji || '') + ' ' + (mp.name || MAP) + ' · ' + (md.emoji || '') + ' ' + (md.name || MODE));
+    }
+
     /* 내 순위 배너 */
     if (TAB === 'mg') {
       var withRec = mgs.filter(function (x) { return x.b && x.b.value != null; }).length;
       h += '<div class="me"><div style="flex:1;min-width:0"><div class="lbl">🕹️ 미니게임 내 기록</div>' +
-        '<div class="none">25종 중 <b style="color:#fde047">' + withRec + '종</b> 기록 보유 · 게임을 고르면 최고 기록이 쌓입니다</div></div>' +
+        '<div class="none">25종 중 <b style="color:#fde047">' + withRec + '종</b> 기록 보유</div></div>' +
         '<div class="val">' + withRec + '<small>/ 25</small></div></div>';
-    } else if (my) {
-      h += '<div class="me">' +
-        '<div style="flex:1;min-width:0"><div class="lbl">내 순위 · ' + esc(mp.emoji + ' ' + mp.name) + ' / ' + esc(md.emoji + ' ' + md.name) + '</div>' +
-        '<div class="rk">' + (meIdx + 1) + '<i>위</i> <span style="font-size:10.5px;color:#bfdbfe">/ ' + rows.length + '명</span></div></div>' +
-        '<div class="val">' + valText(my) + '<small>' + esc(valSub(my)) + '</small></div></div>';
     } else {
-      h += '<div class="me"><div style="flex:1;min-width:0"><div class="lbl">내 순위 · ' + esc(mp.emoji + ' ' + mp.name) + ' / ' + esc(md.emoji + ' ' + md.name) + '</div>' +
-        '<div class="none">아직 기록이 없어요 · 한 번 도전하면 바로 올라갑니다</div></div>' +
-        '<div class="val" style="color:#94a3b8">—</div></div>';
+      h += '<div class="me"><div style="flex:1;min-width:0"><div class="lbl">내 순위 · ' + esc(mp.name || MAP) + '</div>' +
+        (my ? '<div class="rk">' + (meIdx + 1) + '<i>위</i> <em>/ ' + rows.length + '명</em></div>'
+            : '<div class="none">아직 기록이 없어요 · 한 번 도전하면 바로 올라갑니다</div>') +
+        '<div class="bt">' + myTitleBadge() + '</div></div>' +
+        '<div class="val">' + (my ? valText(my) : '—') + '<small>' + (my ? esc(valSub(my)) : '기록 없음') + '</small></div></div>';
     }
 
     /* 탭 */
@@ -56696,49 +56783,52 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       '<button type="button" class="tab' + (TAB === 'mg' ? ' on' : '') + '" data-rktab="mg">🕹️ 미니게임 25종</button></div>';
 
     if (TAB === 'climb') {
-      /* 필터 */
-      h += '<div class="fl">';
-      h += '<div class="frow"><div class="flb">🗺️</div><div class="chips">' +
-        mapList().map(function (m) {
-          return '<button type="button" class="chip' + (MAP === m.id ? ' on' : '') + '" data-rkmap="' + esc(m.id) + '">' + (m.emoji || '') + ' ' + esc(m.name) + '</button>';
-        }).join('') + '</div></div>';
-      h += '<div class="frow"><div class="flb">🎮</div><div class="chips">' +
-        modeList().map(function (m) {
-          return '<button type="button" class="chip' + (MODE === m.id ? ' on' : '') + '" data-rkmode="' + esc(m.id) + '">' + (m.emoji || '') + ' ' + esc(m.name) + '</button>';
-        }).join('') + '</div></div>';
-      h += '<div class="frow"><div class="flb">↕️</div><div class="chips">' +
-        '<button type="button" class="chip' + (SORT === 'm' ? ' on' : '') + '" data-rksort="m">📏 최고 도달</button>' +
-        '<button type="button" class="chip' + (SORT === 'time' ? ' on' : '') + '" data-rksort="time">⏱ 최단 클리어</button>' +
+      /* 필터: 맵 드롭다운 + 모드 탭 + 정렬 */
+      var maps = mapList();
+      var opts = maps.map(function (m) {
+        return '<option value="' + esc(m.id) + '"' + (MAP === m.id ? ' selected' : '') + '>' + (m.emoji || '') + ' ' + esc(m.name) + '</option>';
+      }).join('');
+      h += '<div class="flt">' +
+        '<div class="frow"><div class="flb">🗺️</div><select class="v56sel" id="v56rkMap">' + opts + '</select></div>' +
+        '<div class="frow"><div class="flb">🎮</div><div class="chips">' +
+          modeList().map(function (m) {
+            return '<button type="button" class="chip' + (MODE === m.id ? ' on' : '') + '" data-rkmode="' + esc(m.id) + '">' + (m.emoji || '') + ' ' + esc(m.name) + '</button>';
+          }).join('') + '</div></div>' +
+        '<div class="frow"><div class="flb">↕️</div><div class="chips">' +
+          '<button type="button" class="chip' + (SORT === 'm' ? ' on' : '') + '" data-rksort="m">📏 최고 도달</button>' +
+          '<button type="button" class="chip' + (SORT === 'time' ? ' on' : '') + '" data-rksort="time">⏱ 최단 클리어</button>' +
         '</div></div></div>';
 
       if (!rows.length) {
         h += '<div class="empty">' + (SORT === 'time' ? '아직 클리어 기록이 없어요.<br>정상에 골인하면 최단 기록이 올라갑니다.' : '아직 기록이 없어요.<br>한 번 도전하면 최고 도달이 올라갑니다.') + '</div>';
       } else {
         var top = rows.slice(0, 3);
-        var order = [1, 0, 2];   /* 2위 · 1위 · 3위 배치 */
+        var order = [1, 0, 2];
         h += '<div class="pod">';
         order.forEach(function (idx) {
           var e = top[idx];
           if (!e) { h += '<div class="pc" style="opacity:.35"><div class="md">—</div><div class="ava"></div><div class="nm">빈 자리</div></div>'; return; }
           var cls = 'pc p' + (idx + 1) + (String(e.n) === myName ? ' me' : '');
-          var title = (String(e.n) === myName) ? myTitleName() : (e.live ? '실시간' : '');
+          var bd = badgeOf(e);
           h += '<div class="' + cls + '">' +
             '<div class="md">' + ['🥇', '🥈', '🥉'][idx] + '</div>' +
-            '<div class="ava"><canvas width="46" height="54" data-rkava="' + esc(e.n) + '"></canvas></div>' +
+            '<div class="ava"><canvas width="48" height="56" data-rkava="' + esc(e.n) + '" data-rksk="' + esc(e.sk || 'jaeu') + '"></canvas></div>' +
             '<div class="nm">' + esc(e.n) + '</div>' +
-            (title ? '<div class="ti">' + esc(title) + '</div>' : '<div class="ti">&nbsp;</div>') +
+            (bd ? '<div class="bd">' + bd + '</div>' : '') +
             '<div class="vv">' + valText(e) + '<small>' + esc(valSub(e)) + '</small></div>' +
             '<div class="dt">' + esc(rel(e.ts)) + '</div></div>';
         });
         h += '</div>';
         if (rows.length > 3) {
           h += '<div class="sec">' + (rows.length > 4 ? ('4위 ~ ' + rows.length + '위') : '4위') + ' <small>' + (SORT === 'time' ? '빠른 순' : '높은 순') + '</small></div><div class="lst">';
-          rows.slice(3, 30).forEach(function (e, i) {
+          rows.slice(3, 40).forEach(function (e, i) {
             var me = String(e.n) === myName;
+            var bd = badgeOf(e);
             h += '<div class="row' + (me ? ' me' : '') + '">' +
               '<div class="n">' + (i + 4) + '</div>' +
-              '<div class="av"><canvas width="22" height="26" data-rkava="' + esc(e.n) + '"></canvas></div>' +
-              '<div class="nm">' + esc(e.n) + (me ? '<i>나</i>' : '') + (e.live ? '<i>📡</i>' : '') + '</div>' +
+              '<div class="av"><canvas width="24" height="28" data-rkava="' + esc(e.n) + '" data-rksk="' + esc(e.sk || 'jaeu') + '"></canvas></div>' +
+              '<div class="mid"><div class="nm">' + esc(e.n) + (me ? '<i>나</i>' : '') + (e.live ? '<i>📡</i>' : '') + '</div>' +
+              (bd ? '<div class="bd on">' + bd + '</div>' : '') + '</div>' +
               '<div class="vv">' + valText(e) + '</div>' +
               '<div class="dt">' + esc(rel(e.ts)) + '</div></div>';
           });
@@ -56747,7 +56837,6 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       }
       h += '<div class="net">' + esc((V.rank && V.rank.status) || '📡 접속자 기록과 합치는 중…') + '</div>';
     } else {
-      /* 미니게임 기록 */
       var has = mgs.filter(function (x) { return x.b && x.b.value != null; });
       var rest = mgs.filter(function (x) { return !(x.b && x.b.value != null); });
       has.sort(function (a, b) { return (b.b.at || 0) - (a.b.at || 0); });
@@ -56758,24 +56847,21 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
         var v = x.b.value;
         var txt = (g.record && g.record.fmt) ? safeFmt(g.record.fmt, v) : (String(v) + (g.unit ? ' ' + g.unit : ''));
         h += '<div class="row"><div class="n">' + (g.emoji || '🎮') + '</div>' +
-          '<div class="nm">' + esc(g.name || x.id) + (x.b.plays ? '<i>' + x.b.plays + '판</i>' : '') + '</div>' +
-          '<div class="vv">' + esc(txt) + '</div>' +
-          '<div class="dt">' + esc(rel(x.b.at)) + '</div></div>';
+          '<div class="mid"><div class="nm">' + esc(g.name || x.id) + (x.b.plays ? '<i>' + x.b.plays + '판</i>' : '') + '</div></div>' +
+          '<div class="vv">' + esc(txt) + '</div><div class="dt">' + esc(rel(x.b.at)) + '</div></div>';
       });
       h += '</div>';
       if (rest.length) {
         h += '<div class="sec">아직 기록 없음<small>' + rest.length + '종</small></div><div class="lst">';
         rest.forEach(function (x) {
           var g = x.g || {};
-          h += '<div class="row" style="opacity:.55"><div class="n">' + (g.emoji || '🎮') + '</div>' +
-            '<div class="nm">' + esc(g.name || x.id) + '</div>' +
-            '<div class="vv" style="color:#64748b">기록 없음</div>' +
-            '<div class="dt"></div></div>';
+          h += '<div class="row" style="opacity:.6"><div class="n">' + (g.emoji || '🎮') + '</div>' +
+            '<div class="mid"><div class="nm">' + esc(g.name || x.id) + '</div></div>' +
+            '<div class="vv" style="color:#93a8c8">기록 없음</div><div class="dt"></div></div>';
         });
         h += '</div>';
       }
     }
-    /* 풋터: 탭에 따라 버튼 의미가 바뀐다 */
     var mb = $('v48rkMine');
     if (mb) {
       var want = TAB === 'mg' ? '🕹️ 미니게임 하러 가기' : '📡 내 기록 올리기';
@@ -56785,16 +56871,6 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     paintAvas(box);
   }
   function safeFmt(fn, v) { try { return fn(v); } catch (e) { return String(v); } }
-  function myTitleName() {
-    try {
-      var t = V.api().titles ? V.api().titles() : null;
-      if (!t) return '';
-      var id = null;
-      try { var s = st(); id = s && s.me && s.me.ti; } catch (e) {}
-      var f = t.filter(function (x) { return x.id === id; })[0];
-      return f ? f.name : '';
-    } catch (e) { return ''; }
-  }
 
   /* ---------------------------------------------------------------- 열기 · 새로고침 */
   function ensureBus() {
@@ -56861,7 +56937,6 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   RK.close = close;
   RK.state = function () { return { open: OPEN, tab: TAB, map: MAP, mode: MODE, sort: SORT, sig: sig }; };
 
-  /* ---------------------------------------------------------------- 진입 가로채기 */
   doc.addEventListener('click', function (e) {
     var t = e.target;
     if (!t || !t.closest) return;
@@ -56879,14 +56954,14 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (e.key === 'Escape') { e.preventDefault(); close(); }
   }, true);
 
-  /* 다른 경로로 옛 랭킹 모달이 열리면 새 UI 로 넘긴다 */
   setInterval(function () {
     var old = $('v42Rank');
     if (old && !old.classList.contains('hidden')) {
       old.classList.add('hidden');
       if (!OPEN) open({ keep: true });
     }
-  }, 400);
+    if (OPEN) { try { paint(false); } catch (e) {} }
+  }, 1500);
 })(window);
 
 </script>
@@ -61903,7 +61978,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   }
 
   var pulse = 0;
-  /* 일직선 가이드: 차지량·방향만으로 계산 (시뮬레이션 없음 → 비용 거의 0) */
+  /* 일직선 가이드: 실제 발사 각도(launch 의 vx·vy) 그대로, 차지량에 따라 계속 길어짐 */
   function drawFx(ctx, camY, lh) {
     var a = alphaFor();
     if (!a) { STAT.skip++; return; }
@@ -61911,10 +61986,20 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (!p) return;
     var ch = Math.max(0, Math.min(1, p.charge || 0));
     var d = dirNow(p);
-    var len = 54 + ch * 250;
+    /* 실제 발사 벡터 그대로 방향을 잡는다 (제자리 점프면 수직 위) */
+    var L = launch(Math.max(0.14, ch), d, p);
+    var mag = Math.sqrt(L.vx * L.vx + L.vy * L.vy) || 1;
+    var ux = L.vx / mag, uy = L.vy / mag;
     var x0 = p.x + p.w / 2, y0 = p.y + p.h * 0.5 - camY;
-    var x1 = x0 + d * len * 0.86;
-    var y1 = y0 - len * 0.52;
+    /* 짧게 시작해 풀차지까지 시원하게 길어진다 */
+    var len = 32 + ch * 290;
+    /* 좌우 벽에 닿으면 각도는 그대로 두고 길이만 자른다 */
+    var pw = p.w || 0;
+    if (ux < -0.001) len = Math.min(len, (WALL - x0) / ux);
+    else if (ux > 0.001) len = Math.min(len, ((W - WALL) - x0) / ux);
+    if (len < 4) len = 4;
+    var x1 = x0 + ux * len;
+    var y1 = y0 + uy * len;
     pulse += 0.06;
     ctx.save();
     ctx.lineCap = 'round';
@@ -61925,11 +62010,17 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     ctx.lineDashOffset = -pulse * 12;
     ctx.beginPath(); ctx.moveTo(x0, y0 - 6); ctx.lineTo(x1, y1); ctx.stroke();
     ctx.setLineDash([]);
-    /* 끝점 마커 */
+    /* 끝점 마커 + 작은 화살촉 */
     ctx.fillStyle = ch > 0.86 ? 'rgba(253,224,71,.95)' : 'rgba(191,219,254,.95)';
     ctx.beginPath(); ctx.arc(x1, y1, 3.2, 0, 6.2832); ctx.fill();
-    ctx.globalAlpha = 0.35;
+    ctx.globalAlpha = 0.28;
     ctx.beginPath(); ctx.arc(x1, y1, 7, 0, 6.2832); ctx.fill();
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.moveTo(x1 + ux * 7, y1 + uy * 7);
+    ctx.lineTo(x1 + uy * 4.5 - ux * 3, y1 - ux * 4.5 - uy * 3);
+    ctx.lineTo(x1 - uy * 4.5 - ux * 3, y1 + ux * 4.5 - uy * 3);
+    ctx.closePath(); ctx.fill();
     ctx.restore();
     STAT.fx++;
   }
@@ -62171,18 +62262,33 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var capLow = mix(cap, '#241a12', 0.30);
     var under = mix(p.d, '#120c08', 0.25);
 
-    /* 1) 둥근 캡슐 실루엣 + 단색 몸통 */
-    rr(c, 0, 0, w, bh, rad, rgb(body));
-    /* 2) 위 밝은 윗면 띠 */
-    c.save(); rr(c, 0, 0, w, bh, rad, 'rgba(0,0,0,0)'); c.clip && c.clip();
-    R(c, 0, 0, w, capH + 2, rgb(cap));
-    R(c, 0, 0, w, 2, rgb(capHi));
-    /* 3) 아래 그림자 1줄 */
-    R(c, 0, bh - 3, w, 3, rgb(under, 0.9));
-    R(c, 0, bh - 4, w, 1, rgb(under, 0.35));
+    /* 1) 예전 느낌: 각진 16비트 도트 블록 (둥근 캡슐 아님) */
+    R(c, 0, 0, w, bh, rgb(body));
+    /* 2) 윗면 띠 + 상단 하이라이트 1px (도트 블록 특유의 밝은 테두리) */
+    R(c, 0, 0, w, Math.max(3, capH), rgb(cap));
+    R(c, 0, 0, w, 1, rgb(capHi));
+    R(c, 0, Math.max(3, capH), w, 1, rgb(mix(cap, '#000000', 0.22)));
+    /* 3) 아래 그늘 3~4px */
+    R(c, 0, bh - 4, w, 4, rgb(mix(bodyD, '#120c08', 0.25)));
+    R(c, 0, bh - 5, w, 1, rgb(mix(bodyD, '#000000', 0.34)));
+    /* 4) 좌우 1px 음영 */
+    R(c, 0, 0, 1, bh, rgb(mix(bodyD, '#000000', 0.28)));
+    R(c, w - 1, 0, 1, bh, rgb(mix(bodyD, '#000000', 0.28)));
+    /* 5) 16비트 느낌의 픽셀 외곽선 (모서리 1px 톡톡) */
+    c.save();
+    c.globalAlpha = 0.5;
+    c.fillStyle = 'rgba(8,12,20,.9)';
+    c.fillRect(0, 1, 1, bh - 3);
+    c.fillRect(w - 1, 1, 1, bh - 3);
+    c.fillRect(1, bh - 1, w - 2, 1);
     c.restore();
-    /* 4) 1px 톤온톤 테두리 */
-    rstroke(c, 0, 0, w, bh, rad, 'rgba(40,28,20,.42)', 1);
+    /* 모서리 1px 컷 → 각진 도트 블록 실루엣 */
+    try {
+      c.clearRect(0, 0, 1, 1);
+      c.clearRect(w - 1, 0, 1, 1);
+      c.clearRect(0, bh - 1, 1, 1);
+      c.clearRect(w - 1, bh - 1, 1, 1);
+    } catch (e) {}
 
     /* 5) 아주 가벼운 질감 (테마별 1~2줄) */
     if (k === 'grass' || k === 'moss' || k === 'turf') {
@@ -63705,6 +63811,47 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   function mapName(id) { try { var m = root.JWMap.byId(id) || {}; return (m.emoji ? m.emoji + ' ' : '') + (m.name || id); } catch (e) { return id; } }
   function modeName(id) { try { var m = root.JWMode.modeById(id) || {}; return (m.emoji ? m.emoji + ' ' : '') + (m.name || id); } catch (e) { return id; } }
   function cleared() { try { var p = V.api().internals().prof; return (p && p.mapsCleared) || []; } catch (e) { return []; } }
+
+  /* ---------------------------------------------------------------- 45맵 체크판 (🏛️ 클래식 전용) */
+  var BOARD_KEY = 'jw51_board_v2';        /* pureclassic 완등한 맵 id 배열 */
+  var BOARD_RESET = 'jw51_board_reset_v2';
+  function board() { var a = V.lsGet(BOARD_KEY, []); return Array.isArray(a) ? a : []; }
+  function boardSave(a) { V.lsSet(BOARD_KEY, a); }
+  function boardCleared() { return board(); }
+  function boardAdd(mapId) {
+    if (!mapId) return;
+    var a = board();
+    if (a.indexOf(mapId) >= 0) return;
+    a.push(mapId);
+    boardSave(a);
+    try { C.toast('🏛️ 클래식 완등 기록', 'lucky', mapName(mapId) + ' · 체크판 ' + a.length + '/45', 2000); } catch (e) {}
+  }
+  /* 이번 패치에서 1회 초기화 (잘못 찍힌 체크판 기록 정리) */
+  function boardResetOnce() {
+    try {
+      if (localStorage.getItem(BOARD_RESET) === '1') return;
+      localStorage.setItem(BOARD_RESET, '1');
+      boardSave([]);
+    } catch (e) {}
+  }
+  /* 클래식 모드 완등을 감지해 체크판에 기록 */
+  var wasVic = false;
+  function boardWatch() {
+    var j = root.__jwg;
+    var g = j && j.game;
+    if (!g) return;
+    if (g.victory && !wasVic) {
+      var mo = '';
+      try { mo = (root.JW55PURE && root.JW55PURE.mode) ? JW55PURE.mode() : ''; } catch (e) { mo = ''; }
+      var t = Number(g.time) || 0;
+      if (mo === 'pureclassic' && t > 1.2) {
+        var mapId = '';
+        try { mapId = (root.JWMode && JWMode.rules && JWMode.rules.map) || (root.JWMap && JWMap.current) || 'default'; } catch (e) { mapId = 'default'; }
+        boardAdd(mapId);
+      }
+    }
+    wasVic = !!g.victory;
+  }
   function stats() { return V.lsGet(V.LS.stats, {}) || {}; }
 
   /* ---------------------------------------------------------------- 즐겨찾기 (엔진과 같은 키) */
@@ -63732,14 +63879,11 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (i >= 0) f.splice(i, 1); else f.unshift(key);
     V.lsSet(FAV_KEY, f);
     C.toast(i >= 0 ? '☆ 즐겨찾기 해제' : '★ 즐겨찾기 · 맨 위로', 'chat', kind === 'map' ? mapName(id) : modeName(id), 1500);
-    applyExtras(true);
-    /* 엔진이 카드판을 다시 그려도 곧바로 위로 오도록 몇 번 더 적용 */
-    var tries = 0;
-    var t = setInterval(function () {
-      tries++;
-      try { applyExtras(true); if (root.JW51FAV) root.JW51FAV.sync(true); } catch (e) {}
-      if (tries > 6) clearInterval(t);
-    }, 70);
+    /* ★ 깜빡임 제거: 반복 setInterval 없이, 누른 순간 바로 한 번만 반영한다 */
+    try {
+      if (root.JW51FAV && root.JW51FAV.kick) root.JW51FAV.kick();
+      else { applyExtras(true); }
+    } catch (e) { try { applyExtras(true); } catch (er) {} }
   }
 
   /* ---------------------------------------------------------------- 위저드 확장 */
@@ -63790,48 +63934,38 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   function applyExtras(force) {
     var wiz = $('v43Wiz');
     if (!wiz || wiz.classList.contains('hidden')) return;
-    /* 맵 카드 */
     var p = pins();
     var qMapEl = $('v51s_map');
     var qModeEl = $('v51s_mode');
     var qm = qMapEl ? qMapEl.value : '';
     var qd = qModeEl ? qModeEl.value : '';
-    if (qm !== lastQ || force) {
-      var vis = filterList(Array.prototype.slice.call(doc.querySelectorAll('#v53MapGrid .v53m, #v43WizMaps .v43-mm')), qm);
-      eachCard('#v53MapGrid .v53m, #v43WizMaps .v43-mm', function (el) {
-        var id = el.getAttribute('data-map') || el.getAttribute('data-wmap') || '';
-        if (vis && !vis[id]) { setS(el, 'display', 'none'); return; }
-        setS(el, 'display', '');
-      });
-    }
-    lastQ = qm;
+    void p; void qd; void lastQ; void force;
+    /* ★ 카드의 표시(display)·순서(order)는 이제 JW51FAV 한 곳에서만 쓴다 (깜빡임 방지).
+       여기서는 ★ 버튼이 없으면 만들어 주기만 하고, 검색 필터는 위저드의 v53 그리드도
+       같은 규칙을 쓰도록 JW51FAV 에 맡긴다. */
     eachCard('#v53MapGrid .v53m', function (el) {
       var id = el.getAttribute('data-map');
-      if (!id) return;
-      var b = ensurePin(el, 'map', id);
-      var on = p.maps.indexOf(id) >= 0;
-      b.classList.toggle('on', on);
-      if (b.textContent !== (on ? '★' : '☆')) b.textContent = on ? '★' : '☆';
-      setS(el, 'order', on ? String(-100 + p.maps.indexOf(id)) : '');
+      if (id) ensurePin(el, 'map', id);
     });
     eachCard('#v53ModeGrid .v53mm', function (el) {
       var id = el.getAttribute('data-m');
-      if (!id) return;
-      var b = ensurePin(el, 'mode', id);
-      var on = p.modes.indexOf(id) >= 0;
-      b.classList.toggle('on', on);
-      if (b.textContent !== (on ? '★' : '☆')) b.textContent = on ? '★' : '☆';
-      setS(el, 'order', on ? String(-100 + p.modes.indexOf(id)) : '');
+      if (id) ensurePin(el, 'mode', id);
     });
-    /* 모드 검색 */
-    if (qd !== undefined) {
-      var vm = filterList(Array.prototype.slice.call(doc.querySelectorAll('#v53ModeGrid .v53mm, #v43WizModes .v43-mm')), qd);
-      eachCard('#v53ModeGrid .v53mm, #v43WizModes .v43-mm', function (el) {
-        var id = el.getAttribute('data-m') || el.getAttribute('data-wmode') || '';
-        if (vm && !vm[id]) { setS(el, 'display', 'none'); return; }
-        setS(el, 'display', '');
+    /* 구형(4.3) 카드판만 이 파일이 직접 거른다 */
+    if (qm !== lastQ || force) {
+      var vis = filterList(Array.prototype.slice.call(doc.querySelectorAll('#v43WizMaps .v43-mm')), qm);
+      eachCard('#v43WizMaps .v43-mm', function (el) {
+        var id = el.getAttribute('data-wmap') || '';
+        setS(el, 'display', (vis && !vis[id]) ? 'none' : '');
+      });
+      var vm = filterList(Array.prototype.slice.call(doc.querySelectorAll('#v43WizModes .v43-mm')), qd);
+      eachCard('#v43WizModes .v43-mm', function (el) {
+        var id = el.getAttribute('data-wmode') || '';
+        setS(el, 'display', (vm && !vm[id]) ? 'none' : '');
       });
     }
+    lastQ = qm;
+    try { if (root.JW51FAV) root.JW51FAV.sync(false); } catch (e) {}
   }
 
   /* ---------------------------------------------------------------- 타이틀 퀵 바 */
@@ -63867,7 +64001,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (t) t.textContent = '⚡ ' + (mapName(l.map).replace(/^\S+\s/, ''));
     if (s) s.textContent = modeName(l.mode) + ' · 원터치 시작';
     var bs = $('v51QBoardS');
-    if (bs) bs.textContent = cleared().length + ' / ' + maps().length + ' 클리어';
+    if (bs) bs.textContent = boardCleared().length + ' / ' + maps().length + ' 클래식 완등';
   }
 
   /* ---------------------------------------------------------------- 랜덤 출격 */
@@ -63876,22 +64010,55 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     return d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate();
   }
   var rolled = false;
+  /* 싱글에서 실제로 돌아가는 모드만 (멀티 전용 · 커스텀 제외) */
+  function soloModes() {
+    var MULTI = ['tag', 'paint', 'flag', 'raid', 'chain', 'bomb', 'relay'];
+    try { if (root.JW43 && JW43.G && JW43.G.MULTI_ONLY) MULTI = JW43.G.MULTI_ONLY.slice(); } catch (e) {}
+    MULTI = MULTI.concat(['custom']);
+    return modes().filter(function (m) { return m && m.id && MULTI.indexOf(m.id) < 0; });
+  }
+  function soloMaps() {
+    return maps().filter(function (m) { return m && m.id && m.id !== 'custom'; });
+  }
+  function tutDone() {
+    try { if (root.JW51TUT && root.JW51TUT.done) return !!root.JW51TUT.done(); } catch (e) {}
+    try { var v = JSON.parse(localStorage.getItem('jw51_tut_v2') || 'null'); return !!(v && v.done); } catch (e) { return false; }
+  }
   function roulette() {
-    var list = maps(); var md = modes();
-    if (!list.length || !md.length) return;
-    var m, mo;
+    /* ① 튜토리얼 미완료면 튜토리얼로 안내 */
+    if (!tutDone()) {
+      C.toast('🎓 튜토리얼 먼저!', 'lucky', '한 번만 깨면 싱글·멀티가 열려요', 2400);
+      try { if (root.JW51TUT && root.JW51TUT.open) root.JW51TUT.open(); } catch (e) {}
+      return;
+    }
+    var list = soloMaps(); var md = soloModes();
+    if (!list.length || !md.length) {
+      C.toast('🎲 랜덤 출격', 'danger', '지금은 고를 수 있는 맵/모드가 없어요', 2000);
+      return;
+    }
+    var m, mo, guard = 0;
     if (!rolled) {
       var sd = daySeed();
-      m = list[sd % list.length];
-      mo = md[(sd * 7) % md.length];
+      m = list[Math.abs(sd) % list.length];
+      mo = md[Math.abs(sd * 7) % md.length];
       rolled = true;
     } else {
       m = list[(Math.random() * list.length) | 0];
       mo = md[(Math.random() * md.length) | 0];
     }
+    /* 혹시라도 존재하지 않는 맵/모드면 다시 뽑기 */
+    while (guard++ < 8 && (!m || !mo || !m.id || !mo.id)) {
+      m = list[(Math.random() * list.length) | 0];
+      mo = md[(Math.random() * md.length) | 0];
+    }
+    if (!m || !mo || !m.id || !mo.id) { C.toast('🎲 랜덤 출격', 'danger', '다시 한 번 눌러 주세요', 1800); return; }
     C.beep(660, 0.08, 0.1, 'square', 990);
-    C.toast('🎲 랜덤 출격!', 'lucky', mapName(m.id) + ' · ' + modeName(mo.id), 1800);
-    setTimeout(function () { C.startSolo(m.id, mo.id); }, 260);
+    C.toast('🎲 랜덤 출격!', 'lucky', mapName(m.id) + ' · ' + modeName(mo.id), 2000);
+    setTimeout(function () {
+      try { C.startSolo(m.id, mo.id); } catch (e) {
+        try { root.JW51U.startSolo(m.id, mo.id); } catch (e2) {}
+      }
+    }, 280);
   }
 
   /* ---------------------------------------------------------------- 모달 공통 */
@@ -63917,13 +64084,15 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   /* ---------------------------------------------------------------- 45맵 체크판 */
   function openBoard() {
     var m = modal('v51BoardM', '');
-    var cl = cleared();
+    var cl = boardCleared();
     var list = maps();
     var done = 0;
-    var html = '<div class="v51hd"><div style="flex:1"><b>🗺️ 45맵 클리어 체크판</b><i>' + cl.length + ' / ' + list.length + ' 클리어 · 안 깬 맵을 눌러 바로 도전</i></div>' +
+    var html = '<div class="v51hd"><div style="flex:1"><b>🗺️ 45맵 클리어 체크판</b><i>' + cl.length + ' / ' + list.length + ' · 🏛️ 클래식 완등만 인정</i></div>' +
       '<button type="button" class="v51x" data-v51x="1">✕</button></div>' +
-      '<div class="v51row" style="gap:4px;flex-wrap:wrap;margin:2px 0 4px">' +
-      '<button class="v51chip on" data-v51bf="all">전체</button><button class="v51chip" data-v51bf="todo">안 깬 맵</button><button class="v51chip" data-v51bf="done">클리어</button></div>' +
+      '<div class="v51row" style="gap:5px;flex-wrap:wrap;margin:2px 0 5px">' +
+      '<button class="v51chip on" data-v51bf="all">전체</button><button class="v51chip" data-v51bf="todo">안 깬 맵</button><button class="v51chip" data-v51bf="done">클리어</button>' +
+      '<button class="v51chip" id="v51BoardReset" style="margin-left:auto;color:#fecaca;border-color:#7f1d1d">♻️ 초기화</button></div>' +
+      '<div class="v51sub" style="font-size:11px;line-height:1.45;margin-bottom:4px">🏛️ <b>클래식 모드</b>로 완등한 맵만 체크됩니다. (일반·찜린지·타임어택·튜토리얼 제외)</div>' +
       '<div id="v51Board"></div>';
     m.querySelector('.v51card').innerHTML = html;
     m.classList.remove('hide');
@@ -63932,6 +64101,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     function paint() {
       var box = $('v51Board');
       if (!box) return;
+      cl = boardCleared();
       box.innerHTML = list.map(function (mp) {
         var ok = cl.indexOf(mp.id) >= 0;
         if (ok) done++;
@@ -63949,11 +64119,18 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
         b.addEventListener('click', function () {
           var id = b.getAttribute('data-v51map');
           m.classList.add('hide');
-          C.startSolo(id, lastSet().mode);
+          C.startSolo(id, 'pureclassic');
         });
       });
     }
     paint();
+    var rb = $('v51BoardReset');
+    if (rb) rb.addEventListener('click', function () {
+      if (!confirm('45맵 체크판을 모두 지울까요? (클래식 완등 기록만 지워집니다)')) return;
+      boardSave([]);
+      try { C.toast('♻️ 체크판 초기화', 'chat', '이제 클래식 완등부터 다시 체크됩니다', 2000); } catch (e) {}
+      paint();
+    });
     Array.prototype.forEach.call(m.querySelectorAll('[data-v51bf]'), function (b) {
       b.addEventListener('click', function () {
         filter = b.getAttribute('data-v51bf');
@@ -64239,6 +64416,8 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     });
     C.every('qolQuick', 900, function () { if (C.inPlayNow && C.inPlayNow()) return; refreshQuick(); });
     C.every('qolExtras', 320, function () { if (C.inPlayNow && C.inPlayNow()) return; applyExtras(); });
+    C.every('qolBoardWatch', 350, boardWatch);
+    try { boardResetOnce(); } catch (e) {}
     C.every('qolSettings', 1200, function () { if (C.inPlayNow && C.inPlayNow()) return; injectSettings(); });
     C.every('qolRun', 60, runTick);
     try { if (window.JW43TRAJ) {} } catch (e) {}
@@ -64992,10 +65171,15 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 </script>
 <script>
 /* ==========================================================================
-   v5.1-skins : 캐릭터(스킨)마다 다른 대사
+   v5.1-skins (hotfix2) : 캐릭터(스킨)마다 다른 대사
      - 클리어 승리 멘트 · 추락/실패 멘트 · 타이틀/스튜디오 한마디
-     - 스킨 20종 이상 각각 고유 성격 (변형 2~3개씩)
-     - 싱글 클리어 / 큰 추락 때 해당 스킨 대사가 뜬다
+     - 스킨 23종 각각 고유 성격 (변형 2~3개씩)
+
+   ★ 핫픽스: "캐릭터랑 다른 재우 멘트가 나오는" 문제
+     - 엔진의 상황 대사 30종(G.LINES)과 승리 세리머니 말풍선이 모두 '재우' 고정 대사였다.
+       → 장착 스킨이 jaeu 가 아니면, 그 자리의 대사를 스킨 고유 대사로 바꾸고 말하는 이 이름도
+         스킨 이름으로 바꾼다 (G.LINES 는 배열 참조라 text 를 getter 로 갈아끼운다).
+     - V.toast 를 한 번만 감싸서 '💬 재우' 로 나가던 제목을 '💬 {스킨 이름}' 으로 바꾼다.
    ========================================================================== */
 (function (root) {
   'use strict';
@@ -65032,16 +65216,15 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     origin_god:['태초로 돌아간다.', ['태초의 신, 정상에 서다', '시작과 끝을 지배', '태초 귀환 불필요'], ['태초로 귀환…', '신도 미끄러진다', '처음부터 다시']],
     flameskull:['불꽃이 남는다.', ['불꽃 해골, 정복', '타오르는 승리', '재에서 다시 올랐다'], ['재가 되었다', '불꽃 꺼짐', '다시 타오른다']]
   };
+
   function skinId() {
-    try { return V.api().meSkin() || 'jaeu'; } catch (e) { return 'jaeu'; }
+    try { var s = V.api().meSkin(); return s ? String(s).trim() : 'jaeu'; } catch (e) { return 'jaeu'; }
   }
-  function linesOf(id) {
-    return L[id] || L.jaeu;
-  }
+  function linesOf(id) { return L[id] || L.jaeu; }
   function pick(arr, i) { return arr[(i == null ? Math.random() * arr.length : i) | 0] || arr[0]; }
-  function clearLine(id) { var l = linesOf(id); return pick(l[1]); }
-  function fallLine(id) { var l = linesOf(id); return pick(l[2]); }
-  function motto(id) { var l = linesOf(id); return l[0]; }
+  function clearLine(id) { return pick(linesOf(id)[1]); }
+  function fallLine(id) { return pick(linesOf(id)[2]); }
+  function motto(id) { return linesOf(id)[0]; }
   function skinName(id) {
     try {
       var s = (V.api().skins() || []).filter(function (x) { return x.id === id; })[0];
@@ -65049,19 +65232,105 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     } catch (e) { return id; }
   }
 
-  /* ---------------------------------------------------------------- 발동 */
+  /* ---------------------------------------------------------- 엔진 상황 대사 갈아끼우기 */
+  /* G.LINES(배열 참조)의 text 를 getter 로 바꿔, 지금 장착한 스킨 대사가 나가게 한다. */
+  var KIND = {
+    finish: 'clear', floor88: 'clear',
+    start: 'motto', again: 'motto', idle: 'motto',
+    fall: 'fall', fallBig: 'fall', fall3: 'fall', origin: 'fall',
+    miss: 'fall', trap: 'fall', last: 'fall'
+  };
+  function engineLine(id, when, base) {
+    if (when === 'finish') return '';          /* 클리어 토스트는 아래에서 스킨 이름으로 한 번만 */
+    if (!id || id === 'jaeu') return base;
+    var k = KIND[when];
+    if (!k) return base;
+    if (k === 'clear') return clearLine(id);
+    if (k === 'fall') return fallLine(id);
+    return motto(id);
+  }
+  function engineNs() {
+    /* 엔진 상황 대사·말풍선은 V.G(=JW43.G, 캐릭터/꾸미기 엔진)에 들어 있다 */
+    try { if (V.G && V.G.LINES) return V.G; } catch (e) {}
+    try { if (root.JW44 && root.JW44.LINES) return root.JW44; } catch (e) {}
+    try { if (root.JWG && root.JWG.LINES) return root.JWG; } catch (e) {}
+    return null;
+  }
+  function patchLines() {
+    try {
+      var ns = engineNs();
+      var arr = ns && ns.LINES;
+      if (!arr || !arr.length) return;
+      for (var i = 0; i < arr.length; i++) {
+        var l = arr[i];
+        if (!l || l.__v51) continue;
+        l.__v51 = 1;
+        (function (item) {
+          var base = item.text;
+          try {
+            Object.defineProperty(item, 'text', {
+              configurable: true,
+              get: function () { try { return engineLine(skinId(), item.when, base); } catch (e) { return base; } },
+              set: function (v) { base = v; }
+            });
+          } catch (e) {}
+        })(l);
+      }
+    } catch (e) {}
+  }
+  /* 캐릭터 머리 위 말풍선(승리 세리머니) */
+  function patchBubble() {
+    try {
+      var ns = engineNs();
+      if (!ns || typeof ns.sayBubble !== 'function' || ns.sayBubble.__v51) return;
+      var orig = ns.sayBubble;
+      var w = function (msg) {
+        try {
+          var id = skinId();
+          if (id && id !== 'jaeu' && typeof msg === 'string') {
+            if (msg.indexOf('해냈다! 정상이다') >= 0) msg = clearLine(id) + ' 🎉';
+            else if (/하강 성공/.test(msg)) msg = clearLine(id);
+          }
+        } catch (e) {}
+        return orig.call(this, msg);
+      };
+      w.__v51 = 1;
+      ns.sayBubble = w;
+    } catch (e) {}
+  }
+  /* '💬 재우' 로 나가던 토스트 제목을 스킨 이름으로 */
+  function patchToast() {
+    try {
+      if (typeof V.toast !== 'function' || V.toast.__v51) return;
+      var orig = V.toast;
+      var w = function (title, kind, text, ms) {
+        var args = Array.prototype.slice.call(arguments);
+        try {
+          if (args[2] === '') return;              /* 엔진 클리어 토스트는 아래 스킨 토스트로 대체 */
+          var id = skinId();
+          if (id && id !== 'jaeu' && typeof args[0] === 'string' && args[0].indexOf('💬 재우') === 0) {
+            args[0] = '💬 ' + skinName(id);
+          }
+        } catch (e) {}
+        return orig.apply(this, args);
+      };
+      w.__v51 = 1;
+      V.toast = w;
+    } catch (e) {}
+  }
+
+  /* ---------------------------------------------------------- 발동 */
   var wasInPlay = false, wasVictory = false, lastSplat = 0;
   function tick() {
     var j = root.__jwg;
     if (!j || !j.game || !j.player) return;
     var g = j.game, p = j.player;
     var id = skinId();
-    /* 클리어 */
-    if (g.victory && !wasVictory) {
+    /* 클리어 (시작 직후 오판 방지: 1.2초 이후 + 실제 플레이 중일 때만) */
+    if (g.victory && !wasVictory && (Number(g.time) || 0) > 1.2) {
       wasVictory = true;
       var line = clearLine(id);
       C.toast('🏁 ' + skinName(id) + ' 클리어!', 'lucky', '“' + line + '”', 3400);
-      try { root.JW43.addText ? 0 : 0; } catch (e) {}
     }
     if (!g.victory) wasVictory = false;
     /* 큰 추락 (철퍼덕) */
@@ -65070,7 +65339,6 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       C.toast('💫 ' + skinName(id), 'chat', '“' + fallLine(id) + '”', 2200);
     }
     if (g.inPlay && !wasInPlay) {
-      /* 시작: 스튜디오/타이틀 한마디 */
       var mt = motto(id);
       if (mt) setTimeout(function () { C.toast('💬 ' + skinName(id), 'chat', '“' + mt + '”', 2200); }, 1400);
     }
@@ -65095,15 +65363,21 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   }
 
   function boot() {
+    patchLines();
+    patchBubble();
+    patchToast();
     C.every('skinLines', 120, function () { try { tick(); } catch (e) {} });
-    C.every('skinMotto', 1500, function () { try { paintMotto(); } catch (e) {} });
+    C.every('skinMotto', 1500, function () {
+      try { patchLines(); patchBubble(); patchToast(); } catch (e) {}
+      try { paintMotto(); } catch (e) {}
+    });
   }
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 500); });
   else setTimeout(boot, 500);
 
   root.JW51LINES = {
     clear: clearLine, fall: fallLine, motto: motto,
-    table: L, skin: skinId,
+    table: L, skin: skinId, name: skinName,
     count: function () { return Object.keys(L).length; }
   };
   console.log('[JW51LINES] skins ready', Object.keys(L).length);
@@ -65112,10 +65386,17 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 </script>
 <script>
 /* ==========================================================================
-   v5.1-fav : ★ 즐겨찾기 — 누르면 즉시 맨 위로 + '★ 즐겨찾기' 카테고리 탭
+   v5.1-fav (hotfix2) : ★ 즐겨찾기 — 누르면 즉시 맨 위로 + '★ 즐겨찾기' 카테고리 탭
    - 저장은 엔진과 같은 키(jw43_fav_v1, "맵:모드")를 쓴다 → ★ 배지·기존 즐겨찾기와 하나
    - 싱글 위저드(맵/모드) · 멀티 방 설정(맵/모드) 네 곳 모두에 탭을 붙인다
-   - 즐겨찾기가 없으면 안내 문구를 보여준다
+
+   ★ 핫픽스: "즐겨찾기 누르면 겁나 깜빡이는" 문제
+     - 66_qol11 이 70ms 간격으로 7번 applyExtras 를 돌리며 order 를 -100 으로,
+       이 파일은 380ms 마다 order 를 -1000대로, display 를 서로 다르게 써서 카드가 위아래로 튀었다.
+     - 이제 카드의 표시(display)·순서(order)를 쓰는 곳은 이 파일 하나뿐이다.
+       · 값이 이미 같으면 DOM 을 건드리지 않는다(setS/textContent/innerHTML 전부 비교 후 변경)
+       · 숨김 표시는 우리가 숨긴 카드에만 data-v51hid 로 기억해 두고, 복구할 때만 되돌린다
+         (엔진의 카테고리 필터를 덮어쓰지 않게)
    ========================================================================== */
 (function (root) {
   'use strict';
@@ -65125,10 +65406,8 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   var doc = document;
   var $ = function (id) { return doc.getElementById(id); };
   function favs() { var f = []; try { f = V.lsGet('jw43_fav_v1', []) || []; } catch (e) { f = []; } return Array.isArray(f) ? f : []; }
-  function mapFav(id) { return favs().some(function (k) { return String(k).split(':')[0] === id; }); }
-  function modeFav(id) { return favs().some(function (k) { return String(k).split(':')[1] === id; }); }
 
-  var S = { mapTab: false, modeTab: false, roomMapTab: false, roomModeTab: false, lastCards: 0 };
+  var S = { mapTab: false, modeTab: false, roomMapTab: false, roomModeTab: false };
 
   function curMode() {
     try { var c = doc.querySelector('#v43WizModes [data-wmode].on'); if (c) return c.getAttribute('data-wmode'); } catch (e) {}
@@ -65153,10 +65432,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var now = bar.querySelector('[data-v51fav]');
     var wantOn = kind === 'map' ? S.mapTab : kind === 'mode' ? S.modeTab : kind === 'rmap' ? S.roomMapTab : S.roomModeTab;
     if (now) {
-      now.classList.toggle('on', !!wantOn);
-      if (wantOn) {
-        Array.prototype.forEach.call(bar.querySelectorAll('.v53chip:not([data-v51fav])'), function (b) { b.classList.remove('on'); });
-      }
+      if (now.classList.contains('on') !== !!wantOn) now.classList.toggle('on', !!wantOn);
       return now;
     }
     var b = chip('★ 즐겨찾기', !!wantOn);
@@ -65167,6 +65443,10 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       else if (kind === 'mode') { S.modeTab = !S.modeTab; S.mapTab = false; }
       else if (kind === 'rmap') S.roomMapTab = !S.roomMapTab;
       else S.roomModeTab = !S.roomModeTab;
+      if (kind === 'map' || kind === 'mode') {
+        var bar2 = bar;
+        Array.prototype.forEach.call(bar2.querySelectorAll('.v53chip:not([data-v51fav])'), function (x) { x.classList.remove('on'); });
+      }
       sync(true);
     }, true);
     bar.appendChild(b);
@@ -65180,75 +65460,93 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var inMode = !!t.closest('#v53ModeBar') || t.hasAttribute('data-mdf');
     if (inMap) { S.mapTab = false; S.roomMapTab = false; }
     if (inMode) { S.modeTab = false; S.roomModeTab = false; }
-    setTimeout(function () { sync(false); }, 20);
+    setTimeout(function () { try { sync(false); } catch (er) {} }, 30);
   }, true);
 
-  /* ---------------------------------------------------------------- 카드 정렬·필터 */
+  /* ---------------------------------------------------------------- DOM 쓰기 도우미 */
   function setS(el, k, v) { if (el && el.style[k] !== v) el.style[k] = v; }
+  function setTxt(el, v) { if (el && el.textContent !== v) el.textContent = v; }
   function each(sel, fn) {
     var n = doc.querySelectorAll(sel);
     for (var i = 0; i < n.length; i++) fn(n[i], i);
   }
-  function emptyMsg(host, show, txt) {
+  function hide(el) {
+    if (!el) return;
+    if (el.getAttribute('data-v51hid') !== '1') el.setAttribute('data-v51hid', '1');
+    setS(el, 'display', 'none');
+  }
+  function show(el) {
+    if (!el) return;
+    if (el.getAttribute('data-v51hid') !== '1') return;   /* 엔진이 숨긴 카드는 건드리지 않는다 */
+    el.removeAttribute('data-v51hid');
+    setS(el, 'display', '');
+  }
+  function query(sel) { var el = $(sel); return el ? String(el.value || '').trim().toLowerCase() : ''; }
+  function matches(el, q) {
+    if (!q) return true;
+    var id = el.getAttribute('data-map') || el.getAttribute('data-m') || el.getAttribute('data-sm') || el.getAttribute('data-smd') || '';
+    return ((el.textContent || '') + ' ' + id).toLowerCase().indexOf(q) >= 0;
+  }
+  function emptyMsg(host, showIt, txt) {
     if (!host) return;
     var id = 'v51favEmpty_' + (host.id || 'x');
     var el = $(id);
-    if (!show) { if (el) el.remove(); return; }
+    if (!showIt) { if (el) el.remove(); return; }
     if (!el) {
       el = doc.createElement('div');
       el.id = id;
       el.style.cssText = 'grid-column:1/-1;text-align:center;color:#a9b8d4;font-size:11px;font-weight:800;padding:18px 8px;line-height:1.5;';
       host.appendChild(el);
     }
-    el.innerHTML = txt;
+    if (el.innerHTML !== txt) el.innerHTML = txt;
   }
+  /* 즐겨찾기 순서 = 담은 순서 그대로 위로, 남의 값과 충돌하지 않게 한 곳에서만 계산 */
+  function orderOf(pos, id) { return pos[id] == null ? '' : String(-(1000 - pos[id])); }
 
+  /* ---------------------------------------------------------------- 카드 적용 */
   function applyMapCards() {
     var grid = $('v53MapGrid');
     if (!grid) return;
     var fav = favs();
-    var order = {};
-    fav.forEach(function (k, i) { var id = String(k).split(':')[0]; if (order[id] == null) order[id] = 1000 - i; });
+    var pos = {};
+    fav.forEach(function (k, i) { var id = String(k).split(':')[0]; if (pos[id] == null) pos[id] = i; });
+    var q = query('v51s_map');
     var shown = 0;
     each('#v53MapGrid .v53m', function (el) {
       var id = el.getAttribute('data-map') || '';
-      var isFav = !!mapFav(id);
-      if (S.mapTab) {
-        setS(el, 'display', isFav ? '' : 'none');
-        if (isFav) shown++;
-      } else if (el.style.display === 'none' && el.getAttribute('data-v51hid') === '1') {
-        setS(el, 'display', ''); el.removeAttribute('data-v51hid');
-      }
-      setS(el, 'order', isFav ? String(-100 + (order[id] || 0) * -1) : '');
+      var isFav = pos[id] != null;
+      var visible = matches(el, q) && (!S.mapTab || isFav);
+      if (visible) { show(el); shown++; } else hide(el);
+      setS(el, 'order', orderOf(pos, id));
       var b = el.querySelector('.v51pin');
-      if (b) { b.classList.toggle('on', isFav); b.textContent = isFav ? '★' : '☆'; }
+      if (b) {
+        if (b.classList.contains('on') !== isFav) b.classList.toggle('on', isFav);
+        setTxt(b, isFav ? '★' : '☆');
+      }
       var badge = el.querySelector('.fav');
-      if (badge) badge.style.display = isFav ? '' : 'none';
+      if (badge) setS(badge, 'display', isFav ? '' : 'none');
     });
-    if (S.mapTab) {
-      emptyMsg(grid, shown === 0, '아직 즐겨찾기한 맵이 없어요.<br>카드 오른쪽 위 <b style="color:#fbbf24">☆</b> 를 눌러 담아 보세요.');
-    } else emptyMsg(grid, false);
+    if (S.mapTab) emptyMsg(grid, shown === 0, '아직 즐겨찾기한 맵이 없어요.<br>카드 오른쪽 위 <b style="color:#fbbf24">☆</b> 를 눌러 담아 보세요.');
+    else emptyMsg(grid, false);
   }
 
   function applyModeCards() {
     var grid = $('v53ModeGrid');
     if (!grid) return;
     var fav = favs();
+    var pos = {};
+    fav.forEach(function (k, i) { var id = String(k).split(':')[1]; if (pos[id] == null) pos[id] = i; });
+    var q = query('v51s_mode');
     var shown = 0;
     each('#v53ModeGrid .v53mm', function (el) {
       var id = el.getAttribute('data-m') || '';
-      var isFav = !!modeFav(id);
-      if (S.modeTab) {
-        setS(el, 'display', isFav ? '' : 'none');
-        if (isFav) shown++;
-      } else if (el.getAttribute('data-v51hid') === '1') {
-        setS(el, 'display', ''); el.removeAttribute('data-v51hid');
-      }
-      setS(el, 'order', isFav ? '-90' : '');
+      var isFav = pos[id] != null;
+      var visible = matches(el, q) && (!S.modeTab || isFav);
+      if (visible) { show(el); shown++; } else hide(el);
+      setS(el, 'order', orderOf(pos, id));
     });
-    if (S.modeTab) {
-      emptyMsg(grid, shown === 0, '아직 즐겨찾기한 모드가 없어요.<br>모드 카드의 <b style="color:#fbbf24">☆</b> 를 눌러 담아 보세요.');
-    } else emptyMsg(grid, false);
+    if (S.modeTab) emptyMsg(grid, shown === 0, '아직 즐겨찾기한 모드가 없어요.<br>모드 카드의 <b style="color:#fbbf24">☆</b> 를 눌러 담아 보세요.');
+    else emptyMsg(grid, false);
   }
 
   /* 멀티 방 설정(맵/모드 팬) */
@@ -65258,19 +65556,17 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var bars = body.querySelectorAll('.v53bar');
     for (var i = 0; i < bars.length; i++) {
       var bar = bars[i];
-      var isMap = !!bar.querySelector('[data-mf]');
-      var isMode = !!bar.querySelector('[data-mdf]');
-      if (isMap) ensureTab(bar, 'rmap');
-      else if (isMode) ensureTab(bar, 'rmode');
+      if (bar.querySelector('[data-mf]')) ensureTab(bar, 'rmap');
+      else if (bar.querySelector('[data-mdf]')) ensureTab(bar, 'rmode');
     }
     var mg = body.querySelector('.v53Mg'), md = body.querySelector('.v53Md');
     if (mg) {
       var shown = 0;
       each('#v53SetBody .v53Mc', function (el) {
         var id = el.getAttribute('data-sm') || '';
-        var f = mapFav(id);
-        if (S.roomMapTab) { setS(el, 'display', f ? '' : 'none'); if (f) shown++; }
-        el.style.order = f ? '-90' : '';
+        var f = favs().some(function (k) { return String(k).split(':')[0] === id; });
+        if (S.roomMapTab && !f) hide(el); else { show(el); if (f) shown++; }
+        setS(el, 'order', f ? '-900' : '');
       });
       if (S.roomMapTab) emptyMsg(mg, shown === 0, '즐겨찾기한 맵이 없어요.<br>맵 카드의 <b style="color:#fbbf24">☆</b> 로 담을 수 있어요.');
       else emptyMsg(mg, false);
@@ -65279,41 +65575,51 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       var shown2 = 0;
       each('#v53SetBody .v53Mo', function (el) {
         var id = el.getAttribute('data-smd') || '';
-        var f = modeFav(id);
-        if (S.roomModeTab) { setS(el, 'display', f ? '' : 'none'); if (f) shown2++; }
-        el.style.order = f ? '-90' : '';
+        var f = favs().some(function (k) { return String(k).split(':')[1] === id; });
+        if (S.roomModeTab && !f) hide(el); else { show(el); if (f) shown2++; }
+        setS(el, 'order', f ? '-900' : '');
       });
       if (S.roomModeTab) emptyMsg(md, shown2 === 0, '즐겨찾기한 모드가 없어요.<br>모드 카드의 <b style="color:#fbbf24">☆</b> 로 담을 수 있어요.');
       else emptyMsg(md, false);
     }
   }
 
+  var BUSY = false;
   function sync(force) {
-    var wiz = $('v43Wiz');
-    var wizOpen = wiz && !wiz.classList.contains('hidden');
-    if (wizOpen) {
-      var mb = $('v53MapBar'), ob = $('v53ModeBar');
-      if (mb) ensureTab(mb, 'map');
-      if (ob) ensureTab(ob, 'mode');
-      applyMapCards();
-      applyModeCards();
-    }
-    applyRoom();
-    void force;
+    if (BUSY) return;
+    BUSY = true;
+    try {
+      var wiz = $('v43Wiz');
+      var wizOpen = wiz && !wiz.classList.contains('hidden');
+      if (wizOpen) {
+        var mb = $('v53MapBar'), ob = $('v53ModeBar');
+        if (mb) ensureTab(mb, 'map');
+        if (ob) ensureTab(ob, 'mode');
+        applyMapCards();
+        applyModeCards();
+      }
+      applyRoom();
+    } catch (e) {} finally { BUSY = false; void force; }
+  }
+
+  /* ★ 누른 직후: 딱 한 번(그리고 엔진이 다시 그린 경우만 한 번 더) 반영 — 반복 타이머 없음 */
+  function kick() {
+    sync(true);
+    requestAnimationFrame(function () { try { sync(true); } catch (e) {} });
+    setTimeout(function () { try { sync(true); } catch (e) {} }, 140);
   }
 
   function boot() {
     sync(true);
     setInterval(function () {
       try { if (root.JW51U && JW51U.inPlayNow && JW51U.inPlayNow()) return; sync(false); } catch (e) {}
-    }, 380);
+    }, 420);
   }
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 500); });
   else setTimeout(boot, 500);
 
   root.JW51FAV = {
-    sync: sync,
-    favs: favs,
+    sync: sync, kick: kick, favs: favs,
     state: function () {
       return { mapTab: S.mapTab, modeTab: S.modeTab, roomMap: S.roomMapTab, roomMode: S.roomModeTab, n: favs().length };
     }
@@ -65775,11 +66081,17 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 </script>
 <script>
 /* ==========================================================================
-   v5.1-voices : 캐릭터 보이스 — 클리어/추락 때 스킨별 실제 MP3 재생
+   v5.1-voices (hotfix2) : 캐릭터 보이스 — 클리어/추락 때 스킨별 실제 MP3 재생
    - 파일: assets/voices/{skinId}_{clear|fall}{1|2|3}.mp3 (23종 × 6 = 138개)
-   - 효과음 볼륨(QOL.sfxVol) 연동 · 볼륨 0 이면 재생 안 함
-   - 직전 음성은 즉시 정지(겹침 0) · 모바일 Safari: 사용자 제스처 뒤 재생, 실패는 조용히 무시
-   - 스킨 선택 화면에서 미리듣기 버튼 제공
+
+   ★ 핫픽스 핵심 (아이폰·아이패드 사파리 "소리 안 남" 해결)
+     1) Web Audio(AudioContext) 를 첫 터치/클릭에서 미리 resume + 무음 버퍼 재생으로 잠금 해제
+     2) 이후 타이머(게임 루프) 안에서는 이미 열린 AudioContext 의 버퍼 재생만 한다
+        → iOS 자동재생 차단(NotAllowedError)에 걸리지 않는 방식
+     3) 디코딩 실패/미지원이면 공용 <audio> 1개(첫 제스처에서 잠금 해제)의 src 만 바꿔 재생
+     4) 볼륨: QOL.sfxVol(0~1) 정규화 + 1.25배 부스트(최대 1.0) → BGM 에 묻히지 않게
+     5) 보이스가 나는 1.7초 동안 BGM 볼륨을 28%로 낮췄다가 자동 복구(ducking)
+     6) 스킨 선택 화면(#v42SkinGrid / 꾸미기 스튜디오)마다 🔊 미리듣기 + 내 목소리 테스트 버튼
    ========================================================================== */
 (function (root) {
   'use strict';
@@ -65790,65 +66102,224 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   var $ = function (id) { return doc.getElementById(id); };
   var C = root.JW51U;
 
-  var S = { audio: null, cur: '', lastAt: 0, played: 0, blocked: 0 };
+  var S = {
+    ctx: null, gain: null, buf: {}, load: {}, src: null, el: null,
+    cur: '', lastAt: 0, played: 0, blocked: 0, decodeErr: 0, unlocked: 0,
+    preloaded: '', duck: [], duckT: null
+  };
+
   function subPath() {
     var p = location.pathname.replace(/\/+$/, '');
     if (/\/(gemini-v[0-9-]+|pickle[^/]*|gpt|grok[^/]*|claude[^/]*|manus|deepseek|perplexity|qwen|ai-studio)$/.test(p)) return '../';
     return './';
   }
   function skinId() {
-    try { return V.api().meSkin() || 'jaeu'; } catch (e) { return 'jaeu'; }
+    try { var s = V.api().meSkin(); return s ? String(s).trim() : 'jaeu'; } catch (e) { return 'jaeu'; }
   }
-  function qol() {
-    try { return V.QOL || {}; } catch (e) { return {}; }
-  }
+  function qol() { try { return V.QOL || {}; } catch (e) { return {}; } }
+  /* 0~1 정규화 (혹시 0~100 으로 저장된 값이 있어도 0.7 처럼 매우 작아지지 않게) */
   function vol() {
     var q = qol();
-    var v = Number(q.sfxVol == null ? 0.7 : q.sfxVol);
     if (q.sfx === false) return 0;
-    return Math.max(0, Math.min(1, v * 0.9));
+    var raw = Number(q.sfxVol == null ? 0.7 : q.sfxVol);
+    if (!isFinite(raw) || raw < 0) raw = 0.7;
+    if (raw > 1) raw = raw / 100;
+    return Math.max(0, Math.min(1, raw));
   }
-  function stop() {
-    var a = S.audio;
-    if (a && !a.paused) { try { a.pause(); } catch (e) {} }
-  }
-  function play(skin, kind, idx) {
+  function gainVal() {
     var v = vol();
-    if (v <= 0) return false;
-    if (Date.now() - S.lastAt < 260) return false;   /* 같은 순간 중복 방지 */
-    var n = idx || (1 + ((Math.random() * 3) | 0));
-    var file = subPath() + 'assets/voices/' + skin + '_' + kind + n + '.mp3';
+    if (v <= 0) return 0;
+    return Math.min(1, v * 1.25);   /* 또렷하게 */
+  }
+
+  /* ---------------------------------------------------------------- AudioContext */
+  function AC() { return root.AudioContext || root.webkitAudioContext || null; }
+  function ctx() {
+    if (S.ctx) return S.ctx;
+    var A = AC();
+    if (!A) return null;
+    try { S.ctx = new A(); } catch (e) { S.ctx = null; return null; }
     try {
-      if (!S.audio) {
-        S.audio = new Audio();
-        S.audio.preload = 'auto';
-        S.audio.setAttribute && S.audio.setAttribute('playsinline', '');
-      }
-      var a = S.audio;
-      stop();
-      a.src = file;
-      a.volume = v;
-      a.currentTime = 0;
-      S.cur = skin + '_' + kind + n;
+      S.gain = S.ctx.createGain();
+      S.gain.gain.value = 1;
+      S.gain.connect(S.ctx.destination);
+    } catch (e) { S.gain = null; }
+    return S.ctx;
+  }
+  function audioEl() {
+    if (S.el) return S.el;
+    try {
+      var a = new Audio();
+      a.preload = 'auto';
+      a.setAttribute('playsinline', '');
+      a.setAttribute('webkit-playsinline', '');
+      S.el = a;
+    } catch (e) { S.el = null; }
+    return S.el;
+  }
+  /* 첫 사용자 제스처 → iOS 오디오 잠금 해제 (이 안에서 resume 해야 한다) */
+  function unlock() {
+    var c = ctx();
+    if (c) {
+      try { if (c.state !== 'running' && c.resume) c.resume(); } catch (e) {}
+      try {
+        var b = c.createBuffer(1, 1, 22050);
+        var s = c.createBufferSource();
+        s.buffer = b; s.connect(c.destination); s.start(0);
+      } catch (e) {}
+    }
+    var a = audioEl();
+    if (a && !a.__v51warm) {
+      a.__v51warm = 1;
+      try {
+        a.muted = true;
+        a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=';
+        var pr = a.play();
+        if (pr && pr.catch) pr.catch(function () {});
+      } catch (e) {}
+    }
+    S.unlocked++;
+  }
+
+  /* ---------------------------------------------------------------- 로드·디코딩 */
+  function bufKey(skin, kind, n) { return skin + '_' + kind + n; }
+  function load(skin, kind, n) {
+    var key = bufKey(skin, kind, n);
+    if (S.buf[key]) return Promise.resolve(S.buf[key]);
+    if (S.load[key]) return S.load[key];
+    var c = ctx();
+    if (!c) return Promise.resolve(null);
+    var url = subPath() + 'assets/voices/' + key + '.mp3';
+    var pr = fetch(url, { cache: 'force-cache' })
+      .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.arrayBuffer(); })
+      .then(function (ab) {
+        return new Promise(function (res, rej) {
+          try { c.decodeAudioData(ab, res, rej); } catch (e) { rej(e); }
+        });
+      })
+      .then(function (b) { S.buf[key] = b; return b; })
+      .catch(function () { S.decodeErr++; S.load[key] = null; return null; });
+    S.load[key] = pr;
+    return pr;
+  }
+  function preload(skin) {
+    if (!skin || S.preloaded === skin) return;
+    S.preloaded = skin;
+    var c = ctx();
+    if (!c) return;
+    ['clear', 'fall'].forEach(function (kind) {
+      for (var n = 1; n <= 3; n++) load(skin, kind, n);
+    });
+  }
+
+  /* ---------------------------------------------------------------- BGM 덕킹 */
+  function bgmEls() {
+    var out = [];
+    try {
+      var l = (root.JW43MP3 && JW43MP3.list) ? JW43MP3.list() : [];
+      for (var i = 0; i < l.length; i++) if (l[i]) out.push(l[i]);
+    } catch (e) {}
+    try { if (root.JW48JUKE && root.JW48JUKE.audio) out.push(root.JW48JUKE.audio); } catch (e) {}
+    return out.filter(function (a) { try { return a && !a.paused && a.volume > 0.02; } catch (e) { return false; } });
+  }
+  function duck() {
+    var list = bgmEls();
+    if (!list.length) return;
+    var now = Date.now();
+    list.forEach(function (a) {
+      var rec = null;
+      for (var i = 0; i < S.duck.length; i++) if (S.duck[i].el === a) rec = S.duck[i];
+      if (!rec) { rec = { el: a, vol: a.volume }; S.duck.push(rec); }
+      rec.until = now + 1700;
+      try { a.volume = Math.max(0, rec.vol * 0.28); } catch (e) {}
+    });
+    if (S.duckT) return;
+    S.duckT = setInterval(function () {
+      var t = Date.now(), keep = [];
+      S.duck.forEach(function (r) {
+        if (r.until > t) { keep.push(r); return; }
+        try { if (Math.abs(r.el.volume - r.vol * 0.28) < 0.03) r.el.volume = r.vol; } catch (e) {}
+      });
+      S.duck = keep;
+      if (!keep.length) { clearInterval(S.duckT); S.duckT = null; }
+    }, 300);
+  }
+
+  /* ---------------------------------------------------------------- 재생 */
+  function startBuf(b, gv) {
+    var c = ctx();
+    if (!c || !b) return false;
+    try {
+      if (c.state !== 'running' && c.resume) { try { c.resume(); } catch (e) {} }
+      if (S.src) { try { S.src.stop(0); } catch (e) {} S.src = null; }
+      var s = c.createBufferSource();
+      s.buffer = b;
+      var g = c.createGain();
+      g.gain.value = gv;
+      s.connect(g);
+      g.connect(S.gain || c.destination);
+      s.onended = function () {
+        try { g.disconnect(); } catch (e) {}
+        if (S.src === s) S.src = null;
+      };
+      s.start(0);
+      S.src = s;
+      duck();
+      return true;
+    } catch (e) { return false; }
+  }
+  function elPlay(key, gv) {
+    var a = audioEl();
+    if (!a) { S.blocked++; return false; }
+    try {
+      try { a.pause(); } catch (e) {}
+      a.muted = false;
+      a.src = subPath() + 'assets/voices/' + key + '.mp3';
+      a.volume = Math.max(0, Math.min(1, gv));
+      try { a.currentTime = 0; } catch (e) {}
       var pr = a.play();
       if (pr && pr.catch) pr.catch(function () { S.blocked++; });
-      S.lastAt = Date.now();
-      S.played++;
+      duck();
       return true;
     } catch (e) { S.blocked++; return false; }
   }
+  function play(skin, kind, idx, force) {
+    var gv = gainVal();
+    if (gv <= 0) return false;
+    if (!force && Date.now() - S.lastAt < 200) return false;   /* 겹침 방지 */
+    var n = idx || (1 + ((Math.random() * 3) | 0));
+    if (n < 1 || n > 3) n = 1;
+    var key = bufKey(skin, kind, n);
+    S.cur = key;
+    S.lastAt = Date.now();
+    S.played++;
+    unlock();
+    var c = ctx();
+    if (!c) { elPlay(key, gv); return true; }
+    if (S.buf[key]) { startBuf(S.buf[key], gv); return true; }
+    load(skin, kind, n).then(function (b) {
+      if (S.cur !== key) return;              /* 그 사이 다른 보이스가 나갔으면 무시 */
+      if (b) startBuf(b, gainVal());
+      else elPlay(key, gainVal());
+    });
+    return true;
+  }
+  function stop() {
+    if (S.src) { try { S.src.stop(0); } catch (e) {} S.src = null; }
+    if (S.el && !S.el.paused) { try { S.el.pause(); } catch (e) {} }
+    S.duck.forEach(function (r) { try { r.el.volume = r.vol; } catch (e) {} });
+    S.duck = [];
+  }
 
   /* ---------------------------------------------------------------- 발동 훅 */
-  var wasVictory = false, lastSplat = 0;
+  var wasVictory = false, lastSplat = 0, lastSkin = '';
   function tick() {
     var j = root.__jwg;
+    var id = skinId();
+    if (id !== lastSkin) { lastSkin = id; preload(id); }
     if (!j || !j.game || !j.player) return;
     var g = j.game, p = j.player;
-    var id = skinId();
-    if (g.victory && !wasVictory) {
-      wasVictory = true;
-      play(id, 'clear');
-    }
+    if (g.victory && !wasVictory && (Number(g.time) || 0) > 1.2) { wasVictory = true; play(id, 'clear'); }
     if (!g.victory) wasVictory = false;
     if (p.splatT > 0.6 && Date.now() - lastSplat > 2600) {
       lastSplat = Date.now();
@@ -65856,52 +66327,122 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     }
   }
 
-  /* ---------------------------------------------------------------- 스킨 미리듣기 */
+  /* ---------------------------------------------------------------- 미리듣기 버튼 */
+  function mkBtn(label, title) {
+    var b = doc.createElement('button');
+    b.type = 'button';
+    b.className = 'v51VoiceBtn';
+    b.textContent = label;
+    b.title = title;
+    b.style.cssText = 'position:absolute;right:5px;top:5px;z-index:5;min-width:24px;height:24px;padding:0 4px;' +
+      'border-radius:8px;border:1px solid rgba(160,200,255,.5);background:rgba(8,14,26,.86);color:#dbeafe;' +
+      'font-size:12px;font-weight:900;line-height:22px;cursor:pointer;';
+    return b;
+  }
+  function bindPreview(card, id, getSel) {
+    if (!card || !id) return;
+    if (card.querySelector('.v51VoiceBtn')) return;
+    var b = mkBtn('🔊', '목소리 미리듣기');
+    b.addEventListener('click', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      unlock();
+      play(id, 'clear', 1, true);
+      try { V.toast('🔊 ' + (getSel && getSel.name ? getSel.name : id), 'chat', '목소리 미리듣기', 1100); } catch (er) {}
+    }, true);
+    try { if (getComputedStyle(card).position === 'static') card.style.position = 'relative'; } catch (e) {}
+    card.appendChild(b);
+  }
   function previewBtn() {
-    var host = doc.getElementById('v44DecoBody') || doc.getElementById('v43ProfTitles');
-    if (!host) return;
-    if ($('v51VoicePrev')) return;
-    /* 스튜디오/프로필 안의 스킨 카드 목록에 작은 스피커 버튼 */
-    var cards = doc.querySelectorAll('#v44DecoBody [data-skin], #v44DecoBody .v44-skin, #v43Profile [data-skin]');
-    if (!cards.length) return;
-    Array.prototype.forEach.call(cards, function (c) {
-      if (c.querySelector('.v51VoiceBtn')) return;
-      var id = c.getAttribute('data-skin');
-      if (!id) return;
-      var b = doc.createElement('button');
-      b.type = 'button';
-      b.className = 'v51VoiceBtn';
-      b.textContent = '🔊';
-      b.title = '목소리 미리듣기';
-      b.style.cssText = 'position:absolute;right:6px;top:6px;z-index:3;width:22px;height:22px;border-radius:7px;' +
-        'border:1px solid rgba(160,200,255,.45);background:rgba(8,14,26,.8);color:#dbeafe;font-size:11px;font-weight:900;';
-      b.addEventListener('click', function (e) {
-        e.preventDefault(); e.stopPropagation();
-        play(id, 'clear', 1);
-        try { V.toast('🔊 목소리 미리듣기', 'chat', id, 1200); } catch (er) {}
-      });
-      if (getComputedStyle(c).position === 'static') c.style.position = 'relative';
-      c.appendChild(b);
+    /* ① 기본 스킨 선택 모달 (#v42SkinGrid [data-sk]) */
+    Array.prototype.forEach.call(doc.querySelectorAll('#v42SkinGrid [data-sk]'), function (c) {
+      bindPreview(c, c.getAttribute('data-sk'), null);
     });
+    /* ② 꾸미기 스튜디오 본체 스킨 (#v44DecoBody [data-skinp] / [data-deco="skin"]) */
+    Array.prototype.forEach.call(doc.querySelectorAll('#v44DecoBody [data-skinp]'), function (c) {
+      bindPreview(c, c.getAttribute('data-skinp'), null);
+    });
+    Array.prototype.forEach.call(doc.querySelectorAll('#v44DecoBody [data-deco="skin"]'), function (c) {
+      bindPreview(c, c.getAttribute('data-id'), null);
+    });
+    /* ③ 그 밖의 스킨 카드 (프로필·멀티 스킨 칩 등) */
+    Array.prototype.forEach.call(doc.querySelectorAll('#v43Profile [data-skin], [data-skin].v44-skin'), function (c) {
+      bindPreview(c, c.getAttribute('data-skin'), null);
+    });
+    /* ④ 스킨 모달 안에 '내 캐릭터 목소리 테스트' 버튼 (한 번만) */
+    if (! $('v51VoiceTest')) {
+      var grid = $('v42SkinGrid');
+      if (grid && grid.parentElement) {
+        var row = doc.createElement('div');
+        row.id = 'v51VoiceTest';
+        row.style.cssText = 'display:flex;gap:6px;margin:6px 0 2px';
+        var b1 = doc.createElement('button');
+        b1.type = 'button'; b1.className = 'mp-btn green';
+        b1.style.cssText = 'flex:1;padding:8px;font-size:11px;font-weight:900';
+        b1.textContent = '🔊 내 캐릭터 목소리 듣기';
+        b1.addEventListener('click', function () {
+          unlock();
+          var id = skinId();
+          preload(id);
+          play(id, 'clear', 1, true);
+          try { V.toast('🔊 보이스 테스트', 'chat', (skinName(id) || id), 1200); } catch (e) {}
+          setTimeout(function () { play(id, 'fall', 1, true); }, 1500);
+        });
+        row.appendChild(b1);
+        grid.parentElement.insertBefore(row, grid.nextSibling);
+      }
+    }
+  }
+  function skinName(id) {
+    try {
+      var s = (V.api().skins() || []).filter(function (x) { return x.id === id; })[0];
+      return s ? s.name : id;
+    } catch (e) { return id; }
   }
 
+  /* ---------------------------------------------------------------- 부트 */
+  var UNLOCK_EV = ['pointerdown', 'touchstart', 'mousedown', 'click', 'keydown'];
+  UNLOCK_EV.forEach(function (ev) {
+    try { doc.addEventListener(ev, function () { try { unlock(); } catch (e) {} }, true); } catch (e) {}
+  });
+
+  /* 스킨 카드를 누르면 그 캐릭터 목소리가 바로 들린다 (선택 화면 미리듣기) */
+  doc.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('[data-sk],[data-skinp],[data-deco="skin"]') : null;
+    if (!t) return;
+    var id = t.getAttribute('data-sk') || t.getAttribute('data-skinp') || t.getAttribute('data-id');
+    if (!id) return;
+    try { unlock(); } catch (er) {}
+    setTimeout(function () { try { play(id, 'clear', 1, true); } catch (er) {} }, 70);
+  }, true);
+
   function boot() {
+    try { ctx(); } catch (e) {}
+    preload(skinId());
     if (C && C.every) {
       C.every('voiceTick', 120, function () { try { tick(); } catch (e) {} });
-      C.every('voiceBtn', 1400, function () { try { previewBtn(); } catch (e) {} });
+      C.every('voiceBtn', 1100, function () { try { previewBtn(); } catch (e) {} });
     } else {
       setInterval(tick, 120);
+      setInterval(previewBtn, 1100);
     }
   }
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 700); });
   else setTimeout(boot, 700);
 
   root.JW51VOICE = {
-    play: play, stop: stop, tick: tick,
-    state: function () { return { played: S.played, blocked: S.blocked, cur: S.cur, vol: vol() }; },
-    has: function (skin, kind, n) { return true; }
+    play: function (skin, kind, n, force) { return play(skin || skinId(), kind || 'clear', n, force); },
+    stop: stop, tick: tick, unlock: unlock, preload: preload,
+    state: function () {
+      return {
+        played: S.played, blocked: S.blocked, cur: S.cur, vol: vol(), gain: gainVal(),
+        ctx: S.ctx ? S.ctx.state : null, unlocked: S.unlocked,
+        cached: Object.keys(S.buf).length, decodeErr: S.decodeErr
+      };
+    },
+    has: function (skin, kind, n) { return !!S.buf[bufKey(skin, kind, n || 1)]; }
   };
-  console.log('[JW51VOICE] character voices ready');
+  console.log('[JW51VOICE] character voices ready (webaudio + unlock)');
 })(window);
 
 </script>
@@ -66810,6 +67351,1148 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   };
 
   console.log('[JW48B] boss art 24 ready');
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.1-modepure : 🎯 모드별 부가요소 차단
+     - 허용: normal(일반 레이스) · classic(🔥 챌린지) · custom(커스텀 — 사용자가 켠 규칙만)
+     - 그 밖의 모든 모드(타임어택·용암·좀비·보스·술래·땅따먹기·깃발·스왑·빙판·밧줄·2배속 …)
+       에서는 함정(traps) · 아이템/버프(items·buffs) · 랜덤 돌발 이벤트(events) · 태초(origin)를
+       코드 레벨에서 100% 막는다. 싱글·멀티 공통.
+     - 막는 지점(엔진이 실제로 판단하는 곳):
+         이벤트   JWG.eventsEnabled() · JWMode.pickEvent()
+         아이템   JWG.itemOn()          (발판 위 아이템 스폰)
+         버프·함정 JWG.buffsEnabled() · JWMode.buffOn()/trapOn() · JWMode.pickBuffTrap()/activate()
+         태초     JWG.originChance()
+       + JWMode.rules 플래그를 강제로 내려 UI·엔진 어느 쪽에서 봐도 OFF 가 되게 한다.
+       + 멀티 방장이면 방 규칙도 한 번 맞춰 참가자 화면까지 같게 만든다.
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW55PURE) return;
+  var doc = document;
+
+  var ALLOW = { normal: 1, classic: 1, custom: 1 };
+
+  function MD() { return root.JWMode; }
+  function G() { return V.G; }
+
+  function isMulti() {
+    try { var s = V.st(); return !!(s && (s.phase === 'race' || s.phase === 'count' || s.phase === 'result')); } catch (e) { return false; }
+  }
+  function curMode() {
+    try { if (G() && G().curMode) return G().curMode() || 'normal'; } catch (e) {}
+    try { return (MD() && MD().rules && MD().rules.mode) || 'normal'; } catch (e) { return 'normal'; }
+  }
+  /* 제한 모드인가? (모르는 모드 id 도 전부 제한) */
+  function pure() { return !ALLOW[curMode()]; }
+
+  /* ---------------------------------------------------------------- 규칙 플래그 강제 */
+  function forceRules() {
+    if (!pure()) return;
+    var r = MD() && MD().rules;
+    if (!r) return;
+    if (r.events !== false) r.events = false;
+    if (r.buffs !== false) r.buffs = false;
+    if (r.traps !== false) r.traps = false;
+    if (r.items !== false) r.items = false;
+    if (r.originPct !== 0) r.originPct = 0;
+    if (r.originRandom) r.originRandom = false;
+    if (!r.evList || r.evList.length) r.evList = [];
+    if (!r.buffList || r.buffList.length) r.buffList = [];
+    if (!r.trapList || r.trapList.length) r.trapList = [];
+    if (r.itemList !== undefined && (!r.itemList || r.itemList.length)) r.itemList = [];
+  }
+
+  /* ---------------------------------------------------------------- 멀티 방 규칙 정렬 */
+  var lastRoom = '';
+  function syncRoom() {
+    if (!pure()) { lastRoom = ''; return; }
+    try {
+      var api = V.api();
+      if (!api || !api.isHost || !api.isHost()) return;
+      var r = (V.st() && V.st().room) || null;
+      if (!r) return;
+      var sig = curMode() + '|' + [r.events, r.items, r.buffs, r.traps, r.originPct].join(',');
+      if (sig === lastRoom) return;
+      if (r.events === false && r.items === false && r.buffs === false && r.traps === false && Number(r.originPct) === 0) {
+        lastRoom = sig; return;
+      }
+      try {
+        api.setRoomRulesBulk({ events: false, items: false, buffs: false, traps: false, originPct: 0, originRandom: false },
+          '모드 전용 규칙');
+        lastRoom = sig;
+      } catch (e) {}
+    } catch (e) {}
+  }
+
+  /* ---------------------------------------------------------------- 엔진 훅 감싸기 */
+  /* blocked() 가 참이면 value 를 돌려주고, 아니면 원래 함수 그대로 */
+  function wrapWith(obj, key, blocked, value) {
+    if (!obj || typeof obj[key] !== 'function' || obj[key].__v51pure) return;
+    var orig = obj[key];
+    var w = function () {
+      try { if (blocked()) return value; } catch (e) {}
+      return orig.apply(this, arguments);
+    };
+    w.__v51pure = 1;
+    obj[key] = w;
+  }
+
+  function install() {
+    var g = root.JWG;
+    if (g) {
+      wrapWith(g, 'eventsEnabled', pure, false);   /* 이벤트 */
+      wrapWith(g, 'buffsEnabled', pure, false);    /* 버프 */
+      wrapWith(g, 'originChance', pure, 0);        /* 태초 */
+    }
+    wrapWith(V, 'itemOn', pure, false);            /* 발판 위 아이템 스폰 */
+    var m = MD();
+    if (m) {
+      wrapWith(m, 'evOn', pure, false);
+      wrapWith(m, 'buffOn', pure, false);
+      wrapWith(m, 'trapOn', pure, false);
+      wrapWith(m, 'pickEvent', pure, '');
+      wrapWith(m, 'pickBuffTrap', pure, null);
+      wrapWith(m, 'activate', pure, false);
+    }
+  }
+
+  var lastMode = '', lastPure = null, snap = null;
+  function snapshot() {
+    var r = MD() && MD().rules;
+    if (!r) return null;
+    return {
+      events: r.events, buffs: r.buffs, traps: r.traps, items: r.items,
+      originPct: r.originPct, originRandom: r.originRandom,
+      evList: r.evList, buffList: r.buffList, trapList: r.trapList,
+      itemList: r.itemList
+    };
+  }
+  function restore(s) {
+    var r = MD() && MD().rules;
+    if (!r || !s) return;
+    Object.keys(s).forEach(function (k) { if (s[k] !== undefined) r[k] = s[k]; });
+  }
+  /* 제한 모드에서 돌아왔을 때: 저장해 둔 값이 없으면 그 모드 기본값으로 */
+  function defaultsFor(mode) {
+    var r = MD() && MD().rules;
+    if (!r) return;
+    if (mode === 'classic') { try { MD().applyClassicLock(); } catch (e) {} return; }
+    if (mode === 'normal') {
+      r.events = true; r.buffs = true; r.traps = false; r.items = true;
+      r.originPct = 3; r.originRandom = false;
+      r.evList = null; r.buffList = null; r.trapList = null;
+      if (r.itemList !== undefined) r.itemList = null;
+    }
+  }
+
+  function tick() {
+    install();
+    var mo = curMode(), pu = pure();
+    if (mo !== lastMode || pu !== lastPure) {
+      /* 제한 모드에 들어갈 때 원래 규칙을 기억 */
+      if (pu && !lastPure) snap = snapshot();
+      /* 제한 모드에서 나올 때 되돌린다 (제한 모드가 값을 바꿔 놓았으므로 기본값으로 복구) */
+      if (!pu && lastPure === true) {
+        defaultsFor(mo);
+        snap = null;
+      }
+      lastMode = mo; lastPure = pu;
+      try { syncRoom(); } catch (e) {}
+    }
+    forceRules();
+    syncRoom();
+  }
+
+  /* 모드가 바뀌는 공개 API 들도 즉시 반영 */
+  function hookStart() {
+    try {
+      var m = MD();
+      if (m && typeof m.startSolo === 'function' && !m.startSolo.__v51pure) {
+        var os = m.startSolo;
+        var ws = function () {
+          var r = os.apply(this, arguments);
+          try { forceRules(); } catch (e) {}
+          return r;
+        };
+        ws.__v51pure = 1;
+        m.startSolo = ws;
+      }
+    } catch (e) {}
+    try {
+      var api = V.api && V.api();
+      if (api && typeof api.setRoomRule === 'function' && !api.setRoomRule.__v51pure) {
+        var orr = api.setRoomRule;
+        var wr = function () {
+          var r = orr.apply(this, arguments);
+          try { forceRules(); syncRoom(); } catch (e) {}
+          return r;
+        };
+        wr.__v51pure = 1;
+        api.setRoomRule = wr;
+      }
+    } catch (e) {}
+  }
+
+  function boot() {
+    install();
+    hookStart();
+    forceRules();
+    setInterval(function () { try { tick(); } catch (e) {} }, 500);
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 600); });
+  else setTimeout(boot, 600);
+
+  root.JW55PURE = {
+    pure: pure, mode: curMode, force: forceRules, allow: function () { return Object.keys(ALLOW); },
+    state: function () { return { mode: curMode(), pure: pure(), rules: MD() ? MD().rules : null }; }
+  };
+  console.log('[JW55PURE] mode purity ready');
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.6-titles5 : 🏅 칭호를 5곳 모두에 —
+     ① 인게임 HUD  ② 메인(타이틀)  ③ 랭킹(명예의 전당)  ④ 친구창  ⑤ 채팅(대기실·레이스·1:1 DM)
+   - 닉네임 → 칭호ID 캐시를 프레즌스/친구/랭킹 기록에서 모아 두고, 어디서든 같은 배지를 그린다
+   - 배지는 65_titles 의 JW51TITLES.badge() (등급별 네온·금빛 배지 + 픽셀 아이콘) 를 그대로 쓴다
+   - 깜빡임 0: 이미 같은 배지가 있으면 DOM 을 건드리지 않는다
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW56T5) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+
+  function TI() { return root.JW51TITLES || null; }
+  function C() { return root.JW51U || { esc: function (s) { return String(s == null ? '' : s); } }; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;'; }); }
+  function myNick() { try { var s = V.st(); return (s && s.me && s.me.nick) || ''; } catch (e) { return ''; } }
+  function myTitleId() {
+    try { if (TI() && TI().equipped) return TI().equipped(); } catch (e) {}
+    try { var raw = V.lsGet('jw41_identity_v1', {}) || {}; return raw.title || 'auto'; } catch (e) { return 'auto'; }
+  }
+  function titleName(id) {
+    if (!id || id === 'auto') return '';
+    try {
+      var t = (V.api().titles() || []).filter(function (x) { return x.id === id; })[0];
+      return t ? (t.short || t.name || '').replace(/^[^\w가-힣]+/, '') : '';
+    } catch (e) { return ''; }
+  }
+  function badge(id, withText) {
+    if (!id) return '';
+    try { if (TI() && TI().badge) return TI().badge(id, withText); } catch (e) {}
+    return '';
+  }
+
+  /* ---------------------------------------------------------------- 닉네임 → 칭호 캐시 */
+  var NAME_TI = {};
+  function learn(nick, ti) {
+    nick = String(nick || '').trim();
+    if (!nick || !ti || ti === 'auto') return;
+    if (NAME_TI[nick] === ti) return;
+    NAME_TI[nick] = ti;
+  }
+  function tiOf(nick) {
+    var n = String(nick || '').trim().replace(/\s*\(나\)\s*$/, '');
+    if (!n) return '';
+    if (n === String(myNick()).trim()) {
+      var m = myTitleId();
+      return (m && m !== 'auto') ? m : '';
+    }
+    return NAME_TI[n] || '';
+  }
+  function learnAll() {
+    /* ① 친구 목록 */
+    try {
+      var list = V.lsGet('jw_friends_v1', []) || [];
+      (V.api().internals && V.api().internals().friends || []).forEach(function (f) { if (f) list.push(f); });
+      list.forEach(function (f) { if (f) learn(f.nick || f.n, f.ti || f.title); });
+    } catch (e) {}
+    /* ② 랭킹 기록 */
+    try {
+      (V.lsGet('jw43_rank_v1', []) || []).forEach(function (r) { if (r) learn(r.n, r.ti); });
+    } catch (e) {}
+    /* ③ 내 친구 프레즌스 허브 */
+    try {
+      var HUB = root.JW485HUB;
+      if (HUB && HUB.actOf) { /* actOf(tag) 는 활동만 준다 */ }
+      var st = V.st();
+      if (st && st.room && st.players) { /* Map 형 */ }
+    } catch (e) {}
+  }
+  /* 프레즌스·네트워크 메시지에서 닉네임/칭호 훔쳐보기 */
+  function sniff() {
+    try {
+      if (V.onPresence && !V.onPresence.__v56) {
+        var op = V.onPresence;
+        var wp = function (fn) {
+          return op.call(this, function (m) {
+            try { if (m) learn(m.nick || m.n || (m.me && m.me.nick), m.ti || m.title); } catch (e) {}
+            return fn.apply(this, arguments);
+          });
+        };
+        wp.__v56 = 1;
+        V.onPresence = wp;
+      }
+    } catch (e) {}
+    try {
+      if (V.onNet && !V.onNet.__v56) {
+        var on = V.onNet;
+        var wn = function (fn) {
+          return on.call(this, function (m) {
+            try { if (m && (m.ti || m.title)) learn(m.nick || m.n || (m.d && m.d.nick), m.ti || m.title); } catch (e) {}
+            return fn.apply(this, arguments);
+          });
+        };
+        wn.__v56 = 1;
+        V.onNet = wn;
+      }
+    } catch (e) {}
+  }
+
+  /* ---------------------------------------------------------------- ① 인게임 HUD */
+  function hudBadge() {
+    var id = myTitleId();
+    if (!id || id === 'auto') {
+      var old = $('v56HudTitle');
+      if (old) old.style.display = 'none';
+      return;
+    }
+    var el = $('v56HudTitle');
+    if (!el) {
+      var host = $('gameHud') || $('hudPortrait');
+      if (!host || !host.parentElement) return;
+      el = doc.createElement('div');
+      el.id = 'v56HudTitle';
+      el.style.cssText = 'position:absolute;left:8px;top:calc(env(safe-area-inset-top,0px) + 60px);z-index:33;' +
+        'display:flex;align-items:center;gap:4px;pointer-events:none;max-width:46vw;';
+      (host.id === 'gameHud' ? host : host.parentElement).appendChild(el);
+    }
+    var h = badge(id, true);
+    if (el.getAttribute('data-ti') !== id + '|' + h.length || el.innerHTML !== h) {
+      el.setAttribute('data-ti', id + '|' + h.length);
+      el.innerHTML = h;
+    }
+    el.style.display = h ? 'flex' : 'none';
+  }
+
+  /* ---------------------------------------------------------------- ② 메인(타이틀) */
+  function titleScreenBadge() {
+    var id = myTitleId();
+    if (!id || id === 'auto') return;
+    var h = badge(id, true);
+    ['v43TPTitle', 'v485hTitle', 'mpMyTitleNow'].forEach(function (k) {
+      var el = $(k);
+      if (!el) return;
+      if (el.getAttribute('data-v56') === id) return;
+      el.setAttribute('data-v56', id);
+      el.innerHTML = h || esc(titleName(id));
+      el.style.background = 'none';
+      el.style.border = '0';
+      el.style.padding = '0';
+    });
+  }
+
+  /* ---------------------------------------------------------------- ⑤ 채팅 */
+  function decorateChat(log) {
+    if (!log) return;
+    var msgs = log.querySelectorAll('.mp-msg');
+    for (var i = 0; i < msgs.length; i++) {
+      var b = msgs[i].querySelector('b');
+      if (!b || b.getAttribute('data-v56')) continue;
+      var nick = (b.textContent || '').trim();
+      var ti = tiOf(nick);
+      if (!ti) { b.setAttribute('data-v56', '-'); continue; }
+      var h = badge(ti, false);
+      if (!h) { b.setAttribute('data-v56', '-'); continue; }
+      b.setAttribute('data-v56', ti);
+      var span = doc.createElement('span');
+      span.className = 'v56cbadge';
+      span.style.cssText = 'margin-right:3px;vertical-align:middle;display:inline-flex';
+      span.innerHTML = h;
+      b.parentNode.insertBefore(span, b);
+    }
+  }
+  function chatAll() {
+    decorateChat($('mpLobbyChatLog'));
+    decorateChat($('mpChatLog'));
+  }
+  /* 1:1 DM 말풍선에 보낸 사람 칭호 배지 (내 것 / 친구 것) */
+  function dmBadges() {
+    var body = $('v51DMBody');
+    if (!body) return;
+    var boxes = body.querySelectorAll('div[style*="max-width:78%"]');
+    for (var i = 0; i < boxes.length; i++) {
+      var box = boxes[i];
+      if (box.getAttribute('data-v56')) continue;
+      box.setAttribute('data-v56', '1');
+      var mine = /2563eb/.test(box.style.background || box.getAttribute('style') || '');
+      var tag = '';
+      try { tag = (root.JW51DM && root.JW51DM.state && root.JW51DM.state().open) || ''; } catch (e) {}
+      var id = mine ? myTitleId() : '';
+      if (!id && tag) {
+        var nm = ''; try { nm = (root.JW51DM.nameOf && root.JW51DM.nameOf(tag)) || ''; } catch (e) {}
+        id = tiOf(nm);
+      }
+      if (!id || id === 'auto') continue;
+      var h = badge(id, true);
+      if (!h) continue;
+      var lab = doc.createElement('div');
+      lab.style.cssText = (mine ? 'text-align:right;' : '') + 'font-size:9.5px;font-weight:900;color:#a9b8d4;margin:0 3px 1px;display:flex;' + (mine ? 'justify-content:flex-end' : '');
+      lab.innerHTML = h;
+      box.parentNode.insertBefore(lab, box);
+    }
+  }
+
+  /* ---------------------------------------------------------------- 랭킹 기록에 내 칭호 저장 */
+  function stampRank() {
+    var id = myTitleId();
+    if (!id || id === 'auto') return;
+    try {
+      var list = V.lsGet('jw43_rank_v1', []) || [];
+      if (!Array.isArray(list) || !list.length) return;
+      var me = String(myNick()).trim();
+      var mine = null;
+      try { mine = (V.api().internals().ident || {}).ftag || ''; } catch (e) {}
+      var changed = false;
+      list.forEach(function (r) {
+        if (!r) return;
+        var same = (mine && r.uid && r.uid === mine) || (!mine && String(r.n || '').trim() === me);
+        if (!same) return;
+        if (r.ti !== id) { r.ti = id; changed = true; }
+        if (!r.sk) { try { r.sk = V.api().meSkin(); } catch (e) {} }
+      });
+      if (changed) V.lsSet('jw43_rank_v1', list);
+    } catch (e) {}
+  }
+
+  /* ---------------------------------------------------------------- 부트 */
+  function tick() {
+    try { learnAll(); } catch (e) {}
+    try { hudBadge(); } catch (e) {}
+    try { titleScreenBadge(); } catch (e) {}
+    try { chatAll(); } catch (e) {}
+    try { dmBadges(); } catch (e) {}
+  }
+  function boot() {
+    sniff();
+    var s = doc.createElement('style');
+    s.id = 'v56t5css';
+    s.textContent =
+      '#v56HudTitle .v51badge{font-size:10px;padding:2px 7px;line-height:1.5;}' +
+      '#v56HudTitle .v51badge img{width:12px;height:12px;}' +
+      '#v43TPTitle .v51badge,#v485hTitle .v51badge,#mpMyTitleNow .v51badge{font-size:10.5px;padding:2px 8px;}' +
+      '.v56cbadge .v51badge{font-size:9px;padding:0 4px;}' +
+      '.v56cbadge .v51badge img{width:11px;height:11px;}';
+    doc.head.appendChild(s);
+    tick();
+    setInterval(function () { try { if (root.JW51U && JW51U.inPlayNow && JW51U.inPlayNow()) { hudBadge(); return; } tick(); } catch (e) {} }, 900);
+    setInterval(function () { try { stampRank(); } catch (e) {} }, 7000);
+    setTimeout(function () { try { stampRank(); } catch (e) {} }, 2500);
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 900); });
+  else setTimeout(boot, 900);
+
+  root.JW56T5 = {
+    tiOf: tiOf, learn: learn, badge: badge, myTitleId: myTitleId, name: titleName,
+    decorateChat: chatAll, refresh: tick
+  };
+  console.log('[JW56T5] titles in 5 places ready');
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.6-friends-ui : 👥 친구창 · 친구 프로필 정돈
+   - 친구 행: 스킨 아이콘 + 닉네임 + 화려한 칭호 배지 + 접속 상태(온라인/플레이 중 맵·층/마지막 접속)
+   - 행을 누르면 즉시 최상위(z-index) 친구 상세 시트가 열린다 (두 번 누르기·뒤에 가려짐 0)
+   - 시트: 히어로(스킨 큰 미리보기 · 닉네임 · 칭호 배지 · 한마디 · 상태) → 전적 요약 → 3D 액션 버튼
+   - 내 프로필 카드: 내 스킨 · 칭호 배지 · 한마디 + [스킨 바꾸기] [칭호 바꾸기] 버튼
+   - 폰트 12~16px 굵게, 버튼 최소 40px 높이 · nowrap
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW56FR) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  function esc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;'; }); }
+  function HUB() { return root.JW485HUB || null; }
+  function T5() { return root.JW56T5 || null; }
+  function TI() { return root.JW51TITLES || null; }
+  function st() { try { return V.st() || {}; } catch (e) { return {}; } }
+  function myNick() { try { return (st().me && st().me.nick) || ''; } catch (e) { return ''; } }
+  function mySkin() { try { return V.api().meSkin() || 'jaeu'; } catch (e) { return 'jaeu'; } }
+  function myColor() { try { return V.api().meColor() || 'blue'; } catch (e) { return 'blue'; } }
+  function myMotto() { try { return (root.JW51LINES && root.JW51LINES.motto()) || ''; } catch (e) { return ''; } }
+  function myTitleId() { try { return T5() ? T5().myTitleId() : 'auto'; } catch (e) { return 'auto'; } }
+  function badge(id, withText) { try { return (TI() && id && id !== 'auto') ? TI().badge(id, withText) : ''; } catch (e) { return ''; } }
+
+  function pava(cv, sk, col) {
+    if (!cv) return;
+    var sp = null;
+    try { sp = V.api().spriteFor(col || 'blue', 'idle1', sk || 'jaeu'); } catch (e) {}
+    var g = cv.getContext('2d');
+    if (!g) return;
+    g.clearRect(0, 0, cv.width, cv.height);
+    if (sp) { g.imageSmoothingEnabled = false; try { g.drawImage(sp, 0, 0, cv.width, cv.height); } catch (e) {} }
+  }
+
+  /* ---------------------------------------------------------------- CSS */
+  function css() {
+    if ($('v56frCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v56frCss';
+    s.textContent = [
+      /* 친구 행 정돈 */
+      '#v485hList .v485fc{min-height:56px;border-radius:13px;padding:8px 9px;gap:9px;border-width:2px;}',
+      '#v485hList .v485fc-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}',
+      '#v485hList .v485fc-top b{font-size:13px;font-weight:900;color:#f2f7ff;line-height:1.25;}',
+      '#v485hList .v485fc-top .v51badge{font-size:9.5px;padding:1px 6px;}',
+      '#v485hList .v485fc-top .v51badge img{width:11px;height:11px;}',
+      '#v485hList .v485fc-act{font-size:11.5px;font-weight:800;color:#a9f0dc;line-height:1.35;}',
+      '#v485hList .v485fc-sub{font-size:11px;font-weight:800;color:#93a8c8;line-height:1.35;}',
+      '#v485hList .v485fc-rec{font-size:11px;font-weight:900;color:#fcd34d;}',
+      '#v485hList .v485fc-sm{font-size:11px;font-weight:800;color:#bfd0e8;}',
+      '#v485hList .v485fc-id{font-size:10px;font-weight:800;color:#7f93b3;}',
+      '#v56MeExtra{margin:8px 0 2px;padding:9px 10px;border-radius:13px;background:#0c1524;border:2px solid #22304a;display:flex;flex-direction:column;gap:8px;}',
+      '#v56MeExtra .mt{font-size:12.5px;font-weight:800;color:#cfe0f6;line-height:1.4;}',
+      '#v56MeExtra .btns{display:grid;grid-template-columns:1fr 1fr;gap:7px;}',
+      /* 친구 상세 시트 */
+      '#v56FS{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:flex-end;justify-content:center;',
+      '  background:rgba(3,7,15,.86);padding:8px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));',
+      '  font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;}',
+      '#v56FS.hide{display:none;}',
+      '#v56FS .card{width:min(100%,520px);max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;',
+      '  background:linear-gradient(180deg,#121e36,#0a1120 60%,#070c16);border:2px solid #2a3d5e;border-radius:20px;',
+      '  box-shadow:0 20px 60px rgba(0,0,0,.8),inset 0 2px 0 rgba(255,255,255,.08);padding:12px;display:flex;flex-direction:column;gap:10px;}',
+      '#v56FS .hero{display:flex;align-items:center;gap:12px;padding:11px;border-radius:16px;',
+      '  background:radial-gradient(130% 150% at 50% 0%,rgba(56,89,140,.42),rgba(9,15,27,.95));border:2px solid #33456a;}',
+      '#v56FS .hero canvas{width:78px;height:90px;image-rendering:pixelated;flex:0 0 auto;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5));}',
+      '#v56FS .hero .who{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:5px;}',
+      '#v56FS .hero .nm{font-family:"Jua",sans-serif;font-size:19px;color:#fff;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '#v56FS .hero .st{font-size:12.5px;font-weight:900;color:#a9f0dc;line-height:1.35;}',
+      '#v56FS .hero .mt{font-size:12px;font-weight:800;color:#c3d4ea;line-height:1.4;}',
+      '#v56FS .stat{display:grid;grid-template-columns:1fr 1fr;gap:7px;}',
+      '#v56FS .kv{background:#0d1728;border:1.5px solid #1e2b44;border-radius:12px;padding:8px 10px;min-width:0;}',
+      '#v56FS .kv i{display:block;font-style:normal;font-size:11px;font-weight:900;color:#93a8c8;margin-bottom:3px;}',
+      '#v56FS .kv b{display:block;font-family:"Jua",sans-serif;font-size:16px;color:#fde047;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '#v56FS .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;}',
+      '#v56FS .acts button{min-height:44px;border-radius:13px;border:2px solid #34496e;font-size:13.5px;font-weight:900;',
+      '  background:linear-gradient(180deg,#243654,#162032);color:#e6f0ff;box-shadow:0 3px 0 #070c16,inset 0 1px 0 rgba(255,255,255,.12);',
+      '  white-space:nowrap;padding:0 10px;display:flex;align-items:center;justify-content:center;gap:5px;}',
+      '#v56FS .acts button.pri{background:linear-gradient(180deg,#cfe6ff,#67a9fb 55%,#2f6fd0);color:#041a3a;border-color:#0b2c5c;',
+      '  box-shadow:0 3px 0 #0a2245,inset 0 1px 0 rgba(255,255,255,.5);}',
+      '#v56FS .acts button.danger{background:linear-gradient(180deg,#5c2233,#3a1520);border-color:#8f3450;color:#ffd7e1;}',
+      '#v56FS .x{position:sticky;top:0;margin-left:auto;height:36px;min-width:58px;border-radius:11px;border:2px solid #33456a;',
+      '  background:linear-gradient(180deg,#28364f,#162032);color:#dbe7f8;font-size:13px;font-weight:900;',
+      '  box-shadow:0 3px 0 #0a101c;white-space:nowrap;}',
+      '#v56FS .hd{display:flex;align-items:center;gap:8px;}',
+      '#v56FS .hd b{font-family:"Jua",sans-serif;font-size:16px;color:#fff;}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+
+  /* ---------------------------------------------------------------- 내 프로필 카드 */
+  /* 엔진이 이미 스킨·닉네임·칭호·친구코드를 보여 주므로, 중복 카드를 만들지 않고
+     '한마디 + 스킨/칭호 바꾸기 버튼'만 바로 아래에 붙인다 (한 화면 정돈) */
+  function myCard() {
+    var hub = $('v485Hub');
+    if (!hub) return;
+    var old = $('v56Me');
+    if (old) old.remove();                       /* 예전 중복 카드 정리 */
+    var host = hub.querySelector('.v485h-top');
+    if (!host) return;
+    var el = $('v56MeExtra');
+    if (!el) {
+      el = doc.createElement('div');
+      el.id = 'v56MeExtra';
+      el.innerHTML = '<div class="mt" id="v56MeMt"></div>' +
+        '<div class="btns"><button type="button" id="v56MeSkin">🎭 스킨 바꾸기</button>' +
+        '<button type="button" id="v56MeTitle">🏅 칭호 바꾸기</button></div>';
+      host.parentNode.insertBefore(el, host.nextSibling);
+      el.querySelector('#v56MeSkin').addEventListener('click', function (e) {
+        e.stopPropagation();
+        try { if (root.JW42 && JW42.openSkin) JW42.openSkin(); else if (V.openProfile) V.openProfile(); } catch (er) {}
+      });
+      el.querySelector('#v56MeTitle').addEventListener('click', function (e) {
+        e.stopPropagation();
+        try { if (TI() && TI().open) TI().open(); else if (V.openProfile) V.openProfile(); } catch (er) {}
+      });
+    }
+    var mt = $('v56MeMt');
+    var t = '💬 ' + (myMotto() || '오늘도 한 층씩.');
+    if (mt && mt.textContent !== t) mt.textContent = t;
+    ['v56MeSkin', 'v56MeTitle'].forEach(function (id) {
+      var b = $(id);
+      if (b) b.style.cssText = 'min-height:40px;border-radius:11px;font-size:12.5px;font-weight:900;white-space:nowrap;' +
+        'border:2px solid #34496e;background:linear-gradient(180deg,#243654,#162032);color:#e6f0ff;box-shadow:0 3px 0 #070c16,inset 0 1px 0 rgba(255,255,255,.12);';
+    });
+  }
+
+  /* ---------------------------------------------------------------- 친구 행 배지 */
+  function rows() {
+    var box = $('v485hList');
+    if (!box) return;
+    var list = box.querySelectorAll('.v485fc[data-ftag]');
+    for (var i = 0; i < list.length; i++) {
+      var row = list[i];
+      var tag = row.getAttribute('data-ftag');
+      var top = row.querySelector('.v485fc-top');
+      var b = top && top.querySelector('b');
+      if (!b) continue;
+      var nick = (b.textContent || '').trim();
+      var ti = '';
+      try { ti = T5() ? T5().tiOf(nick) : ''; } catch (e) {}
+      if (!ti) { try { ti = (root.JW485HUB && JW485HUB.actOf && (JW485HUB.actOf(tag) || {}).ti) || ''; } catch (e) {} }
+      var h = badge(ti, true);
+      var old = top.querySelector('.v51badge');
+      if (!h) { if (old) old.remove(); continue; }
+      if (old && old.getAttribute('data-ti') === ti) continue;
+      if (old) old.remove();
+      var wrap = doc.createElement('span');
+      wrap.setAttribute('data-ti', ti);
+      wrap.style.cssText = 'display:inline-flex;vertical-align:middle';
+      wrap.innerHTML = h;
+      b.parentNode.insertBefore(wrap, b.nextSibling);
+    }
+  }
+
+  /* ---------------------------------------------------------------- 친구 상세 시트 */
+  var SEL = '';
+  function friendData(tag) {
+    var f = {}, act = {};
+    try {
+      var L = (HUB() && HUB().friendsList) ? HUB().friendsList() : [];
+      f = L.filter(function (x) { return x.ftag === tag; })[0] || {};
+    } catch (e) {}
+    try { act = (HUB() && HUB().actOf) ? (HUB().actOf(tag) || {}) : {}; } catch (e) {}
+    var nick = act.nick || f.nick || tag;
+    var ti = '';
+    try { ti = T5() ? T5().tiOf(nick) : ''; } catch (e) {}
+    if (!ti) ti = act.ti || f.ti || '';
+    /* 랭킹에서 친구 최고 기록 찾기 */
+    var best = 0, bestMap = '', modes = {};
+    try {
+      var all = (V.lsGet('jw43_rank_v1', []) || []).concat((V.rank && V.rank.live) || []);
+      all.forEach(function (r) {
+        if (!r || String(r.n || '').trim() !== String(nick).trim()) return;
+        var m = Number(r.m) || 0;
+        if (m > best) { best = m; bestMap = r.map || ''; }
+        if (r.mode) modes[r.mode] = (modes[r.mode] || 0) + 1;
+      });
+    } catch (e) {}
+    var fav = '';
+    Object.keys(modes).sort(function (a, b) { return modes[b] - modes[a]; }).forEach(function (k) { if (!fav) fav = k; });
+    return { tag: tag, nick: nick, sk: act.sk || f.sk || 'jaeu', col: act.col || f.col || 'blue', ti: ti, act: act, best: best, bestMap: bestMap, fav: fav, pair: !!f.pair };
+  }
+  function ensureSheet() {
+    var el = $('v56FS');
+    if (el) return el;
+    css();
+    el = doc.createElement('div');
+    el.id = 'v56FS';
+    el.className = 'hide';
+    doc.body.appendChild(el);
+    el.addEventListener('click', function (e) {
+      if (e.target === el) closeSheet();
+      var x = e.target.closest ? e.target.closest('[data-v56x]') : null;
+      if (x) closeSheet();
+      var b = e.target.closest ? e.target.closest('[data-v56act]') : null;
+      if (!b) return;
+      e.preventDefault(); e.stopPropagation();
+      var k = b.getAttribute('data-v56act');
+      var tag = SEL;
+      if (k === 'chat') { closeSheet(); try { root.JW51DM && JW51DM.open(tag); } catch (er) {} }
+      else if (k === 'spec') { closeSheet(); try { (HUB() && HUB().actInfo && 0); var btn = doc.querySelector('#v485hList [data-ftag="' + tag + '"] button[data-act="spec"]'); if (btn) btn.click(); } catch (er) {} }
+      else if (k === 'inv') { try { var b2 = doc.querySelector('#v485hList [data-ftag="' + tag + '"] button[data-act="inv"]'); if (b2) { b2.click(); closeSheet(); } else { V.toast('🎮 방 초대', 'chat', '지금은 초대할 수 없어요 (친구가 로비에 있어야 해요)', 2200); } } catch (er) {} }
+      else if (k === 'del') {
+        if (!confirm('이 친구를 목록에서 삭제할까요?')) return;
+        try {
+          var L = (V.lsGet('jw_friends_v1', []) || []).filter(function (f) { return (f.ftag || f.tag) !== tag; });
+          V.lsSet('jw_friends_v1', L);
+          try { if (HUB() && HUB().render) HUB().render(true); } catch (er) {}
+          V.toast('🗑️ 친구 삭제', 'danger', '목록에서 지웠어요', 1600);
+        } catch (er) {}
+        closeSheet();
+      }
+    });
+    return el;
+  }
+  function openSheet(tag) {
+    var d = friendData(tag);
+    SEL = tag;
+    var el = ensureSheet();
+    var stTxt = '';
+    var a = d.act || {};
+    if (a.act === 'solo') stTxt = '🟢 플레이 중 · ' + (a.mapName || a.map || '싱글') + (a.floor ? ' ' + a.floor + '층' : '');
+    else if (a.room) stTxt = '🟡 방 대기 중 · 코드 ' + a.room;
+    else if (a.act === 'lobby') stTxt = '🟡 로비에 있음';
+    else stTxt = '⚫ 오프라인' + (a.at ? ' · ' + agoTxt(a.at) : '');
+    var spec = !!(a.act === 'solo');
+    var inv = !!(a.room);
+    el.innerHTML = '<div class="card">' +
+      '<div class="hd"><b>👤 친구 프로필</b><button type="button" class="x" data-v56x="1">닫기 ✕</button></div>' +
+      '<div class="hero"><canvas width="78" height="90"></canvas><div class="who">' +
+        '<div class="nm">' + esc(d.nick) + '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:4px">' + (badge(d.ti, true) || '<span style="font-size:12px;font-weight:800;color:#93a8c8">칭호 없음</span>') + '</div>' +
+        '<div class="st">' + esc(stTxt) + '</div>' +
+        (d.act && d.act.sm ? '<div class="mt">💬 ' + esc(d.act.sm) + '</div>' : '') +
+      '</div></div>' +
+      '<div class="stat">' +
+        '<div class="kv"><i>🏔️ 최고 기록</i><b>' + (d.best ? Math.round(d.best) + 'm' : '기록 없음') + '</b></div>' +
+        '<div class="kv"><i>🗺️ 최고 맵</i><b>' + esc(d.bestMap ? ((mapName(d.bestMap)) || d.bestMap) : '—') + '</b></div>' +
+        '<div class="kv"><i>🎮 즐겨 하는 모드</i><b>' + esc(d.fav ? modeName(d.fav) : '—') + '</b></div>' +
+        '<div class="kv"><i>🤝 친구 상태</i><b>' + (d.pair ? '서로 친구' : '수락 대기') + '</b></div>' +
+      '</div>' +
+      '<div class="acts">' +
+        '<button type="button" class="pri" data-v56act="chat">💬 채팅</button>' +
+        '<button type="button" data-v56act="spec"' + (spec ? '' : ' disabled style="opacity:.45"') + '>👀 관전</button>' +
+        '<button type="button" data-v56act="inv"' + (inv ? '' : ' disabled style="opacity:.45"') + '>🎮 방 초대</button>' +
+        '<button type="button" class="danger" data-v56act="del">🗑️ 친구 삭제</button>' +
+      '</div></div>';
+    pava(el.querySelector('canvas'), d.sk, d.col);
+    el.classList.remove('hide');
+    try { V.beep(880, 0.05, 0.07, 'square', 1120); } catch (e) {}
+  }
+  function closeSheet() { var el = $('v56FS'); if (el) el.classList.add('hide'); }
+  function mapName(id) { try { var m = root.JWMap.byId(id) || {}; return m.name || id; } catch (e) { return id; } }
+  function modeName(id) { try { var m = root.JWMode.modeById(id) || {}; return m.name || id; } catch (e) { return id; } }
+  function agoTxt(ts) {
+    var d = Date.now() - (ts || 0);
+    if (!ts) return '';
+    if (d < 60000) return '방금';
+    if (d < 3600000) return Math.floor(d / 60000) + '분 전';
+    if (d < 86400000) return Math.floor(d / 3600000) + '시간 전';
+    return Math.floor(d / 86400000) + '일 전';
+  }
+
+  /* 행 탭 → 내 시트 (엔진 상세창 대신, 한 번에 맨 앞으로) */
+  doc.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest('#v56FS')) return;
+    var row = t.closest('#v485hList .v485fc[data-ftag]');
+    if (!row) return;
+    if (t.closest('button')) return;      /* 행 안의 버튼은 원래 동작 */
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    openSheet(row.getAttribute('data-ftag'));
+  }, true);
+
+  /* ---------------------------------------------------------------- 부트 */
+  function tick() {
+    if (root.JW51U && JW51U.inPlayNow && JW51U.inPlayNow()) return;
+    try { myCard(); } catch (e) {}
+    try { rows(); } catch (e) {}
+  }
+  function boot() {
+    css();
+    tick();
+    setInterval(tick, 900);
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 700); });
+  else setTimeout(boot, 700);
+
+  root.JW56FR = { open: openSheet, close: closeSheet, refresh: tick, data: friendData };
+  console.log('[JW56FR] friends ui ready');
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.6-hearts : ❤️ 하트 HUD 는 "하트를 실제로 쓰는 모드"에서만
+     - 표시: boss · bossrush · raid · oneheart · bomb
+             + custom(커스텀)에서 하트 규칙을 직접 켠 경우(ex.hearts 가 숫자)
+     - 숨김: 그 밖의 모든 모드 (normal·classic·pureclassic·timeattack·relay·chain·bomb 아님 …
+             lava·dive 처럼 하트를 안 쓰는 모드 포함)
+     - 인라인 style 에 !important 로 직접 걸어서 다른 HUD 스크립트가 되살려도 다시 숨긴다
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW56HEART) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+
+  var NEED = { boss: 1, bossrush: 1, raid: 1, oneheart: 1, bomb: 1 };
+
+  function curMode() {
+    try { if (V.G && V.G.curMode) return V.G.curMode() || 'normal'; } catch (e) {}
+    try { return (root.JWMode && root.JWMode.rules && root.JWMode.rules.mode) || 'normal'; } catch (e) { return 'normal'; }
+  }
+  function exHearts() {
+    try { var ex = V.ex ? V.ex() : null; return ex ? ex.hearts : null; } catch (e) { return null; }
+  }
+  function need() {
+    var m = curMode();
+    if (NEED[m]) return true;
+    if (m === 'custom') {
+      var h = exHearts();
+      if (h === undefined || h === null) return false;
+      return String(h) !== 'inf';
+    }
+    return false;
+  }
+  function inPlay() {
+    try { var g = root.__jwg && root.__jwg.game; return !!(g && g.inPlay); } catch (e) { return false; }
+  }
+
+  var last = null;
+  function apply() {
+    var el = $('hudHearts');
+    if (!el) return;
+    var n = need();
+    var key = n ? 'on' : 'off';
+    if (key !== last) {
+      last = key;
+      if (n) {
+        if (el.style.getPropertyPriority('display') === 'important') el.style.removeProperty('display');
+        else if (el.style.display === 'none' && el.style.getPropertyPriority('display') !== 'important') el.style.removeProperty('display');
+      } else {
+        el.style.setProperty('display', 'none', 'important');
+      }
+    } else if (!n && el.style.getPropertyValue('display') !== 'none') {
+      el.style.setProperty('display', 'none', 'important');
+    }
+    try {
+      document.body.classList.toggle('v56-hidehearts', !n);
+      document.body.classList.toggle('v44-nohearts', !n && inPlay());
+    } catch (e) {}
+    /* 코어가 5칸을 되살려도 보이지 않게 한 번 더 */
+    if (!n) {
+      var imgs = el.querySelectorAll('img');
+      for (var i = 0; i < imgs.length; i++) {
+        if (imgs[i].style.getPropertyPriority('display') !== 'important' && imgs[i].style.display !== 'none') {
+          imgs[i].style.setProperty('display', 'none', 'important');
+        }
+      }
+    } else {
+      var im = el.querySelectorAll('img');
+      for (var j = 0; j < im.length; j++) {
+        if (im[j].style.getPropertyPriority('display') === 'important' && im[j].style.getPropertyValue('display') === 'none') {
+          im[j].style.removeProperty('display');
+        }
+      }
+    }
+  }
+
+  function css() {
+    if ($('v56hCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v56hCss';
+    s.textContent = 'body.v56-hidehearts #hudHearts,body.v56-hidehearts #v43Hearts{display:none !important;}' +
+      'body.v56-hidehearts #hudHearts img{display:none !important;}';
+    doc.head.appendChild(s);
+  }
+
+  function boot() {
+    css();
+    apply();
+    setInterval(function () { try { apply(); } catch (e) {} }, 250);
+    try { if (V.G && V.G.curMode) setInterval(apply, 900); } catch (e) {}
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 500); });
+  else setTimeout(boot, 500);
+
+  root.JW56HEART = { need: need, mode: curMode, apply: apply, heartModes: Object.keys(NEED) };
+  console.log('[JW56HEART] hearts gating ready');
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.6-tag : 🏅 인게임 내 캐릭터 위 닉네임 + 칭호 배지
+     - 인게임(HUD)에서 내 캐릭터 머리 위에 '닉네임 + 장착 칭호 배지'를 띄운다 (기본 ON)
+     - 설정 모달(⛯ 설정 / QOL 설정)에 [🏅 내 칭호 표시 (인게임)] ON/OFF 토글 추가
+       → 끄면 캐릭터 위 칭호만 사라지고 HUD 배지는 그대로(원하면 그것도 함께 정리)
+     - 싱글·멀티 모두 동일 (칭호는 내 것)
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW56TAG) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var KEY = 'v56_tag_on_v1';
+
+  function on() {
+    try { var v = localStorage.getItem(KEY); return v === null ? true : v === '1'; } catch (e) { return true; }
+  }
+  function setOn(v) {
+    try { localStorage.setItem(KEY, v ? '1' : '0'); } catch (e) {}
+    var el = $('v51IGTag');
+    if (el && !v) el.style.display = 'none';
+  }
+  function myTitleId() { try { return (root.JW56T5 && root.JW56T5.myTitleId()) || 'auto'; } catch (e) { return 'auto'; } }
+  function myNick() { try { var s = V.st(); return (s && s.me && s.me.nick) || ''; } catch (e) { return ''; } }
+  function badgeHtml() {
+    try {
+      var id = myTitleId();
+      if (id && id !== 'auto' && root.JW51TITLES) return root.JW51TITLES.badge(id, true);
+    } catch (e) {}
+    return '';
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;'; }); }
+
+  function el() {
+    var e = $('v51IGTag');
+    if (e) return e;
+    e = doc.createElement('div');
+    e.id = 'v51IGTag';
+    e.style.cssText = 'position:fixed;left:0;top:0;z-index:30;pointer-events:none;display:none;' +
+      'transform:translate(-50%,-100%);text-align:center;font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;';
+    doc.body.appendChild(e);
+    return e;
+  }
+
+  var lastSig = '';
+  function frame() {
+    var j = root.__jwg;
+    var cv = $('gameCanvas');
+    var tag = el();
+    if (!on() || !j || !j.game || !j.player || !cv || !j.game.inPlay) {
+      if (tag.style.display !== 'none') tag.style.display = 'none';
+      return;
+    }
+    var p = j.player;
+    var r = cv.getBoundingClientRect();
+    if (!r.width || !r.height) { tag.style.display = 'none'; return; }
+    var pr;
+    try { pr = V.proj(p.x + 14, p.y - 6); } catch (e) { tag.style.display = 'none'; return; }
+    var sx = r.width / (cv.width || 1), sy = r.height / (cv.height || 1);
+    var x = r.left + pr.x * sx;
+    var y = r.top + pr.y * sy - 6;
+    var nick = myNick();
+    var bd = badgeHtml();
+    var sig = nick + '|' + bd + '|' + vw();
+    if (sig !== lastSig) {
+      lastSig = sig;
+      tag.innerHTML = '<div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;max-width:180px;' +
+        'padding:3px 8px 4px;border-radius:10px;background:rgba(8,14,26,.72);border:1.5px solid rgba(150,195,255,.35);' +
+        'box-shadow:0 2px 8px rgba(0,0,0,.45);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);">' +
+        '<span style="font-size:11px;font-weight:900;color:#eaf2ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;' +
+        'text-shadow:0 1px 2px #000;">' + esc(nick) + '</span>' +
+        (bd ? '<span style="display:flex">' + bd + '</span>' : '') +
+        '</div>';
+    }
+    tag.style.left = x + 'px';
+    tag.style.top = y + 'px';
+    tag.style.display = 'block';
+  }
+  function vw() { return window.innerWidth + 'x' + window.innerHeight; }
+
+  /* ---------------------------------------------------------------- 설정 토글 */
+  function toggleRow() {
+    var row = doc.createElement('div');
+    row.id = 'v56TagRow';
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0;padding:10px 11px;' +
+      'border-radius:12px;background:#0b1222;border:2px solid #1e293b;';
+    row.innerHTML = '<div style="min-width:0"><b style="display:block;font-size:12.5px;font-weight:900;color:#e6f0ff">🏅 내 칭호 표시 (인게임)</b>' +
+      '<i style="display:block;font-style:normal;font-size:11px;font-weight:800;color:#93a8c8;margin-top:2px">캐릭터 머리 위에 닉네임 + 칭호 배지</i></div>' +
+      '<button type="button" id="v56TagSw" style="flex:0 0 auto;min-width:56px;height:34px;border-radius:10px;font-size:12.5px;font-weight:900;' +
+      'border:2px solid #33456a;background:linear-gradient(180deg,#243654,#162032);color:#dbe7f8;box-shadow:0 3px 0 #070c16;white-space:nowrap">ON</button>';
+    var b = row.querySelector('#v56TagSw');
+    function paint() {
+      var v = on();
+      b.textContent = v ? 'ON' : 'OFF';
+      b.style.background = v ? 'linear-gradient(180deg,#cfe6ff,#67a9fb 55%,#2f6fd0)' : 'linear-gradient(180deg,#243654,#162032)';
+      b.style.color = v ? '#041a3a' : '#dbe7f8';
+      b.style.borderColor = v ? '#0b2c5c' : '#33456a';
+    }
+    b.addEventListener('click', function () {
+      setOn(!on());
+      paint();
+      try { V.toast('🏅 인게임 칭호', on() ? 'lucky' : 'chat', on() ? '표시합니다' : '숨겼어요', 1400); } catch (e) {}
+    });
+    paint();
+    return row;
+  }
+  function injectSettings() {
+    var hosts = [$('settingsModal'), $('v43Qol')];
+    hosts.forEach(function (h) {
+      if (!h) return;
+      if (h.querySelector('#v56TagRow')) return;
+      if (h.classList.contains('hidden') && !h.classList.contains('hide')) {
+        /* 열려 있을 때만 넣는다 (레이아웃 깨짐 방지) */
+        if (h.id === 'settingsModal') return;
+      }
+      var body = h.querySelector('.v43-body') || h.querySelector('.max-h-\\[70vh\\]') || h.querySelector('div');
+      var target = h.querySelector('.v43-block') ? h.querySelector('.v43-block').parentElement : (body || h);
+      try { target.insertBefore(toggleRow(), h.querySelector('.v43-block') || target.firstChild); } catch (e) { try { target.appendChild(toggleRow()); } catch (e2) {} }
+    });
+  }
+
+  function boot() {
+    var tick = 0;
+    function loop() {
+      try { frame(); } catch (e) {}
+      tick++;
+      if (tick % 9 === 0) { try { injectSettings(); } catch (e) {} }
+      requestAnimationFrame(loop);
+    }
+    try { requestAnimationFrame(loop); } catch (e) { setInterval(function () { try { frame(); } catch (er) {} }, 60); }
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 900); });
+  else setTimeout(boot, 900);
+
+  root.JW56TAG = { on: on, set: setOn, frame: frame };
+  console.log('[JW56TAG] in-game title tag ready');
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.6-clearguard : 🏁 "안 깼는데 클리어" 방지
+     - 시작 직후(1.2초 이내) 의 승리 판정 / 남아 있던 victory 플래그를 차단·초기화
+     - 모든 모드(역방향·랜덤목표·풍선·코인·보스러시·타임어택·튜토리얼 직후) 공통 안전장치
+     - 클리어 대사·보이스(70_skins / 76_voices)도 시간 조건을 함께 본다
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW56CLEAR) return;
+  var doc = document;
+
+  function game() { var j = root.__jwg; return (j && j.game) || null; }
+  function player() { var j = root.__jwg; return (j && j.player) || null; }
+  var MIN_T = 1.2;      /* 이 시간 전에는 승리 불가 (시작 발판 오인 방지) */
+
+  function install() {
+    var g = root.JWG;
+    if (!g || typeof g.onReachVictory !== 'function' || g.onReachVictory.__v56) return;
+    var orig = g.onReachVictory;
+    var w = function () {
+      var G = game();
+      var t = G ? (Number(G.time) || 0) : 0;
+      if (G && (t < MIN_T || !G.inPlay || !player())) {
+        try { G.victory = false; } catch (e) {}
+        try {
+          if (G.inPlay && t < MIN_T) {
+            var p = player();
+            if (p && p.plat && p.plat.type === 'summit') { G.inPlay = true; }
+          }
+        } catch (e) {}
+        return true;      /* 이번 승리 요청은 무시 */
+      }
+      return orig.apply(this, arguments);
+    };
+    w.__v56 = 1;
+    try { g.onReachVictory = w; } catch (e) {}
+  }
+
+  /* 새 판이 시작될 때 남아 있던 victory 를 확실히 지운다 */
+  var wasPlay = false;
+  function tick() {
+    install();
+    var G = game();
+    if (!G) return;
+    var t = Number(G.time) || 0;
+    if (G.inPlay && !wasPlay) {
+      if (t < 1.0 && G.victory) { try { G.victory = false; } catch (e) {} }
+    }
+    if (G.inPlay && t < 0.6 && G.victory) { try { G.victory = false; } catch (e) {} }
+    wasPlay = !!G.inPlay;
+  }
+
+  function boot() {
+    install();
+    tick();
+    setInterval(function () { try { tick(); } catch (e) {} }, 120);
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 600); });
+  else setTimeout(boot, 600);
+
+  root.JW56CLEAR = { minTime: MIN_T, tick: tick, install: install };
+  console.log('[JW56CLEAR] clear guard ready');
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.7-noflick : 창 전환 깜빡임 0
+     - 모달/창/카드의 진입 애니메이션(@keyframes pop/fade/slide)·transition·
+       backdrop-filter 를 전부 끈다 (iOS Safari GPU 타일 재할당으로 1프레임 번쩍임 방지)
+     - 오버레이 배경은 단색 반투명(rgba(6,10,20,.86))으로 통일
+     - 장식용 칭호 반짝임(.v51tg/.v51badge)은 남긴다
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var doc = document;
+  if (doc.getElementById('v57nfCss')) return;
+
+  var SEL = [
+    '.v43-modal', '.v44-modal', '.v42-modal', '.m41-modal', '.v51m', '.v51card',
+    '.v43-card', '.v44-card', '.v42-card', '.pixel-panel', '.mp-card', '#v43Wiz',
+    '#v42Rank', '#v42Skin', '#frModal', '#v48rk', '#v56FS', '#v485Hub', '#v51Titles',
+    '#v48ju', '#v51DM', '#mpScreen', '#mpLobby', '#mpResult', '#pauseModal', '#settingsModal',
+    '#v51BoardM', '#v53Set', '#v44Deco', '#v43Profile', '#v43Qol'
+  ].join(',');
+
+  var s = doc.createElement('style');
+  s.id = 'v57nfCss';
+  s.textContent = [
+    /* ① 창 자체: 애니메이션·전환·블러 전부 금지 */
+    SEL + '{animation:none !important;transition:none !important;',
+    '  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;}',
+    /* ② 안쪽 카드/버튼/탭도 전환 금지 */
+    SEL + ' *{transition:none !important;animation:none !important;',
+    '  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;}',
+    /* ③ 칭호 반짝임은 유지 */
+    SEL + ' .v51tg{' + 'animation:v51shine 4.5s linear infinite !important;}',
+    SEL + ' .v51badge{animation:none !important;}',
+    /* ④ 오버레이 배경 통일 (단색 반투명) */
+    '.v43-modal,.v44-modal,.v42-modal,.m41-modal,.v51m,#v42Rank,#v42Skin,#frModal,#v43Wiz{' +
+      'background-color:rgba(6,10,20,.86) !important;}',
+    /* ⑤ 닫힌 창은 확실히 숨김 (투명도 잔상 방지) */
+    '.v43-modal.hidden,.v44-modal.hidden,.v42-modal.hidden,.m41-modal.hidden,.v51m.hide{' +
+      'display:none !important;opacity:1 !important;transform:none !important;}',
+    /* ⑥ 위저드 단계 전환 시 빈 프레임 방지 */
+    '#v43WizStep1,#v43WizStep2{animation:none !important;transition:none !important;transform:none !important;}',
+    /* ⑦ 캔버스/배경 레이어 안정화 */
+    '#gameCanvas,#bgCanvas{-webkit-transform:translateZ(0);}',
+    /* ⑧ 탭/카드 hover·active 변형도 즉시 (깜빡임 없이) */
+    '.v53chip,.chip,.tab,.mp-chip{transition:none !important;}'
+  ].join('\n');
+  doc.head.appendChild(s);
+
+  /* ⑨ 창을 열 때: 같은 프레임에서 opacity/transform 을 강제로 끝값으로 */
+  function settle(el) {
+    if (!el) return;
+    try {
+      el.style.setProperty('animation', 'none', 'important');
+      el.style.setProperty('transition', 'none', 'important');
+      el.style.setProperty('opacity', '1', 'important');
+    } catch (e) {}
+  }
+  var mo = new MutationObserver(function (list) {
+    for (var i = 0; i < list.length; i++) {
+      var t = list[i].target;
+      if (!t || !t.classList) continue;
+      if (t.classList.contains('hidden') || t.classList.contains('hide')) continue;
+      if (t.matches && t.matches(SEL)) settle(t);
+    }
+  });
+  try {
+    mo.observe(doc.body, { subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
+  } catch (e) {}
+
+  root.JW57NF = { sel: SEL, settle: settle };
+  console.log('[JW57NF] no-flicker ready');
 })(window);
 
 </script>
