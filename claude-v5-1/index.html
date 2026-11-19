@@ -90,36 +90,6 @@
   </style>
 
 
-<!-- LP-GUARD:START --><style>
-/* 꾹 누르기(롱프레스) 방지: iOS/iPadOS Safari 텍스트 선택·콜아웃·확대 차단 */
-html, body, body * {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-}
-html, body {
-  overscroll-behavior: none;
-  overscroll-behavior-x: none;
-  overscroll-behavior-y: none;
-  /* 한 손가락 세로 스크롤(타이틀·모달 내부)은 허용, 확대/두 손가락 제스처만 차단 */
-  touch-action: manipulation;
-}
-/* 복사가 필요한 코드/입력 필드만 선택 허용(게임 조작부 보호에는 영향 없음) */
-pre, code, textarea, input {
-  -webkit-user-select: text;
-  user-select: text;
-  -webkit-touch-callout: default;
-}
-canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
-#leftBtn, #rightBtn, #jumpBtn, #touchBtnLeft, #touchBtnRight, #touchBtnJump {
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-}
-</style><!-- LP-GUARD:END -->
 <style id="v43-theme">/* ==========================================================================
    재우 4.3 : 눈 편한 UI 톤 (소프트 다크 / 눈 편한 라이트) + 타이틀 사이드 패널
    - 게임 캔버스(맵)는 건드리지 않고 UI 판·패널·글자만 조정한다.
@@ -248,7 +218,36 @@ html.theme-light #v43SideArt .sa-quick button { background: #fff; border-color: 
   font-size: 15px; background: #0b1222; border: 2px solid #26324f; cursor: pointer; color: #e2e8f0; }
 #v43SideArt .sa-map.on { border-color: #fbbf24; background: #1c1917; }
 html.theme-light #v43SideArt .sa-map { background: #fff; border-color: #c8d2e2; }
-</style><style id="v43-fs">html,body{height:100%;min-height:100dvh;height:100dvh;overflow:hidden;overscroll-behavior:none}#gameCanvas{width:100vw;height:100dvh;display:block}body.v43-fs #gameCanvas{width:100vw;height:100vh}</style></head>
+</style><style id="v43-fs">html,body{height:100%;min-height:100dvh;height:100dvh;overflow:hidden;overscroll-behavior:none}#gameCanvas{width:100vw;height:100dvh;display:block}body.v43-fs #gameCanvas{width:100vw;height:100vh}</style><!-- LP-GUARD:START --><style>
+/* 꾹 누르기(롱프레스) 방지: iOS/iPadOS Safari 텍스트 선택·콜아웃·확대 차단 */
+html, body, body * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html, body {
+  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: none;
+  touch-action: manipulation;
+}
+/* 복사가 필요한 코드/입력 필드만 선택 허용(게임 조작부 보호에는 영향 없음) */
+pre, code, textarea, input {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
+#leftBtn, #rightBtn, #jumpBtn, #touchBtnLeft, #touchBtnRight, #touchBtnJump {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+</style><!-- LP-GUARD:END -->
+</head>
 <body class="relative w-full h-full overflow-hidden select-none">
 
   <!-- ALWAYS-LIVE GAME CANVAS -->
@@ -4702,8 +4701,8 @@ extends CanvasLayer
     originRandom: false,
     events: true,
     buffs: true,
-    /* 4.4: 함정은 멀티 레이스·방 규칙 전용 — 싱글 기본값 OFF (직접 켜면 동작) */
-    traps: false,
+    /* v4.8.6 __v486trap: 일반·챌린지는 함정까지 기본 ON (끄고 싶으면 방 규칙/설정에서 OFF) */
+    traps: true,
     items: true,
     collide: true,
     evList: null,      /* null = 전체, 아니면 켜진 key 배열 */
@@ -4720,14 +4719,14 @@ extends CanvasLayer
   function trapOn(id) { return rules.traps && (!rules.trapList || rules.trapList.indexOf(id) >= 0); }
 
   /* 규칙 잠금(클래식): 바꿀 수 없는 값을 강제한다 */
-  function applyClassicLock() {
+  function applyClassicLock() {   /* __v486classic */
     if (rules.mode !== 'classic') return;
     rules.originPct = 3;
     rules.originRandom = false;
     rules.events = true;
-    rules.buffs = false;
-    rules.traps = false;
-    rules.items = false;
+    rules.buffs = true;
+    rules.traps = true;
+    rules.items = true;
     rules.collide = true;
     rules.evList = null;
     rules.buffList = [];
@@ -13707,27 +13706,6 @@ extends CanvasLayer
   </div>
 </div>
 
-<!-- LP-GUARD-JS:START -->
-<script>
-/* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
-(function () {
-  if (window.__lpGuard) { return; }
-  window.__lpGuard = true;
-  var stop = function (e) { if (e && e.cancelable !== false) { e.preventDefault(); } };
-  document.addEventListener('contextmenu', stop, { passive: false });
-  document.addEventListener('selectstart', stop, { passive: false });
-  document.addEventListener('dragstart', stop, { passive: false });
-  document.addEventListener('gesturestart', stop, { passive: false });
-  document.addEventListener('gesturechange', stop, { passive: false });
-  document.addEventListener('gestureend', stop, { passive: false });
-  document.addEventListener('dblclick', stop, { passive: false });
-  /* 두 손가락 이상일 때만 스크롤/확대 제스처를 막는다(한 손가락 스크롤은 그대로). */
-  document.addEventListener('touchmove', function (e) {
-    if (e.touches && e.touches.length > 1) { stop(e); }
-  }, { passive: false });
-})();
-</script>
-<!-- LP-GUARD-JS:END -->
 <!-- ==================== 재우 4.3 엔진 ==================== -->
 <script>
 /* ==========================================================================
@@ -20898,15 +20876,26 @@ extends CanvasLayer
 
   function resetHearts() {
     const ex = V.ex();
-    if (ex.hearts === 'inf') { R.heartsMax = 0; R.hearts = 0; }
+    /* v4.8.6 __v486Heart: 하트 판정을 모드 하나로 통일 */
+    let needH = false;
+    try { needH = !!(window.JW56HEART && window.JW56HEART.need && window.JW56HEART.need()); } catch (e) {}
+    if (!needH) { R.heartsMax = 0; R.hearts = 0; paintHearts(); return; }
+    if (ex.hearts === 'inf') { R.heartsMax = 3; R.hearts = 3; }
     else { R.heartsMax = Number(ex.hearts) || 1; R.hearts = R.heartsMax; }
     paintHearts();
   }
   function heartTick() {
     const W = J(), pl = W && W.player;
     if (!pl) return;
+    /* v4.8.6 __v486Heart: 하트 없는 모드에서는 감소·사망 처리 자체를 막음 */
+    try {
+      if (window.JW56HEART && window.JW56HEART.need && !window.JW56HEART.need()) {
+        if (R.heartsMax !== 0 || R.hearts !== 0) { R.heartsMax = 0; R.hearts = 0; }
+        R.lastShield = pl.shields || 0; return;
+      }
+    } catch (e) {}
     const ex = V.ex();
-    if (ex.hearts === 'inf' || !R.heartsMax) { R.lastShield = pl.shields || 0; return; }
+    if (!R.heartsMax) { R.lastShield = pl.shields || 0; return; }
     const sh = pl.shields || 0;
     if (R.lastShield === 1 && sh === 0) {
       R.hearts = Math.max(0, R.hearts - 1);
@@ -24242,7 +24231,7 @@ extends CanvasLayer
         if (localStorage.getItem('jw484_update_toast') === '4.8.5-2') return;
         localStorage.setItem('jw484_update_toast', '4.8.5-2');
       } catch (e) { return; }
-      V.toast('🚀 v5.0 테스트판', 'lucky', '🗺️ 새 맵 24종(총 45맵) · 🫧 쉬움 난이도 · 🔀 스왑/🧊 빙판/🪝 밧줄/⏩ 2배속 모드 · 🎵 신곡 24개', 4200);
+      V.toast('🚀 v5.1', 'lucky', '🔍 37모드 전수 점검 · 하트 없는 모드 하트 사망 제거 · 대기실 어두운 막 제거 · 칭호/이름표/테두리 강조 · 도감 탭 정리 (정식 반영)', 4200);
     }, 1400);
   };
 })(window);
@@ -41319,7 +41308,7 @@ extends CanvasLayer
      14. 모드별 권장 기본 세팅 (모드를 바꾸면 한 번만 자동 적용 · 방장이 이후 자유롭게 변경)
      ====================================================================== */
   var PRESET = {
-    classic: { events: false, items: false, buffs: false, traps: false },
+    classic: { events: true, items: true, buffs: true, traps: true },   /* __v486trap */
     pureclassic: { events: false, items: false, buffs: false, traps: false },
     chain: { collide: false },
     tag: { collide: true, originPct: 0 },
@@ -42019,7 +42008,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v5.0 · 45 MAPS';
+      sp[1].textContent = '★ v5.1 · 45 MAPS';
     }
   }
 
@@ -42300,11 +42289,11 @@ html body #pauseModal > .pixel-panel, html body #settingsModal > .pixel-panel, h
   box-shadow:inset 0 0 0 2px #33467c, inset 0 4px 0 rgba(255,255,255,.07), 0 6px 0 var(--px-ink), 0 18px 40px rgba(0,0,0,.45) !important;
 }
 /* 터치 영역: 모든 버튼·입력 44px 이상 */
-html body button, html body [role="button"], html body select,
+html body button:not(.v51pin):not(.v51VoiceBtn), html body [role="button"], html body select,
 html body input[type="text"], html body input[type="search"], html body input:not([type]), html body input[type="number"], html body input[type="password"]{
   min-height:44px !important;
 }
-html body button, html body [role="button"]{ min-width:44px !important; touch-action:manipulation; }
+html body button:not(.v51pin):not(.v51VoiceBtn), html body [role="button"]{ min-width:44px !important; touch-action:manipulation; }
 html body #v43TestLink{ display:inline-flex !important; align-items:center; justify-content:center; padding:0 12px !important; }
 /* 칩·탭: 둥근 알약 → 픽셀 모서리 + 진한 테두리 */
 html body .mp-chip, html body .v42-chip, html body .v42-tab, html body .v43-tierbtn, html body .v50-slot-b{
@@ -42773,7 +42762,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var list = document.querySelectorAll(SEL);
     for (var i = 0; i < list.length; i++) {
       var e = list[i];
-      if (e.closest('[data-v485-small-ok]') || e.closest('svg')) continue;
+      if (e.closest('[data-v485-small-ok],svg,.v51pin,.v51VoiceBtn')) continue;
       var r = e.getBoundingClientRect();
       if (r.width < 2 || r.height < 2) continue;
       if (r.height < 43.5) e.style.setProperty('min-height', '44px', 'important');
@@ -45103,7 +45092,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
         (MODE_FILTER === 'all' ? '<i style="color:#6b7c9c;font-size:8.5px">' + label + '</i>' : '') + '</span></button>';
     });
     if (!html) html = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;font-size:11px;padding:16px">이 카테고리에 모드가 없어요</div>';
-    grid.innerHTML = html;
+    if (grid.__v486grid !== html) { grid.__v486grid = html; grid.innerHTML = html; }
   }
   var CAT_NAME = { basic: '기본 · 클래식', speed: '스피드 · 기록', survive: '서바이벌 · 보스', sense: '특수 · 감각', versus: '멀티 대전 · 협동' };
   root.JW53.CAT_NAME = CAT_NAME;
@@ -45200,7 +45189,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
         '</button>';
     });
     if (!html) html = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;font-size:11px;padding:16px">이 조건에 맞는 맵이 없어요</div>';
-    grid.innerHTML = html;
+    if (grid.__v486grid !== html) { grid.__v486grid = html; grid.innerHTML = html; }
   }
   function mapMatch(id) {
     if (MAP_FILTER === 'all') return true;
@@ -46207,6 +46196,34 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
+
+
+
+
+
+
+<!-- LP-GUARD-JS:START -->
+<script>
+/* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
+(function () {
+  if (window.__lpGuard) { return; }
+  window.__lpGuard = true;
+  var stop = function (e) { if (e && e.cancelable !== false) { e.preventDefault(); } };
+  document.addEventListener('contextmenu', stop, { passive: false });
+  document.addEventListener('selectstart', stop, { passive: false });
+  document.addEventListener('dragstart', stop, { passive: false });
+  document.addEventListener('gesturestart', stop, { passive: false });
+  document.addEventListener('gesturechange', stop, { passive: false });
+  document.addEventListener('gestureend', stop, { passive: false });
+  document.addEventListener('dblclick', stop, { passive: false });
+  /* 두 손가락 이상일 때만 스크롤/확대 제스처를 막는다(한 손가락 스크롤은 그대로). */
+  document.addEventListener('touchmove', function (e) {
+    if (e.touches && e.touches.length > 1) { stop(e); }
+  }, { passive: false });
+})();
+</script>
+<!-- LP-GUARD-JS:END -->
 
 
 
@@ -61081,7 +61098,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     hapticOn: true,
     uiScale: 1,          /* HUD · 버튼 크기 */
     guide: true,         /* 모드 1줄 공략 */
-    traj: true,          /* 점프 예상 궤적 */
+    traj: false,         /* v4.8.6: 평소 점프선은 원본 도트 3개 (긴 가이드 선은 특수 아이템만) */
     dmSound: true,
     joinBanner: true,
     statsPlus: true
@@ -61973,12 +61990,18 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
   /* ---------------------------------------------------------------- 그리기 */
   function alphaFor() {
+    /* v4.8.6: 태겸 님 요청 — 평소 점프 차지는 v1~v4.5 원본 '도트 점 3개'만.
+       이 긴 선은 특수 가이드 아이템(E.guideT)이나 튜토리얼에서만 예외로 그린다. */
     var g = game();
     if (!g || !g.inPlay || g.paused || g.victory) return 0;
     var p = player();
     if (!p || !p.charging || !p.onGround) return 0;
     try { if (root.JW43 && JW43.st && JW43.st().specId) return 0; } catch (e) {}
-    if (!C.CFG.traj) return 0;
+    var guide = 0;
+    try { guide = (root.JW43 && root.JW43.G && root.JW43.G.E && root.JW43.G.E.guideT) || 0; } catch (e) { guide = 0; }
+    var tut = false;
+    try { tut = !!(root.JW51TUT && root.JW51TUT.on && root.JW51TUT.on()); } catch (e) { tut = false; }
+    if (!(guide > 0) && !tut) return 0;
     return 1;
   }
 
@@ -64330,7 +64353,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     box.innerHTML = '<b>🎛 이번 업데이트 설정</b>' +
       '<button type="button" class="v42-srow' + (C.CFG.haptic ? ' on' : '') + '" data-v51set="haptic"><span class="tx"><b>📳 점프·착지 햅틱</b><i>지원 기기에서 짧게 진동</i></span><span class="sw">' + (C.CFG.haptic ? 'ON' : 'OFF') + '</span></button>' +
       '<button type="button" class="v42-srow' + (C.CFG.guide ? ' on' : '') + '" data-v51set="guide"><span class="tx"><b>📋 모드 1줄 공략</b><i>입장할 때 모드 요령 한 줄</i></span><span class="sw">' + (C.CFG.guide ? 'ON' : 'OFF') + '</span></button>' +
-      '<button type="button" class="v42-srow' + (C.CFG.traj ? ' on' : '') + '" data-v51set="traj"><span class="tx"><b>📐 점프 예상 궤적</b><i>실제 물리 그대로 계산한 사정거리</i></span><span class="sw">' + (C.CFG.traj ? 'ON' : 'OFF') + '</span></button>' +
+      '<button type="button" class="v42-srow' + (C.CFG.traj ? ' on' : '') + '" data-v51set="traj"><span class="tx"><b>📐 가이드 궤적(특수)</b><i>평소 점프는 도트 점 3개 · 가이드 아이템에서만 긴 선</i></span><span class="sw">' + (C.CFG.traj ? 'ON' : 'OFF') + '</span></button>' +
       '<div class="v43-setrow"><div class="v43-setl"><b>🔠 HUD · 버튼 크기</b><span id="v51ScaleV">' + k + '%</span></div>' +
       '<input type="range" min="80" max="135" value="' + k + '" id="v51Scale" class="v42-range" /></div>' +
       '<button type="button" class="mp-chip" id="v51CtrlReset" style="padding:7px;font-weight:900">🎯 조작 버튼 기본 배치로</button>' +
@@ -67493,7 +67516,8 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (!r) return;
     if (mode === 'classic') { try { MD().applyClassicLock(); } catch (e) {} return; }
     if (mode === 'normal') {
-      r.events = true; r.buffs = true; r.traps = false; r.items = true;
+      /* v4.8.6: 일반 모드는 이벤트·아이템·함정·버프 모두 기본 ON 으로 복원 */
+      r.events = true; r.buffs = true; r.traps = true; r.items = true;
       r.originPct = 3; r.originRandom = false;
       r.evList = null; r.buffList = null; r.trapList = null;
       if (r.itemList !== undefined) r.itemList = null;
@@ -68488,17 +68512,25 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       el.style.setProperty('opacity', '1', 'important');
     } catch (e) {}
   }
-  var mo = new MutationObserver(function (list) {
-    for (var i = 0; i < list.length; i++) {
-      var t = list[i].target;
-      if (!t || !t.classList) continue;
-      if (t.classList.contains('hidden') || t.classList.contains('hide')) continue;
-      if (t.matches && t.matches(SEL)) settle(t);
-    }
-  });
-  try {
-    mo.observe(doc.body, { subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
-  } catch (e) {}
+  /* v4.8.6: 전역 MutationObserver(속성 감시)는 스스로 style 을 또 건드려
+     깜빡임을 유발할 수 있어 제거. 대신 창이 열린 뒤 한 번만 정착시킨다. */
+  var settled = typeof WeakSet === 'function' ? new WeakSet() : null;
+  function sweep() {
+    try {
+      var list = doc.querySelectorAll(SEL);
+      for (var i = 0; i < list.length; i++) {
+        var el = list[i];
+        if (settled && settled.has(el)) continue;
+        if (el.classList.contains('hidden') || el.classList.contains('hide')) continue;
+        var r = el.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) continue;
+        if (settled) settled.add(el);
+        settle(el);
+      }
+    } catch (e) {}
+  }
+  setInterval(sweep, 700);
+  setTimeout(sweep, 900);
 
   root.JW57NF = { sel: SEL, settle: settle };
   console.log('[JW57NF] no-flicker ready');
@@ -68525,13 +68557,35 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   function rainbowOn() {
     try { return !!(root.JW46_RAINBOW && root.JW46_RAINBOW.on && root.JW46_RAINBOW.on()); } catch (e) { return false; }
   }
+  function PL() { return root.JW57PL || null; }
+  function lsGet(k, d) { try { var v = V.lsGet(k, d); return v == null ? d : v; } catch (e) { return d; } }
+  /* v4.8.6: 새 해금 시스템(v57_plate_v1 / v57_frame_v1)을 먼저 읽는다.
+     옛 저장소(jw46 rainbow · jw44_frame_v1)는 새 값이 없을 때만 참고. */
+  function plateId() {
+    var id = lsGet('v57_plate_v1', 'none');
+    if (id && id !== 'none') return id;
+    return rainbowOn() ? 'rainbow' : 'none';
+  }
   function frameId() {
+    var f = lsGet('v57_frame_v1', 'none');
+    if (f && f !== 'none') return f;
     try { if (V.G && V.G.frame) return V.G.frame; } catch (e) {}
-    try { return V.lsGet('jw44_frame_v1', 'none') || 'none'; } catch (e) { return 'none'; }
+    return lsGet('jw44_frame_v1', 'none') || 'none';
+  }
+  function itemCls(kind, id) {
+    try {
+      var P = PL();
+      var arr = P ? (kind === 'f' ? P.frames : P.plates) : [];
+      for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return arr[i].cls || '';
+    } catch (e) {}
+    if (kind === 'p' && id === 'rainbow') return 'v57-rainbow';
+    return id && id !== 'none' ? ('v57-fr-' + id) : '';
   }
   function myNick() { try { var s = V.st(); return (s && s.me && s.me.nick) || ''; } catch (e) { return ''; } }
-  function plateCls() { return rainbowOn() ? 'v57-rainbow' : ''; }
-  function frameCls() { var f = frameId(); return f && f !== 'none' ? ('v57-fr-' + f) : ''; }
+  function plateCls() { var id = plateId(); return id && id !== 'none' ? itemCls('p', id) : ''; }
+  function frameCls() { var f = frameId(); return f && f !== 'none' ? itemCls('f', f) : ''; }
+  var ALL_PLATES = ['v57-rainbow', 'v57-pl-emerald', 'v57-pl-cyber', 'v57-pl-blood', 'v57-pl-prism', 'v57-pl-emperor'];
+  var ALL_FRAMES = ['gold', 'neon', 'leaf', 'star', 'fire', 'holo', 'knight', 'crown'].map(function (k) { return 'v57-fr-' + k; });
 
   function css() {
     if ($('v57plateCss')) return;
@@ -68560,14 +68614,11 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   function paint(el, withFrame) {
     if (!el) return;
     var pc = plateCls();
+    ALL_PLATES.forEach(function (c) { if (c !== pc && el.classList.contains(c)) el.classList.remove(c); });
     if (pc && !el.classList.contains(pc)) el.classList.add(pc);
-    if (!pc && el.classList.contains('v57-rainbow')) el.classList.remove('v57-rainbow');
     if (withFrame) {
       var fc = frameCls();
-      ['gold', 'neon', 'leaf', 'star', 'fire'].forEach(function (k) {
-        var c = 'v57-fr-' + k;
-        if (c !== fc && el.classList.contains(c)) el.classList.remove(c);
-      });
+      ALL_FRAMES.forEach(function (c) { if (c !== fc && el.classList.contains(c)) el.classList.remove(c); });
       if (fc && !el.classList.contains(fc)) el.classList.add(fc);
     }
   }
@@ -69118,6 +69169,1738 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
   root.JW57PROF = { open: open, close: close, paint: paint };
   console.log('[JW57PROF] unified profile ready');
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.9-2 (90_fix) : 실기기 전수 버그 사냥 — UI 겹침 · 잘림 · 죽은 카드 · HUD 정리
+   --------------------------------------------------------------------------
+   1) 작은 배지(★ 즐겨찾기·🔊 보이스)가 전역 '터치 44px' 규칙에 부풀어
+      카드 글자를 덮던 문제 → 전용 크기로 고정
+   2) 모드 카드 글자 잘림/넘침 정리 (제목 1줄·설명 2줄·카테고리 1줄)
+   3) 스킨 스튜디오 타일: 이름 위에 🔊 버튼이 겹치던 문제
+   4) 충전 게이지 라벨이 게이지 테두리에 걸쳐 있던 문제
+   5) 결과창: 옛 헤더/옛 4칸 스탯이 새 히어로/3칸 스탯과 겹쳐 두 번 보이던 문제
+   6) 보스 체력바 안내문이 바에 붙던 문제 · 업적 진행바와 수치가 붙던 문제
+   7) 모드 시작 시 공략 배너가 '일반 레이스'로 잘못 뜨던 문제
+   8) 싱글 모드 그리드의 '멀티 전용' 카드 7종이 눌러도 아무 반응 없던 문제
+   ========================================================================== */
+(function () {
+  'use strict';
+  var root = window, doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var MULTI_ONLY = { tag: 1, paint: 1, flag: 1, raid: 1, chain: 1, bomb: 1, relay: 1 };
+  var MULTI_NAME = {
+    tag: '술래잡기', paint: '발판 땅따먹기', flag: '중간 깃발 뺏기', raid: '보스 레이드',
+    chain: '2인 줄묶기', bomb: '폭탄 돌리기', relay: '2인 릴레이'
+  };
+
+  /* ------------------------------------------------------------------ CSS */
+  function css() {
+    if ($('v52fixCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v52fixCss';
+    s.textContent = [
+      /* 1) 작은 배지 — 44px 규칙 예외 */
+      'html body .v51pin{width:22px !important;height:22px !important;min-width:0 !important;min-height:0 !important;',
+      '  font-size:11px !important;line-height:18px !important;right:3px !important;top:3px !important;border-radius:7px !important;}',
+      'html body .v51pin:active{transform:scale(.94);}',
+      'html body .v51VoiceBtn{width:22px !important;height:22px !important;min-width:0 !important;min-height:0 !important;',
+      '  padding:0 !important;font-size:11px !important;line-height:20px !important;right:3px !important;top:3px !important;border-radius:7px !important;}',
+      /* 2) 모드 카드 */
+      '#v53ModeGrid .v53mm{min-height:64px !important;padding:6px 7px !important;gap:6px !important;overflow:hidden !important;}',
+      '#v53ModeGrid .v53mm .ic{flex:0 0 26px !important;width:26px !important;height:26px !important;font-size:16px !important;}',
+      '#v53ModeGrid .v53mm .tx{gap:0 !important;padding-right:14px !important;}',
+      '#v53ModeGrid .v53mm .tx b{font-size:11.5px !important;line-height:1.25 !important;padding-right:6px !important;}',
+      '#v53ModeGrid .v53mm .tx i{font-size:8.6px !important;line-height:1.2 !important;max-height:21px !important;',
+      '  display:-webkit-box !important;-webkit-line-clamp:2 !important;-webkit-box-orient:vertical !important;overflow:hidden !important;}',
+      '#v53ModeGrid .v53mm .tx i + i{-webkit-line-clamp:1 !important;max-height:11px !important;}',
+      '#v53ModeGrid .v53mm.multi-only{opacity:.92;}',
+      '#v53ModeGrid .v53mm.multi-only .tx b::after{content:" · 🤝";font-size:9px;color:#93c5fd;}',
+      /* 맵 카드 설명 잘림 방지 */
+      '#v53MapGrid .v53m .ds{display:-webkit-box !important;-webkit-line-clamp:2 !important;-webkit-box-orient:vertical !important;overflow:hidden !important;}',
+      /* 3) 스킨 스튜디오 타일 */
+      '.v44-skinbtn{min-height:58px !important;padding:4px 2px 3px !important;gap:2px !important;}',
+      '.v44-skinbtn span{font-size:15px !important;line-height:1.1 !important;}',
+      '.v44-skinbtn b{font-size:10px !important;line-height:1.15 !important;max-width:100% !important;}',
+      /* 4) 충전 게이지 (높이는 JS 로도 보정) */
+      '#gameHud #hudChargeLabel{font-size:9.5px !important;line-height:1 !important;letter-spacing:-.02em;}',
+      /* 5) 결과창 중복 헤더/스탯 제거 */
+      '#soloEnd .v47-res-head,#soloEnd .v47-res-stats{display:none !important;}',
+      /* 6) 보스 체력바 안내문 · 업적 진행바 */
+      '#v48bHp .hint{margin-top:5px !important;line-height:1.35 !important;font-size:8.5px !important;}',
+      '.v51bar{margin-bottom:4px !important;}',
+      '.v51ach .tx i{line-height:1.35 !important;}',
+      /* 7) 점프 버튼과 겹치지 않게 안내 배너 위치 */
+      '#v51Guide{bottom:124px !important;max-width:86vw !important;text-align:center !important;}',
+      /* 8) 멀티 전용 안내 */
+      '#v53ModeGrid .v53mm.multi-only{position:relative;}',
+      /* 9) 가로(짧은 높이) 화면: 위저드가 카드까지 한눈에 보이게 압축 */
+      '@media (max-height:520px){',
+      '  #v43Wiz .v43-card{max-height:96dvh !important;padding:6px 8px !important;gap:4px !important;}',
+      '  #v43WizTitle{font-size:14px !important;} #v43WizSub{display:none !important;}',
+      '  #v43WizQuick{display:none !important;}',
+      '  #v53ModeGrid,#v53MapGrid{max-height:44dvh !important;}',
+      '  #v53ModeGrid .v53mm{min-height:52px !important;}',
+      '  #v43WizModes .v49-grp{display:none !important;}',
+      '  #v43Profile .v43-card,#v57Prof .card,#v48rk .card,#v51m .v51card{max-height:96dvh !important;}',
+      '  .v51ach,.v51str{padding:5px 7px !important;}',
+      '}'
+      /* 10) 결과창 다음 맵 버튼이 카드 밖으로 넘치지 않게 */
+      ,'#soloEnd .m41-card{overflow-y:auto;} #v486Next{flex:0 0 auto;}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+
+  /* ------------------------------------------------------- 충전 게이지 높이 */
+  function fixCharge() {
+    var bar = $('hudChargeBar');
+    if (!bar || !bar.parentElement) return;
+    var box = bar.parentElement;
+    if (box.__v52h) return;
+    box.__v52h = 1;
+    box.style.setProperty('height', '20px', 'important');
+    box.style.setProperty('min-height', '20px', 'important');
+    box.style.setProperty('display', 'flex', 'important');
+    box.style.setProperty('align-items', 'center', 'important');
+    box.style.setProperty('justify-content', 'center', 'important');
+  }
+
+  /* --------------------------------------------------- 모드별 공략 배너 정정 */
+  var lastRun = false, fixT = 0;
+  function curModeId() {
+    try { if (root.JW43 && root.JW43.curMode) return root.JW43.curMode() || ''; } catch (e) {}
+    try {
+      var md = root.JWMode;
+      if (md && md.solo && md.solo.active && md.solo.mode) return md.solo.mode;
+      if (md && md.rules && md.rules.mode) return md.rules.mode;
+    } catch (e) {}
+    return '';
+  }
+  function guideTick() {
+    var j = root.__jwg;
+    if (!j || !j.game) return;
+    var play = !!(j.game.inPlay && !j.game.paused && !j.game.victory);
+    if (play && !lastRun) {
+      var id = curModeId();
+      clearTimeout(fixT);
+      /* 시작 직후 한 번 더 — solo.mode 가 늦게 잡히는 문제 보정 */
+      fixT = setTimeout(function () {
+        var id2 = curModeId() || id;
+        try {
+          var md = root.JWMode, U = root.JW51U;
+          if (!U || iconName(id2) === null) return;
+          var nm = md && md.modeById ? (md.modeById(id2) || {}) : {};
+          var desc = '';
+          try { desc = (root.JW53 && root.JW53.modeDesc) ? root.JW53.modeDesc(id2) : ''; } catch (e) {}
+          if (!desc) desc = nm.desc || '';
+          if (nm.name) U.showGuide('🎮 ' + (nm.emoji ? nm.emoji + ' ' : '') + nm.name + (desc ? ' — ' + desc : ''), 4200);
+        } catch (e) {}
+      }, 550);
+    }
+    lastRun = play;
+  }
+  function iconName(id) { return id || null; }
+
+  /* --------------------------------------------- 멀티 전용 카드: 죽은 카드 방지 */
+  function markMultiOnly() {
+    var grid = $('v53ModeGrid');
+    if (!grid) return;
+    var cards = grid.querySelectorAll('.v53mm');
+    for (var i = 0; i < cards.length; i++) {
+      var c = cards[i], id = c.getAttribute('data-m');
+      if (MULTI_ONLY[id]) {
+        if (!c.classList.contains('multi-only')) c.classList.add('multi-only');
+      } else if (c.classList.contains('multi-only')) {
+        c.classList.remove('multi-only');
+      }
+    }
+  }
+  function onModeTap(e) {
+    var c = e.target && e.target.closest ? e.target.closest('#v53ModeGrid .v53mm') : null;
+    if (!c) return;
+    var id = c.getAttribute('data-m');
+    if (!MULTI_ONLY[id]) return;
+    /* 엔진 버튼이 없어 아무 일도 안 일어나던 카드 → 안내 + 멀티 대기실 */
+    try { e.preventDefault(); e.stopPropagation(); } catch (er) {}
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    var nm = MULTI_NAME[id] || id;
+    try {
+      root.JW43.toast('🤝 ' + nm + ' · 멀티 전용', 'chat',
+        '멀티 레이스 → 방 만들기 → 방 규칙에서 봇과 함께 플레이할 수 있어요', 3000);
+    } catch (er) {}
+    setTimeout(function () {
+      try {
+        var b = $('btnMultiplayer');
+        var wiz = $('v43Wiz'); if (wiz) wiz.classList.add('hidden');
+        if (b) b.click();
+      } catch (er) {}
+    }, 380);
+  }
+
+  /* ------------------------------------------------------------------ 부트 */
+  function boot() {
+    css();
+    fixCharge();
+    markMultiOnly();
+    doc.addEventListener('click', onModeTap, true);
+    setInterval(function () {
+      try { css(); fixCharge(); } catch (e) {}
+    }, 600);
+    setInterval(function () {
+      try { guideTick(); } catch (e) {}
+      try { markMultiOnly(); } catch (e) {}
+    }, 260);
+    console.log('[JW52] fix ready');
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 60); });
+  else setTimeout(boot, 60);
+  setTimeout(boot, 900);
+})();
+
+</script>
+<script>
+/* ==========================================================================
+   v4.8.6-extra : ① 해금 축하 팝업 + NEW 빨간 점  ② 결과창 [다음 맵]
+   --------------------------------------------------------------------------
+   A. 새 칭호 · 이름표 · 테두리가 열리면 화면 가운데에 모바일 게임 톤의 축하
+      팝업을 띄우고, 프로필의 해당 탭과 타이틀 ✏️ 편집 버튼에 빨간 NEW 점을
+      표시한다. (탭을 열거나 팝업에서 확인하면 사라짐)
+   B. 싱글 결과창에 [➡️ 다음 맵] 버튼 — 지금 맵 다음 번호 맵으로 바로 이어서
+      같은 모드로 다시 시작한다. 마지막 맵이면 첫 맵으로 순환.
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var KEY = 'jw486_seen_v1';
+  var ST = { t: {}, p: {}, f: {}, pendT: 0, pendP: 0, pendF: 0 };
+
+  function ls(k, d) { try { var v = root.JW43.lsGet(k, d); return v == null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { root.JW43.lsSet(k, v); } catch (e) {} }
+  function esc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;'; }); }
+
+  /* ------------------------------------------------------------- CSS */
+  function css() {
+    if ($('v486xCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v486xCss';
+    s.textContent = [
+      /* NEW 빨간 점 */
+      '.v486dot{position:relative;}',
+      '.v486dot::after{content:"";position:absolute;right:-3px;top:-3px;width:9px;height:9px;border-radius:50%;',
+      '  background:#ef4444;border:2px solid #0b1020;box-shadow:0 0 0 2px rgba(239,68,68,.35);z-index:9;',
+      '  animation:v486pulse 1.6s ease-in-out infinite;}',
+      '@keyframes v486pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.18);opacity:.75}}',
+      /* 해금 팝업 */
+      '#v486pop{position:fixed;inset:0;z-index:13000;display:none;align-items:center;justify-content:center;',
+      '  background:rgba(4,8,16,.78);padding:16px;font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;}',
+      '#v486pop.on{display:flex;}',
+      '#v486pop .card{width:min(100%,330px);border-radius:20px;padding:22px 18px 16px;text-align:center;',
+      '  background:linear-gradient(180deg,#1c2a4a 0%,#101a30 55%,#0a1220 100%);',
+      '  border:3px solid #fbbf24;box-shadow:0 0 0 3px #0b1020,0 16px 44px rgba(0,0,0,.7),0 0 40px rgba(251,191,36,.25);',
+      '  animation:v486popIn .34s cubic-bezier(.2,1.5,.4,1);}',
+      '@keyframes v486popIn{0%{transform:scale(.82);opacity:0}100%{transform:scale(1);opacity:1}}',
+      '#v486pop .ray{font-size:40px;line-height:1;filter:drop-shadow(0 4px 0 rgba(0,0,0,.45));}',
+      '#v486pop .k{margin-top:8px;font-size:11.5px;font-weight:900;letter-spacing:.12em;color:#fcd34d;}',
+      '#v486pop .nm{margin-top:4px;font-family:"Jua",sans-serif;font-size:22px;color:#fff;text-shadow:0 2px 0 #0006;}',
+      '#v486pop .ds{margin-top:6px;font-size:12px;font-weight:800;color:#a9bcd6;line-height:1.45;}',
+      '#v486pop .btns{display:flex;flex-direction:column;gap:8px;margin-top:16px;}',
+      '#v486pop button{min-height:46px;border-radius:13px;border:2px solid #0b1020;font-family:"Jua",sans-serif;font-size:15px;',
+      '  background:linear-gradient(180deg,#26344f,#16202f);color:#dbe7f8;box-shadow:0 4px 0 #05030a;}',
+      '#v486pop button.pri{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);color:#3a2205;border-color:#5a3204;}',
+      '#v486pop button:active{transform:translateY(2px);box-shadow:0 2px 0 #05030a;}',
+      /* 다음 맵 버튼 */
+      '#v486Next{width:100%;min-height:46px;margin-top:8px;border-radius:13px;border:2px solid #0b5c4a;',
+      '  background:linear-gradient(180deg,#5eead4,#14b8a6 60%,#0d9488);color:#062c26;font-family:"Jua",sans-serif;',
+      '  font-size:15px;box-shadow:inset 0 -4px 0 rgba(0,0,0,.22),0 4px 0 #062c26;display:flex;align-items:center;justify-content:center;gap:6px;}',
+      '#v486Next:active{transform:translateY(2px);box-shadow:inset 0 -2px 0 rgba(0,0,0,.22),0 2px 0 #062c26;}',
+      '#v486Next small{font-size:11px;font-weight:800;opacity:.8;}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+
+  /* --------------------------------------------------- 해금 감시 */
+  function unlockedSets() {
+    var out = { t: [], p: [], f: [] };
+    try {
+      var api = root.JW43.api();
+      var arr = api.unlockedTitles ? (api.unlockedTitles() || []) : [];
+      out.t = arr.map(function (x) { return (x && (x.id || x)) || ''; }).filter(Boolean);
+    } catch (e) {}
+    try {
+      var PL = root.JW57PL;
+      if (PL) {
+        (PL.plates || []).forEach(function (p) { try { if (p.need && p.need()) out.p.push(p.id); } catch (e) {} });
+        (PL.frames || []).forEach(function (f) { try { if (f.need && f.need()) out.f.push(f.id); } catch (e) {} });
+      }
+    } catch (e) {}
+    return out;
+  }
+  function titleName(id) {
+    try { return (root.JW51TITLES.meta(id) || {}).name || id; } catch (e) { return id; }
+  }
+  function plateName(id, kind) {
+    try {
+      var PL = root.JW57PL, arr = kind === 'f' ? PL.frames : PL.plates;
+      for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return arr[i].name;
+    } catch (e) {}
+    return id;
+  }
+  function scan() {
+    if (root.JW43 && root.JW43.G && root.JW43.G.inPlay) return;     /* 플레이 중엔 조용히 */
+    var seen = ls(KEY, {}) || {};
+    var now = unlockedSets();
+    var fresh = [];
+    ['t', 'p', 'f'].forEach(function (k) {
+      var s = seen[k] || (seen[k] = {});
+      now[k].forEach(function (id) {
+        if (id === 'none' || id === 'rookie') { s[id] = s[id] || 1; return; }
+        if (s[id]) return;
+        s[id] = 1;
+        fresh.push({ k: k, id: id });
+      });
+    });
+    if (!fresh.length) return;
+    lsSet(KEY, seen);
+    fresh.forEach(function (f) {
+      if (f.k === 't') { ST.t[f.id] = 1; ST.pendT++; }
+      if (f.k === 'p') { ST.p[f.id] = 1; ST.pendP++; }
+      if (f.k === 'f') { ST.f[f.id] = 1; ST.pendF++; }
+    });
+    paintDots();
+    queuePop(fresh);
+  }
+
+  /* --------------------------------------------------- NEW 점 */
+  function paintDots() {
+    var anyEdit = (ST.pendT + ST.pendP + ST.pendF) > 0;
+    var e = $('v43ProfEdit');
+    if (e) e.classList.toggle('v486dot', anyEdit);
+    var prof = $('v57Prof');
+    if (prof) {
+      var map = { skin: 0, frame: ST.pendF, plate: ST.pendP, title: ST.pendT };
+      prof.querySelectorAll('[data-v57pt]').forEach(function (b) {
+        var k = b.getAttribute('data-v57pt');
+        b.classList.toggle('v486dot', !!map[k]);
+      });
+    }
+    var pl = $('v57PlM');
+    if (pl) {
+      pl.querySelectorAll('[data-v57t]').forEach(function (b) {
+        b.classList.toggle('v486dot', b.getAttribute('data-v57t') === 'frame' ? !!ST.pendF : !!ST.pendP);
+      });
+    }
+  }
+
+  /* --------------------------------------------------- 축하 팝업 */
+  var QUEUE = [], showing = false;
+  function queuePop(list) { QUEUE = QUEUE.concat(list); if (!showing) nextPop(); }
+  function nextPop() {
+    if (!QUEUE.length) { showing = false; return; }
+    showing = true;
+    var it = QUEUE.shift();
+    var kind = it.k === 't' ? '칭호' : (it.k === 'p' ? '이름표' : '테두리');
+    var nm = it.k === 't' ? titleName(it.id) : plateName(it.id, it.k);
+    var ray = it.k === 't' ? '🏅' : (it.k === 'p' ? '🏷️' : '🖼️');
+    var el = $('v486pop');
+    if (!el) {
+      el = doc.createElement('div');
+      el.id = 'v486pop';
+      doc.body.appendChild(el);
+    }
+    el.innerHTML = '<div class="card">' +
+      '<div class="ray">' + ray + '</div>' +
+      '<div class="k">NEW ' + kind + ' 해금!</div>' +
+      '<div class="nm">' + esc(nm) + '</div>' +
+      '<div class="ds">조건을 달성했어요. 내 프로필에서 바로 장착할 수 있습니다.</div>' +
+      '<div class="btns"><button type="button" class="pri" data-v486go="1">지금 장착하러 가기</button>' +
+      '<button type="button" data-v486ok="1">확인</button></div></div>';
+    el.classList.add('on');
+    var close = function (go) {
+      el.classList.remove('on');
+      if (it.k === 't') ST.pendT = Math.max(0, ST.pendT - 1);
+      if (it.k === 'p') ST.pendP = Math.max(0, ST.pendP - 1);
+      if (it.k === 'f') ST.pendF = Math.max(0, ST.pendF - 1);
+      paintDots();
+      if (go) {
+        try {
+          if (root.JW57PROF && root.JW57PROF.open) {
+            root.JW57PROF.open();
+            var tab = it.k === 't' ? 'title' : (it.k === 'p' ? 'plate' : 'frame');
+            setTimeout(function () {
+              var b = doc.querySelector('#v57Prof [data-v57pt="' + tab + '"]');
+              if (b) b.click();
+            }, 260);
+          } else if (root.JW43.openProfile) root.JW43.openProfile();
+        } catch (e) {}
+      }
+      setTimeout(nextPop, 180);
+    };
+    el.onclick = function (e) {
+      if (e.target === el) { close(false); return; }
+      if (e.target.closest('[data-v486go]')) { close(true); return; }
+      if (e.target.closest('[data-v486ok]')) { close(false); }
+    };
+  }
+  /* 프로필 탭을 열면 그 탭의 NEW 는 지운다 */
+  doc.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('[data-v57pt]') : null;
+    if (t) {
+      var k = t.getAttribute('data-v57pt');
+      if (k === 'title') ST.pendT = 0;
+      if (k === 'plate') ST.pendP = 0;
+      if (k === 'frame') ST.pendF = 0;
+      setTimeout(paintDots, 0);
+    }
+  }, true);
+
+  /* --------------------------------------------------- 결과창 [다음 맵] */
+  function mapOrder() {
+    try {
+      return (root.JWMap.list || []).map(function (m) { return m.id; });
+    } catch (e) { return []; }
+  }
+  function curMapId() {
+    try { var s = root.JW43.st(); if (s && s.myMap) return s.myMap; } catch (e) {}
+    try { return (root.JWMap && root.JWMap.current) || ''; } catch (e) { return ''; }
+  }
+  function addNextBtn() {
+    var end = $('soloEnd');
+    if (!end || end.classList.contains('hidden')) return;
+    var card = end.querySelector('.m41-card');
+    if (!card || card.querySelector('#v486Next')) return;
+    var order = mapOrder();
+    if (order.length < 2) return;
+    var cur = curMapId();
+    var i = order.indexOf(cur);
+    var next = order[(i < 0 ? 0 : i + 1) % order.length];
+    var nm = '';
+    try {
+      var all = root.JWMap.list || [];
+      for (var k = 0; k < all.length; k++) if (all[k].id === next) { nm = all[k].name || next; break; }
+    } catch (e) {}
+    var b = doc.createElement('button');
+    b.type = 'button';
+    b.id = 'v486Next';
+    b.innerHTML = '➡️ 다음 맵 <small>' + esc(nm) + '</small>';
+    b.addEventListener('click', function (ev) {
+      ev.preventDefault(); ev.stopPropagation();
+      var mode = 'normal';
+      try { mode = root.JW43.curMode ? (root.JW43.curMode() || 'normal') : 'normal'; } catch (e) {}
+      try { end.classList.add('hidden'); } catch (e) {}
+      try { root.__jwg.returnToTitle(); } catch (e) {}
+      setTimeout(function () {
+        try { root.JW51U.startSolo(next, mode); } catch (e) {}
+      }, 220);
+    });
+    var btns = card.querySelector('.v49-btns');
+    if (btns) btns.insertBefore(b, btns.firstChild);
+    else card.insertBefore(b, card.firstChild);
+  }
+
+  /* ------------------------------------------------------------- 부트 */
+  function tick() {
+    css();
+    try { scan(); } catch (e) {}
+    try { addNextBtn(); } catch (e) {}
+    try { paintDots(); } catch (e) {}
+  }
+  function boot() {
+    css();
+    setTimeout(function () { try { scan(); } catch (e) {} }, 2600);
+    setInterval(tick, 1500);
+    console.log('[JW486] unlock popup + next map ready');
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 700); });
+  else setTimeout(boot, 700);
+
+  root.JW486 = {
+    seen: function () { return ls(KEY, {}); },
+    pending: function () { return { t: ST.pendT, p: ST.pendP, f: ST.pendF }; },
+    nextMap: function () { var o = mapOrder(), c = curMapId(), i = o.indexOf(c); return o.length ? o[(i < 0 ? 0 : i + 1) % o.length] : ''; },
+    pop: function (kind, id) { queuePop([{ k: kind || 't', id: id || 'rookie' }]); }
+  };
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v4.8.6-guard : ① 거짓 클리어 2차 차단(고도 검증)  ② 하트 사망 이중 차단
+   --------------------------------------------------------------------------
+   ① 84_clearguard 는 '시작 1.2초' 만 봤다. 여기에 더해, 정상 도달이 목표인
+      등반 모드에서 실제로 정상 근처(전체 층의 60% 이상)에 있지 않으면
+      승리를 무시한다. (풍선·코인·최소점프·타임어택·랜덤목표 등 목표형 모드는 제외)
+   ② 하트를 쓰지 않는 모드에서 endSolo('heart') / eliminateMe('heart') 가
+      들어와도 실제 사망 처리로 이어지지 않게 한 번 더 막는다.
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW486G) return;
+  var doc = document;
+
+  function needHearts() {
+    try { return !!(root.JW56HEART && root.JW56HEART.need && root.JW56HEART.need()); } catch (e) { return false; }
+  }
+  function curMode() {
+    try { if (V.G && V.G.curMode) return V.G.curMode() || 'normal'; } catch (e) {}
+    try { return (root.JWMode && root.JWMode.rules && root.JWMode.rules.mode) || 'normal'; } catch (e) { return 'normal'; }
+  }
+
+  /* ------------------------------------------------ ① 거짓 클리어 */
+  /* 정상 도달이 승리 조건인 모드만 */
+  var SUMMIT = {
+    normal: 1, classic: 1, pureclassic: 1, boss: 1, memory: 1, burning: 1, glass: 1,
+    lift: 1, walljump: 1, blackout: 1, rhythm: 1, grapple: 1, windice: 1, rush2x: 1,
+    onebtn: 1, oneheart: 1, dive: 1, lava: 1, zombie: 1, endless: 0
+  };
+  function totalFloors() {
+    try { return V.mapTotal ? (V.mapTotal() || 88) : 88; } catch (e) { return 88; }
+  }
+  function platIdx() {
+    var j = root.__jwg; if (!j || !j.player) return 0;
+    var p = j.player;
+    var idx = (p.plat && p.plat.index > 0) ? p.plat.index : (p.runBestPlat || 0);
+    return Number(idx) || 0;
+  }
+  function installClear() {
+    var g = root.JWG;
+    if (!g || typeof g.onReachVictory !== 'function' || g.onReachVictory.__v486g) return;
+    var orig = g.onReachVictory;
+    var w = function () {
+      try {
+        var m = curMode();
+        var j = root.__jwg, G = j && j.game;
+        if (G && SUMMIT[m]) {
+          var tot = totalFloors() || 88;
+          var idx = platIdx();
+          /* 60% 이상 올라오지 않았으면 정상 판정이 아니다 */
+          if (idx > 0 && idx < Math.max(2, Math.floor(tot * 0.6))) {
+            try { G.victory = false; } catch (e) {}
+            return true;
+          }
+        }
+      } catch (e) {}
+      return orig.apply(this, arguments);
+    };
+    w.__v486g = 1;
+    try { g.onReachVictory = w; } catch (e) {}
+  }
+
+  /* ------------------------------------------------ ② 하트 사망 이중 차단 */
+  function installHeart() {
+    var md = root.JWMode;
+    if (!md || typeof md.endSolo !== 'function' || md.endSolo.__v486g) return;
+    var orig = md.endSolo;
+    var w = function (reason) {
+      if (reason === 'heart' && !needHearts()) return;      /* 하트 없는 모드: 사망 무시 */
+      return orig.apply(this, arguments);
+    };
+    w.__v486g = 1;
+    md.endSolo = w;
+    /* 멀티 탈락 처리도 동일 */
+    try {
+      var api = V.api && V.api();
+      if (api && typeof api.eliminateMe === 'function' && !api.eliminateMe.__v486g) {
+        var oe = api.eliminateMe;
+        var we = function (why) {
+          if (why === 'heart' && !needHearts()) return;
+          return oe.apply(this, arguments);
+        };
+        we.__v486g = 1;
+        api.eliminateMe = we;
+      }
+    } catch (e) {}
+  }
+
+  function tick() {
+    try { installClear(); } catch (e) {}
+    try { installHeart(); } catch (e) {}
+  }
+  function boot() { tick(); setInterval(tick, 800); }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 900); });
+  else setTimeout(boot, 900);
+
+  root.JW486G = { needHearts: needHearts, summitModes: Object.keys(SUMMIT), tick: tick };
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v4.8.6-lobbyx : 🕶️ 멀티 대기실 '어두운 막' 제거 + 참가자 카드 대개편
+     - 원인: v49(재우 4.8 UI 대청소)가 '모달 딤'용으로 넣은
+             `#mpLobby{background:rgba(13,20,38,.46) !important; backdrop-filter:blur(6px)}`
+             가 전체 화면 페이지인 대기실까지 반투명으로 만들어,
+             뒤의 게임 배경이 비쳐 카드 사이로 밝은 띠가 보이고 전체가 뿌옇게 가라앉았다.
+     - 수리: 대기실은 '페이지'이므로 불투명한 소프트 다크로 깔고(눈 편한 중간 톤),
+             딤/블러는 진짜 모달(.m41-modal 등)에만 남긴다. #mpResult 도 같은 이유로 함께 수리.
+     - 개편: 방 코드 1줄 정렬 · 방 정보 카드 정돈 · 참가자 카드를 크고 선명한 카드로
+             (스킨 아바타 48px + 프로필 테두리 링 + 이름표 닉네임 + 칭호 배지 한 줄 +
+              승률/전적 + 준비 상태) · 빈 자리 슬롯 컴팩트 · 채팅/하단 바 비율 정리
+     - 참가자 꾸미기 연동: 내 테두리·이름표는 저장값 그대로, 친구(사람)는 v44deco 로
+             pl/fr 를 함께 보내 실시간 반영, 봇은 AI 전용 링으로 구분.
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW93L) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) {
+      return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;';
+    });
+  }
+  function kids(el) { return Array.prototype.slice.call(el.children || []); }
+  function has(el, c) { return !!(el && el.classList && el.classList.contains(c)); }
+
+  /* =====================================================================
+     1. CSS — 대기실 바탕/카드/참가자/채팅/하단 바
+     ===================================================================== */
+  var CSS = [
+    /* ── ① 어두운 막 제거: 대기실은 불투명한 소프트 다크 ── */
+    'html body #mpLobby{',
+    '  background:radial-gradient(120% 62% at 50% -12%, #2b3c5e 0%, rgba(43,60,94,0) 62%),',
+    '    linear-gradient(180deg,#1c2438 0%,#161d2e 46%,#121827 100%) !important;',
+    '  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;}',
+    'html body #mpResult{background:linear-gradient(180deg,#1b2334 0%,#131a29 60%,#0f1522 100%) !important;',
+    '  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;}',
+    /* 카드: 반투명+블러 → 단단한 패널(아이패드 blur 비용도 함께 절감) */
+    'html body #mpLobby .mp-card{background:linear-gradient(180deg,#1a2438,#141c2c) !important;',
+    '  border:1px solid #2b3b57 !important;border-radius:16px !important;',
+    '  box-shadow:0 10px 24px rgba(3,7,16,.32) !important;',
+    '  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;}',
+    'html body #mpLobby .mp-card{padding:11px !important;}',
+    /* 내용 폭/세로 리듬 */
+    'html body #mpLobby > div:first-child{min-height:100% !important;display:flex !important;flex-direction:column !important;',
+    '  gap:9px !important;padding:10px 10px 10px !important;max-width:760px !important;}',
+    '@media (min-width:640px){ html body #mpLobby > div:first-child{padding:14px 16px !important;gap:11px !important;} }',
+
+    /* ── ② 상단: 방 코드 + 복사·초대 한 줄 ── */
+    'html body #mpLobby .v93-top{display:flex !important;align-items:center !important;justify-content:space-between !important;',
+    '  gap:10px !important;flex-wrap:nowrap !important;padding:2px 2px 0 !important;}',
+    'html body #mpLobby .v93-top > div:first-child{min-width:0 !important;}',
+    'html body #mpLobby #mpRoomCode{font-size:32px !important;line-height:1.02 !important;letter-spacing:.14em !important;',
+    '  color:#ffd75e !important;text-shadow:0 2px 0 rgba(5,8,18,.55) !important;}',
+    'html body #mpLobby #v51CopyRow{display:flex !important;flex-direction:row !important;align-items:center !important;',
+    '  justify-content:flex-end !important;gap:6px !important;flex:0 0 auto !important;}',
+    'html body #mpLobby #v51CopyRow .mp-btn{min-height:38px !important;height:38px !important;padding:0 11px !important;',
+    '  font-size:11.5px !important;white-space:nowrap !important;}',
+
+    /* ── ③ 방 제목 줄: 떠 있는 띠 → 같은 폭의 카드 ── */
+    'html body #mpLobby #v43RoomTitle{background:linear-gradient(180deg,#182135,#121a2a) !important;',
+    '  border:1px solid #2b3b57 !important;border-radius:14px !important;padding:7px 10px !important;',
+    '  gap:8px !important;align-items:center !important;}',
+    'html body #mpLobby #v43RoomTitle .ttl{font-size:12.5px !important;font-weight:900 !important;color:#dbeafe !important;',
+    '  flex:1 1 auto !important;min-width:0 !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}',
+    'html body #mpLobby #v43RoomTitle .mp-chip{min-height:32px !important;height:32px !important;padding:0 9px !important;font-size:11px !important;}',
+
+    /* ── ④ 방 정보 카드 ── */
+    'html body #mpLobby .mpb-summary{background:linear-gradient(180deg,#1a2438,#141c2c) !important;',
+    '  border:1px solid #2b3b57 !important;border-radius:16px !important;padding:11px !important;gap:8px !important;',
+    '  box-shadow:0 10px 24px rgba(3,7,16,.32) !important;}',
+    'html body #mpLobby .mpb-summary > div:first-child{justify-content:flex-start !important;gap:6px !important;min-height:34px !important;}',
+    'html body #mpLobby .mpb-sum-t{font-size:11px !important;font-weight:800 !important;color:#9fb0cc !important;letter-spacing:.02em !important;}',
+    'html body #mpLobby #v48nbBtn{margin-left:auto !important;min-height:34px !important;height:34px !important;padding:0 10px !important;font-size:11.5px !important;}',
+    'html body #mpLobby #v50SetBtn{min-height:34px !important;height:34px !important;padding:0 12px !important;font-size:11.5px !important;}',
+    'html body #mpLobby .mpb-sum-body{background:#0e1626 !important;border:1px solid #24334c !important;border-radius:13px !important;',
+    '  padding:9px !important;gap:10px !important;align-items:center !important;}',
+    'html body #mpLobby .mpb-sum-body img.mpb-thumb-img{width:88px !important;height:66px !important;object-fit:cover !important;',
+    '  border-radius:10px !important;border:1px solid #2b3b57 !important;}',
+    'html body #mpLobby .mpb-sum-body .mpb-nm{font-size:15px !important;font-weight:900 !important;color:#f2f7ff !important;line-height:1.25 !important;}',
+    'html body #mpLobby .mpb-sum-body .mpb-tags{margin-top:5px !important;}',
+    'html body #mpLobby .v50-chip{font-size:10.5px !important;font-weight:800 !important;padding:3px 8px !important;border-radius:999px !important;',
+    '  background:rgba(148,163,184,.12) !important;border:1px solid rgba(148,163,184,.28) !important;color:#cfdcf0 !important;margin:2px 4px 0 0 !important;}',
+    'html body #mpLobby .v50-chip.on{background:rgba(52,211,153,.14) !important;border-color:rgba(52,211,153,.5) !important;color:#a7f3d0 !important;}',
+    'html body #mpLobby .v50-chip.off{background:rgba(148,163,184,.08) !important;border-color:rgba(148,163,184,.22) !important;color:#93a6c0 !important;}',
+
+    /* ── ⑤ 참가자: 카드 그리드 ── */
+    'html body #mpLobby #mpRoomPlayers{display:grid !important;grid-template-columns:1fr !important;gap:8px !important;}',
+    '@media (min-width:620px){ html body #mpLobby #mpRoomPlayers{grid-template-columns:1fr 1fr !important;gap:9px !important;} }',
+    'html body #mpLobby #mpRoomPlayers > .mp-lrow{display:grid !important;grid-template-columns:auto minmax(0,1fr) auto !important;',
+    '  align-items:center !important;gap:8px 10px !important;padding:9px 10px !important;border-radius:15px !important;',
+    '  background:linear-gradient(180deg,#1b2740,#151d2e) !important;border:1px solid #2c3d59 !important;',
+    '  box-shadow:0 6px 16px rgba(3,7,16,.3) !important;}',
+    'html body #mpLobby #mpRoomPlayers > .mp-lrow.v93-hasacts{grid-template-rows:auto auto !important;}',,
+    'html body #mpLobby #mpRoomPlayers > .mp-lrow.v93-me{border-color:rgba(251,191,36,.55) !important;',
+    '  background:linear-gradient(180deg,#23304b,#182134) !important;}',
+    'html body #mpLobby #mpRoomPlayers > .mp-lrow.v93-botrow{border-color:rgba(56,189,248,.32) !important;}',
+    /* 아바타(스킨) — 48px 크게 + 테두리 링 */
+    'html body #mpLobby #mpRoomPlayers .v93-ava{position:relative !important;flex:0 0 auto !important;width:48px !important;height:54px !important;',
+    '  display:flex !important;align-items:center !important;justify-content:center !important;padding:2px !important;',
+    '  border-radius:13px !important;background:radial-gradient(120% 120% at 50% 0%,#22304a,#0d1420 78%) !important;',
+    '  border:1px solid #2f4160 !important;}',
+    'html body #mpLobby #mpRoomPlayers .v93-ava canvas.mpa-face{width:44px !important;height:50px !important;',
+    '  image-rendering:pixelated !important;border:0 !important;border-radius:9px !important;background:transparent !important;}',
+    'html body #mpLobby #mpRoomPlayers .v93-ava .mp-crown{font-size:14px !important;left:-5px !important;top:-9px !important;',
+    '  filter:drop-shadow(0 1px 2px rgba(0,0,0,.7));}',
+    /* 봇 전용 링: 사람의 해금 테두리와 섞이지 않게 점선 네온 */
+    'html body #mpLobby #mpRoomPlayers .v93-bot.v93-ava{border:2px dashed rgba(56,189,248,.6) !important;}',
+    /* 이름 / 칭호 / 전적 */
+    'html body #mpLobby #mpRoomPlayers .v93-main{flex:0 0 auto !important;width:auto !important;min-width:0 !important;display:flex !important;',
+    '  flex-direction:column !important;gap:3px !important;overflow:hidden !important;}',,
+    'html body #mpLobby #mpRoomPlayers .v93-nm{display:flex !important;align-items:center !important;gap:5px !important;min-width:0 !important;overflow:hidden !important;}',
+    'html body #mpLobby #mpRoomPlayers .v93-nick{font-size:15.5px !important;font-weight:900 !important;color:#f2f7ff !important;',
+    '  line-height:1.2 !important;max-width:none !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}',
+    'html body #mpLobby #mpRoomPlayers .v93-skinem{font-size:13px !important;flex:0 0 auto !important;}',
+    'html body #mpLobby #mpRoomPlayers .v93-me-tag{font-size:10.5px !important;font-weight:900 !important;color:#7dd3fc !important;flex:0 0 auto !important;}',
+    'html body #mpLobby #mpRoomPlayers .v93-host{font-size:9.5px !important;font-weight:900 !important;padding:2px 6px !important;',
+    '  border-radius:999px !important;background:linear-gradient(180deg,#ffd75e,#f0a800) !important;color:#231602 !important;flex:0 0 auto !important;}',
+    'html body #mpLobby #mpRoomPlayers .v93-ti{display:flex !important;align-items:center !important;gap:5px !important;flex-wrap:wrap !important;}',
+    'html body #mpLobby #mpRoomPlayers .mp-title{font-size:11px !important;font-weight:900 !important;padding:3px 9px !important;',
+    '  border-radius:999px !important;background:rgba(56,189,248,.13) !important;border:1px solid rgba(56,189,248,.55) !important;',
+    '  color:#bfeaff !important;box-shadow:0 0 10px rgba(56,189,248,.12) !important;}',
+    'html body #mpLobby #mpRoomPlayers .mp-streak{font-size:10.5px !important;font-weight:900 !important;padding:3px 8px !important;',
+    '  border-radius:999px !important;background:rgba(251,146,60,.16) !important;border:1px solid rgba(251,146,60,.5) !important;color:#fed7aa !important;}',
+    'html body #mpLobby #mpRoomPlayers .v93-sub{font-size:10.5px !important;font-weight:800 !important;color:#9db0cc !important;line-height:1.35 !important;\n    white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;max-width:100% !important;}',
+    /* 준비 상태 알약 */
+    'html body #mpLobby #mpRoomPlayers .v93-ready{flex:0 0 auto !important;align-self:start !important;font-size:11px !important;',
+    '  font-weight:900 !important;padding:5px 9px !important;border-radius:999px !important;white-space:nowrap !important;',
+    '  background:rgba(52,211,153,.14) !important;border:1px solid rgba(52,211,153,.5) !important;color:#a7f3d0 !important;}',
+    'html body #mpLobby #mpRoomPlayers .v93-ready.off{background:rgba(148,163,184,.12) !important;border-color:rgba(148,163,184,.3) !important;color:#a9b8cd !important;}',
+    /* 액션(친구+ · 방장 넘기기 · 봇 설정/내보내기) — 카드 아래 한 줄 */
+    'html body #mpLobby #mpRoomPlayers .v93-acts{grid-column:1/-1 !important;display:flex !important;justify-content:flex-end !important;',
+    '  gap:6px !important;padding-top:2px !important;}',
+    'html body #mpLobby #mpRoomPlayers .v93-acts .mp-chip{min-height:32px !important;height:32px !important;padding:0 10px !important;',
+    '  font-size:11px !important;border-radius:999px !important;}',
+    /* 이름표(닉네임 그라데이션) 가독 보정 */
+    'html body #mpLobby #mpRoomPlayers .v57-rainbow,html body #mpLobby #mpRoomPlayers .v57-pl-emerald,',
+    'html body #mpLobby #mpRoomPlayers .v57-pl-cyber,html body #mpLobby #mpRoomPlayers .v57-pl-blood,',
+    'html body #mpLobby #mpRoomPlayers .v57-pl-prism,html body #mpLobby #mpRoomPlayers .v57-pl-emperor{',
+    '  filter:drop-shadow(0 0 6px rgba(255,255,255,.18)) drop-shadow(0 1px 0 rgba(0,0,0,.55));}',
+    /* 테두리 링을 대기실에서 더 크고 선명하게 */
+    'html body #mpLobby #mpRoomPlayers .v57-fr-gold{box-shadow:0 0 0 3px #fbbf24,0 0 16px rgba(251,191,36,.7) !important;}',
+    'html body #mpLobby #mpRoomPlayers .v57-fr-neon{box-shadow:0 0 0 3px #22d3ee,0 0 18px rgba(34,211,238,.75) !important;}',
+    'html body #mpLobby #mpRoomPlayers .v57-fr-leaf{box-shadow:0 0 0 3px #34d399,0 0 16px rgba(52,211,153,.65) !important;}',
+    'html body #mpLobby #mpRoomPlayers .v57-fr-star{box-shadow:0 0 0 3px #c084fc,0 0 18px rgba(192,132,252,.75) !important;}',
+    'html body #mpLobby #mpRoomPlayers .v57-fr-fire{box-shadow:0 0 0 3px #fb923c,0 0 16px rgba(251,146,60,.7) !important;}',
+    'html body #mpLobby #mpRoomPlayers .v57-fr-holo{box-shadow:0 0 0 3px #22d3ee,0 0 0 5px rgba(168,85,247,.6),0 0 20px rgba(34,211,238,.7) !important;}',
+    'html body #mpLobby #mpRoomPlayers .v57-fr-knight{box-shadow:0 0 0 3px #fbbf24,0 0 0 5px rgba(251,191,36,.45),0 0 20px rgba(251,191,36,.75) !important;}',
+    'html body #mpLobby #mpRoomPlayers .v57-fr-crown{box-shadow:0 0 0 3px #ffd24a,0 0 0 6px rgba(255,210,74,.55),0 0 24px rgba(255,200,60,.9) !important;}',
+    /* 빈 자리: 휑한 큰 박스 → 컴팩트 슬롯 */
+    'html body #mpLobby #mpRoomPlayers .mps-slot{min-height:44px !important;height:44px !important;padding:0 10px !important;',
+    '  border-radius:13px !important;border:1px dashed rgba(96,165,250,.45) !important;background:rgba(23,37,64,.55) !important;',
+    '  font-size:11.5px !important;justify-content:space-between !important;gap:8px !important;}',
+    'html body #mpLobby #mpRoomPlayers .v50-slot-no{font-size:11.5px !important;font-weight:900 !important;color:#9ec5f7 !important;}',
+    'html body #mpLobby #mpRoomPlayers .v50-slot-b{min-height:32px !important;height:32px !important;padding:0 10px !important;',
+    '  font-size:11px !important;border-radius:999px !important;}',
+
+    /* ── ⑥ 참가자 헤더(봇 +/- · 인원) ── */
+    'html body #mpLobby #v50BotCtl{gap:4px !important;align-items:center !important;}',
+    'html body #mpLobby #v50BotCtl button{width:32px !important;min-width:32px !important;height:32px !important;min-height:32px !important;',
+    '  padding:0 !important;border-radius:10px !important;font-size:15px !important;line-height:1 !important;}',
+    'html body #mpLobby #mpRoomCount{font-size:11.5px !important;}',
+
+    /* ── ⑦ 방 채팅 ── */
+    'html body #mpLobby .v93-chatcard{flex:1 1 auto !important;display:flex !important;flex-direction:column !important;min-height:0 !important;}',
+    'html body #mpLobby #mpLobbyChatLog{flex:1 1 auto !important;min-height:104px !important;height:auto !important;max-height:none !important;gap:5px !important;',
+    '  background:#0d1524 !important;border:1px solid #23304a !important;border-radius:12px !important;padding:7px 9px !important;',
+    '  font-size:12px !important;}',
+    'html body #mpLobby #mpLobbyChatLog .mp-msg{line-height:1.4 !important;}',
+    'html body #mpLobby #mpLobbyChatLog .mp-msg.sys{font-size:11px !important;padding:4px 8px !important;border-radius:8px !important;',
+    '  background:rgba(56,189,248,.1) !important;border-left:3px solid rgba(56,189,248,.7) !important;color:#bfe3ff !important;}',
+    'html body #mpLobby #mpLobbyChatLog .mp-msg b{font-size:12.5px !important;font-weight:900 !important;}',
+    'html body #mpLobby #mpLobbyChat .mp-in,html body #mpLobby #mpLobbyChat{min-height:42px !important;height:42px !important;',
+    '  border-radius:11px !important;font-size:12.5px !important;}',
+    'html body #mpLobby #mpLobbyChatSend{min-height:42px !important;height:42px !important;padding:0 14px !important;font-size:12px !important;',
+    '  border-radius:11px !important;}',
+    'html body #mpLobby #mpLobbyQuick{gap:5px !important;margin-top:7px !important;}',
+    'html body #mpLobby #mpLobbyQuick button{min-height:34px !important;height:34px !important;padding:0 11px !important;',
+    '  font-size:11.5px !important;border-radius:999px !important;}',
+    '@media (min-width:620px){ html body #mpLobby #mpLobbyChatLog{min-height:132px !important;} }',
+
+    /* ── ⑧ 하단 시작/나가기 바: 화면 맨 아래에 붙인다 ── */
+    'html body #mpLobby .v93-foot{margin-top:auto !important;position:sticky !important;bottom:0 !important;z-index:12 !important;',
+    '  background:linear-gradient(180deg,rgba(20,27,42,.94),#101623 55%) !important;border-top:1px solid #26344d !important;',
+    '  padding:9px 0 calc(9px + env(safe-area-inset-bottom,0px)) 0 !important;gap:6px !important;',
+    '  box-shadow:0 -10px 24px rgba(3,7,16,.4) !important;}',
+    'html body #mpLobby .v93-foot .mp-btn{min-height:46px !important;height:46px !important;font-size:13.5px !important;border-radius:13px !important;}',
+    'html body #mpLobby #mpLeaveBtn{flex:0 0 auto !important;padding:0 14px !important;font-size:12.5px !important;}',
+    'html body #mpLobby #mpLobbyStatus{font-size:11px !important;}',
+
+    /* ── ⑨ 라이트 테마 ── */
+    'html.theme-light body #mpLobby{background:linear-gradient(180deg,#eef3fb 0%,#e6ecf7 60%,#dfe7f3 100%) !important;}',
+    'html.theme-light body #mpLobby .mp-card,html.theme-light body #mpLobby .mpb-summary,',
+    'html.theme-light body #mpLobby #v43RoomTitle{background:#ffffff !important;border-color:#c9d6e8 !important;}',
+    'html.theme-light body #mpLobby #mpRoomPlayers > .mp-lrow{background:#f6f9ff !important;border-color:#c9d6e8 !important;}',
+    'html.theme-light body #mpLobby #mpRoomPlayers .v93-nick,html.theme-light body #mpLobby .mpb-sum-body .mpb-nm{color:#16233a !important;}',
+    'html.theme-light body #mpLobby #mpLobbyChatLog{background:#f2f6fd !important;border-color:#cfdaea !important;}'
+  ].join('\n');
+
+  function css() {
+    if ($('v93css')) return;
+    var s = doc.createElement('style');
+    s.id = 'v93css';
+    s.textContent = CSS;
+    doc.head.appendChild(s);
+  }
+
+  /* =====================================================================
+     2. 꾸미기(테두리·이름표) — 내 것 / 친구 것 / 봇
+     ===================================================================== */
+  var ALL_PLATES = ['v57-rainbow', 'v57-pl-emerald', 'v57-pl-cyber', 'v57-pl-blood', 'v57-pl-prism', 'v57-pl-emperor'];
+  var ALL_FRAMES = ['gold', 'neon', 'leaf', 'star', 'fire', 'holo', 'knight', 'crown'].map(function (k) { return 'v57-fr-' + k; });
+
+  function itemCls(kind, id) {
+    try {
+      var P = root.JW57PL;
+      var arr = P ? (kind === 'f' ? P.frames : P.plates) : [];
+      for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return arr[i].cls || '';
+    } catch (e) {}
+    if (kind === 'p' && id === 'rainbow') return 'v57-rainbow';
+    return id && id !== 'none' ? ('v57-fr-' + id) : '';
+  }
+  function myPlateId() { try { return (root.JW57PL && JW57PL.plate) ? (JW57PL.plate().id || 'none') : 'none'; } catch (e) { return 'none'; } }
+  function myFrameId() { try { return (root.JW57PL && JW57PL.frame) ? (JW57PL.frame().id || 'none') : 'none'; } catch (e) { return 'none'; } }
+  function peerDeco(pid) {
+    try { return (V.G && V.G.peerDeco && V.G.peerDeco[pid]) || null; } catch (e) { return null; }
+  }
+  /* 내 테두리·이름표를 친구에게도 알린다 (v44deco 메시지에 pl/fr 만 얹어서) */
+  var sentSig = '';
+  function bcastDeco() {
+    try {
+      if (!V.send) return;
+      var sig = myPlateId() + '|' + myFrameId();
+      if (sig === sentSig) return;
+      sentSig = sig;
+      var d = {};
+      try { if (V.G && V.G.deco) d = Object.assign({}, V.G.deco); } catch (e) {}
+      d.pl = myPlateId(); d.fr = myFrameId();
+      V.send({ t: 'v44deco', d: d });
+    } catch (e) {}
+  }
+
+  /* =====================================================================
+     3. 참가자 행 → 카드 변형 (기존 버튼/이벤트는 그대로 살린다)
+     ===================================================================== */
+  function cardify(row, S) {
+    if (!row || row.getAttribute('data-v93') === '1') return false;
+    var ava = null, main = null, rest = [];
+    kids(row).forEach(function (c) {
+      if (!ava && has(c, 'mp-avarow')) { ava = c; return; }
+      if (!main && has(c, 'flex-1')) { main = c; return; }
+      rest.push(c);
+    });
+    if (!ava || !main) return false;
+    row.setAttribute('data-v93', '1');
+    row.classList.add('v93');
+
+    /* 아바타 */
+    var wrap = doc.createElement('div');
+    wrap.className = 'v93-ava';
+    row.insertBefore(wrap, row.firstChild);
+    wrap.appendChild(ava);
+    var cv = ava.querySelector('canvas');
+    var pid = (cv && cv.getAttribute('data-face')) || '';
+    var isBot = row.classList.contains('mp-lrow-bot');
+    if (isBot) { row.classList.add('v93-botrow'); wrap.classList.add('v93-bot'); }
+
+    /* 이름줄 + 칭호줄 분리 — 기존 main 블록을 그대로 카드 본문으로 쓴다 */
+    var body = main;
+    var nameRow = null, extras = [];
+    kids(main).forEach(function (c) {
+      if (!nameRow && c.tagName === 'DIV' && has(c, 'flex') && has(c, 'items-center')) { nameRow = c; return; }
+      extras.push(c);
+    });
+    var nm = doc.createElement('div'); nm.className = 'v93-nm';
+    var ti = doc.createElement('div'); ti.className = 'v93-ti';
+    if (nameRow) {
+      kids(nameRow).forEach(function (c) {
+        if (has(c, 'mp-title') || has(c, 'mp-streak')) { ti.appendChild(c); return; }
+        if (has(c, 'font-black') && c.tagName === 'SPAN' && !has(c, 'bg-amber-500')) {
+          c.classList.add('v93-nick');
+          c.style.maxWidth = 'none';
+        } else if (has(c, 'bg-amber-500')) {
+          c.classList.add('v93-host');
+        } else if (c.tagName === 'SPAN' && /\(나\)/.test(c.textContent || '')) {
+          c.classList.add('v93-me-tag');
+        } else if (c.tagName === 'SPAN') {
+          c.classList.add('v93-skinem');
+        }
+        nm.appendChild(c);
+      });
+    }
+    body.innerHTML = '';
+    body.className = 'v93-main';
+    body.appendChild(nm);
+    if (ti.children.length) body.appendChild(ti);
+    extras.forEach(function (c) { c.classList.add('v93-sub'); body.appendChild(c); });
+
+    /* 상태(준비) → 오른쪽 알약, 액션 버튼 → 카드 아래 한 줄 */
+    var readyEl = null, acts = doc.createElement('div');
+    acts.className = 'v93-acts';
+    rest.forEach(function (c) {
+      if (c.tagName === 'BUTTON') { acts.appendChild(c); return; }
+      if (c.tagName === 'SPAN' && !readyEl) {
+        readyEl = c;
+        c.classList.add('v93-ready');
+        if (!has(c, 'text-emerald-300')) c.classList.add('off');
+        return;
+      }
+      acts.appendChild(c);
+    });
+    if (acts.children.length) { row.appendChild(acts); row.classList.add('v93-hasacts'); }
+
+    /* 내 줄 표시 */
+    var mine = !!(pid && S && S.me && pid === S.me.pid && !isBot);
+    if (mine) row.classList.add('v93-me');
+
+    /* 꾸미기 적용 */
+    var plCls = '', frCls = '';
+    if (mine) {
+      plCls = itemCls('p', myPlateId());
+      frCls = itemCls('f', myFrameId());
+    } else if (pid && !isBot) {
+      var d = peerDeco(pid);
+      if (d) { plCls = itemCls('p', d.pl || 'none'); frCls = itemCls('f', d.fr || 'none'); }
+    }
+    var nickEl = nm.querySelector('.v93-nick');
+    paintPlate(nickEl, plCls);
+    paintFrame(wrap, frCls);
+    row.__v93 = { pid: pid, nick: nickEl, ava: wrap, mine: mine, bot: isBot };
+    return true;
+  }
+
+  function paintPlate(el, cls) {
+    if (!el) return;
+    ALL_PLATES.forEach(function (c) { if (c !== cls) el.classList.remove(c); });
+    if (cls && !el.classList.contains(cls)) el.classList.add(cls);
+  }
+  function paintFrame(el, cls) {
+    if (!el) return;
+    ALL_FRAMES.forEach(function (c) { if (c !== cls) el.classList.remove(c); });
+    if (cls && !el.classList.contains(cls)) el.classList.add(cls);
+  }
+
+  /* 카드가 다시 그려진 뒤(꾸미기 변경 등) 색만 갱신 */
+  function refreshDeco(S) {
+    var rows = doc.querySelectorAll('#mpRoomPlayers > .mp-lrow');
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i], m = row.__v93;
+      if (!m) continue;
+      var plCls = '', frCls = '';
+      if (m.mine) { plCls = itemCls('p', myPlateId()); frCls = itemCls('f', myFrameId()); }
+      else if (m.pid && !m.bot) {
+        var d = peerDeco(m.pid);
+        if (d) { plCls = itemCls('p', d.pl || 'none'); frCls = itemCls('f', d.fr || 'none'); }
+      }
+      paintPlate(m.nick, plCls);
+      paintFrame(m.ava, frCls);
+    }
+  }
+
+  /* =====================================================================
+     4. 주변 정리 — 상단 1줄 · 하단 바 고정 · 채팅 이름표
+     ===================================================================== */
+  function tidyChrome() {
+    var code = $('mpRoomCode');
+    if (code && code.parentElement && code.parentElement.parentElement) {
+      code.parentElement.parentElement.classList.add('v93-top');
+    }
+    var st = $('mpLobbyStatus');
+    if (st && st.parentElement) st.parentElement.classList.add('v93-foot');
+    /* 채팅 카드가 남는 세로 공간을 채우게 */
+    var log = $('mpLobbyChatLog');
+    if (log && log.parentElement) log.parentElement.classList.add('v93-chatcard');
+    /* 내 채팅 닉네임에도 이름표 */
+    var pc = itemCls('p', myPlateId());
+    if (pc) {
+      doc.querySelectorAll('#mpLobbyChatLog .mp-msg.mine b').forEach(function (b) {
+        ALL_PLATES.forEach(function (c) { if (c !== pc) b.classList.remove(c); });
+        if (!b.classList.contains(pc)) b.classList.add(pc);
+      });
+    }
+  }
+
+  /* =====================================================================
+     5. paint — 바뀐 게 없으면 손대지 않는다(깜빡임 0)
+     ===================================================================== */
+  var lastSig = '';
+  function sig(S) {
+    if (!S || !S.room) return '';
+    var a = [];
+    try {
+      S.players.forEach(function (p) {
+        a.push([p.pid, p.nick, !!p.ready, !!p.host, p.sk || '', p.ti || '', p.sm || '', p.color || '', p.w || 0, p.l || 0, p.st || 0, p.ftag || ''].join('~'));
+      });
+    } catch (e) {}
+    a.sort();
+    var bots = [];
+    try {
+      (V.botRoster ? V.botRoster() : []).forEach(function (b) { bots.push([b.id, b.name, b.skin, b.color, b.title].join('~')); });
+    } catch (e) {}
+    return [S.room.code, S.room.max, S.isHost ? 1 : 0, a.join('|'), bots.join('|'),
+      myPlateId(), myFrameId(), doc.querySelectorAll('#mpRoomPlayers > *').length].join('#');
+  }
+
+  function paint() {
+    var lobby = $('mpLobby');
+    if (!lobby || lobby.classList.contains('hidden')) return;
+    var list = $('mpRoomPlayers');
+    if (!list) return;
+    var S = null;
+    try { S = V.st(); } catch (e) {}
+    if (!S || !S.room) return;
+    tidyChrome();
+    kids(list).forEach(function (c) {
+      if (has(c, 'mp-lrow')) cardify(c, S);
+    });
+    var sg = sig(S);
+    if (sg !== lastSig) {
+      lastSig = sg;
+      refreshDeco(S);
+      bcastDeco();
+    }
+  }
+
+  function boot() {
+    css();
+    var list = $('mpRoomPlayers');
+    if (list && !list.__v93obs && root.MutationObserver) {
+      var busy = false;
+      var mo = new MutationObserver(function () {
+        if (busy) return;
+        busy = true;
+        root.requestAnimationFrame(function () {
+          busy = false;
+          try { paint(); } catch (e) {}
+        });
+      });
+      mo.observe(list, { childList: true, subtree: false });
+      list.__v93obs = 1;
+    }
+    paint();
+    setInterval(function () { try { paint(); } catch (e) {} }, 700);
+    console.log('[JW93L] lobby veil fixed · participant cards');
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 700); });
+  else setTimeout(boot, 700);
+
+  root.JW93L = { paint: paint, plateId: myPlateId, frameId: myFrameId };
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v4.8.6-titlefix : 🏠 메인(타이틀) 화면 정리
+     - 프로필 카드: 옆에 떠 있던 옛 '🌈 무지개 이름' 둥근 버튼 제거 →
+                    닉네임 자체에 장착한 이름표 + 프로필 테두리 + 칭호 배지가 보이게
+     - 칭호: paintTitleProfile() 이 textContent 로 덮어써서 배지가 사라지던 문제 →
+             #v43TPTitle 을 항상 배지(v51badge)로 다시 칠한다
+     - 🎵 BGM 주크박스: 혼자 어두운 인라인 스타일 → 다른 게임 버튼과 같은 톤
+     - 퀵 그리드: 마지막 '업적' 하나만 남는 빈칸 → 전체 폭(wide)
+     - ★/🔊 작은 배지 44px 확대 문제는 build 의 touch_exempt 가 처리(22px 유지)
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW94T) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) {
+      return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;';
+    });
+  }
+
+  var CSS = [
+    /* ── 옛 무지개 버튼·편집 버튼 제거, 카드 전체가 프로필 열기 ── */
+    'html body #v46RainbowBtn{display:none !important;}',
+    'html body #titleScreen #v43ProfEdit{display:none !important;}',
+    'html body #titleScreen #v43TitleProf{cursor:pointer !important;position:relative !important;border-radius:14px !important;',
+    '  padding:3px 6px !important;margin-left:-6px !important;transition:transform .1s ease,background .12s ease !important;}',
+    'html body #titleScreen #v43TitleProf:active{transform:scale(.985) !important;background:rgba(125,211,252,.10) !important;}',
+    /* NEW 점: 편집 버튼 대신 카드 우상단 모서리 */
+    'html body #titleScreen #v43TitleProf.v486dot::after{right:-2px !important;top:-2px !important;width:10px !important;height:10px !important;}',
+    /* ── 닉네임/칭호 ── */
+    'html body #titleScreen #v43TPNick{font-size:18px !important;line-height:1.15 !important;font-weight:900 !important;',
+    '  text-shadow:0 1px 0 rgba(4,8,18,.6);}',
+    'html body #titleScreen #v43TPNick.v57-rainbow,html body #titleScreen #v43TPNick.v57-pl-emerald,',
+    'html body #titleScreen #v43TPNick.v57-pl-cyber,html body #titleScreen #v43TPNick.v57-pl-blood,',
+    'html body #titleScreen #v43TPNick.v57-pl-prism,html body #titleScreen #v43TPNick.v57-pl-emperor{',
+    '  filter:drop-shadow(0 0 7px rgba(255,255,255,.25)) drop-shadow(0 1px 0 rgba(0,0,0,.6));}',
+    'html body #titleScreen #v43TPTitle{display:flex !important;align-items:center !important;gap:4px !important;margin-top:4px !important;}',
+    'html body #titleScreen #v43TPTitle .v51badge{font-size:11.5px !important;padding:3px 9px !important;border-radius:999px !important;',
+    '  font-weight:900 !important;letter-spacing:-.01em !important;}',
+    'html body #titleScreen #v43TPTitle .v51badge img{width:14px !important;height:14px !important;}',
+    /* ── 프로필 테두리(아바타 링) ── */
+    'html body #titleScreen #titlePortraitImg{border-radius:12px !important;}',
+    'html body #titleScreen #titlePortraitImg.v57-fr-gold{box-shadow:0 0 0 3px #fbbf24,0 0 16px rgba(251,191,36,.7) !important;}',
+    'html body #titleScreen #titlePortraitImg.v57-fr-neon{box-shadow:0 0 0 3px #22d3ee,0 0 18px rgba(34,211,238,.75) !important;}',
+    'html body #titleScreen #titlePortraitImg.v57-fr-leaf{box-shadow:0 0 0 3px #34d399,0 0 16px rgba(52,211,153,.65) !important;}',
+    'html body #titleScreen #titlePortraitImg.v57-fr-star{box-shadow:0 0 0 3px #c084fc,0 0 18px rgba(192,132,252,.75) !important;}',
+    'html body #titleScreen #titlePortraitImg.v57-fr-fire{box-shadow:0 0 0 3px #fb923c,0 0 16px rgba(251,146,60,.7) !important;}',
+    'html body #titleScreen #titlePortraitImg.v57-fr-holo{box-shadow:0 0 0 3px #22d3ee,0 0 0 5px rgba(168,85,247,.6),0 0 20px rgba(34,211,238,.7) !important;}',
+    'html body #titleScreen #titlePortraitImg.v57-fr-knight{box-shadow:0 0 0 3px #fbbf24,0 0 0 5px rgba(251,191,36,.45),0 0 20px rgba(251,191,36,.75) !important;}',
+    'html body #titleScreen #titlePortraitImg.v57-fr-crown{box-shadow:0 0 0 3px #ffd24a,0 0 0 6px rgba(255,210,74,.55),0 0 24px rgba(255,200,60,.9) !important;}',
+    /* ── BGM 주크박스: 다른 게임 버튼과 같은 밝은 톤 ── */
+    'html body #titleScreen #v48mgJuke{height:44px !important;border-radius:13px !important;font-size:13.5px !important;font-weight:900 !important;',
+    '  background:linear-gradient(180deg,#4a6a9e,#2b3f63) !important;border:2px solid rgba(180,215,255,.7) !important;',
+    '  color:#eaf4ff !important;box-shadow:inset 0 -3px 0 rgba(0,0,0,.35),0 4px 12px rgba(3,8,20,.4) !important;',
+    '  text-shadow:0 1px 0 rgba(0,0,0,.45);}',
+    'html body #titleScreen #v48mgJuke:active{transform:translateY(2px) !important;}',
+    /* ── 퀵 그리드: 마지막 한 칸 남는 버튼은 전체 폭 ── */
+    'html body #v51Quick .v51q.wide{grid-column:1/-1 !important;}'
+  ].join('\n');
+
+  function css() {
+    if ($('v94css')) return;
+    var s = doc.createElement('style');
+    s.id = 'v94css';
+    s.textContent = CSS;
+    doc.head.appendChild(s);
+  }
+
+  /* ---------- 1. 장착한 칭호 id 찾기 (자동이면 지금 표시되는 이름으로 역추적) ---------- */
+  function equippedId() {
+    var id = '';
+    try { id = (root.JW51TITLES && JW51TITLES.equipped) ? JW51TITLES.equipped() : ''; } catch (e) {}
+    if (id && id !== 'auto') return id;
+    var want = '';
+    try { want = String((V.recTitleShort && V.recTitleShort()) || '').trim(); } catch (e) {}
+    if (!want) return '';
+    var list = [];
+    try { list = V.api().titles() || []; } catch (e) {}
+    for (var i = 0; i < list.length; i++) {
+      var s = String(list[i].short || list[i].name || '').trim();
+      if (s === want) return list[i].id;
+    }
+    return '';
+  }
+  function badgeFor(id, fallbackText) {
+    if (id) {
+      try { if (root.JW51TITLES && JW51TITLES.badge) return JW51TITLES.badge(id, true); } catch (e) {}
+    }
+    if (fallbackText) return '<span class="v51badge g-legend">' + esc(fallbackText) + '</span>';
+    return '';
+  }
+
+  /* ---------- 2. 타이틀 칭호를 배지로 유지 ---------- */
+  function paintTitleBadge() {
+    var el = $('v43TPTitle');
+    if (!el) return;
+    if (el.querySelector('.v51badge')) return;      /* 이미 배지 */
+    var id = equippedId();
+    var txt = String(el.textContent || '').trim();
+    if (!id && (!txt || txt === '🌱 도전자' || txt === '자동 선택')) return;
+    var html = badgeFor(id, id ? '' : txt);
+    if (!html) return;
+    el.innerHTML = html;
+  }
+
+  /* ---------- 3. 프로필 테두리 ---------- */
+  function paintFrame() {
+    var f = 'none';
+    try { f = (root.JW57PL && JW57PL.frame) ? (JW57PL.frame().id || 'none') : 'none'; } catch (e) { f = 'none'; }
+    var cls = '';
+    if (f && f !== 'none') {
+      try {
+        var arr = (root.JW57PL && JW57PL.frames) || [];
+        for (var i = 0; i < arr.length; i++) if (arr[i].id === f) cls = arr[i].cls || '';
+      } catch (e) {}
+      if (!cls) cls = 'v57-fr-' + f;
+    }
+    ['titlePortraitImg', 'v43ProfBig', 'v42SkinBig'].forEach(function (id) {
+      var el = $(id);
+      if (!el) return;
+      ['gold', 'neon', 'leaf', 'star', 'fire', 'holo', 'knight', 'crown'].forEach(function (k) {
+        var c = 'v57-fr-' + k;
+        if (c !== cls) el.classList.remove(c);
+      });
+      if (cls && !el.classList.contains(cls)) el.classList.add(cls);
+    });
+  }
+
+  /* ---------- 4. 퀵 그리드 '업적' 전체 폭 ---------- */
+  function fixGrid() {
+    var ach = $('v51QAch');
+    if (ach && !ach.classList.contains('wide')) ach.classList.add('wide');
+  }
+
+  /* ---------- 3-b. NEW 점을 프로필 카드 우상단으로 ---------- */
+  function moveDot() {
+    var card = $('v43TitleProf'), ed = $('v43ProfEdit');
+    if (!card || !ed) return;
+    var on = ed.classList.contains('v486dot');
+    if (on !== card.classList.contains('v486dot')) card.classList.toggle('v486dot', on);
+  }
+
+  function tick() {
+    try { paintTitleBadge(); } catch (e) {}
+    try { paintFrame(); } catch (e) {}
+    try { fixGrid(); } catch (e) {}
+    try { moveDot(); } catch (e) {}
+    try { if (root.JW57PLATE && JW57PLATE.apply) JW57PLATE.apply(); } catch (e) {}
+  }
+
+  function boot() {
+    css();
+    var el = $('v43TPTitle');
+    if (el && root.MutationObserver && !el.__v94obs) {
+      el.__v94obs = 1;
+      new MutationObserver(function () {
+        try { paintTitleBadge(); } catch (e) {}
+      }).observe(el, { childList: true, characterData: true, subtree: true });
+    }
+    tick();
+    setInterval(function () { try { tick(); } catch (e) {} }, 1000);
+    console.log('[JW94T] title card · badge · jukebox');
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 900); });
+  else setTimeout(boot, 900);
+
+  root.JW94T = { tick: tick, badge: paintTitleBadge };
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.1-game : 인게임 정리
+     ① ⚡ 원버튼 스피드런: 좌우 이동키 숨김(점프만) · 모드 종료 시 자동 복원
+     ② 🏅 인게임 칭호: HUD 아래 따로 떠 있던 알약(#v56HudTitle) 제거,
+        내 캐릭터 머리 위 태그를 '친구 머리 위 이름표'와 같은 모양(이름 + 칭호 배지 한 줄)으로
+     ③ 👀 싱글 관전 알림: 친구가 관전 들어오면 토스트 + 상단 '👀 N명 관전 중' 배지
+     ④ 👑 1위 전용 보상(칭호·이름표·테두리): 🏛️ 클래식 1위 **그리고 300m 초과**일 때만 인정,
+        조건 미달이면 이미 갖고 있어도 즉시 회수
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW95G) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) {
+      return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;';
+    });
+  }
+  function myNick() { try { var s = V.st(); return (s && s.me && s.me.nick) || ''; } catch (e) { return ''; } }
+  function myTag() { try { return (V.api().internals().ident || {}).ftag || ''; } catch (e) { return ''; } }
+  function inPlay() { try { var j = root.__jwg; return !!(j && j.game && j.game.inPlay); } catch (e) { return false; } }
+  function curMode() {
+    try { var S = V.st(); if (S && S.room && S.room.mode) return S.room.mode; } catch (e) {}
+    try { var r = (root.JWMode && JWMode.rules) || (root.__jwg && root.__jwg.rules) || {}; return r.mode || ''; } catch (e) {}
+    return '';
+  }
+
+  var CSS = [
+    /* ① 원버튼: 좌우 키 숨김 */
+    'body.v95-one #touchBtnLeft,body.v95-one #touchBtnRight,body.v95-one #btnLeft,body.v95-one #btnRight{display:none !important;}',
+    'body.v95-one #touchBtnJump{left:50% !important;right:auto !important;transform:translateX(-50%) !important;}',
+    'body.v95-one #jumpBtn,body.v95-one #btnJump{left:50% !important;right:auto !important;transform:translateX(-50%) !important;}',
+
+    /* ② 인게임 칭호: HUD 아래 알약 제거 + 머리 위 태그를 친구 이름표 모양으로 */
+    'html body #v56HudTitle{display:none !important;}',
+    'html body #v51IGTag > div{flex-direction:row !important;align-items:center !important;gap:5px !important;',
+    '  max-width:none !important;padding:2px 8px !important;border-radius:8px !important;',
+    '  background:rgba(8,12,22,.72) !important;border:1px solid rgba(56,189,248,.7) !important;',
+    '  box-shadow:0 1px 4px rgba(0,0,0,.45) !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}',
+    'html body #v51IGTag > div > span:first-child{font-size:11px !important;font-weight:900 !important;',
+    '  color:#eaf2ff !important;max-width:120px !important;text-shadow:0 1px 2px #000 !important;}',
+    'html body #v51IGTag .v51badge{font-size:9.5px !important;padding:1px 5px !important;border-radius:999px !important;}',
+    'html body #v51IGTag .v51badge img{width:11px !important;height:11px !important;}',
+    'html body #v51IGTag span[class*="v57-fr-"]{box-shadow:none !important;}',
+
+    /* ③ 관전 배지 */
+    'html body #v95Spec{position:fixed;left:10px;top:calc(env(safe-area-inset-top,0px) + 132px);',
+    '  z-index:34;display:none;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;',
+    '  background:rgba(9,13,26,.78);border:1px solid rgba(192,132,252,.75);color:#f5d0fe;',
+    '  font:900 11px -apple-system,system-ui,"Apple SD Gothic Neo",sans-serif;white-space:nowrap;',
+    '  box-shadow:0 2px 8px rgba(0,0,0,.5);pointer-events:none;}',
+    'html body #v95Spec.on{display:flex !important;}',
+    'html body #v95Spec b{color:#fff;font-weight:900;}'
+  ].join('\n');
+
+  function css() {
+    if ($('v95css')) return;
+    var s = doc.createElement('style');
+    s.id = 'v95css';
+    s.textContent = CSS;
+    doc.head.appendChild(s);
+  }
+
+  /* ---------------------------------------------------------------- ① 원버튼 */
+  var lastOne = null;
+  function onebtn() {
+    var one = curMode() === 'onebtn';
+    if (one === lastOne) return;
+    lastOne = one;
+    doc.body.classList.toggle('v95-one', one);
+  }
+
+  /* ---------------------------------------------------------------- ③ 관전 */
+  var WATCH = {};
+  function nickOf(tag) {
+    tag = String(tag || '').toUpperCase();
+    if (!tag) return '';
+    try {
+      var list = (root.JW485HUB && JW485HUB.friendsList ? JW485HUB.friendsList() : []) || [];
+      for (var i = 0; i < list.length; i++) {
+        var t = String(list[i].ftag || list[i].tag || '').toUpperCase();
+        if (t === tag) return list[i].nick || list[i].n || tag;
+      }
+    } catch (e) {}
+    try {
+      var fr = (V.api().internals().friends || []);
+      for (var k = 0; k < fr.length; k++) {
+        if (String(fr[k].ftag || fr[k].tag || '').toUpperCase() === tag) return fr[k].nick || tag;
+      }
+    } catch (e) {}
+    return tag;
+  }
+  function alive() {
+    var n = 0, t = Date.now();
+    Object.keys(WATCH).forEach(function (k) { if (t - WATCH[k].at < 9000) n++; });
+    return n;
+  }
+  function paintSpec() {
+    var n = alive();
+    var el = $('v95Spec');
+    if (!n) { if (el) el.classList.remove('on'); return; }
+    if (!el) {
+      el = doc.createElement('div');
+      el.id = 'v95Spec';
+      doc.body.appendChild(el);
+    }
+    var html = '<span>👀</span><b>' + n + '명</b><span>관전 중</span>';
+    if (el.innerHTML !== html) el.innerHTML = html;
+    el.classList.add('on');
+  }
+  function hookWatch() {
+    try {
+      V.onPresence(function (m) {
+        if (!m || m.t !== 'v43watch45') return;
+        var mine = String(myTag() || '').toUpperCase();
+        if (!mine) return;
+        if (!Array.isArray(m.to) || m.to.map(function (x) { return String(x).toUpperCase(); }).indexOf(mine) < 0) return;
+        var from = String(m.from || '').toUpperCase();
+        if (!from || from === mine) return;
+        var now = Date.now();
+        var first = !WATCH[from] || (now - WATCH[from].at > 15000);
+        WATCH[from] = { at: now, nick: nickOf(from) };
+        if (first && inPlay()) {
+          try { V.toast('👀 ' + nickOf(from) + '님이 관전 들어왔어요!', 'lucky', '친구가 내 등반을 보고 있어요', 2600); } catch (e) {}
+          try { V.beep(880, 0.06, 0.06, 'square', 1180); } catch (e) {}
+        }
+        paintSpec();
+      });
+    } catch (e) {}
+    setInterval(function () { try { paintSpec(); } catch (e) {} }, 4000);
+  }
+
+  /* ---------------------------------------------------------------- ④ 1위 보상 */
+  function rankAll() {
+    var out = [];
+    try { out = (V.lsGet('jw43_rank_v1', []) || []).slice(); } catch (e) {}
+    try { (V.rank && V.rank.live || []).forEach(function (r) { out.push(r); }); } catch (e) {}
+    return out;
+  }
+  function champBest(map) {
+    var me = String(myNick()).trim();
+    if (!me) return null;
+    var best = null;
+    rankAll().forEach(function (r) {
+      if (!r || !r.map || r.map !== map) return;
+      if (r.mode !== 'pureclassic') return;               /* 🏛️ 클래식 1위만 인정 */
+      var n = String(r.n || r.nick || '').trim();
+      if (!n) return;
+      var m = Number(r.m) || 0;
+      if (!best || m > best.m) best = { n: n, m: m };
+    });
+    return (best && best.n === me) ? best : null;
+  }
+  function champValid(map) {
+    var b = champBest(map);
+    return !!(b && b.m > 300);                            /* 300m 초과일 때만 */
+  }
+  function champAny() {
+    var maps = {};
+    rankAll().forEach(function (r) { if (r && r.map) maps[r.map] = 1; });
+    for (var k in maps) if (champValid(k)) return true;
+    return false;
+  }
+  var patchedTitles = {}, patchedPL = false;
+  function patchTitles() {
+    var list = [];
+    try { list = V.api().titles() || []; } catch (e) { return; }
+    list.forEach(function (t) {
+      if (!t || !/^champ_/.test(String(t.id || ''))) return;
+      if (patchedTitles[t.id]) return;
+      patchedTitles[t.id] = 1;
+      var map = String(t.id).slice(6);
+      t.need = function () { return champValid(map); };
+      t.why = '🏛️ 클래식 1위 · 300m 초과';
+      try { if (root.JW51TITLES && JW51TITLES.meta) { var mm = JW51TITLES.meta(t.id); if (mm) mm.why = t.why; } } catch (e) {}
+    });
+    /* 장착 중인데 조건 미달이면 회수 */
+    var cur = '';
+    try { cur = (V.api().internals().ident || {}).title || 'auto'; } catch (e) {}
+    if (/^champ_/.test(cur) && !champValid(cur.slice(6))) {
+      try {
+        var raw = V.lsGet('jw41_identity_v1', {}) || {};
+        raw.title = 'auto';
+        V.lsSet('jw41_identity_v1', raw);
+        var inst = V.api().internals();
+        if (inst && inst.ident) inst.ident.title = 'auto';
+      } catch (e) {}
+      try { V.toast('👑 1위 칭호 회수', 'danger', '🏛️ 클래식 1위 · 300m 초과 기록이 필요해요', 3200); } catch (e) {}
+    }
+  }
+  function patchPlates() {
+    var P = root.JW57PL;
+    if (!P) return;
+    ['plates', 'frames'].forEach(function (k) {
+      (P[k] || []).forEach(function (it) {
+        if (!it || !it.king) return;
+        it.need = function () { return champAny(); };
+        if (it.why && it.why.indexOf('300m') < 0) it.why = '클래식 1위 · 300m 초과';
+      });
+    });
+    if (!patchedPL) patchedPL = true;
+    /* 조건 미달인데 장착 중이면 해제 */
+    ['plate', 'frame'].forEach(function (kind) {
+      var it = null;
+      try { it = P[kind] ? P[kind]() : null; } catch (e) { it = null; }
+      if (!it || !it.king) return;
+      if (champAny()) return;
+      try { P.equip(kind, 'none'); } catch (e) {}
+      try { V.toast('👑 1위 ' + (kind === 'frame' ? '테두리' : '이름표') + ' 회수', 'danger', '클래식 1위 · 300m 초과 기록이 필요해요', 3200); } catch (e) {}
+    });
+  }
+
+  /* ---------------------------------------------------------------- 부트 */
+  function tick() {
+    try { onebtn(); } catch (e) {}
+    try { patchTitles(); } catch (e) {}
+    try { patchPlates(); } catch (e) {}
+  }
+  function boot() {
+    css();
+    hookWatch();
+    tick();
+    setInterval(function () { try { tick(); } catch (e) {} }, 1400);
+    console.log('[JW95G] onebtn · ingame tag · spectate · champ 300m');
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 800); });
+  else setTimeout(boot, 800);
+
+  /* QA/디버그용: 관전 알림을 직접 발생시켜 확인할 수 있게 */
+  function fakeWatch(tag, nick) {
+    tag = String(tag || 'TEST').toUpperCase();
+    var now = Date.now();
+    var first = !WATCH[tag] || (now - WATCH[tag].at > 15000);
+    WATCH[tag] = { at: now, nick: nick || nickOf(tag) };
+    if (first) { try { V.toast('👀 ' + (nick || nickOf(tag)) + '님이 관전 들어왔어요!', 'lucky', '친구가 내 등반을 보고 있어요', 2600); } catch (e) {} }
+    paintSpec();
+  }
+  root.JW95G = { champValid: champValid, champAny: champAny, onebtn: onebtn, watch: fakeWatch };
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.1-codex : 📖 재우 도감 정리
+     - 중복 탭 제거: 📊 랭킹(바깥 메뉴와 중복) · 🖼️ 테두리 · 🏅 칭호(프로필로 통합)
+       → 도감 본연의 탭(📖 도감 / 🏅 업적 / 🏆 트로피)만 남긴다
+     - 탭·서브필터 버튼을 다른 화면과 같은 '둥근 입체 게임 버튼 + 두꺼운 폰트'로 통일
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW96C) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var HIDE_TABS = ['rank', 'frames', 'title', 'titles'];
+
+  var CSS = [
+    /* ── 중복 탭 숨김 ── */
+    HIDE_TABS.map(function (k) {
+      return '.v44-codextabs [data-ctab="' + k + '"]{display:none !important;}';
+    }).join('\n'),
+    '.v44-codextabs{display:flex !important;gap:7px !important;padding:8px 8px 0 !important;}',
+    /* ── 탭: 둥근 입체 게임 버튼 ── */
+    'html body .v44-codextabs button{flex:1 1 0 !important;min-height:44px !important;padding:0 8px !important;',
+    '  border-radius:13px !important;font-size:13px !important;font-weight:900 !important;letter-spacing:-.01em !important;',
+    '  background:linear-gradient(180deg,#28374f,#162032) !important;border:2px solid #3b4c6b !important;color:#e6f0ff !important;',
+    '  box-shadow:inset 0 -3px 0 rgba(0,0,0,.35),0 3px 8px rgba(0,0,0,.35) !important;text-shadow:0 1px 0 rgba(0,0,0,.45) !important;}',
+    'html body .v44-codextabs button:active{transform:translateY(2px) !important;}',
+    'html body .v44-codextabs button.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d) !important;',
+    '  border-color:#7a4a06 !important;color:#3a2205 !important;text-shadow:0 1px 0 rgba(255,255,255,.35) !important;}',
+    'html body #v44CodexTabs button.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d) !important;',
+    '  border-color:#7a4a06 !important;color:#3a2205 !important;}',
+    /* ── 서브필터(전체/맵/모드/아이템·함정) ── */
+    'html body #v50CxTabs{gap:6px !important;margin:4px 0 6px !important;}',
+    'html body #v50CxTabs button{min-height:40px !important;border-radius:12px !important;font-size:12px !important;font-weight:900 !important;',
+    '  background:linear-gradient(180deg,#26344f,#162032) !important;border:2px solid #3b4c6b !important;color:#dfeaf9 !important;',
+    '  box-shadow:inset 0 -3px 0 rgba(0,0,0,.32) !important;}',
+    'html body #v50CxTabs button.on{background:linear-gradient(180deg,#cfe6ff,#67a9fb 55%,#2f6fd0) !important;',
+    '  border-color:#0b2c5c !important;color:#041a3a !important;}',
+    /* ── 도감 내부 칩/버튼 글씨를 두껍고 선명하게 ── */
+    'html body #v44Codex .mp-chip,html body #v44Codex .v50-chip,html body #v44Codex button.mp-chip{',
+    '  min-height:34px !important;border-radius:999px !important;font-size:11.5px !important;font-weight:900 !important;',
+    '  background:linear-gradient(180deg,#243654,#162032) !important;border:1px solid #3b4c6b !important;color:#dfeaf9 !important;}',
+    'html body #v44Codex .mp-chip.on,html body #v44Codex .v50-chip.on{background:linear-gradient(180deg,#cfe6ff,#67a9fb 55%,#2f6fd0) !important;',
+    '  border-color:#0b2c5c !important;color:#041a3a !important;}'
+  ].join('\n');
+
+  function css() {
+    if ($('v96css')) return;
+    var s = doc.createElement('style');
+    s.id = 'v96css';
+    s.textContent = CSS;
+    doc.head.appendChild(s);
+  }
+
+  /* 숨긴 탭이 '켜짐' 상태면 도감 탭으로 되돌린다 */
+  function fixActive() {
+    var bars = doc.querySelectorAll('.v44-codextabs');
+    for (var i = 0; i < bars.length; i++) {
+      var on = bars[i].querySelector('[data-ctab].on');
+      if (!on) continue;
+      if (HIDE_TABS.indexOf(on.getAttribute('data-ctab')) < 0) continue;
+      var codex = bars[i].querySelector('[data-ctab="codex"]');
+      if (codex) { try { codex.click(); } catch (e) {} }
+      else on.classList.remove('on');
+    }
+    /* 칭호 탭을 따로 그려 넣는 모듈이 있어도 숨김 유지 */
+    doc.querySelectorAll('.v44-codextabs [data-ctab="title"],[data-ctab="titles"]').forEach(function (b) {
+      if (b.style.display !== 'none') b.style.display = 'none';
+    });
+  }
+
+  function boot() {
+    css();
+    fixActive();
+    setInterval(function () { try { fixActive(); } catch (e) {} }, 900);
+    console.log('[JW96C] codex tabs cleaned');
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 900); });
+  else setTimeout(boot, 900);
+
+  root.JW96C = { fix: fixActive };
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.1-font : ⚙️ 모달·방 설정 글씨/버튼 통일
+     - 모달 안의 얇은 픽셀 글씨 → Jua / Apple SD Gothic Neo 기반 두꺼운 산세리프
+     - 회색 안내문 대비 상향, 선택 버튼(2명/3명/ON/OFF …)은 입체 게임 버튼 톤으로
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW97F) return;
+  var doc = document;
+
+  var PANELS = ['#v42Rules .v42-card', '#v43Room .v43-card', '#v44Rules .v44-card', '#v44Bet .v44-card',
+    '#v44Codex .v44-card', '#v44Trophy .v44-card', '#v43Profile .v43-card', '#v50Set .v50s-card',
+    '#settingsModal .pixel-panel', '#pauseModal .pixel-panel'];
+
+  var CSS = [
+    /* 폰트: 두껍고 또렷한 산세리프 */
+    'html body ' + PANELS.join(',html body ') + '{',
+    '  font-family:"Jua","Apple SD Gothic Neo","Pretendard",system-ui,sans-serif !important;}',
+    'html body ' + PANELS.map(function (s) { return s + ' *:not(canvas):not(svg)'; }).join(',html body ') + '{',
+    '  font-family:"Jua","Apple SD Gothic Neo","Pretendard",system-ui,sans-serif !important;',
+    '  letter-spacing:-.01em !important;-webkit-font-smoothing:antialiased;}',
+    /* 두께 위계 */
+    'html body .v42-card b,html body .v43-card b,html body .v44-card b,html body .v50s-card b{font-weight:900 !important;}',
+    'html body .v42-card i,html body .v43-card i,html body .v44-card i,html body .v50s-card i{font-style:normal !important;font-weight:700 !important;}',
+    'html body .v42-card span,html body .v43-card span,html body .v44-card span,html body .v50s-card span{font-weight:700;}',
+    /* 흐린 회색 글씨 대비 상향 */
+    'html body .v42-card .v42-sub,html body .v43-card .v43-sub,html body .v44-card .v44-sub,html body .v50s-card .v50s-sub,',
+    'html body .v42-card .text-slate-400,html body .v43-card .text-slate-400,html body .v44-card .text-slate-400,',
+    'html body .v42-card .text-slate-500,html body .v43-card .text-slate-500,html body .v44-card .text-slate-500{',
+    '  color:#b9c8de !important;font-weight:800 !important;}',
+    /* 선택 버튼: 입체 게임 버튼 톤 */
+    'html body .v42-card .mp-chip,html body .v43-card .mp-chip,html body .v44-card .mp-chip,html body .v50s-card .mp-chip{',
+    '  min-height:38px !important;border-radius:11px !important;font-size:12px !important;font-weight:900 !important;',
+    '  background:linear-gradient(180deg,#26344f,#162032) !important;border:2px solid #3b4c6b !important;color:#dfeaf9 !important;',
+    '  box-shadow:inset 0 -3px 0 rgba(0,0,0,.32),0 2px 6px rgba(0,0,0,.3) !important;}',
+    'html body .v42-card .mp-chip.on,html body .v43-card .mp-chip.on,html body .v44-card .mp-chip.on{',
+    '  background:linear-gradient(180deg,#cfe6ff,#67a9fb 55%,#2f6fd0) !important;border-color:#0b2c5c !important;color:#041a3a !important;}',
+    'html body .v43-card .mp-maxchip,html body .v42-card .mp-maxchip{min-height:40px !important;border-radius:11px !important;',
+    '  font-size:12.5px !important;font-weight:900 !important;}',
+    'html body .v42-card .mp-maxchip.on,html body .v43-card .mp-maxchip.on{background:linear-gradient(180deg,#cfe6ff,#67a9fb 55%,#2f6fd0) !important;',
+    '  border-color:#0b2c5c !important;color:#041a3a !important;}',
+    /* 방 설정 탭 */
+    'html body #v50Set .v50s-tabs button{min-height:42px !important;border-radius:12px !important;font-size:12.5px !important;font-weight:900 !important;',
+    '  background:linear-gradient(180deg,#26344f,#162032) !important;border:2px solid #3b4c6b !important;color:#dfeaf9 !important;}',
+    'html body #v50Set .v50s-tabs button.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d) !important;',
+    '  border-color:#7a4a06 !important;color:#3a2205 !important;}'
+  ].join('\n');
+
+  function css() {
+    if (doc.getElementById('v97css')) return;
+    var s = doc.createElement('style');
+    s.id = 'v97css';
+    s.textContent = CSS;
+    doc.head.appendChild(s);
+  }
+  function boot() {
+    css();
+    console.log('[JW97F] modal fonts');
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 700); });
+  else setTimeout(boot, 700);
+  root.JW97F = { css: css };
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.1-tut : 🎓 정식 배포 1회 — 모두 튜토리얼부터 다시
+     - 저장 키(jw51_tut_v2)를 새 키(jw51_tut_v3)로 한 번만 초기화한다.
+       (이후 튜토리얼을 깨면 다시 저장되므로 재초기화되지 않음)
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var KEY = 'jw51_tut_v3';
+  try {
+    if (root.localStorage && localStorage.getItem(KEY)) return;
+  } catch (e) { return; }
+  try {
+    localStorage.removeItem('jw51_tut_v2');
+    localStorage.removeItem('jw51_tut_v1');
+    localStorage.setItem(KEY, '1');
+  } catch (e) {}
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.1-friends : 🕒 친구창 '마지막 접속' 상대시간 복구
+     - 친구 행/상세 시트에서 접속이 끊긴 친구에게
+       `방금 전 · N초 전 · N분 전 · N시간 전 · N일 전` 을 항상 보이게 한다
+     - 마지막으로 본 활동 시각을 localStorage(v99_last_v1)에 남겨 두고 쓴다
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW99F) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var KEY = 'v99_last_v1';
+  function ls(k, d) { try { var v = V.lsGet(k, d); return v == null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { V.lsSet(k, v); } catch (e) {} }
+  function HUB() { return root.JW485HUB || null; }
+
+  var CSS = [
+    'html body #v485hList .v99ago{font-size:10.5px !important;font-weight:800 !important;color:#9fb2cc !important;',
+    '  margin-left:4px;white-space:nowrap;}',
+    'html body #v485hList .v99ago b{color:#cfe0f5 !important;font-weight:900 !important;}',
+    'html body #v56FS .v99ago{font-size:11px !important;font-weight:800 !important;color:#a9bcd6 !important;margin-left:4px;}'
+  ].join('\n');
+  function css() {
+    if ($('v99css')) return;
+    var s = doc.createElement('style');
+    s.id = 'v99css';
+    s.textContent = CSS;
+    doc.head.appendChild(s);
+  }
+
+  function ago(ts) {
+    var d = Date.now() - (ts || 0);
+    if (!ts) return '';
+    if (d < 10000) return '방금 전';
+    if (d < 60000) return Math.floor(d / 1000) + '초 전';
+    if (d < 3600000) return Math.floor(d / 60000) + '분 전';
+    if (d < 86400000) return Math.floor(d / 3600000) + '시간 전';
+    return Math.floor(d / 86400000) + '일 전';
+  }
+  function actOf(tag) {
+    try { return (HUB() && HUB().actOf) ? HUB().actOf(tag) : null; } catch (e) { return null; }
+  }
+  function friendTags() {
+    var out = [];
+    try {
+      var L = (HUB() && HUB().friendsList) ? HUB().friendsList() : [];
+      L.forEach(function (f) { var t = String(f.ftag || f.tag || '').toUpperCase(); if (t) out.push(t); });
+    } catch (e) {}
+    return out;
+  }
+  /* 마지막 접속 시각 갱신 */
+  function remember() {
+    var seen = ls(KEY, {}) || {};
+    var changed = false;
+    friendTags().forEach(function (t) {
+      if (actOf(t)) { seen[t] = Date.now(); changed = true; }
+    });
+    if (changed) lsSet(KEY, seen);
+    return seen;
+  }
+  function lastOf(tag) {
+    var seen = ls(KEY, {}) || {};
+    return seen[String(tag || '').toUpperCase()] || 0;
+  }
+
+  function attach(el, ts) {
+    if (!el) return;
+    var txt = ago(ts);
+    var sp = el.querySelector('.v99ago');
+    if (!txt) { if (sp) sp.remove(); return; }
+    if (!sp) {
+      sp = doc.createElement('span');
+      sp.className = 'v99ago';
+      el.appendChild(sp);
+    }
+    var want = '· ' + txt;
+    if (sp.textContent !== want) sp.textContent = want;
+  }
+
+  function tick() {
+    remember();
+    var box = $('v485hList');
+    if (box) {
+      var list = box.querySelectorAll('.v485fc[data-ftag]');
+      for (var i = 0; i < list.length; i++) {
+        var row = list[i];
+        var tag = String(row.getAttribute('data-ftag') || '').toUpperCase();
+        if (!tag) continue;
+        var act = actOf(tag);
+        var line = row.querySelector('.v485fc-act') || row.querySelector('.v485fc-sub');
+        if (!line) continue;
+        if (act) { var sp0 = line.querySelector('.v99ago'); if (sp0) sp0.remove(); continue; }
+        attach(line, lastOf(tag));
+      }
+    }
+    /* 친구 상세 시트 */
+    var fs = $('v56FS');
+    if (fs && !fs.classList.contains('hide')) {
+      var stEl = fs.querySelector('.st');
+      if (stEl) {
+        var tag2 = '';
+        try { tag2 = (root.JW56FUI && JW56FUI.sel) || ''; } catch (e) {}
+        if (!tag2) {
+          var nm = (fs.querySelector('.hero .nm') || {}).textContent || '';
+          var L2 = (HUB() && HUB().friendsList ? HUB().friendsList() : []);
+          for (var k = 0; k < L2.length; k++) if (String(L2[k].nick || '') === String(nm).trim()) tag2 = String(L2[k].ftag || '').toUpperCase();
+        }
+        if (tag2 && !actOf(tag2)) attach(stEl, lastOf(tag2));
+      }
+    }
+  }
+
+  function boot() {
+    css();
+    tick();
+    setInterval(function () { try { tick(); } catch (e) {} }, 1500);
+    console.log('[JW99F] friend last-seen restored');
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 1000); });
+  else setTimeout(boot, 1000);
+
+  root.JW99F = { ago: ago, lastOf: lastOf, tick: tick };
 })(window);
 
 </script>
