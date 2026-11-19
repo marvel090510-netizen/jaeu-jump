@@ -46249,6 +46249,8 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -53140,6 +53142,26 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       subsOn: C2.subsOn, lastSub: C2.lastSub, counts: JSON.parse(JSON.stringify(C2.counts))
     };
   };
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.1-tut : 🎓 정식 배포 1회 — 모두 튜토리얼부터 다시
+     - 저장 키(jw51_tut_v2)를 새 키(jw51_tut_v3)로 한 번만 초기화한다.
+       (이후 튜토리얼을 깨면 다시 저장되므로 재초기화되지 않음)
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var KEY = 'jw51_tut_v3';
+  try {
+    if (root.localStorage && localStorage.getItem(KEY)) return;
+  } catch (e) { return; }
+  try {
+    localStorage.removeItem('jw51_tut_v2');
+    localStorage.removeItem('jw51_tut_v1');
+    localStorage.setItem(KEY, '1');
+  } catch (e) {}
 })(window);
 
 </script>
@@ -70664,8 +70686,14 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       if (!on) continue;
       if (HIDE_TABS.indexOf(on.getAttribute('data-ctab')) < 0) continue;
       var codex = bars[i].querySelector('[data-ctab="codex"]');
-      if (codex) { try { codex.click(); } catch (e) {} }
-      else on.classList.remove('on');
+      var modal = document.getElementById('v44Codex');
+      var open = !!(modal && !modal.classList.contains('hidden') && getComputedStyle(modal).display !== 'none');
+      if (open && codex) { try { codex.click(); } catch (e) {} }
+      else {
+        /* 모달이 닫혀 있으면 클릭하지 않는다(도감이 저절로 열리던 원인) — 표시만 정리 */
+        on.classList.remove('on');
+        if (codex) codex.classList.add('on');
+      }
     }
     /* 칭호 탭을 따로 그려 넣는 모듈이 있어도 숨김 유지 */
     doc.querySelectorAll('.v44-codextabs [data-ctab="title"],[data-ctab="titles"]').forEach(function (b) {
@@ -70751,26 +70779,6 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 700); });
   else setTimeout(boot, 700);
   root.JW97F = { css: css };
-})(window);
-
-</script>
-<script>
-/* ==========================================================================
-   v5.1-tut : 🎓 정식 배포 1회 — 모두 튜토리얼부터 다시
-     - 저장 키(jw51_tut_v2)를 새 키(jw51_tut_v3)로 한 번만 초기화한다.
-       (이후 튜토리얼을 깨면 다시 저장되므로 재초기화되지 않음)
-   ========================================================================== */
-(function (root) {
-  'use strict';
-  var KEY = 'jw51_tut_v3';
-  try {
-    if (root.localStorage && localStorage.getItem(KEY)) return;
-  } catch (e) { return; }
-  try {
-    localStorage.removeItem('jw51_tut_v2');
-    localStorage.removeItem('jw51_tut_v1');
-    localStorage.setItem(KEY, '1');
-  } catch (e) {}
 })(window);
 
 </script>
