@@ -46144,6 +46144,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -57674,6 +57675,17 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var label = (LBL[k] || k) + ' → ' + valueText(k, v);
     var J49 = U49();
     if (!room()) return;
+    /* 이미 그 값이면 아무것도 보내지 않는다 (헛 제안·헛 알림 방지) */
+    try {
+      if (J49 && J49.curVal) {
+        var cur = J49.curVal(k);
+        if (String(cur) === String(v)) {
+          toast('이미 ' + valueText(k, v) + ' 상태예요', 'chat', '다른 값을 눌러 주세요', 1600);
+          beep(520);
+          return;
+        }
+      }
+    } catch (er) {}
     try {
       if (J49 && J49.applyPatch) J49.applyPatch(p, label);
       else if (isHost()) V.applyExtra(p, label);
