@@ -2,6 +2,21 @@
 <html lang="ko">
 <head><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="성공하고싶은 재우"><meta name="theme-color" content="#0b1024"><link rel="manifest" href="./manifest.json"><meta property="og:image" content="https://marvel090510-netizen.github.io/jaeu-jump/cover.jpg"><meta property="og:title" content="성공하고싶은 재우 - 한 번 더, 정상까지!"><meta property="og:description" content="Jump King 스타일 16비트 세로 등반 게임 · 맵 21종 · 모드 15종"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
   <meta charset="UTF-8" />
+<script id="jw51wipe">/* v5.1-final 1회 초기화 (__v51wipe) */
+(function(){try{
+  if(localStorage.getItem('jw51_wipe_v1')==='1')return;
+  localStorage.setItem('jw51_wipe_v1','1');
+  var KEEP=/^(jw51_wipe_v1|jw41_identity_v1|jw_friends_v1|jw_friends_v2|jw_friends|jw4_friends_v1|jw40_friends_v1|jw41_friends_v1|jw42_friends_v1|jw41_friends_v1_migrated|jw485_fsent_v1|jw51_dm_v1|jw51_dm_read_v1|jw43_ctrl_custom_v1|jw49_ctrl_v1|jaewoo_ctrl_v2|jw51_cfg_v1|jw43_theme_v1|jw48_juke_v1|jw43_presets_v1|jw47_wide|jw484_netsk|jw484_update_toast|jw51_tut_v1|jw51_tut_v2|jw51_tut_v3)$/;
+  var rm=[],i,k;for(i=0;i<localStorage.length;i++){k=localStorage.key(i);if(!k||KEEP.test(k))continue;
+    if(/^(jw|jaewoo|v4|v5|mp_|v43|v44|v45|v46|v47|v48|v49|v50|v51)/.test(k))rm.push(k);}
+  for(i=0;i<rm.length;i++){try{localStorage.removeItem(rm[i]);}catch(e){}}
+  /* 닉네임·친구 코드·친구·DM·설정은 유지, 장착 장식구만 기본값으로 */
+  try{var id=JSON.parse(localStorage.getItem('jw41_identity_v1')||'{}');
+      if(id&&typeof id==='object'){id.skin='jaeu';id.title='auto';localStorage.setItem('jw41_identity_v1',JSON.stringify(id));}}catch(e){}
+  try{sessionStorage.setItem('jw51_wipe_done','1');}catch(e){}
+  window.__JW51WIPE=rm.length;
+}catch(e){}})();
+</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>성공하고싶은 재우 - 한 번 더, 정상까지!</title>
   <script src="https://cdn.tailwindcss.com"></script>
@@ -4858,8 +4873,8 @@ extends CanvasLayer
       beep(520, 0.1, 0.13, 'sine', 1180);
       return;
     }
-    /* PERFECT 착지 (발판 정중앙 ±10%) */
-    if (p.index > 0 && p.w > 40) {
+    /* PERFECT 착지 (발판 정중앙 ±10%) — __v51perfect: 리듬 점프에서만 */
+    if (p.index > 0 && p.w > 40 && window.JW51G && JW51G.perfect()) {
       const pc = p.x + p.w / 2, mc = pl.x + pl.w / 2;
       if (Math.abs(pc - mc) <= p.w * 0.10) {
         pl.chargeBoost = 1.35;
@@ -24230,7 +24245,7 @@ extends CanvasLayer
         if (localStorage.getItem('jw484_update_toast') === '4.8.5-2') return;
         localStorage.setItem('jw484_update_toast', '4.8.5-2');
       } catch (e) { return; }
-      V.toast('🚀 v5.1', 'lucky', '🎨 도감·업적·일시정지·친구창·체크판·방 설정 전면 개편 · 머리 위 칭호 이름표 · 순위 카드 정리 · 발판 IMG_1076 복원 · 난이도 밸런스 (정식 반영)', 4200);
+      V.toast('🚀 v5.1', 'lucky', '싱글 잔존 순위표·왕관 제거 · 스킨 대사 말풍선 잘림 · 일시정지 멀티/싱글 구분 · 사망 사유 정확 표시 · 장식구/기록 1회 초기화 · 렉 감소 (정식 반영)', 4200);
     }, 1400);
   };
 })(window);
@@ -25052,7 +25067,7 @@ extends CanvasLayer
     } catch (e) {}
     var a = $('v43TPNick'), b = $('v43TPTitle'), c = $('v43TPStatus');
     if (a) a.textContent = nick;
-    if (b) b.textContent = titleName;
+    if (b && !b.querySelector('.v51badge')) b.textContent = titleName;   /* __v51badge */
     if (c) c.textContent = (prof.status || '').trim() || '프로필을 눌러 꾸며 보세요';
   }
   function openProfile() {
@@ -37620,9 +37635,9 @@ extends CanvasLayer
           ctx.restore();
         }
       }
-      /* 실시간 1등 왕관 */
+      /* 실시간 1등 왕관 (__v51crown: 멀티 레이스에서만) */
       var all = aliveAll();
-      if (all.length > 1) {
+      if (all.length > 1 && window.JW51G && JW51G.multi()) {
         var lead = null;
         for (var i = 0; i < all.length; i++) if (!lead || all[i].y < lead.y) lead = all[i];
         if (lead) {
@@ -46223,6 +46238,18 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 })();
 </script>
 <!-- LP-GUARD-JS:END -->
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -69293,7 +69320,10 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (on !== card.classList.contains('v486dot')) card.classList.toggle('v486dot', on);
   }
 
+  function inGame() { try { var g = root.__jwg && root.__jwg.game; return !!(g && g.inPlay); } catch (e) { return false; } }
   function tick() {
+    /* v5.1-final 성능: 인게임에서는 타이틀 장식 갱신을 완전히 멈춘다 */
+    if (inGame()) return;
     try { paintTitleBadge(); } catch (e) {}
     try { paintFrame(); } catch (e) {}
     try { fixGrid(); } catch (e) {}
@@ -69311,7 +69341,8 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       }).observe(el, { childList: true, characterData: true, subtree: true });
     }
     tick();
-    setInterval(function () { try { tick(); } catch (e) {} }, 1000);
+    /* 배지가 처음부터 한 모양으로: 400ms 간격, 인게임에서는 스킵 */
+    setInterval(function () { try { tick(); } catch (e) {} }, 400);
     console.log('[JW94T] title card · badge · jukebox');
   }
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 900); });
@@ -70201,9 +70232,9 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var th = titleHtml();
     var html = '<div class="in"><span class="nm" id="v97TagNm">' + esc(nick) + '</span>' + th.html + '</div>';
     if (el.__sig !== html) { el.__sig = html; el.innerHTML = html; }
-    el.style.left = x + 'px';
-    el.style.top = (y - 4) + 'px';
-    el.classList.add('on');
+    var tf = 'translate3d(' + (x - 0) + 'px,' + ((y - 4) - 0) + 'px,0) translate(-50%,-100%)';
+    if (el.__tf !== tf) { el.__tf = tf; el.style.transform = tf; }
+    if (!el.classList.contains('on')) el.classList.add('on');
     /* 이름표(무지개 등) 연동 */
     try {
       var nm = $('v97TagNm');
@@ -70269,9 +70300,17 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var inPlay = !!(j && j.game && j.game.inPlay);
     var S = null;
     try { S = V.st(); } catch (e) {}
-    var racing = !!(S && (S.phase === 'race' || S.phase === 'count'));
-    var multi = !!(j && j.multi) || racing;
-    if (!inPlay || !multi) { rankEl.classList.remove('on'); rankSig = ''; return; }
+    var racing = !!(S && S.room && (S.phase === 'race' || S.phase === 'count'));
+    var multi = racing;
+    /* v5.1-final: 싱글에서는 순위 카드를 100% 숨기고 이전 판 내용도 비운다.
+       (인라인 display:flex 가 남아 CSS 의 display:none 을 이기던 버그) */
+    if (!inPlay || !multi) {
+      rankEl.classList.remove('on');
+      if (rankEl.style.display) rankEl.style.removeProperty('display');
+      if (!multi && rankEl.innerHTML) rankEl.innerHTML = '';
+      rankSig = '';
+      return;
+    }
     var rows = rankRows();
     if (rows.length < 2) { rankEl.classList.remove('on'); return; }
     var top = rows.slice(0, 4);
@@ -70296,7 +70335,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     }
     var t = hudBottom();
     if (rankEl.__t !== t) { rankEl.__t = t; rankEl.style.top = t + 'px'; }
-    rankEl.style.display = 'flex';
+    rankEl.style.removeProperty('display');   /* 표시는 .on 클래스로만 */
   }
 
   /* ================================================================ ④ 도감 탭 강제 */
@@ -70579,11 +70618,26 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     hookTabs();
     profileBanner();
     tick();
-    var loop = function () {
-      tick();
-      requestAnimationFrame(loop);
-    };
-    try { requestAnimationFrame(loop); } catch (e) { setInterval(tick, 60); }
+    /* v5.1-final 성능: 매 프레임 DOM 재계산(tagFrame/rankFrame/pauseBuild)을 멈추고
+       - 인게임: 머리 위 태그만 60fps, 순위 카드는 5fps
+       - 그 외: 전체 틱 8fps */
+    var playing = function () { try { var g = root.__jwg && root.__jwg.game; return !!(g && g.inPlay); } catch (e) { return false; } };
+    setInterval(function () {
+      try { if (playing()) tagFrame(); } catch (e) {}
+      try { profileBanner(); } catch (e) {}
+    }, 16);
+    setInterval(function () {
+      try {
+        if (playing()) {
+          rankFrame();
+          /* 일시정지 모달이 열려 있을 때만 그 모달을 정리한다 */
+          var pm = document.getElementById('pauseModal');
+          if (pm && !pm.classList.contains('hidden')) pauseBuild();
+          return;
+        }
+      } catch (e) {}
+      try { tick(); } catch (e) {}
+    }, 200);
     setInterval(function () { try { profileBanner(); } catch (e) {} }, 2000);
     console.log('[JW97UI] 실기기 10건 UI 개편 ready');
   }
@@ -70592,6 +70646,497 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
   root.JW97UI = { tick: tick, pick: pickSheet, tag: tagFrame, rank: rankFrame, profile: profileBanner,
     state: function () { return { want: wantTab, has: document.__v97tabs === true }; } };
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.1-final (99c) : v5.1 실기기 2차 제보 — 싱글/멀티 잔존 · 말풍선 · 일시정지 ·
+                      사망 사유 · 칭호 배지 깜빡임 · 퍼펙트 점프 격리 · 성능
+     이 모듈은 가장 마지막에 로드되어, 앞선 패치들이 남긴 상태를 매 틱 감시하고 바로잡는다.
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW51FIN) return;
+  var doc = document;
+  function $(id) { return doc.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;'; }); }
+  function st() { try { return V.st(); } catch (e) { return null; } }
+  function jw() { return root.__jwg; }
+  function inPlay() { var j = jw(); return !!(j && j.game && j.game.inPlay); }
+  function racing() {
+    try { var s = st(); return !!(s && s.room && (s.phase === 'race' || s.phase === 'count')); } catch (e) { return false; }
+  }
+  function inRoom() {
+    try { var s = st(); return !!(s && s.room && (s.phase === 'race' || s.phase === 'count' || s.phase === 'result' || s.phase === 'lobby')); } catch (e) { return false; }
+  }
+  function curMode() {
+    try { if (root.JWMode && root.JWMode.rules && root.JWMode.rules.mode) return root.JWMode.rules.mode; } catch (e) {}
+    try { if (root.JWMode && root.JWMode.solo && root.JWMode.solo.mode) return root.JWMode.solo.mode; } catch (e) {}
+    return 'normal';
+  }
+
+  /* ================================================================ 0. 코어에 노출하는 판정 helpers
+     (index.html 본문에 심어 둔 훅이 이걸 부른다: 1등 왕관 · 퍼펙트 착지) */
+  root.JW51G = {
+    multi: racing,          /* 실제 멀티 레이스 중인가 */
+    room: inRoom,
+    inPlay: inPlay,
+    perfect: function () { return curMode() === 'rhythm'; },   /* 퍼펙트 판정은 리듬 점프에서만 */
+    mode: curMode
+  };
+
+  /* ================================================================ 1. CSS */
+  var F = '"Jua","Apple SD Gothic Neo","Pretendard","Noto Sans KR",system-ui,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji"';
+  var CSS = [
+    /* ---------- 토스트(스킨 대사)가 화면 밖으로 잘리지 않게 ---------- */
+    'html body #mpToasts{position:fixed !important;right:max(8px,env(safe-area-inset-right,0px)) !important;left:auto !important;',
+    '  max-width:calc(100vw - 16px) !important;align-items:flex-end !important;box-sizing:border-box !important;pointer-events:none !important;}',
+    'html body #mpToasts .mp-toast{box-sizing:border-box !important;max-width:min(78vw,300px) !important;',
+    '  padding:6px 10px !important;border-radius:10px !important;background:rgba(9,13,26,.86) !important;',
+    '  border:1.5px solid rgba(96,165,250,.45) !important;border-left:3px solid rgba(96,165,250,.95) !important;',
+    '  color:#eaf2ff !important;font-size:11.5px !important;font-weight:700 !important;line-height:1.35 !important;',
+    '  letter-spacing:-.01em !important;box-shadow:0 4px 14px rgba(0,0,0,.45) !important;}',
+    'html body #mpToasts .mp-toast.show{transform:none !important;opacity:1 !important;}',
+    'html body #mpToasts .mp-toast .t1,html body #mpToasts .mp-toast .t2{display:block !important;white-space:normal !important;',
+    '  overflow:visible !important;text-overflow:clip !important;word-break:keep-all !important;overflow-wrap:anywhere !important;}',
+    'html body #mpToasts .mp-toast .t1{font-size:11.5px !important;line-height:1.3 !important;color:#fff !important;}',
+    'html body #mpToasts .mp-toast .t2{font-size:10.5px !important;line-height:1.35 !important;color:#b9cbe6 !important;margin-top:1px !important;}',
+
+    /* ---------- 순위 카드: 멀티에서만 · 겹치지 않게 ---------- */
+    'html body #v97Rank{display:none;left:8px;top:232px;gap:2px;min-width:0;max-width:min(58vw,230px);padding:5px 7px;border-radius:11px;}',
+    'html body #v97Rank.on{display:flex;}',
+    'html body #v97Rank .r{font-size:11px;font-weight:700;line-height:1.25;}',
+    'html body #v51Rank,html body #mpRankLine{display:none !important;}',
+
+    /* ---------- 버튼: 과한 900 굵기·번진 그림자 → 자연스러운 700 ---------- */
+    ':root html body button, :root html body [role="button"], :root html body .mp-chip, :root html body .v51chip,',
+    ':root html body .v51btn, :root html body .v53chip{font-weight:700 !important;letter-spacing:-.005em !important;text-shadow:none !important;}',
+    ':root html body #pauseModal button, :root html body #v97Pick button, :root html body #v53Set button,',
+    ':root html body .v51btn{font-weight:700 !important;text-shadow:0 1px 0 rgba(0,0,0,.28) !important;}',
+
+    /* ---------- 일시정지: 빈칸 제거 + 고스트/특수기능 톤 통일 ---------- */
+    'html body #pauseModal .v97grid > *{grid-column:1/-1 !important;}',
+    'html body #pauseModal .v97grid > .half{grid-column:span 1 !important;}',
+    'html body #pauseModal .v97grid > button,html body #pauseModal .v97grid > .v97row{',
+    '  min-height:44px !important;border-radius:12px !important;display:flex !important;align-items:center !important;',
+    '  justify-content:center !important;gap:6px !important;font-size:13px !important;padding:9px 10px !important;}',
+    'html body #pauseModal #v43GhostPause{width:100% !important;background:linear-gradient(180deg,#2b3d63,#18233b) !important;',
+    '  border:2px solid #0a1120 !important;color:#eaf2ff !important;box-shadow:inset 0 2px 0 rgba(255,255,255,.12),inset 0 -4px 0 rgba(0,0,0,.4),0 4px 0 #060a14 !important;}',
+    'html body #pauseModal #v43GhostPause b,html body #pauseModal #v43GhostPause span{font-weight:700 !important;}',
+    'html body #pauseModal #v48c2OptP{width:100% !important;border-radius:12px !important;background:rgba(11,18,34,.9) !important;',
+    '  border:2px solid #22314f !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06) !important;}',
+    'html body #pauseModal #v48c2OptP .v48c2-t{color:#a8bfe0 !important;font-weight:700 !important;}',
+    'html body #pauseModal #v48c2OptP button{border-radius:9px !important;min-height:34px !important;font-size:12px !important;}',
+    'html body #pauseModal .v97sec > .hh{font-size:13px !important;font-weight:700 !important;color:#dbe8fb !important;letter-spacing:0 !important;text-shadow:none !important;opacity:1 !important;}',
+    'html body #pauseModal #v43GhostPause{font-size:12.5px !important;gap:8px !important;justify-content:center !important;}',
+    'html body #pauseModal #v43GhostPause b{font-size:11px !important;padding:2px 8px !important;border-radius:7px !important;}',
+    'html body #pauseModal .v51multirow{display:flex;gap:7px;width:100%;}',
+    'html body #pauseModal .v51multirow > button{flex:1 1 0;min-width:0;}',
+    'html body #pauseModal #v51Forfeit{background:linear-gradient(180deg,#8a3a3a,#4a1a1c) !important;border-color:#a33 !important;color:#ffe2e2 !important;}',
+    'html body #pauseModal #v51LeaveRoom{background:linear-gradient(180deg,#3a4a6a,#1b2438) !important;border-color:#31436a !important;color:#dfe9fb !important;}',
+    /* 멀티 레이스 메뉴도 같은 톤 */
+    'html body #mpRaceMenu .mp-card{border-radius:16px !important;background:linear-gradient(180deg,#16203a,#0a1020) !important;border:2px solid #2f4370 !important;box-shadow:0 14px 40px rgba(0,0,0,.65) !important;}',
+    'html body #mpRaceMenu button{border-radius:12px !important;min-height:44px !important;font-size:14px !important;font-weight:700 !important;',
+    '  border:2px solid #0a1120 !important;box-shadow:inset 0 2px 0 rgba(255,255,255,.12),inset 0 -4px 0 rgba(0,0,0,.4),0 4px 0 #060a14 !important;}',
+    'html body #mpRaceMenu #v485RaceRestart{background:linear-gradient(180deg,#8a3a3a,#4a1a1c) !important;border-color:#a33 !important;color:#ffe2e2 !important;}',
+    'html body #mpRaceMenu #mpRaceLeave{background:linear-gradient(180deg,#3a4a6a,#1b2438) !important;border-color:#31436a !important;color:#dfe9fb !important;}',
+    'html body #mpRaceMenu #mpRaceResume{background:linear-gradient(180deg,#6ee7b7,#10b981 60%,#0b7a5c) !important;border-color:#065f46 !important;color:#04241a !important;}',
+
+    /* ---------- 모드/맵 선택 시트: 탭 잘림·설명 겹침 ---------- */
+    'html body .v43-card{overflow:visible !important;}',
+    'html body #v43Wiz .v43-card{max-height:calc(100dvh - 16px) !important;overflow-y:auto !important;padding-top:12px !important;}',
+    'html body #v43Wiz .v53tabs,html body #v43Wiz .v53tabbar{padding-top:2px !important;overflow:visible !important;}',
+    'html body #v43Wiz [data-wmode],html body #v43Wiz .v53m{min-height:74px !important;height:auto !important;overflow:visible !important;}',
+    'html body #v43Wiz [data-wmode] .d,html body #v43Wiz [data-wmode] .tx,html body #v43Wiz [data-wmode] .desc{',
+    '  white-space:normal !important;line-height:1.35 !important;display:block !important;overflow:visible !important;}',
+    'html body #v43Wiz .v53m b,html body #v43Wiz .v53m span{line-height:1.3 !important;}',
+    'html body #v43Wiz .fav{color:rgba(255,255,255,.32) !important;font-size:13px !important;text-shadow:none !important;}',
+    'html body #v43Wiz .fav.on,html body #v43Wiz .fav[data-fav="1"]{color:#fde047 !important;}',
+    'html body #v43Wiz .v53chip[data-v51fav]{white-space:nowrap !important;}',
+    'html body #v43Wiz .v51pin{color:rgba(255,255,255,.30) !important;background:rgba(8,12,24,.66) !important;border:1.5px solid rgba(148,163,184,.35) !important;font-weight:700 !important;}',
+    'html body #v43Wiz .v51pin.on{color:#fde047 !important;background:rgba(180,83,9,.85) !important;border-color:#fde68a !important;}',
+    'html body #v43WizModes .v43-mm.v50-mode{min-height:84px !important;grid-template-rows:auto auto auto !important;align-content:center !important;row-gap:2px !important;padding:9px 10px !important;}',
+    'html body #v43WizModes .v50-md{font-size:10.5px !important;line-height:1.32 !important;color:#a9bdd9 !important;-webkit-line-clamp:2 !important;overflow:hidden !important;}',
+    'html body #v43WizModes .v43-mm > span:not(.v50-mi):not(.v50-mb):not(.v50-md){grid-column:2 !important;grid-row:3 !important;display:block !important;margin-top:1px !important;font-size:9px !important;line-height:1.25 !important;color:#8ea3c4 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}',
+    'html body #v53ModeBar,html body #v53MapBar{position:sticky !important;top:0 !important;z-index:9 !important;background:linear-gradient(180deg,#101a30,#0b1324) !important;padding:6px 2px !important;border-radius:10px !important;}',
+    'html body #v43Wiz .v43-card{padding-top:10px !important;}',
+    /* 초기화 직후 세션: '모두 새 장식' 해금 팝업이 줄줄이 떠서 타이틀을 가로막지 않게 */
+    'html.v51wipe #v486pop, html.v51wipe #v486pop.on, body.v51wipe #v486pop{display:none !important;pointer-events:none !important;}',
+
+    /* ---------- 칭호 배지: 한 모양으로 고정 ---------- */
+    'html body #v43TPTitle .v51badge, html body #v485hTitle .v51badge{font-weight:700 !important;}',
+    'html body #v43TPTitle:empty{display:none !important;}',
+
+    /* ---------- 친구창: 상태 한마디 박스 제거 + 카드 가로 배치 ---------- */
+    'html body #v43Friends .v56-status-box,html body #v43Friends #v56MyStatus{display:none !important;}',
+    'html body #v43Friends .v99f{display:flex;align-items:center;gap:8px;padding:8px 9px !important;border-radius:12px !important;',
+    '  background:rgba(13,20,36,.92) !important;border:1.5px solid #24334f !important;min-height:62px !important;width:100% !important;}',
+    'html body #v43Friends .v99f .av{flex:0 0 40px;width:40px;height:40px;border-radius:50%;overflow:hidden;}',
+    'html body #v43Friends .v99f .mid{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;}',
+    'html body #v43Friends .v99f .nm{font-size:13px;font-weight:700;color:#eef6ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    'html body #v43Friends .v99f .sub{font-size:10.5px;color:#9db2d3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    'html body #v43Friends .v99f .rt{flex:0 0 auto;display:flex;align-items:center;gap:5px;}',
+    'html body #v43Friends .v99f .rt button{width:34px;height:34px;min-width:34px;padding:0 !important;border-radius:10px !important;',
+    '  display:flex;align-items:center;justify-content:center;font-size:15px !important;}'
+  ].join('\n');
+
+  function css() {
+    if ($('v51finCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v51finCss';
+    s.textContent = CSS;
+    doc.head.appendChild(s);
+  }
+
+  /* ================================================================ 2. 싱글/멀티 잔존 정리 */
+  var RANK_IDS = ['v97Rank', 'v51Rank', 'mpRankLine', 'v43RankLine'];
+  function hideRank(clear) {
+    for (var i = 0; i < RANK_IDS.length; i++) {
+      var e = $(RANK_IDS[i]);
+      if (!e) continue;
+      if (e.classList.contains('on')) e.classList.remove('on');
+      if (e.style.display) e.style.removeProperty('display');
+      if (clear && e.id === 'v97Rank' && e.innerHTML) e.innerHTML = '';
+    }
+  }
+  /* 싱글 시작 직전: 이전 멀티 판의 봇·순위·관전 상태를 완전히 비운다 */
+  function soloClean() {
+    hideRank(true);
+    try { if (V.R && Array.isArray(V.R.bots)) V.R.bots.length = 0; } catch (e) {}
+    try { if (V.R && V.R.rankRows && V.R.rankRows.length) V.R.rankRows.length = 0; } catch (e) {}
+    try {
+      var s = st();
+      if (s && !s.room) {
+        if (s.peers && s.peers.clear) s.peers.clear();
+        if (s.players && s.players.clear) s.players.clear();
+        if (s.pst && s.pst.clear) s.pst.clear();
+        s.spectating = false; s.eliminated = null; s.specId = null;
+      }
+    } catch (e) {}
+    try { doc.body.classList.remove('v47-race', 'v485-multi'); } catch (e) {}
+  }
+  var START_SEL = '#btnStartGame,#btnRestartRun,#v44RetrySolo,#soloEndAgain,#v51QPlay,#v42SoloAgain';
+  doc.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest(START_SEL) : null;
+    if (!t) return;
+    if (inRoom()) return;               /* 멀티 중 재시작은 건드리지 않는다 */
+    setTimeout(soloClean, 0);
+    setTimeout(soloClean, 420);
+    /* v5.1-final: 세션을 오가며 버튼의 원래 리스너가 사라지는 경우가 확인되어
+       (멀티 → 나가기 → 타이틀에서 도전 시작이 먹통) 한 번 더 시작을 보장한다. */
+    setTimeout(function () {
+      if (inPlay() || inRoom()) return;
+      if (root.JW51TUT && JW51TUT.state && JW51TUT.state().on) return;
+      /* 모드/맵 고르기 창이 떴으면 그건 정상 흐름이므로 가로채지 않는다 */
+      var open = doc.querySelector('#v43Wiz:not(.hidden), .v43-modal:not(.hidden), #v53Set:not(.hidden), #settingsModal:not(.hidden)');
+      if (open && open.getBoundingClientRect().height > 40) return;
+      var map = 'default', mode = 'normal';
+      try { mode = (root.JWMode.rules.mode) || 'normal'; map = (root.JWMode.rules.map) || 'default'; } catch (err) {}
+      try { if (root.JW51U && JW51U.startSolo) JW51U.startSolo(map, mode); } catch (err) {}
+    }, 300);
+  }, true);
+
+  /* 감시: 멀티가 아니면 순위 DOM 은 무조건 숨긴다 (인라인 display 잔존 차단) */
+  function rankGuard() {
+    if (racing()) return;
+    var e = $('v97Rank');
+    if (e && (e.classList.contains('on') || e.style.display === 'flex' || e.style.display === 'block')) hideRank(true);
+    else if (e && !e.__v51cleared) { e.__v51cleared = 1; if (!racing()) { e.innerHTML = ''; e.classList.remove('on'); e.style.removeProperty('display'); } }
+    var a = $('v51Rank'), b = $('mpRankLine');
+    if (a && a.style.display !== 'none') a.style.setProperty('display', 'none', 'important');
+    if (b && b.style.display !== 'none') b.style.setProperty('display', 'none', 'important');
+  }
+
+  /* ================================================================ 3. 사망 사유 정확히 */
+  var HEART_MODES = { boss: 1, bossrush: 1, raid: 1, oneheart: 1, bomb: 1 };
+  function normReason(reason, mode) {
+    reason = String(reason || 'fail');
+    mode = String(mode || 'normal');
+    if (reason === 'clear' || reason === 'giveup') return reason;
+    if (mode === 'lava') return 'lava';
+    if (mode === 'dive') return 'dive';
+    if (mode === 'zombie') return 'caught';
+    if (mode === 'oneheart') return 'heart';
+    if (mode === 'timeattack') return (reason === 'heart' || reason === 'fail' || reason === 'fall') ? 'timeup' : reason;
+    if (mode === 'boss' || mode === 'bossrush' || mode === 'raid') {
+      if (reason === 'heart' || reason === 'fail' || reason === 'fall') return 'boss';
+    }
+    /* 하트를 쓰지 않는 모드에서 '하트 소진'으로 끝나면 → 일반 실패로 */
+    if (reason === 'heart' && !HEART_MODES[mode]) return 'fail';
+    return reason;
+  }
+  function hookEndSolo() {
+    var M = root.JWMode;
+    if (!M || typeof M.endSolo !== 'function' || M.endSolo.__v51n) return;
+    var orig = M.endSolo;
+    var wrapped = function (reason, extra) {
+      var mode = 'normal';
+      try { mode = (M.solo && M.solo.mode) || (M.rules && M.rules.mode) || 'normal'; } catch (e) {}
+      if (extra && extra.modeId) mode = extra.modeId;
+      var nr = normReason(reason, mode);
+      if (nr !== reason) { try { console.log('[JW51FIN] endSolo reason', reason, '→', nr, '(' + mode + ')'); } catch (e) {} }
+      return orig.call(M, nr, extra);
+    };
+    wrapped.__v51n = 1;
+    wrapped.__v486g = 1;        /* 92_guard 가 다시 덮어쓰지 않게 (heart 무시 래퍼보다 바깥) */
+    M.endSolo = wrapped;
+    /* 결과창이 열린 뒤에도 사유가 엉뚱하면 한 번 더 고친다 */
+    root.JW51FIN = root.JW51FIN || {};
+    root.JW51FIN.fixReason = function () {
+      var d = M.lastSoloEnd;
+      if (!d) return;
+      var nr = normReason(d.reason, d.modeId);
+      if (nr !== d.reason) d.reason = nr;
+    };
+  }
+
+  /* ================================================================ 4. 일시정지: 멀티/싱글 구분 */
+  function raceMenuFix() {
+    /* 멀티 레이스 메뉴: '태초에서 다시하기' → '🏳️ 기권하기' (멀티에서 판 전체 재시작은 의미 없음) */
+    var b = $('v485RaceRestart');
+    if (b && b.getAttribute('data-v51forfeit') !== '1') {
+      b.setAttribute('data-v51forfeit', '1');
+      b.textContent = '🏳️ 기권하기';
+      var clone = b.cloneNode(false);
+      clone.textContent = '🏳️ 기권하기';
+      clone.id = b.id; clone.className = b.className; clone.setAttribute('data-v51forfeit', '1');
+      clone.addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        var rm = $('mpRaceMenu'); if (rm) rm.classList.add('hidden');
+        try { if (root.JW47 && root.JW47.forfeit) root.JW47.forfeit(); } catch (er) {}
+      });
+      b.parentNode.replaceChild(clone, b);
+    }
+    var lv = $('mpRaceLeave');
+    if (lv && lv.textContent !== '🚪 방으로 돌아가기') lv.textContent = '🚪 방으로 돌아가기';
+  }
+  function pauseFix() {
+    try { raceMenuFix(); } catch (e) {}
+    var pm = $('pauseModal');
+    if (!pm) return;
+    var g2 = $('v97g2');
+    if (!g2) return;
+    var multi = racing() || !!(st() && st().room && st().phase !== 'idle');
+    var forf = $('v51Forfeit'), leave = $('v51LeaveRoom');
+    if (multi) {
+      if (!forf) {
+        forf = doc.createElement('button');
+        forf.type = 'button'; forf.id = 'v51Forfeit';
+        forf.className = 'v51halfbtn';
+        forf.textContent = '🏳️ 기권하기';
+        forf.addEventListener('click', function (e) {
+          e.preventDefault(); e.stopPropagation();
+          try { pm.classList.add('hidden'); } catch (er) {}
+          try { if (root.JW47 && root.JW47.forfeit) root.JW47.forfeit(); } catch (er) {}
+        });
+        g2.appendChild(forf);
+      }
+      if (!leave) {
+        leave = doc.createElement('button');
+        leave.type = 'button'; leave.id = 'v51LeaveRoom';
+        leave.className = 'v51halfbtn';
+        leave.textContent = '🚪 방으로 돌아가기';
+        leave.addEventListener('click', function (e) {
+          e.preventDefault(); e.stopPropagation();
+          try { pm.classList.add('hidden'); } catch (er) {}
+          try {
+            var A = V.api && V.api();
+            if (A && A.leave) A.leave();
+          } catch (er) {}
+        });
+        g2.appendChild(leave);
+      }
+      [forf, leave].forEach(function (b) { if (b.parentElement !== g2) g2.appendChild(b); b.style.display = ''; });
+      ['btnRestartRun', 'btnQuitToTitle'].forEach(function (id) { var b = $(id); if (b) b.style.display = 'none'; });
+      var hh = g2.parentElement && g2.parentElement.querySelector('.hh');
+      if (hh && hh.textContent.indexOf('멀티') < 0) hh.textContent = '🏁 멀티 레이스 정리';
+    } else {
+      if (forf) forf.style.display = 'none';
+      if (leave) leave.style.display = 'none';
+      ['btnRestartRun', 'btnQuitToTitle'].forEach(function (id) { var b = $(id); if (b) b.style.display = ''; });
+      var hh2 = g2.parentElement && g2.parentElement.querySelector('.hh');
+      if (hh2 && hh2.textContent.indexOf('멀티') >= 0) hh2.textContent = '🚪 판 정리';
+    }
+  }
+
+  /* ================================================================ 5. 칭호 배지: 첫 프레임부터 한 모양 */
+  function equippedId() {
+    var id = '';
+    try { id = (root.JW51TITLES && root.JW51TITLES.equipped) ? root.JW51TITLES.equipped() : ''; } catch (e) {}
+    if (id && id !== 'auto') return id;
+    var want = '';
+    try { want = String((V.recTitleShort && V.recTitleShort()) || '').trim(); } catch (e) {}
+    if (!want) return '';
+    var list = [];
+    try { list = V.api().titles() || []; } catch (e) {}
+    var hit = '';
+    for (var i = 0; i < list.length; i++) {
+      var s = String(list[i].short || list[i].name || '').trim();
+      if (s !== want) continue;
+      /* 'rec'(내 기록 칭호) 보다 실제 등급 칭호(legend 등)를 먼저 고른다 */
+      if (list[i].id !== 'rec') return list[i].id;
+      hit = hit || list[i].id;
+    }
+    return hit;
+  }
+  function paintBadge(el) {
+    if (!el) return;
+    if (el.querySelector && el.querySelector('.v51badge')) return;   /* 이미 배지 */
+    var id = equippedId();
+    var txt = String(el.textContent || '').trim();
+    if (!id && (!txt || txt === '🌱 도전자' || txt === '자동 선택')) return;
+    var html = '';
+    try { if (id && root.JW51TITLES && JW51TITLES.badge) html = JW51TITLES.badge(id, true); } catch (e) {}
+    if (!html && txt) html = '<span class="v51badge g-legend">' + esc(txt) + '</span>';
+    if (!html) return;
+    el.innerHTML = html;
+  }
+  function watchBadges() {
+    /* 타이틀 화면이 다시 그려질 때마다 그 '즉시'(페인트 전) 배지로 맞춘다 */
+    var ts = $('titleScreen');
+    if (ts && !ts.__v51obs) {
+      ts.__v51obs = 1;
+      try {
+        new MutationObserver(function () {
+          var el = $('v43TPTitle');
+          if (el && !el.querySelector('.v51badge')) paintBadge(el);
+        }).observe(ts, { childList: true, subtree: true });
+      } catch (e) {}
+    }
+    ['v43TPTitle', 'v485hTitle', 'mpMyTitleNow'].forEach(function (id) {
+      var el = $(id);
+      if (!el || el.__v51obs) return;
+      if (!el.querySelector('.v51badge')) paintBadge(el);
+      el.__v51obs = 1;
+      try {
+        new MutationObserver(function () { paintBadge(el); }).observe(el, { childList: true, characterData: true, subtree: true });
+      } catch (e) {}
+    });
+  }
+
+  /* ================================================================ 6. ★ 즐겨찾기: 미등록은 빈 별 */
+  var FAV = 'jw43_fav_v1';
+  function favList() { try { var f = V.lsGet(FAV, []) || []; return Array.isArray(f) ? f : []; } catch (e) { return []; } }
+  function favSync() {
+    var w = $('v43Wiz');
+    if (!w) return;
+    var fav = favList();
+    var map = 'default', mode = 'normal';
+    try { map = (root.JWMap && JWMap.current) || 'default'; } catch (e) {}
+    try { mode = (root.JWMode && JWMode.rules && JWMode.rules.mode) || 'normal'; } catch (e) {}
+    function has(k) { for (var i = 0; i < fav.length; i++) if (String(fav[i]) === k) return true; return false; }
+    var modeCards = w.querySelectorAll('#v43WizModes [data-wmode]');
+    for (var i = 0; i < modeCards.length; i++) {
+      var card = modeCards[i];
+      var id = card.getAttribute('data-wmode');
+      var on = has(map + ':' + id) || has(id);
+      var pin = card.querySelector('.v51pin');
+      if (pin) {
+        var want = on ? '★' : '☆';
+        if (pin.textContent !== want) pin.textContent = want;
+        if (pin.classList.contains('on') !== on) pin.classList.toggle('on', on);
+      }
+    }
+    var mapCards = w.querySelectorAll('#v43WizMaps [data-wmap]');
+    for (var j = 0; j < mapCards.length; j++) {
+      var mc = mapCards[j];
+      var mid = mc.getAttribute('data-wmap');
+      var on2 = has(mid + ':' + mode);
+      var p2 = mc.querySelector('.v51pin');
+      if (p2) {
+        var w2 = on2 ? '★' : '☆';
+        if (p2.textContent !== w2) p2.textContent = w2;
+        if (p2.classList.contains('on') !== on2) p2.classList.toggle('on', on2);
+      }
+    }
+  }
+
+  /* ================================================================ 7. 숨은 오버레이가 터치를 가로채지 않게 */
+  function overlayGuard() {
+    var list = doc.querySelectorAll('.v51m, .v43-modal, #pauseModal, #settingsModal, #v97Pick, #v51TutM, #v54Confirm, #v47Confirm, #soloEnd, #mpResult');
+    for (var i = 0; i < list.length; i++) {
+      var e = list[i];
+      if (!e || e.__v51pe) continue;
+      var cs = getComputedStyle(e);
+      if (cs.display !== 'none' && cs.visibility !== 'hidden' && cs.pointerEvents !== 'none') continue;
+      var hidden = cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0';
+      if (hidden) { e.style.setProperty('pointer-events', 'none', 'important'); e.__v51pe = 1; }
+    }
+  }
+
+  /* ================================================================ 8. 상태 초기화 (1회) */
+  var WIPE_FLAG = 'jw51_wipe_v1';
+  function wipeDone() { try { return localStorage.getItem(WIPE_FLAG) === '1'; } catch (e) { return true; } }
+
+  /* ================================================================ 부트 */
+  var lastRank = 0;
+  function ensureEndSolo() {
+    var M = root.JWMode;
+    if (!M || typeof M.endSolo !== 'function') return;
+    if (!M.endSolo.__v51n) hookEndSolo();
+  }
+  function slowTick() {
+    try { ensureEndSolo(); } catch (e) {}
+    try { rankGuard(); } catch (e) {}
+    try { pauseFix(); } catch (e) {}
+    try { watchBadges(); } catch (e) {}
+    try { overlayGuard(); } catch (e) {}
+  }
+  function frameTick() {
+    /* 인게임: 순위 카드만 (멀티일 때) — 나머지는 1초 간격 */
+    try { if (inPlay()) rankGuard(); } catch (e) {}
+  }
+  function wipeSession() {
+    try {
+      if (sessionStorage.getItem('jw51_wipe_done') !== '1') return;
+      doc.documentElement.classList.add('v51wipe');
+      doc.body.classList.add('v51wipe');
+      var p = $('v486pop');
+      if (p) { p.classList.remove('on'); }
+      /* 앞으로 뜨는 해금 팝업도 이 세션에서는 조용히 닫는다 */
+      var n = 0;
+      setInterval(function () {
+        if (n++ > 400) return;
+        var q = $('v486pop');
+        if (q && q.classList.contains('on')) { q.classList.remove('on'); }
+      }, 700);
+    } catch (e) {}
+  }
+  function boot() {
+    css();
+    try { wipeSession(); } catch (e) {}
+    hookEndSolo();
+    slowTick();
+    setInterval(slowTick, 900);
+    /* 인게임 프레임 부담을 줄이기 위해 초당 4회만 검사 */
+    var n = 0;
+    (function loop() {
+      n++;
+      if (n % 15 === 0) { try { frameTick(); } catch (e) {} }
+      requestAnimationFrame(loop);
+    })();
+    /* 즐겨찾기/배지는 모달이 열릴 때만 */
+    doc.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest('#v43Wiz')) setTimeout(function () { try { favSync(); } catch (er) {} }, 60);
+    }, true);
+    setInterval(function () { try { favSync(); } catch (e) {} }, 1500);
+    console.log('[JW51FIN] final fixes ready');
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 260); });
+  else setTimeout(boot, 260);
+
+  root.JW51FIN = {
+    soloClean: soloClean, hideRank: hideRank, normReason: normReason,
+    wipeDone: wipeDone,
+    state: function () {
+      return { multi: racing(), room: inRoom(), mode: curMode(), rankOn: !!($('v97Rank') && $('v97Rank').classList.contains('on')) };
+    }
+  };
 })(window);
 
 </script>
