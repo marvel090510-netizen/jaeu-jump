@@ -24239,7 +24239,7 @@ extends CanvasLayer
         if (localStorage.getItem('jw484_update_toast') === '4.8.5-2') return;
         localStorage.setItem('jw484_update_toast', '4.8.5-2');
       } catch (e) { return; }
-      V.toast('🚀 v4.8-boss 테스트판', 'lucky', '👑 21맵 전용 보스·전용 패턴 · 🥊 보스 러시 등장/페이즈2/격파 연출 · 📖 보스 도감 · 🕹️ 미니게임 25종', 3800);
+      V.toast('🚀 v4.8-boss 테스트판', 'lucky', '👑 21맵 전용 보스·전용 패턴 · 🥊 보스 러시 등장/페이즈2/격파 연출 · 🕹️ 미니게임 25종은 싱글·멀티 안에서', 3800);
     }, 1400);
   };
 })(window);
@@ -46116,13 +46116,26 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
-   v4.8-mg2 : 00 코어 — 🕹️ 미니게임 전용관 셸 · 캔버스 · 입력 · 기록 · 친구 대전 버스
-   - 등반 모드와 완전히 분리된 오버레이(#v48mg). 타이틀의 '🕹️ 미니게임' 버튼으로 진입.
-   - 각 미니게임은 JW48MG.def({...}) 로 등록하고, 전용관이 시작/입력/결과를 맡는다.
-   - 혼자 / 봇 대전 / 친구(같은 시드·방 코드) 3가지 방식.
+   v4.8-mg2 : 00 코어 — 🕹️ 미니게임 셸 · 캔버스 · 입력 · 기록 · 대전 버스
+   - 등반 모드와 완전히 분리된 오버레이(#v48mg).
+   - 진입점은 싱글 ①모드의 🕹️ 미니게임 카테고리 / 멀티 방 설정 🎮 모드 (45_mgint.js).
+     타이틀의 전용관 버튼은 제거됐다.
+   - 각 미니게임은 JW48MG.def({...}) 로 등록하고, 셸이 시작/입력/결과를 맡는다.
+   - 혼자 / 봇 대전 / 방 대전(같은 시드·점수 동기화) 3가지 방식.
    ========================================================================== */
 (function (root) {
   'use strict';
@@ -46146,9 +46159,11 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   };
   MG.cur = null;          /* 진행 중 인스턴스 */
   MG.view = 'hub';
-  MG.vs = 'solo';         /* solo | bot | friend */
+  MG.vs = 'solo';         /* solo | bot | friend | room */
   MG.seed = 0;
   MG.invite = null;
+  MG.from = 'title';      /* title(내부 목록) | single | multi — 나가기/결과 버튼이 갈 곳 */
+  MG.roomBots = 0;        /* 방 대전일 때 방에 있는 봇 수(각자 결정적 시뮬) */
 
   function esc(s) {
     return String(s == null ? '' : s).replace(/[<>&"']/g, function (c) {
@@ -46277,14 +46292,14 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     d.innerHTML =
       '<div id="v48mgTop">' +
         '<button type="button" class="v48mg-b ghost" id="v48mgBack">← 나가기</button>' +
-        '<div class="tt" id="v48mgTitle">🕹️ 미니게임 전용관<small id="v48mgSub">25종 · 혼자 / 봇 / 친구</small></div>' +
+        '<div class="tt" id="v48mgTitle">🕹️ 미니게임<small id="v48mgSub">25종 · 혼자 / 봇 / 방 대전</small></div>' +
         '<button type="button" class="v48mg-b ghost" id="v48mgSeed">🌱 ' + MG.seedCode(MG.seed || 0) + '</button>' +
       '</div>' +
       '<div id="v48mgHub"></div>' +
       '<div id="v48mgPlay" class="hidden"><canvas id="v48mgCv" width="720" height="1200"></canvas></div>' +
       '<div id="v48mgFoot" class="hidden"></div>';
     doc.body.appendChild(d);
-    $('v48mgBack').addEventListener('click', function () { MG.exit(); });
+    $('v48mgBack').addEventListener('click', function () { MG.back(); });
     $('v48mgSeed').addEventListener('click', function () {
       if (MG.view === 'play') { MG.pauseToHub(); return; }
       var s = MG.seedCode(MG.seed);
@@ -46298,13 +46313,34 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   MG.shell = shell;
 
   /* ------------------------------------------------------------------ 화면 전환 */
-  MG.enter = function () {
+  MG.enter = function (opts) {
+    opts = opts || {};
+    MG.from = opts.from || 'title';
     shell();
     MG.open = true;
     $('v48mg').classList.remove('hidden');
     try { document.body.classList.add('v48mg-on'); } catch (e) {}
+    var bk = $('v48mgBack');
+    if (bk) bk.textContent = MG.from === 'multi' ? '← 대기실' : MG.from === 'single' ? '← 싱글 화면' : '← 나가기';
+    if (opts.game && MG.games[opts.game]) {
+      MG.start(opts.game, { vs: opts.vs || 'solo', seed: opts.seed });
+      return;
+    }
     MG.toHub();
     beep(880, 0.08, 0.1, 'square', 1180);
+  };
+  /* 어디로 돌아갈지: 싱글 → 싱글 ①모드(미니게임 목록), 멀티 → 대기실, 내부 목록 → 목록 */
+  MG.back = function () {
+    var f = MG.from, last = MG.cur ? MG.cur.id : '';
+    MG.exit();
+    if (f === 'single') {
+      try { if (root.JW48I && JW48I.backToSingle) JW48I.backToSingle(last); } catch (e) {}
+    } else if (f === 'multi') {
+      try { var s = $('v53Set'); if (s) s.classList.remove('on'); } catch (e) {}
+    } else {
+      MG.from = 'title';
+      try { MG.enter({ from: 'title' }); } catch (e) {}
+    }
   };
   MG.exit = function () {
     MG.stopGame();
@@ -46321,8 +46357,8 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (hub) hub.classList.remove('hidden');
     if (play) play.classList.add('hidden');
     if (foot) foot.classList.add('hidden');
-    if ($('v48mgTitle')) $('v48mgTitle').firstChild.nodeValue = '🕹️ 미니게임 전용관';
-    if ($('v48mgSub')) $('v48mgSub').textContent = MG.order.length + '종 · 혼자 / 봇 / 친구';
+    if ($('v48mgTitle')) $('v48mgTitle').firstChild.nodeValue = '🕹️ 미니게임';
+    if ($('v48mgSub')) $('v48mgSub').textContent = MG.order.length + '종 · 혼자 / 봇 / 방 대전';
     if (MG.renderHub) MG.renderHub();
   };
   MG.pauseToHub = function () { MG.toHub(); };
@@ -46355,9 +46391,11 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     $('v48mgPlay').classList.remove('hidden');
     $('v48mgFoot').classList.add('hidden');
     $('v48mgTitle').firstChild.nodeValue = (g.emoji || '🎮') + ' ' + g.name;
-    $('v48mgSub').textContent = (MG.vs === 'bot' ? '🤖 봇 대전' : MG.vs === 'friend' ? '👥 친구 대전 · 같은 시드' : '🙂 혼자 하기') +
+    $('v48mgSub').textContent = (MG.vs === 'bot' ? '🤖 봇 대전' : MG.vs === 'friend' ? '👥 친구 대전 · 같은 시드' :
+      MG.vs === 'room' ? '👥 방 대전 · 같은 시드' : '🙂 혼자 하기') +
       ' · 시드 ' + MG.seedCode(MG.seed);
     hudState.score = 0; hudState.status = ''; hudState.time = null; hudState.vs = null;
+    if (MG.vs === 'room') MG.scores = {};
 
     var a = makeApi(g);
     var inst = null;
@@ -46374,8 +46412,8 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       id: g.id, W: 360, H: 600, seed: MG.seed,
       rng: rng(MG.seed == null ? 1 : MG.seed),
       vs: MG.vs,
-      bot: MG.vs === 'bot',
-      friend: MG.vs === 'friend',
+      bot: MG.vs === 'bot' || (MG.vs === 'room' && MG.roomBots > 0),
+      friend: MG.vs === 'friend' || MG.vs === 'room',
       setScore: function (n) { hudState.score = n; },
       setStatus: function (s) { hudState.status = s; },
       setTime: function (t) { hudState.time = t; },
@@ -46412,7 +46450,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     c.over = true;
     c.result = res;
     try { if (c.inst && c.inst.over) c.inst.over(res); } catch (e) {}
-    if (MG.vs === 'friend') sendScore(raw);
+    if (MG.vs === 'friend' || MG.vs === 'room') sendScore(raw);
     res.peers = peerList();
     beep(win ? 1180 : 300, 0.16, 0.13, 'square', win ? 1560 : 220);
   }
@@ -46587,38 +46625,65 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   function drawResult(g, c) {
     if (!A0) A0 = arts({});
     var r = c.result || { score: 0, win: false };
-    g.fillStyle = 'rgba(4,7,14,.94)';
+    var roomMode = MG.vs === 'room';
+    g.fillStyle = 'rgba(4,7,14,.985)';
     g.fillRect(0, 0, 360, 600);
-    A0.panel(g, 20, 62, 320, 348, { r: 18, fill: 'rgba(18,26,44,.98)', stroke: 'rgba(150,190,255,.3)' });
-    var y = 118;
-    g.textAlign = 'center';
-    A0.text(g, r.win === true ? '🏆 승리!' : r.win === false ? '💀 패배' : '🏁 끝!', 180, y,
-      { size: 28, color: r.win === false ? '#fca5a5' : r.win === true ? '#a7f3d0' : '#e2e8f0', align: 'center' });
-    y += 24;
+    A0.panel(g, 18, 56, 324, 372, { r: 18, fill: 'rgba(18,26,44,.98)', stroke: 'rgba(150,190,255,.3)' });
+    var y = 96;
+    A0.text(g, roomMode ? '🏁 방 대전 결과' : r.win === true ? '🏆 승리!' : r.win === false ? '💀 패배' : '🏁 끝!', 180, y,
+      { size: roomMode ? 24 : 28, color: r.win === false && !roomMode ? '#fca5a5' : r.win === true && !roomMode ? '#a7f3d0' : '#e2e8f0', align: 'center' });
+    y += 20;
     A0.text(g, c.g.name, 180, y, { size: 12, color: '#93c5fd', align: 'center' });
-    y += 12;
+    y += 10;
     g.fillStyle = 'rgba(150,190,255,.18)';
     g.fillRect(56, y, 248, 1);
-    y += 44;
-    A0.text(g, String(r.score), 180, y, { size: 42, color: '#f8fafc', align: 'center' });
-    y += 18;
+    y += 40;
+    A0.text(g, String(r.score), 180, y, { size: 40, color: '#f8fafc', align: 'center' });
+    y += 16;
     A0.text(g, c.g.unit || '점', 180, y, { size: 11, color: '#94a3b8', align: 'center' });
-    y += 26;
+    y += 22;
     var lines = [];
-    if (r.note) String(r.note).split('\n').forEach(function (ln) { lines.push({ t: ln, c: '#cbd5e1', s: 12 }); });
-    if (MG.vs === 'bot' && hudState.vs) lines.push({ t: hudState.vs, c: '#fde68a', s: 11.5 });
-    if (r.best != null) lines.push({ t: (r.isNew ? '⭐ 최고 기록 갱신! ' : '최고 기록 ') + fmtRec(c.g, r.best), c: r.isNew ? '#fde047' : '#94a3b8', s: 11.5 });
-    if (r.peers && r.peers.length) {
+    if (roomMode) {
+      var rows = roomRows(c);
+      lines.push({ t: '👥 방 순위 ' + rows.length + '명', c: '#93c5fd', s: 11.5 });
+      var MED = ['🥇', '🥈', '🥉'];
+      rows.slice(0, 4).forEach(function (row, i) {
+        lines.push({
+          t: (MED[i] || ((i + 1) + '.')) + ' ' + row.nick + ' · ' + row.score + (c.g.unit ? ' ' + c.g.unit : ''),
+          c: row.me ? '#fde047' : '#cbd5e1', s: 11.5
+        });
+      });
+    }
+    if (r.note) String(r.note).split('\n').forEach(function (ln) { lines.push({ t: ln, c: '#cbd5e1', s: 11.5 }); });
+    if (hudState.vs) lines.push({ t: hudState.vs, c: '#fde68a', s: 11 });
+    if (r.best != null) lines.push({ t: (r.isNew ? '⭐ 최고 기록 갱신! ' : '최고 기록 ') + fmtRec(c.g, r.best), c: r.isNew ? '#fde047' : '#94a3b8', s: 11 });
+    if (r.peers && r.peers.length && !roomMode) {
       lines.push({ t: '👥 친구 점수', c: '#93c5fd', s: 11 });
       r.peers.slice(0, 3).forEach(function (p) { lines.push({ t: (p.nick || '친구') + ' · ' + p.score, c: '#cbd5e1', s: 11 }); });
     }
-    lines.slice(0, 6).forEach(function (ln) {
+    lines.slice(0, roomMode ? 9 : 6).forEach(function (ln) {
+      if (y > 356) return;
       A0.text(g, ln.t, 180, y, { size: ln.s, color: ln.c, align: 'center' });
-      y += Math.max(16, ln.s + 6);
+      y += Math.max(15, ln.s + 4);
     });
-    A0.btn('r1', 40, 426, 280, 44, '🔄 다시 하기', { color: 'gold', size: 15 });
-    A0.btn('r2', 40, 478, 134, 40, '🏠 목록', { size: 13 });
-    A0.btn('r3', 186, 478, 134, 40, '➡️ 다음 게임', { color: 'blue', size: 12.5 });
+    var b2 = MG.from === 'multi' ? '🏠 대기실로' : MG.from === 'single' ? '🏠 싱글 화면' : '🏠 목록';
+    A0.btn('r1', 40, 438, 280, 44, roomMode ? '🔄 같은 판 다시' : '🔄 다시 하기', { color: 'gold', size: 15 });
+    A0.btn('r2', 40, 488, 134, 40, b2, { size: 12.5 });
+    A0.btn('r3', 186, 488, 134, 40, roomMode ? '⚙️ 다음 게임' : '➡️ 다음 게임', { color: 'blue', size: 12 });
+  }
+
+  /* 방 대전 순위: 나 + 같은 판을 마친 방 친구들 */
+  function roomRows(c) {
+    var rows = [{ nick: (myNick() || '나') + ' (나)', score: hudState.score, me: true }];
+    Object.keys(MG.scores || {}).forEach(function (k) {
+      var s = MG.scores[k];
+      if (!s || !s.done) return;
+      if (s.g && c && c.id && s.g !== c.id) return;
+      rows.push({ nick: s.nick || '친구', score: Number(s.score) || 0 });
+    });
+    var low = !!(c && c.g && c.g.record && c.g.record.type === 'low');
+    rows.sort(function (a, b) { return low ? a.score - b.score : b.score - a.score; });
+    return rows;
   }
   function fmtRec(g, v) {
     if (v == null) return '-';
@@ -46639,7 +46704,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   MG.myNick = myNick;
 
   function sendScore(score) {
-    MG.send({ k: 'score', g: MG.cur ? MG.cur.id : '', seed: MG.seed, score: score, nick: myNick() });
+    MG.send({ k: 'score', g: MG.cur ? MG.cur.id : '', seed: MG.seed, score: score, nick: myNick(), done: true });
   }
 
   function onMsg(m) {
@@ -46657,7 +46722,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     }
     if (m.k === 'score' && m.g) {
       if (m.seed != null && (m.seed >>> 0) !== MG.seed) return;
-      MG.scores[pid] = { nick: m.nick || '친구', score: Number(m.score) || 0, done: true };
+      MG.scores[pid] = { nick: m.nick || '친구', score: Number(m.score) || 0, done: true, g: m.g }; 
       if (MG.cur && MG.cur.over) MG.cur.result.peers = peerList();
       if (mappedPeer()) toast('👥 ' + (m.nick || '친구') + ' · ' + m.score + '점', 'chat', '같은 시드 대전 결과', 2200);
     }
@@ -46758,12 +46823,23 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
         uiBtns.push({
           x: x, y: y, w: w, h: h, fn: function () {
             if (opt.fn) { opt.fn(); return; }
-            if (id === 'r1' && MG.cur) MG.start(MG.cur.id, { vs: MG.vs, seed: MG.newSeed() });
-            else if (id === 'r2') MG.toHub();
+            if (id === 'r1' && MG.cur) {
+              if (MG.vs === 'room') MG.start(MG.cur.id, { vs: 'room', seed: MG.seed });
+              else MG.start(MG.cur.id, { vs: MG.vs, seed: MG.newSeed() });
+            }
+            else if (id === 'r2') MG.back();
             else if (id === 'r3' && MG.cur) {
-              var i = MG.order.indexOf(MG.cur.id);
-              var nx = MG.order[(i + 1) % MG.order.length];
-              MG.start(nx, { vs: MG.vs, seed: MG.newSeed() });
+              if (MG.vs === 'room') {
+                MG.back();
+                try { if (root.JW48I) root.JW48I.msetOn = true; } catch (e) {}
+                setTimeout(function () {
+                  try { if (root.JW53SET && root.JW53SET.open) root.JW53SET.open('mode'); } catch (e) {}
+                }, 120);
+              } else {
+                var i = MG.order.indexOf(MG.cur.id);
+                var nx = MG.order[(i + 1) % MG.order.length];
+                MG.start(nx, { vs: MG.vs, seed: MG.newSeed() });
+              }
             }
           }
         });
@@ -46828,28 +46904,27 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (!MG.open) injectTitleButton();
   }
   function injectTitleButton() {
+    /* v4.8-mgint: 타이틀의 🕹️ 미니게임 전용관 버튼은 제거됐다(싱글/멀티 안으로 통합).
+       같은 줄에 있던 🎵 주크박스 바로가기만 남긴다. */
+    if ($('v48mgOpen')) { try { $('v48mgOpen').remove(); } catch (e) {} }
+    if ($('v48mgOpen2')) { try { $('v48mgOpen2').remove(); } catch (e) {} }
     var anchor = $('btnMultiplayer');
     if (!anchor || !anchor.parentElement) return;
     var host = anchor.parentElement.parentElement;
-    if (!host || $('v48mgOpen')) return;
+    if (!host || $('v48mgTitleWrap')) return;
     var wrap = doc.createElement('div');
     wrap.id = 'v48mgTitleWrap';
     wrap.style.cssText = 'display:flex;gap:6px;margin-top:6px;';
     wrap.innerHTML =
-      '<button type="button" id="v48mgOpen" class="v48mg-b" style="flex:1 1 auto;height:46px;font-size:14px;' +
-      'background:linear-gradient(180deg,#3ea8e0,#1f6ea8);color:#eaf9ff;border:1px solid #7fd4ff;' +
-      'box-shadow:inset 0 -3px 0 #14507e,0 4px 10px rgba(4,20,40,.45)">🕹️ 미니게임 <span style="font-size:10.5px;opacity:.9">25종</span></button>' +
-      '<button type="button" id="v48mgJuke" class="v48mg-b" style="flex:0 0 52px;height:46px;font-size:18px;' +
-      'background:linear-gradient(180deg,#2a3550,#1a2338);border:1px solid rgba(160,200,255,.35);color:#cfe6ff">🎵</button>';
+      '<button type="button" id="v48mgJuke" class="v48mg-b" style="flex:1 1 auto;height:36px;font-size:12px;' +
+      'background:linear-gradient(180deg,#2a3550,#1a2338);border:1px solid rgba(160,200,255,.35);color:#cfe6ff">🎵 BGM 주크박스</button>';
     var menu = $('btnOpenSettingsTitle');
     if (menu && menu.parentElement === host) host.insertBefore(wrap, menu);
     else host.appendChild(wrap);
-    $('v48mgOpen').addEventListener('click', function () { MG.enter(); });
     $('v48mgJuke').addEventListener('click', function () {
       if (MG.jukebox && MG.jukebox.open) MG.jukebox.open('title');
       else toast('🎵 주크박스', 'chat', '불러오는 중...', 1200);
     });
-    beep(520, 0.02, 0.02, 'sine', 640);
   }
   setInterval(boot, 700);
   setInterval(injectTitleButton, 1200);
@@ -52141,6 +52216,22 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (s0 != null) C2.subsOn = !!s0;
   } catch (e) {}
 
+  /* ★ v4.8-mgint: 등반 특수기능은 '옵션을 켰을 때만' 동작한다.
+     기본(클래식·일반 싱글)에서는 CO-OP 문·물약·역행·낙하산·중계가 전부 꺼져
+     순정 점프력/물리 그대로 논다. (이전에는 무조건 켜져 화면을 가리고 물리를 바꿨다) */
+  C2.on = false;
+  try {
+    var on0 = V.lsGet && V.lsGet('jw48c2_on', null);
+    if (on0 != null) C2.on = !!on0;
+  } catch (e) {}
+  C2.setOn = function (v) {
+    C2.on = !!v;
+    save('jw48c2_on', C2.on);
+    if (!C2.on) { endRun(); C2.buff = null; C2.para.active = false; }
+    try { paint(); } catch (e) {}
+    try { paintOpt(); } catch (e) {}
+  };
+
   function beep(f, d, v, t, f2) { try { V.beep(f, d, v, t, f2); } catch (e) {} }
   function toast(a, b, c, d) { try { V.toast(a, b, c, d); } catch (e) {} }
   function save(k, v) { try { V.lsSet(k, v); } catch (e) {} }
@@ -52165,7 +52256,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var s = doc.createElement('style');
     s.id = 'v48c2css';
     s.textContent = [
-      '#v48c2ui{position:fixed;left:8px;top:calc(env(safe-area-inset-top,0px) + 226px);z-index:36;',
+      '#v48c2ui{position:fixed;left:8px;top:calc(env(safe-area-inset-top,0px) + 226px);z-index:36;pointer-events:none;',
       '  display:none;flex-direction:row;flex-wrap:wrap;gap:4px;align-items:flex-start;max-width:calc(100vw - 16px);',
       '  font-family:system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;}',
       '#v48c2ui .c2b{pointer-events:auto;display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;',
@@ -52578,7 +52669,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     ui();
     var u = $('v48c2ui');
     if (!u) return;
-    if (!live()) { u.style.display = 'none'; return; }
+    if (!C2.on || !live()) { u.style.display = 'none'; return; }
     u.style.display = 'flex';
     u.style.top = Math.round(hudBottom() + 54) + 'px';
     var rw = $('v48c2rwN'); if (rw) rw.textContent = String(C2.rewindLeft);
@@ -52603,12 +52694,12 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var jp = w.jumpPower, hp = w.horizPower;
     w.jumpPower = function () {
       var b = jp ? jp.apply(this, arguments) : 1;
-      if (C2.buff && C2.buff.t > 0 && C2.buff.pow) b *= 1.22;
+      if (C2.on && C2.buff && C2.buff.t > 0 && C2.buff.pow) b *= 1.22;
       return b;
     };
     w.horizPower = function () {
       var b = hp ? hp.apply(this, arguments) : 1;
-      if (C2.buff && C2.buff.t > 0 && C2.buff.spd) b *= 1.4;
+      if (C2.on && C2.buff && C2.buff.t > 0 && C2.buff.spd) b *= 1.4;
       return b;
     };
   }
@@ -52620,6 +52711,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     try { drawFx(ctx, camY, lh); } catch (e) {}
   };
   function drawFx(ctx, camY, lh) {
+    if (!C2.on) return;
     C2.lastCam = camY; C2.lastLh = lh;
     var p = me();
     if (!p || !live()) return;
@@ -52745,6 +52837,10 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     w.tick = function (dt) {
       var r = ot.apply(this, arguments);
       try {
+        if (!C2.on) {
+          if (C2.running) endRun();
+          return r;
+        }
         if (live()) {
           if (!C2.running) startRun();
           gateTick(dt);
@@ -52769,6 +52865,52 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     });
   } catch (e) {}
 
+  /* ---------------------------------------------------------------- 옵션 스위치 */
+  function optRow(bid) {
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;' +
+      'background:#0b1322;border:2px solid #16223c;margin-top:6px">' +
+      '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:900;color:#fde047">🧪 등반 특수기능</div>' +
+      '<div style="font-size:9.5px;font-weight:700;color:#8fa2c0;line-height:1.35">역행 · 낙하산 · 물약 · CO-OP 스위치 문 · 중계 자막</div></div>' +
+      '<button type="button" id="' + bid + '" data-c2opt="1" style="min-width:60px;padding:6px 9px;border-radius:8px;font-size:11px;font-weight:900;border:2px solid #334155;background:#111a30;color:#cbd5e1">OFF</button>' +
+      '</div>';
+  }
+  function optionsUI() {
+    try {
+      var s = doc.getElementById('sgRulesBox');
+      if (s && s.parentElement && !$('v48c2Opt')) {
+        var d = doc.createElement('div');
+        d.id = 'v48c2Opt';
+        d.innerHTML = optRow('v48c2OptBtn');
+        s.parentElement.insertBefore(d, s.nextSibling);
+        paintOpt();
+      }
+      var pm = doc.querySelector('#pauseModal .pixel-panel');
+      if (pm && !$('v48c2OptP')) {
+        var d2 = doc.createElement('div');
+        d2.id = 'v48c2OptP';
+        d2.innerHTML = optRow('v48c2OptBtn2');
+        pm.appendChild(d2);
+        paintOpt();
+      }
+    } catch (e) {}
+  }
+  function paintOpt() {
+    ['v48c2OptBtn', 'v48c2OptBtn2'].forEach(function (id) {
+      var b = $(id);
+      if (!b) return;
+      b.textContent = C2.on ? 'ON' : 'OFF';
+      b.style.background = C2.on ? 'linear-gradient(180deg,#a7f3d0,#34d399)' : '#111a30';
+      b.style.color = C2.on ? '#04231a' : '#cbd5e1';
+      b.style.borderColor = C2.on ? '#047857' : '#334155';
+    });
+  }
+  doc.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-c2opt]') : null;
+    if (!b) return;
+    e.preventDefault();
+    C2.setOn(!C2.on);
+  });
+
   /* 리사이즈/캔버스 다시 그리기 대비 */
   function boot() {
     css();
@@ -52776,6 +52918,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     hookPower();
     hook();
     paint();
+    optionsUI();
   }
   boot();
   setInterval(function () { boot(); }, 1500);
@@ -54962,6 +55105,1121 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   doc.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { var m = $('v48bMod'); if (m) m.classList.remove('on'); }
   });
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v4.8-mgint : 45 🕹️ 미니게임 25종을 싱글/멀티 '안'으로 통합
+   - 타이틀의 전용관 버튼은 없앤다(00_core 에서 제거). 미니게임은
+     ① 싱글 위저드 ①모드 고르기 → 🕹️ 미니게임 카테고리 → 게임 선택 → 혼자/봇
+     ② 멀티 방 설정 🎮 모드 탭 → 🕹️ 미니게임 카테고리 → 방장이 선택 → 시작
+   - 기존 엔진(JW43)·미니게임 본체(JW48MG)는 건드리지 않고 DOM 위에만 얹는다.
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  var MG = root.JW48MG;
+  if (!MG) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var esc = MG.esc || function (s) { return String(s == null ? '' : s); };
+
+  var I = root.JW48I = root.JW48I || {};
+  I.on = false;            /* 싱글 ①모드 화면에서 미니게임 카테고리가 열려 있는가 */
+  I.msetOn = false;        /* 멀티 방 설정에서 미니게임 카테고리가 열려 있는가 */
+  I.picked = '';           /* 싱글에서 마지막으로 고른 게임 */
+
+  function list() {
+    var o = (MG.order && MG.order.length) ? MG.order : Object.keys(MG.games || {});
+    return o.filter(function (id) { return !!MG.games[id]; });
+  }
+  function gname(id) { var g = MG.games[id]; return g ? ((g.emoji || '🎮') + ' ' + g.name) : '🎮 미니게임'; }
+  function rec(id) {
+    var g = MG.games[id], b = MG.best && MG.best[id];
+    if (!g || !b || b.value == null || (g.record && g.record.type === 'none')) return '';
+    var v = b.value;
+    if (g.record && g.record.fmt) { try { return g.record.fmt(v); } catch (e) {} }
+    return String(v) + (g.unit ? ' ' + g.unit : '');
+  }
+
+  /* ------------------------------------------------------------------ CSS */
+  function css() {
+    if ($('v48iCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v48iCss';
+    s.textContent = [
+      /* 싱글 ①모드: 미니게임 카드 그리드 (v53mm 과 같은 결) */
+      '#v53MgGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:48dvh;',
+      '  overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:1px;}',
+      '@media(min-width:600px){#v53MgGrid{grid-template-columns:repeat(3,minmax(0,1fr));max-height:none;}}',
+      '.v48m{display:flex;align-items:center;gap:7px;padding:7px 8px;min-height:52px;text-align:left;min-width:0;',
+      '  background:linear-gradient(180deg,#22305a,#18213f);border:2px solid #0b1022;border-radius:10px;',
+      '  box-shadow:inset 0 -4px 0 rgba(0,0,0,.3),inset 0 2px 0 rgba(255,255,255,.08),0 3px 0 #05030a;cursor:pointer;}',
+      '.v48m:active{transform:translateY(2px);}',
+      '.v48m.on{box-shadow:inset 0 0 0 2px #fbbf24,0 3px 0 #05030a;}',
+      '.v48m .ic{flex:0 0 30px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:19px;',
+      '  background:rgba(8,12,24,.55);border:2px solid #0b1022;border-radius:8px;box-shadow:inset 0 -2px 0 rgba(0,0,0,.4);}',
+      '.v48m .tx{min-width:0;display:flex;flex-direction:column;gap:1px;}',
+      '.v48m .tx b{font-family:"Jua",sans-serif;font-size:12.5px;font-weight:400;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      '.v48m .tx i{font-style:normal;font-size:9px;color:#a9b8d4;line-height:1.25;overflow:hidden;max-height:24px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}',
+      '.v48m .tx s{text-decoration:none;font-size:8.5px;font-weight:900;color:#fde68a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+      /* 싱글: 혼자/봇 선택 */
+      '#v53MgPick{position:fixed;inset:0;z-index:11400;display:flex;align-items:center;justify-content:center;padding:10px;',
+      '  background:rgba(4,7,16,.8);}',
+      '#v53MgPick.hidden{display:none;}',
+      '#v53MgPick .card{width:min(94vw,420px);max-height:88dvh;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:9px;',
+      '  background:linear-gradient(180deg,#15203a,#0a1122);border:3px solid #0b1022;border-radius:16px;',
+      '  box-shadow:0 10px 0 rgba(0,0,0,.45),inset 0 2px 0 rgba(255,255,255,.08);}',
+      '#v53MgPick .hd{display:flex;align-items:center;gap:9px;}',
+      '#v53MgPick .hd .ic{flex:0 0 42px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:25px;',
+      '  background:rgba(8,12,24,.6);border:2px solid #0b1022;border-radius:11px;}',
+      '#v53MgPick .hd b{display:block;font-family:"Jua",sans-serif;font-size:17px;color:#fff;line-height:1.15;}',
+      '#v53MgPick .hd i{font-style:normal;font-size:10px;color:#a9b8d4;line-height:1.35;}',
+      '#v53MgPick .best{font-size:10.5px;font-weight:900;color:#fde68a;}',
+      '#v53MgPick .row{display:grid;grid-template-columns:1fr 1fr;gap:7px;}',
+      '#v53MgPick .row .v53btn{padding:12px 6px;font-size:13px;flex-direction:column;gap:2px;line-height:1.2;}',
+      '#v53MgPick .row .v53btn small{font-size:9px;font-weight:700;opacity:.85;}',
+      /* 멀티: 방 설정 모드 탭 안 게임 목록 */
+      '.v48mset{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;}',
+      '.v48mset .v48m{min-height:44px;padding:5px 6px;}',
+      '.v48mset .v48m .ic{flex:0 0 24px;width:24px;height:24px;font-size:15px;border-radius:7px;}',
+      '.v48mset .v48m .tx b{font-size:11.5px;}',
+      '.v48mg-now{display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:10px;',
+      '  background:linear-gradient(180deg,#1b3a2c,#12291f);border:2px solid #14532d;}',
+      '.v48mg-now b{font-family:"Jua",sans-serif;font-size:12.5px;color:#bbf7d0;}',
+      '.v48mg-now small{display:block;font-size:9px;color:#86efac;line-height:1.3;}',
+      '.v48mg-now button{margin-left:auto;font-size:10px;font-weight:900;color:#fecaca;background:#3f1414;',
+      '  border:2px solid #7f1d1d;border-radius:8px;padding:4px 8px;}',
+      '.v48mg-hint{font-size:9.5px;font-weight:800;color:#8fa2c0;line-height:1.4;}',
+      /* 대기실 뱃지 */
+      '#v48mgLobby{display:flex;align-items:center;gap:6px;margin-top:6px;padding:7px 9px;border-radius:10px;',
+      '  background:linear-gradient(180deg,#233a5c,#15243c);border:2px solid #2a5b8f;}',
+      '#v48mgLobby b{font-family:"Jua",sans-serif;font-size:12px;color:#bfe6ff;}',
+      '#v48mgLobby small{display:block;font-size:9px;color:#93b8dc;line-height:1.3;}',
+      '#v53MgStart{flex:1 1 0;font-size:13px;padding:10px;border-radius:10px;border:2px solid #043b2b;',
+      '  background:linear-gradient(180deg,#a7f3d0,#34d399 48%,#059669);color:#04231a;font-weight:900;}',
+      '#v53MgStart:active{transform:translateY(2px);}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+
+  /* ==================================================================
+     ① 싱글 플레이 — ①모드 고르기 안에 🕹️ 미니게임 카테고리
+     ================================================================== */
+  function cardHtml(id) {
+    var g = MG.games[id];
+    var r = rec(id);
+    return '<button type="button" class="v48m" data-mgi="' + id + '">' +
+      '<span class="ic">' + (g.emoji || '🎮') + '</span>' +
+      '<span class="tx"><b>' + esc(g.name) + '</b>' +
+      '<i>' + esc(g.desc || '') + '</i>' +
+      '<s>' + (r ? '🏅 ' + esc(r) : '기록 없음') + '</s></span></button>';
+  }
+
+  function ensureSingle() {
+    var step1 = $('v43WizStep1');
+    var bar = $('v53ModeBar');
+    if (!step1 || !bar) return;
+    css();
+    if (!$('v53MgChip')) {
+      var chip = doc.createElement('button');
+      chip.type = 'button';
+      chip.id = 'v53MgChip';
+      chip.className = 'v53chip';
+      chip.setAttribute('data-mgcat', '1');
+      chip.textContent = '🕹️ 미니게임';
+      bar.appendChild(chip);
+    }
+    if (!$('v53MgGrid')) {
+      var grid = doc.createElement('div');
+      grid.id = 'v53MgGrid';
+      grid.className = 'v53hide';
+      var anchor = $('v53ModeGrid');
+      if (anchor && anchor.parentElement) anchor.parentElement.insertBefore(grid, anchor.nextSibling);
+      else step1.appendChild(grid);
+      grid.addEventListener('click', function (e) {
+        var b = e.target && e.target.closest ? e.target.closest('[data-mgi]') : null;
+        if (!b) return;
+        openPick(b.getAttribute('data-mgi'));
+      });
+    }
+    if (!bar.__v48i) {
+      bar.__v48i = true;
+      bar.addEventListener('click', function (e) {
+        var t = e.target && e.target.closest ? e.target.closest('[data-mgcat],[data-mcat]') : null;
+        if (!t) return;
+        if (t.getAttribute('data-mgcat')) { I.on = true; paintSingle(true); try { MG.beep(880, 0.05, 0.07, 'square', 1180); } catch (er) {} }
+        else if (I.on) { I.on = false; paintSingle(); }
+      });
+    }
+  }
+
+  function paintSingle(force) {
+    var grid = $('v53MgGrid'), mg = $('v53ModeGrid'), chip = $('v53MgChip');
+    if (!grid) return;
+    if (I.on) {
+      if (mg) mg.classList.add('v53hide');
+      grid.classList.remove('v53hide');
+      if (force || grid.getAttribute('data-painted') !== '1') {
+        grid.innerHTML = list().map(cardHtml).join('');
+        grid.setAttribute('data-painted', '1');
+      }
+      if (chip) {
+        var bar = chip.parentElement;
+        if (bar) Array.prototype.forEach.call(bar.querySelectorAll('[data-mcat]'), function (b) { b.classList.toggle('on', b === chip); });
+        chip.classList.add('on');
+      }
+    } else {
+      grid.classList.add('v53hide');
+      if (mg) mg.classList.remove('v53hide');
+      if (chip) chip.classList.remove('on');
+    }
+  }
+
+  /* ---- 혼자 / 봇 선택 카드 ---- */
+  function openPick(id) {
+    var g = MG.games[id];
+    if (!g) return;
+    css();
+    var m = $('v53MgPick');
+    if (!m) {
+      m = doc.createElement('div');
+      m.id = 'v53MgPick';
+      m.className = 'hidden';
+      doc.body.appendChild(m);
+      m.addEventListener('click', function (e) {
+        if (e.target === m) closePick();
+      });
+    }
+    var r = rec(id);
+    m.innerHTML = '<div class="card">' +
+      '<div class="hd"><span class="ic">' + (g.emoji || '🎮') + '</span>' +
+      '<div><b>' + esc(g.name) + '</b><i>' + esc(g.desc || '') + '</i></div></div>' +
+      (r ? '<div class="best">🏅 내 최고 기록 ' + esc(r) + '</div>' : '<div class="best" style="color:#94a3b8">🏅 아직 기록이 없어요</div>') +
+      '<div class="row">' +
+      '<button type="button" class="v53btn green" data-pk="solo">🙂 혼자 하기<small>최고 기록 도전</small></button>' +
+      '<button type="button" class="v53btn blue" data-pk="bot">🤖 봇과 대전<small>같은 판에서 점수 승부</small></button>' +
+      '</div>' +
+      '<button type="button" class="v53btn small" data-pk="x">← 목록으로</button>' +
+      '</div>';
+    m.classList.remove('hidden');
+    I.picked = id;
+    m.querySelectorAll('[data-pk]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var k = b.getAttribute('data-pk');
+        if (k === 'x') { closePick(); return; }
+        closePick();
+        launch(id, k === 'bot' ? 'bot' : 'solo');
+      });
+    });
+  }
+  function closePick() {
+    var m = $('v53MgPick');
+    if (m) m.classList.add('hidden');
+  }
+
+  function launch(id, vs) {
+    try {
+      MG.enter({ from: 'single', game: id, vs: vs, seed: MG.newSeed() });
+    } catch (e) { console.warn('v48i launch', e); }
+  }
+
+  /* 미니게임을 마치고 돌아오면 싱글 ①모드 화면의 미니게임 목록을 그대로 보여 준다 */
+  I.backToSingle = function (pickedId) {
+    try { if (pickedId) I.picked = pickedId; } catch (e) {}
+    I.on = true;
+    setTimeout(function () {
+      try { if (root.JW43 && JW43.openWizard) JW43.openWizard(); } catch (e) {}
+      try { ensureSingle(); paintSingle(true); } catch (e) {}
+    }, 40);
+    setTimeout(function () { try { ensureSingle(); paintSingle(true); } catch (e) {} }, 500);
+  };
+
+  /* ==================================================================
+     ② 멀티 플레이 — 방 설정 🎮 모드 탭 안에 🕹️ 미니게임
+     ================================================================== */
+  function S() { try { return V.st() || null; } catch (e) { return null; } }
+  function isHost() { var s = S(); return !!(s && s.isHost); }
+  function room() { var s = S(); return (s && s.room) ? s.room : null; }
+  function phase() { var s = S(); return s ? s.phase : ''; }
+  function roomMg() {
+    var r = room(); if (!r) return '';
+    var x = r.__x43 || {};
+    var v = x.mg;
+    if (typeof v === 'string') return v;
+    if (v && typeof v === 'object' && v.g) return v.g;
+    return '';
+  }
+  function roomBots() {
+    try {
+      var n = (root.JW43 && JW43.R && JW43.R.bots) ? JW43.R.bots.length : 0;
+      if (!n) { try { n = Number((V.ex() || {}).bots) || 0; } catch (e) {} }
+      return n;
+    } catch (e) { return 0; }
+  }
+  function isModeTab() { try { return !!(root.JW53SET && root.JW53SET.tab === 'mode'); } catch (e) { return false; } }
+
+  function setRoomMg(id) {
+    var g = MG.games[id];
+    var label = id ? ('🕹️ 미니게임 → ' + (g ? (g.emoji || '') + ' ' + g.name : id)) : '🕹️ 미니게임 해제';
+    var s = S();
+    if (!s || !s.room) return;
+    if (isHost()) {
+      try { V.applyExtra({ mg: id || '' }, label); } catch (e) {}
+      try { V.toast(id ? '✅ 미니게임 선택' : '↩️ 미니게임 해제', 'lucky', label, 1800); } catch (e) {}
+    } else {
+      try { V.send({ t: 'v43prop', patch: { mg: id || '' }, label: label, nick: s.me.nick, pid: s.me.pid }); } catch (e) {}
+      try { V.toast('🙋 방장에게 제안', 'lucky', label, 2200); } catch (e) {}
+    }
+  }
+
+  function nowBlock() {
+    var id = roomMg();
+    if (!id) return '<div class="v48mg-hint">게임을 고르면 방장이 [🚀 미니게임 시작]을 누를 때 방 전원(사람 + 봇)이 같은 판으로 시작합니다.</div>';
+    return '<div class="v48mg-now"><div><b>' + esc(gname(id)) + '</b>' +
+      '<small>' + (isHost() ? '방장이 [시작]을 누르면 전원 같은 시드로 시작' : '방장이 시작하면 같은 판으로 들어갑니다') + '</small></div>' +
+      '<button type="button" data-mgoff="1">✕ 해제</button></div>';
+  }
+
+  function paintSetPane() {
+    var body = $('v53SetBody');
+    var m = $('v53Set');
+    if (!body || !m || !m.classList.contains('on') || !isModeTab()) return;
+    var bar = body.querySelector('.v53bar');
+    if (!bar) return;
+    if (!bar.querySelector('[data-mdf="mg"]')) {
+      var chip = doc.createElement('button');
+      chip.type = 'button';
+      chip.className = 'v53chip';
+      chip.setAttribute('data-mdf', 'mg');
+      chip.textContent = '🕹️ 미니게임';
+      bar.appendChild(chip);
+    }
+    if (!I.msetOn) { var c0 = bar.querySelector('[data-mdf="mg"]'); if (c0) c0.classList.remove('on'); return; }
+    if (body.getAttribute('data-mgset') === String(roomMg() || '') && body.querySelector('#v48mgSetList')) return;
+    /* 카테고리 칩줄은 그대로 두고 목록만 바꿔 끼운다 */
+    Array.prototype.forEach.call(bar.querySelectorAll('[data-mdf]'), function (b) { b.classList.remove('on'); });
+    var mgChip = bar.querySelector('[data-mdf="mg"]');
+    if (mgChip) mgChip.classList.add('on');
+    var barHTML = bar.outerHTML;
+    body.setAttribute('data-mgset', String(roomMg() || ''));
+    var cur = roomMg();
+    var h = nowBlock();
+    h += '<div class="v48mg-hint" style="margin-top:2px">' + (isHost() ? '🎮 25종 중 하나를 고르면 방 설정에 저장됩니다.' : '🔒 방장만 고를 수 있어요 · 누르면 방장에게 제안이 갑니다.') + '</div>';
+    h += '<div class="v48mset" id="v48mgSetList">' + list().map(function (id) {
+      var g = MG.games[id];
+      return '<button type="button" class="v48m' + (cur === id ? ' on' : '') + '" data-mgpick="' + id + '">' +
+        '<span class="ic">' + (g.emoji || '🎮') + '</span>' +
+        '<span class="tx"><b>' + esc(g.name) + '</b></span></button>';
+    }).join('') + '</div>';
+    body.innerHTML = barHTML + h;
+  }
+
+  /* ==================================================================
+     대기실 — 선택된 미니게임 뱃지 + 전용 시작 버튼
+     ================================================================== */
+  function syncLobby() {
+    var lobby = $('mpLobby');
+    var s = S();
+    var inLobby = !!(lobby && !lobby.classList.contains('hidden') && s && s.room && s.phase === 'lobby');
+    var badge = $('v48mgLobby');
+    var startBtn = $('v53MgStart');
+    var engBtn = $('mpStartBtn');
+    var id = inLobby ? roomMg() : '';
+    if (!inLobby || !id) {
+      if (badge) badge.remove();
+      if (startBtn) startBtn.remove();
+      if (engBtn && engBtn.style.display === 'none') engBtn.style.display = '';
+      return;
+    }
+    var host = isHost();
+    if (!badge) {
+      badge = doc.createElement('div');
+      badge.id = 'v48mgLobby';
+      var sum = lobby.querySelector('.mpb-summary');
+      var anch = $('mpLobbyRules');
+      if (anch && anch.parentElement) anch.parentElement.insertBefore(badge, anch.nextSibling);
+      else if (sum) sum.appendChild(badge);
+      else lobby.insertBefore(badge, lobby.firstChild);
+    }
+    var html = '<div><b>🕹️ ' + esc(gname(id)) + '</b><small>' +
+      (host ? '이 게임으로 방 전원이 겨룹니다 · [🚀 미니게임 시작]' : '방장이 시작하면 자동으로 들어갑니다') + '</small></div>';
+    if (badge.innerHTML !== html) badge.innerHTML = html;
+
+    if (host) {
+      if (engBtn) engBtn.style.display = 'none';
+      if (!startBtn) {
+        startBtn = doc.createElement('button');
+        startBtn.id = 'v53MgStart';
+        startBtn.type = 'button';
+        startBtn.textContent = '🚀 미니게임 시작';
+        startBtn.addEventListener('click', function (e) {
+          e.preventDefault(); e.stopPropagation();
+          var gid = roomMg();
+          if (gid) startRoom(gid);
+        });
+        if (engBtn && engBtn.parentElement) engBtn.parentElement.insertBefore(startBtn, engBtn.nextSibling);
+        else lobby.appendChild(startBtn);
+      }
+      if (startBtn) startBtn.style.display = '';
+    } else {
+      if (startBtn) startBtn.remove();
+      if (engBtn) engBtn.style.display = '';
+    }
+  }
+
+  function startRoom(id) {
+    if (!id || !MG.games[id]) return;
+    var seed = MG.newSeed();
+    MG.roomBots = roomBots();
+    MG.scores = {};
+    try { MG.send({ k: 'go', g: id, seed: seed, nick: MG.myNick() }); } catch (e) {}
+    try { $('v53Set').classList.remove('on'); } catch (e) {}
+    try { MG.enter({ from: 'multi', game: id, vs: 'room', seed: seed }); } catch (e) { console.warn('v48i room', e); }
+  }
+
+  /* 방장 시작 버튼: 미니게임이 골라져 있으면 레이스 대신 미니게임을 시작 */
+  window.addEventListener('click', function (e) {
+    var t = e.target;
+    var b = t && t.closest ? t.closest('#mpStartBtn') : null;
+    if (!b) return;
+    if (!isHost() || phase() !== 'lobby') return;
+    var id = roomMg();
+    if (!id) return;
+    e.preventDefault(); e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    startRoom(id);
+  }, true);
+
+  /* 게임 목록/해제 클릭 */
+  doc.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var pick = t.closest('[data-mgpick]');
+    if (pick) {
+      var id = pick.getAttribute('data-mgpick');
+      setRoomMg(id);
+      I.msetOn = true;
+      try { var body = $('v53SetBody'); if (body) body.removeAttribute('data-mgset'); } catch (er) {}
+      setTimeout(function () { try { paintSetPane(); } catch (er) {} }, 60);
+      return;
+    }
+    if (t.closest('[data-mgoff]')) {
+      setRoomMg('');
+      try { var b2 = $('v53SetBody'); if (b2) b2.removeAttribute('data-mgset'); } catch (er) {}
+      setTimeout(function () { try { paintSetPane(); } catch (er) {} }, 60);
+      return;
+    }
+    var chip = t.closest('[data-mdf]');
+    if (chip) {
+      var v = chip.getAttribute('data-mdf');
+      if (v === 'mg') {
+        I.msetOn = true;
+        setTimeout(function () { try { paintSetPane(); } catch (er) {} }, 0);
+      } else if (I.msetOn) {
+        I.msetOn = false;
+        setTimeout(function () {
+          try { if (root.JW53SET && root.JW53SET.open) root.JW53SET.open('mode'); } catch (er) {}
+        }, 0);
+      }
+    }
+  });
+
+  /* 방에서 시작 신호 수신 → 같은 시드로 전원 진입 */
+  V.onNet(function (m) {
+    if (!m || m.t !== 'v48mg') return;
+    var s = S();
+    if (!s || !s.room) return;
+    if (m._p && s.me && m._p === s.me.pid) return;
+    if (m.k === 'go' && m.g && MG.games[m.g]) {
+      MG.roomBots = roomBots();
+      MG.scores = {};
+      try { $('v53Set').classList.remove('on'); } catch (e) {}
+      try { MG.enter({ from: 'multi', game: m.g, vs: 'room', seed: m.seed }); } catch (e) { console.warn('v48i go', e); }
+    }
+  });
+
+  /* ==================================================================
+     비방장 제안 창(#v43Prop)에 미니게임 제안 추가
+     ================================================================== */
+  function augmentProp() {
+    var modal = $('v43Prop');
+    if (!modal || modal.classList.contains('hidden')) return;
+    var body = $('v43PropBody');
+    if (!body || body.querySelector('#v48mgProp')) return;
+    if (!room()) return;
+    var wrap = doc.createElement('div');
+    wrap.id = 'v48mgProp';
+    wrap.style.cssText = 'margin-top:8px;display:flex;flex-direction:column;gap:4px;';
+    var cur = roomMg();
+    var h = '<div class="v43-note">🕹️ <b>미니게임</b>도 제안할 수 있어요 (방장이 수락하면 바로 적용)</div>' +
+      '<div style="display:flex;gap:4px;flex-wrap:wrap;max-height:150px;overflow:auto">';
+    list().forEach(function (id) {
+      var g = MG.games[id];
+      h += '<button type="button" class="mp-chip' + (cur === id ? ' on' : '') + '" data-mgprop="' + id + '" style="font-size:10px;padding:5px 7px">' +
+        (g.emoji || '') + ' ' + esc(g.name) + '</button>';
+    });
+    h += '</div>';
+    wrap.innerHTML = h;
+    body.appendChild(wrap);
+    wrap.querySelectorAll('[data-mgprop]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-mgprop');
+        var g = MG.games[id];
+        var label = '🕹️ 미니게임 → ' + (g ? (g.emoji || '') + ' ' + g.name : id);
+        var s = S();
+        if (!s || !s.room) return;
+        if (s.isHost) { try { V.applyExtra({ mg: id }, label); } catch (e) {} }
+        else {
+          try { V.send({ t: 'v43prop', patch: { mg: id }, label: label, nick: s.me.nick, pid: s.me.pid }); } catch (e) {}
+          try { V.toast('🙋 방장에게 제안', 'lucky', label, 2200); } catch (e) {}
+        }
+        modal.classList.add('hidden');
+        try { if (root.JW485PROP) root.JW485PROP.key = ''; } catch (e) {}
+      });
+    });
+  }
+
+  /* ==================================================================
+     주기 반영
+     ================================================================== */
+  function tick() {
+    var wiz = $('v43Wiz');
+    if (wiz && !wiz.classList.contains('hidden') && $('v43WizStep1') && !$('v43WizStep1').classList.contains('hidden')) {
+      ensureSingle();
+      paintSingle(false);
+    }
+    try { syncLobby(); } catch (e) {}
+    var set = $('v53Set');
+    if (set && set.classList.contains('on')) { try { paintSetPane(); } catch (e) {} }
+    try { augmentProp(); } catch (e) {}
+  }
+  setInterval(function () { try { tick(); } catch (e) {} }, 300);
+
+  I.tick = tick;
+  I.paintSingle = paintSingle;
+  I.state = function () {
+    return { on: I.on, msetOn: I.msetOn, picked: I.picked, roomMg: roomMg(), from: MG.from, vs: MG.vs };
+  };
+  try { css(); } catch (e) {}
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v4.8-uilab : 46 대기실/설정 다듬기
+   - 멀티 대기실 깜빡임 제거: 주기적으로 같은 HTML 을 다시 쓰던 곳을 값이 같으면 건너뛰게
+     (innerHTML 을 멱등 setter 로 감싼다 · DOM 교체 0회)
+   - 방 정보 썸네일: 방에서 고른 맵 기준으로 고정 (엔진의 JWMap.current 를 로비에서 방 맵으로)
+   - 방 설정: '확인' → '닫기', 누르는 즉시 적용 · 즉시 반영(썸네일/요약/참가자)
+   - 채팅창: 새 메시지가 오면 항상 맨 아래로 (스크롤 튐 방지)
+   - 친구창: 마지막 접속 시간(방금/N초 전/N분 전/N시간 전/N일 전) 실시간 표시
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var U = root.JW48UI = root.JW48UI || {};
+
+  function S() { try { return V.st() || null; } catch (e) { return null; } }
+
+  /* ---------------------------------------------------------------- 1. 멱등 innerHTML */
+  function dedupe(el) {
+    if (!el || el.__v48dd) return;
+    var proto = Object.getPrototypeOf(el);
+    var d = null;
+    while (proto && !d) {
+      d = Object.getOwnPropertyDescriptor(proto, 'innerHTML');
+      proto = Object.getPrototypeOf(proto);
+    }
+    if (!d || !d.set) return;
+    el.__v48dd = true;
+    el.__v48lastHTML = null;
+    try {
+      Object.defineProperty(el, 'innerHTML', {
+        configurable: true,
+        get: function () { return d.get.call(this); },
+        set: function (v) {
+          var sv = String(v == null ? '' : v);
+          if (this.__v48lastHTML === sv && this.childNodes.length) return;   /* 같은 내용이면 DOM 교체 생략 */
+          this.__v48lastHTML = sv;
+          d.set.call(this, sv);
+        }
+      });
+    } catch (e) { el.__v48dd = false; }
+  }
+  var DEDUPE_SEL = ['#v43LobbySum', '#mpLobbyChatLog', '#v46PubBtn', '#mpLobbyRules', '#v53SetBody', '#mpBannerBox'];
+  function dedupeAll() {
+    DEDUPE_SEL.forEach(function (sel) { dedupe(doc.querySelector(sel)); });
+    ['#v43LobbySum', '#v43RoomTitle', '#v46PubBtn'].forEach(function (sel) { dedupeClass(doc.querySelector(sel)); });
+    dedupeText($('v48nbBtn'));
+    dedupeText($('mpLobbyStatus'));
+    dedupeText($('mpRuleHint'));
+  }
+
+  /* 같은 값으로 다시 쓰는 className / textContent 도 DOM 변화를 만들지 않게 */
+  function dedupeClass(el) {
+    if (!el || el.__v48dc) return;
+    var proto = Object.getPrototypeOf(el);
+    var d = null;
+    while (proto && !d) { d = Object.getOwnPropertyDescriptor(proto, 'className'); proto = Object.getPrototypeOf(proto); }
+    if (!d || !d.set) return;
+    el.__v48dc = true;
+    try {
+      Object.defineProperty(el, 'className', {
+        configurable: true,
+        get: function () { return d.get.call(this); },
+        set: function (v) { if (this.getAttribute('class') === String(v == null ? '' : v)) return; d.set.call(this, v); }
+      });
+    } catch (e) { el.__v48dc = false; }
+  }
+  function dedupeText(el) {
+    if (!el || el.__v48dt) return;
+    var proto = Object.getPrototypeOf(el);
+    var d = null;
+    while (proto && !d) { d = Object.getOwnPropertyDescriptor(proto, 'textContent'); proto = Object.getPrototypeOf(proto); }
+    if (!d || !d.set) return;
+    el.__v48dt = true;
+    try {
+      Object.defineProperty(el, 'textContent', {
+        configurable: true,
+        get: function () { return d.get.call(this); },
+        set: function (v) {
+          if (this.__v48textCache === String(v == null ? '' : v) && this.childNodes.length) return;
+          this.__v48textCache = String(v == null ? '' : v);
+          d.set.call(this, v);
+        }
+      });
+    } catch (e) { el.__v48dt = false; }
+  }
+
+  /* ---------------------------------------------------------------- 2. 방 설정 버튼 깜빡임 */
+  /* v4.8.5-3 의 rebindSetBtn 이 cloneNode 로 버튼을 계속 새로 만들어 화면이 떨렸다.
+     한 번만 붙이고 clone 루프를 멈춘다. */
+  function fixSetBtn() {
+    var b = $('v50SetBtn');
+    if (!b || b.__v48fix) return;
+    b.__v48fix = true;
+    b.__v53 = true;   /* 다른 패치의 clone 루프 차단 */
+    b.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      try {
+        if (root.JW53SET && root.JW53SET.open) root.JW53SET.open('map');
+        else if (root.JW48UI && root.JW48UI.openSet) root.JW48UI.openSet();
+      } catch (er) {}
+    }, true);
+  }
+
+  /* ---------------------------------------------------------------- 3. 방 정보 썸네일 */
+  var MAPHAS = { arcade: 1, arctic: 1, atlantis: 1, bamboo: 1, clock: 1, default: 1, dessert: 1, egypt: 1, fuji: 1, kitchen: 1, mansion: 1, newyork: 1, paris: 1, rainbow: 1, school: 1, seoul: 1, site: 1, space: 1, train: 1, volcano: 1, wuxia: 1 };
+  function thumbOf(id) { return 'assets/maps/t/' + (MAPHAS[id] ? id : 'default') + '.jpg'; }
+  function roomMap() {
+    var s = S();
+    if (s && s.room && (s.phase === 'lobby' || s.phase === 'idle')) return s.room.map || 'default';
+    return null;
+  }
+  function fixMapCurrent() {
+    var JM = root.JWMap;
+    if (!JM || JM.__v48cur) return;
+    var desc = Object.getOwnPropertyDescriptor(JM, 'current');
+    var store = { v: JM.current };
+    JM.__v48cur = true;
+    try {
+      Object.defineProperty(JM, 'current', {
+        configurable: true,
+        get: function () {
+          var rm = null;
+          try { rm = roomMap(); } catch (e) {}
+          return rm || store.v;
+        },
+        set: function (v) { store.v = v; }
+      });
+    } catch (e) { JM.__v48cur = false; }
+  }
+  function syncThumb() {
+    var s = S();
+    if (!s || !s.room) return;
+    var want = thumbOf(s.room.map || 'default');
+    var imgs = doc.querySelectorAll('#mpLobbyRules img.mpb-thumb-img, .mpb-summary img.mpb-thumb-img, #mpLobby img.mpb-thumb-img');
+    for (var i = 0; i < imgs.length; i++) {
+      if (imgs[i].getAttribute('src') !== want) imgs[i].setAttribute('src', want);
+    }
+    var body = $('mpLobbyRules');
+    if (body) {
+      if (!body.querySelector('img.mpb-thumb-img')) {
+        var cv = body.querySelector('canvas.mpb-thumb');
+        var im = doc.createElement('img');
+        im.className = 'mpb-thumb-img';
+        im.alt = '';
+        im.setAttribute('src', want);
+        if (cv) { cv.classList.add('v50-hide'); body.insertBefore(im, cv); }
+        else body.insertBefore(im, body.firstChild);
+      }
+      var cv2 = body.querySelector('canvas.mpb-thumb');
+      if (cv2 && !cv2.classList.contains('v50-hide')) cv2.classList.add('v50-hide');
+    }
+  }
+
+  /* ---------------------------------------------------------------- 4. 방 설정: 즉시 적용 + 닫기 */
+  function relabelFooters() {
+    var a = doc.querySelector('#v53Set .ft .v53btn');
+    if (a && (a.textContent || '').trim() === '확인') a.textContent = '닫기';
+    var b = doc.querySelector('#v50Set .v50s-ok');
+    if (b && (b.textContent || '').trim() === '확인') b.textContent = '닫기';
+  }
+  function refreshAfterPick() {
+    try { if (root.JW53SET && root.JW53SET.open && $('v53Set') && $('v53Set').classList.contains('on')) { /* 이미 내부에서 paintSet */ } } catch (e) {}
+    try { if (V.api().renderLobby) V.api().renderLobby(); } catch (e) {}
+    try { syncThumb(); } catch (e) {}
+    try { if (root.JW48I && root.JW48I.tick) root.JW48I.tick(); } catch (e) {}
+  }
+
+  /* ---------------------------------------------------------------- 5. 채팅 스크롤 */
+  function chatSticky() {
+    var log = $('mpLobbyChatLog');
+    if (!log || log.__v48sticky) return;
+    log.__v48sticky = true;
+    try {
+      new MutationObserver(function () {
+        log.scrollTop = log.scrollHeight;
+      }).observe(log, { childList: true });
+    } catch (e) {}
+  }
+
+  /* ---------------------------------------------------------------- 6. 친구 마지막 접속 */
+  var LS_SEEN = 'jw48_seen_v1';
+  function seenMap() { try { return V.lsGet(LS_SEEN, {}) || {}; } catch (e) { return {}; } }
+  var SEEN = seenMap();
+  function saveSeen() { try { V.lsSet(LS_SEEN, SEEN); } catch (e) {} }
+  function noteSeen(ftag, ts) {
+    if (!ftag || !ts) return;
+    if (!SEEN[ftag] || ts > SEEN[ftag]) { SEEN[ftag] = ts; SEEN.__dirty = 1; }
+  }
+  function collectSeen() {
+    var s = S();
+    if (!s) return;
+    try {
+      Object.keys(s.presence || {}).forEach(function (k) {
+        var pr = s.presence[k];
+        if (pr && pr.ts) noteSeen(k, pr.ts);
+      });
+    } catch (e) {}
+    try {
+      var F = root.JW43FR;
+      if (F && F.act) Object.keys(F.act).forEach(function (k) { var a = F.act[k]; if (a && a.at) noteSeen(k, a.at); });
+    } catch (e) {}
+    try {
+      var st = root.JW50F && root.JW50F.state ? root.JW50F.state() : null;
+      if (st && st.act) Object.keys(st.act).forEach(function (k) { var a = st.act[k]; if (a && a.at) noteSeen(k, a.at); });
+    } catch (e) {}
+    if (SEEN.__dirty) { SEEN.__dirty = 0; try { delete SEEN.__dirty; } catch (e) {} saveSeen(); }
+  }
+  function lastSeenOf(ftag) {
+    var best = SEEN[ftag] || 0;
+    var s = S();
+    try {
+      var pr = s && s.presence && s.presence[ftag];
+      if (pr && pr.ts > best) best = pr.ts;
+    } catch (e) {}
+    try {
+      var F = root.JW43FR;
+      var a = F && F.act && F.act[ftag];
+      if (a && a.at > best) best = a.at;
+    } catch (e) {}
+    return best;
+  }
+  function rel(ms) {
+    var d = Math.max(0, ms);
+    if (d < 10000) return '방금';
+    if (d < 60000) return Math.floor(d / 1000) + '초 전';
+    if (d < 3600000) return Math.floor(d / 60000) + '분 전';
+    if (d < 86400000) return Math.floor(d / 3600000) + '시간 전';
+    return Math.floor(d / 86400000) + '일 전';
+  }
+  /* 친구창이 다시 그려져도 오프라인 줄의 '오프라인' 을 '12분 전 접속' 으로 바꾼다 */
+  function paintLastSeen() {
+    var box = $('v43FriendList');
+    if (box) {
+      var rows = box.querySelectorAll('.v43-frow[data-fdet]');
+      for (var i = 0; i < rows.length; i++) {
+        var row = rows[i];
+        var ftag = row.getAttribute('data-fdet');
+        var stEl = row.querySelector('.st');
+        if (!stEl || !ftag) continue;
+        var t = (stEl.textContent || '').trim();
+        if (t !== '오프라인' && t.indexOf('접속') < 0) continue;
+        var last = lastSeenOf(ftag);
+        var want = last ? (rel(Date.now() - last) + ' 접속') : '접속 기록 없음';
+        if (stEl.textContent !== want) stEl.textContent = want;
+        if (stEl.style.color !== '' && last) stEl.style.color = '';
+      }
+    }
+    var list = $('mpFriendList');
+    if (list) {
+      var rs = list.querySelectorAll('.mp-lrow');
+      for (var j = 0; j < rs.length; j++) {
+        var r2 = rs[j];
+        var m = (r2.textContent || '').match(/#([A-Z0-9]{4,8})/);
+        if (!m) continue;
+        var ft = m[1];
+        var spans = r2.querySelectorAll('span');
+        for (var k = 0; k < spans.length; k++) {
+          var tx = (spans[k].textContent || '').trim();
+          if (tx !== '오프라인') continue;
+          var lt = lastSeenOf(ft);
+          spans[k].textContent = lt ? (rel(Date.now() - lt) + ' 접속') : '오프라인';
+          break;
+        }
+      }
+    }
+  }
+
+  /* v4.8.5 친구 허브(JW485HUB.act)에도 마지막 접속 시각을 미리 심어 '접속 기록 없음' 대신 상대시간이 뜨게 */
+  function seedHubAct() {
+    var HUB = root.JW485HUB;
+    if (!HUB || !HUB.act) return;
+    var fr = [];
+    try { fr = V.lsGet('jw_friends_v1', []) || []; } catch (e) { return; }
+    fr.forEach(function (f) {
+      var t = f && f.ftag;
+      if (!t) return;
+      if (HUB.act[t]) return;
+      var last = SEEN[t] || 0;
+      if (last) HUB.act[t] = { at: last, act: 'off', hidden: true };
+    });
+  }
+
+  /* ---------------------------------------------------------------- 주기 반영 */
+  function tick() {
+    dedupeAll();
+    fixSetBtn();
+    relabelFooters();
+    chatSticky();
+    syncThumb();
+    seedHubAct();
+    paintLastSeen();
+  }
+  function slow() { collectSeen(); }
+  fixMapCurrent();
+  setInterval(function () { try { tick(); } catch (e) {} }, 350);
+  setInterval(function () { try { slow(); } catch (e) {} }, 8000);
+  doc.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest('#v53Set') || t.closest('#v50Set')) setTimeout(function () { try { refreshAfterPick(); } catch (e) {} }, 220);
+  }, true);
+
+  U.tick = tick;
+  U.lastSeenOf = lastSeenOf;
+  U.rel = rel;
+  U.dedupe = dedupe;
+  try { tick(); } catch (e) {}
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v4.8-joinlab : 47 방 참가 로딩창 — 초대 · 초대링크(?room=) · 공개방 · 코드 입력
+   - 방에 들어가는 동안 '연결 중' 화면을 띄우고, 연결되면 대기실로 자연스럽게,
+     실패하면 이유 + [다시 시도] 를 보여 준다. 취소하면 원래 화면으로 돌아간다.
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var J = root.JW48JOIN = root.JW48JOIN || {};
+  var st = null;
+  var T0 = 0, code0 = '', done = false, timer = null, lastWhy = '';
+
+  function S() { try { return V.st() || null; } catch (e) { return null; } }
+  function norm(v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5); }
+
+  /* ---------------------------------------------------------------- CSS */
+  function css() {
+    if ($('v48jlCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v48jlCss';
+    s.textContent = [
+      '#v48jl{position:fixed;inset:0;z-index:12800;display:flex;align-items:center;justify-content:center;',
+      '  background:radial-gradient(120% 90% at 50% 0%,#16233d 0%,#080d19 60%,#05070f 100%);',
+      '  font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#e8effc;',
+      '  padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));}',
+      '#v48jl.hidden{display:none;}',
+      '#v48jl .card{width:min(92vw,380px);display:flex;flex-direction:column;align-items:center;gap:12px;',
+      '  padding:22px 18px 16px;border-radius:18px;border:2px solid #1d2b46;',
+      '  background:linear-gradient(180deg,#111c33,#0a1122);box-shadow:0 14px 0 rgba(0,0,0,.45),inset 0 2px 0 rgba(255,255,255,.07);}',
+      '#v48jl .spin{width:56px;height:56px;border-radius:50%;border:4px solid rgba(125,211,252,.18);border-top-color:#38bdf8;',
+      '  animation:v48jspin .9s linear infinite;}',
+      '@keyframes v48jspin{to{transform:rotate(360deg);}}',
+      '#v48jl .ok .spin{border-top-color:#34d399;animation:none;border-color:rgba(52,211,153,.35);}',
+      '#v48jl .bad .spin{border-top-color:#f87171;animation:none;border-color:rgba(248,113,113,.35);}',
+      '#v48jl .tt{font-family:"Jua",sans-serif;font-size:19px;color:#fff;text-align:center;line-height:1.2;}',
+      '#v48jl .cd{font-family:"Jua",sans-serif;font-size:26px;letter-spacing:.22em;color:#fde047;',
+      '  padding:4px 12px;border-radius:10px;background:#0b1322;border:1px solid #25324c;}',
+      '#v48jl .st{font-size:12px;font-weight:800;color:#9fb0cc;text-align:center;line-height:1.45;min-height:34px;}',
+      '#v48jl .bar{width:100%;height:6px;border-radius:3px;background:rgba(148,180,230,.16);overflow:hidden;}',
+      '#v48jl .bar i{display:block;width:36%;height:100%;border-radius:3px;background:linear-gradient(90deg,#38bdf8,#7dd3fc);',
+      '  animation:v48jbar 1.15s ease-in-out infinite;}',
+      '@keyframes v48jbar{0%{margin-left:-36%}100%{margin-left:100%}}',
+      '#v48jl.ok .bar i{animation:none;margin-left:0;width:100%;background:#34d399;}',
+      '#v48jl.bad .bar i{animation:none;margin-left:0;width:100%;background:#f87171;}',
+      '#v48jl .row{display:flex;gap:8px;width:100%;margin-top:2px;}',
+      '#v48jl button{flex:1;padding:11px 8px;border-radius:11px;font-size:13px;font-weight:900;cursor:pointer;',
+      '  border:2px solid #2b3a58;background:#16203380;color:#cfe0f6;}',
+      '#v48jl button.pri{background:linear-gradient(180deg,#a7f3d0,#34d399 55%,#059669);color:#04231a;border-color:#047857;}',
+      '#v48jl button:active{transform:translateY(1px);}',
+      '#v48jl .tip{font-size:10px;font-weight:700;color:#7f93b3;text-align:center;line-height:1.4;}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+
+  function build() {
+    css();
+    var d = $('v48jl');
+    if (d) return d;
+    d = doc.createElement('div');
+    d.id = 'v48jl';
+    d.className = 'hidden';
+    d.innerHTML =
+      '<div class="card">' +
+      '<div class="spin"></div>' +
+      '<div class="tt" id="v48jlT">방에 참가하는 중</div>' +
+      '<div class="cd" id="v48jlC">ABCDE</div>' +
+      '<div class="st" id="v48jlS">방 연결 중...</div>' +
+      '<div class="bar"><i></i></div>' +
+      '<div class="row"><button type="button" id="v48jlCancel">취소</button>' +
+      '<button type="button" class="pri hidden" id="v48jlRetry">다시 시도</button></div>' +
+      '<div class="tip" id="v48jlTip">방장이 접속 중이어야 들어갈 수 있어요</div>' +
+      '</div>';
+    doc.body.appendChild(d);
+    $('v48jlCancel').addEventListener('click', cancel);
+    $('v48jlRetry').addEventListener('click', retry);
+    return d;
+  }
+
+  function setState(kind, title, sub, tip) {
+    var d = build();
+    d.classList.remove('ok', 'bad');
+    if (kind) d.classList.add(kind);
+    if (title) $('v48jlT').textContent = title;
+    if (sub != null) $('v48jlS').textContent = sub;
+    if (tip != null) $('v48jlTip').textContent = tip;
+    var r = $('v48jlRetry');
+    if (r) r.classList.toggle('hidden', kind !== 'bad');
+  }
+
+  function open(code) {
+    build();
+    code0 = norm(code);
+    T0 = performance.now();
+    done = false;
+    lastWhy = '';
+    $('v48jlC').textContent = code0 || '-----';
+    var d = $('v48jl');
+    d.classList.remove('hidden', 'ok', 'bad');
+    if (timer) { clearInterval(timer); timer = null; }
+    if (code0.length < 4) {
+      done = true;
+      setState('bad', '코드가 짧아요', '방 코드는 5자리 영문·숫자예요 (입력: ' + (code0 || '없음') + ')',
+        '친구에게 받은 초대 링크를 그대로 눌러도 됩니다');
+      return;
+    }
+    setState('', '방에 참가하는 중', '방 연결 중...', '방장이 접속 중이어야 들어갈 수 있어요');
+    timer = setInterval(watch, 160);
+    try { V.beep(720, 0.06, 0.07, 'square', 960); } catch (e) {}
+  }
+
+  function close() {
+    if (timer) { clearInterval(timer); timer = null; }
+    var d = $('v48jl');
+    if (d) d.classList.add('hidden');
+  }
+
+  function cancel() {
+    if (done) { close(); return; }
+    close();
+    try { if (V.api && V.api().leave) V.api().leave(); } catch (e) {}
+    try {
+      var mp = $('mpScreen');
+      if (mp) mp.classList.remove('hidden');
+      var lb = $('mpLobby');
+      if (lb) lb.classList.add('hidden');
+      var ts = $('titleScreen');
+      if (ts) ts.classList.add('hidden');
+    } catch (e) {}
+    try { V.toast('참가 취소', 'chat', '방 목록으로 돌아왔어요', 1600); } catch (e) {}
+  }
+
+  function retry() {
+    var code = code0;
+    close();
+    try { if (V.api && V.api().leave) V.api().leave(); } catch (e) {}
+    var inp = $('mpJoinCode');
+    var jb = $('mpJoinBtn');
+    if (inp) inp.value = code;
+    setTimeout(function () {
+      if (jb) jb.click();
+      else open(code);
+    }, 320);
+  }
+
+  /* 상태 감시 */
+  function watch() {
+    if (done) return;
+    var s = S();
+    var el = (performance.now() - T0) / 1000;
+    if (!s) return;
+    var why = lastWhy;
+    if (!why) {
+      var se = $('mpStatus') || $('mpLobbyStatus');
+      var tx = se ? (se.textContent || '') : '';
+      if (tx.indexOf('🚫') >= 0) why = tx.replace(/^[^\w가-힣]*/, '').trim();
+    }
+    var inLobby = (s.phase === 'lobby' && s.room && s.room.code === code0);
+    if (inLobby && s.joined) {
+      done = true;
+      setState('ok', '입장 완료!', '대기실로 이동합니다...', '준비를 누르면 방장이 시작할 수 있어요');
+      try { V.beep(1040, 0.1, 0.1, 'square', 1400); } catch (e) {}
+      setTimeout(function () { close(); }, 420);
+      setTimeout(function () {
+        try { V.toast('✅ 방 입장 완료', 'lucky', '코드 ' + code0, 2000); } catch (e) {}
+      }, 260);
+      return;
+    }
+    if (why && (s.phase === 'idle' || !s.room)) {
+      done = true;
+      setState('bad', '참가하지 못했어요', '🚫 ' + why, '방장에게 새 코드를 받거나 코드를 확인해 주세요');
+      return;
+    }
+    if (!s.room || s.phase === 'idle') {
+      /* joinRoom 초반: 방 코드 길이 문제 등 */
+      if (el > 0.7) {
+        done = true;
+        setState('bad', '참가하지 못했어요', '방 코드를 확인해 주세요 (5자리 영문·숫자)',
+          '초대 링크는 ?room=코드 형태예요');
+        return;
+      }
+    }
+    if (inLobby && !s.joined) {
+      setState('', '방에 참가하는 중',
+        el < 8 ? ('방장 응답을 기다리는 중... ' + el.toFixed(1) + '초')
+               : ('아직 응답이 없어요 · ' + el.toFixed(0) + '초 (조금 더 기다려 봅니다)'),
+        '방장이 앱을 켜 두고 있어야 들어갈 수 있어요');
+      if (el > 20) {
+        done = true;
+        setState('bad', '방장 응답이 없어요', '코드 ' + code0 + ' · 연결이 끊겼거나 방이 닫혔어요',
+          '방장에게 새 코드를 받아 다시 시도해 주세요');
+      }
+      return;
+    }
+    setState('', '방에 참가하는 중', '방 연결 중... ' + el.toFixed(1) + '초', null);
+  }
+
+  /* ---------------------------------------------------------------- 참가 진입 가로채기 */
+  function onJoinClick(e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (!t.closest('#mpJoinBtn')) return;
+    var inp = $('mpJoinCode');
+    if (inp) { try { inp.maxLength = 8; } catch (er) {} }
+    var code = norm(inp ? inp.value : '');
+    if (inp && inp.value !== code) inp.value = code;
+    open(code);
+  }
+  doc.addEventListener('click', onJoinClick, true);
+  doc.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    var t = e.target;
+    if (!t || t.id !== 'mpJoinCode') return;
+    var inp = $('mpJoinCode');
+    var code = norm(inp ? inp.value : '');
+    if (inp) inp.value = code;
+    if (!code) return;
+    open(code);
+  }, true);
+  /* 코드 입력창: 대문자·숫자만 (붙여넣은 띄어쓰기도 정리) */
+  doc.addEventListener('input', function (e) {
+    var t = e.target;
+    if (!t || t.id !== 'mpJoinCode') return;
+    try { if (t.maxLength === 5 || t.maxLength < 0) t.maxLength = 8; } catch (er) {}
+    var v = norm(t.value);
+    if (t.value !== v) t.value = v;
+  }, true);
+  /* 입력창이 생길 때마다 maxlength 완화 */
+  setInterval(function () {
+    var i = $('mpJoinCode');
+    if (i && i.maxLength === 5) { try { i.maxLength = 8; } catch (e) {} }
+  }, 1500);
+
+  /* 실패 사유 문구 수집 */
+  function watchStatusText() {
+    ['mpStatus', 'mpLobbyStatus'].forEach(function (id) {
+      var el = $(id);
+      if (!el || el.__v48jl) return;
+      el.__v48jl = true;
+      try {
+        new MutationObserver(function () {
+          var tx = el.textContent || '';
+          if (tx.indexOf('🚫') >= 0) lastWhy = tx.replace(/^[^\w가-힣]*/, '').trim();
+        }).observe(el, { childList: true, characterData: true, subtree: true });
+      } catch (e) {}
+    });
+  }
+  setInterval(function () { try { watchStatusText(); } catch (e) {} }, 900);
+
+  /* ?room=CODE 처럼 버튼을 거치지 않고 바로 joinRoom 되는 경로도 잡아낸다:
+     방은 잡혔는데 아직 방장 응답이 없으면(=joined false) 로딩창을 띄운다 */
+  function autoWatch() {
+    var s = S();
+    if (!s || !s.room || s.phase !== 'lobby') return;
+    if (s.isHost) { if (J.state().visible && !done) { /* 방장은 자기 방 로딩창을 띄우지 않는다 */ } return; }
+    if (s.joined) return;
+    if (J.state().visible) return;
+    if (s.room.code && code0 && s.room.code !== code0) { close(); }
+    open(s.room.code);
+  }
+
+  /* ?room=CODE 로 들어온 경우: 주소를 이미 처리했는지 확인 */
+  function autoLink() {
+    var m = (location.search.match(/[?&]room=([A-Za-z0-9]{4,6})/) || location.hash.match(/#room=([A-Za-z0-9]{4,6})/));
+    if (!m) return;
+    var code = norm(m[1]);
+    if (!code || J.__auto) return;
+    J.__auto = code;
+    var tries = 0;
+    var iv = setInterval(function () {
+      tries++;
+      var s = S();
+      if (s && s.room && s.room.code === code) { clearInterval(iv); return; }
+      if (!s || (!s.room && s.phase === 'idle')) {
+        var mp = $('mpScreen');
+        if (mp && mp.classList.contains('hidden')) { var b = $('btnMultiplayer'); if (b) b.click(); }
+      }
+      var inp = $('mpJoinCode');
+      if (inp) inp.value = code;
+      if (tries >= 3) {
+        clearInterval(iv);
+        var jb = $('mpJoinBtn');
+        if (jb) jb.click();
+        else open(code);
+      }
+    }, 450);
+  }
+
+  J.open = open;
+  J.close = close;
+  J.state = function () { return { code: code0, done: done, visible: !!($('v48jl') && !$('v48jl').classList.contains('hidden')) }; };
+  try { build(); } catch (e) {}
+  setInterval(function () { try { autoWatch(); } catch (e) {} }, 400);
+  setInterval(function () { try { autoLink(); } catch (e) {} }, 1500);
 })(window);
 
 </script>
