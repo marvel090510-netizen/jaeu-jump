@@ -269,7 +269,7 @@ html.theme-light #v43SideArt .sa-map { background: #fff; border-color: #c8d2e2; 
       <div>
         <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-[#172554] border-2 border-[#60a5fa] text-sky-200 text-xs font-bold mb-2.5">
           <span>★ JUMP KING STYLE 16-BIT DOT</span>
-          <span class="text-amber-300">• 21 MAPS</span>
+          <span class="text-amber-300">• 45 MAPS</span>
         </div>
 
         <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white title-glow leading-tight">
@@ -20186,6 +20186,7 @@ extends CanvasLayer
       bar.innerHTML = '<button type="button" class="mp-chip" data-mf="all" style="padding:3px 7px;font-size:9.5px">전체</button>' +
         '<button type="button" class="mp-chip" data-mf="fav" style="padding:3px 7px;font-size:9.5px">★ 즐겨찾기</button>' +
         '<button type="button" class="mp-chip" data-mf="new" style="padding:3px 7px;font-size:9.5px">4.3 신규</button>' +
+        '<button type="button" class="mp-chip" data-mf="easiest" style="padding:3px 7px;font-size:9.5px">🫧 쉬움</button>' +
         '<button type="button" class="mp-chip" data-mf="short" style="padding:3px 7px;font-size:9.5px">짧은 맵(~60층)</button>' +
         '<button type="button" class="mp-chip" data-mf="long" style="padding:3px 7px;font-size:9.5px">긴 맵(90층+)</button>';
       box.insertBefore(bar, list);
@@ -20199,6 +20200,7 @@ extends CanvasLayer
           let show = true;
           if (f2 === 'fav') show = favs().indexOf(id) >= 0;
           else if (f2 === 'new') show = !!(root.JWMap43 && root.JWMap43.has && root.JWMap43.has(id));
+          else if (f2 === 'easiest') show = !!(root.JW50DIFF && root.JW50DIFF.isEasy(id));
           else if (f2 === 'short') show = tot <= 60;
           else if (f2 === 'long') show = tot >= 90;
           c.style.display = show ? '' : 'none';
@@ -23514,7 +23516,7 @@ extends CanvasLayer
     const rec = V.recOf ? V.recOf() : null;
     const rank = V.rankOf ? V.rankOf() : '';
     const lines = [
-      '🎮 성공하고싶은 재우 v4.8-boss',
+      '🎮 성공하고싶은 재우 v5.0',
       '🗺️ ' + (map ? map.emoji + ' ' + map.name : '기본 맵') + ' · 🎮 ' + ((MD().modeById(mode) || {}).name || '일반'),
       '📏 ' + m + 'm · ⏱️ ' + t + (rank ? ' · ' + rank : ''),
       (rec && rec.m ? '🏆 내 최고 ' + rec.m.toFixed(1) + 'm' : ''),
@@ -24239,7 +24241,7 @@ extends CanvasLayer
         if (localStorage.getItem('jw484_update_toast') === '4.8.5-2') return;
         localStorage.setItem('jw484_update_toast', '4.8.5-2');
       } catch (e) { return; }
-      V.toast('🚀 v4.8-boss 테스트판', 'lucky', '👑 21맵 전용 보스·전용 패턴 · 🥊 보스 러시 등장/페이즈2/격파 연출 · 🕹️ 미니게임 25종은 싱글·멀티 안에서', 3800);
+      V.toast('🚀 v5.0 테스트판', 'lucky', '🗺️ 새 맵 24종(총 45맵) · 🫧 쉬움 난이도 · 🔀 스왑/🧊 빙판/🪝 밧줄/⏩ 2배속 모드 · 🎵 신곡 24개', 4200);
     }, 1400);
   };
 })(window);
@@ -25711,7 +25713,7 @@ extends CanvasLayer
   /* ================================================================ 13. 실제 MP3 BGM */
   /* 맵별 전용 트랙: 파일 audio/bgm-<id>.mp3 가 있으면 그 맵에서 재생 */
   var MAP_TRACKS = ['default', 'dessert', 'site', 'space', 'bamboo', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano',
-    'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji'];
+    'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji', 'london', 'skycastle', 'pirate', 'carnival', 'mushroom', 'cyberpunk', 'olympus', 'lab', 'canyon', 'santa', 'stadium', 'rockfest', 'onsen', 'honey', 'library', 'cheese', 'dino', 'alien', 'gyeongju', 'venice', 'snowclock', 'fireworks', 'baseball', 'retro20'];
   var BGM = { main: null, boss: null, lobby: null, cur: '', unlocked: false, target: 0 };
   function bgmAudio(file) {
     var a = new Audio();
@@ -39393,7 +39395,7 @@ extends CanvasLayer
     if (!bar) return;
     var spans = bar.querySelectorAll('span');
     if (spans.length > 1) {
-      if (spans[1].textContent.indexOf('★') < 0) spans[1].textContent = '★ 21 MAPS';
+      if (spans[1].textContent.indexOf('★') < 0) spans[1].textContent = '★ 45 MAPS';
     }
     var toast = $('v43TitleToast');
     if (toast) toast.textContent = '';
@@ -40669,7 +40671,7 @@ extends CanvasLayer
     if (!id) return '';
     /* v4.8.3: 1번 기본 맵도 전용 썸네일(default.jpg)을 쓴다 (인게임 맵은 그대로) */
     /* v4.8.5: 커스텀 맵 등 썸네일 파일이 없는 맵은 404 대신 기본 썸네일 */
-    var HAS = {'arcade':1,'arctic':1,'atlantis':1,'bamboo':1,'clock':1,'default':1,'dessert':1,'egypt':1,'fuji':1,'kitchen':1,'mansion':1,'newyork':1,'paris':1,'rainbow':1,'school':1,'seoul':1,'site':1,'space':1,'train':1,'volcano':1,'wuxia':1};
+    var HAS = {'arcade':1,'arctic':1,'atlantis':1,'bamboo':1,'clock':1,'default':1,'dessert':1,'egypt':1,'fuji':1,'kitchen':1,'mansion':1,'newyork':1,'paris':1,'rainbow':1,'school':1,'seoul':1,'site':1,'space':1,'train':1,'volcano':1,'wuxia':1,'london':1,'skycastle':1,'pirate':1,'carnival':1,'mushroom':1,'cyberpunk':1,'olympus':1,'lab':1,'canyon':1,'santa':1,'stadium':1,'rockfest':1,'onsen':1,'honey':1,'library':1,'cheese':1,'dino':1,'alien':1,'gyeongju':1,'venice':1,'snowclock':1,'fireworks':1,'baseball':1,'retro20':1};
     return 'assets/maps/t/' + (HAS[id] ? id : 'default') + '.jpg';
   }
 
@@ -42016,7 +42018,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v4.8-boss · 21 MAPS';
+      sp[1].textContent = '★ v5.0 · 45 MAPS';
     }
   }
 
@@ -44217,7 +44219,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   setInterval(killDupFloors, 900);
 
   /* 방 정보 썸네일: 방에서 고른 맵으로 즉시 교체 (닉네임/모드 변경도) */
-  const MAPHAS = {'arcade':1,'arctic':1,'atlantis':1,'bamboo':1,'clock':1,'default':1,'dessert':1,'egypt':1,'fuji':1,'kitchen':1,'mansion':1,'newyork':1,'paris':1,'rainbow':1,'school':1,'seoul':1,'site':1,'space':1,'train':1,'volcano':1,'wuxia':1};
+  const MAPHAS = {'arcade':1,'arctic':1,'atlantis':1,'bamboo':1,'clock':1,'default':1,'dessert':1,'egypt':1,'fuji':1,'kitchen':1,'mansion':1,'newyork':1,'paris':1,'rainbow':1,'school':1,'seoul':1,'site':1,'space':1,'train':1,'volcano':1,'wuxia':1,'london':1,'skycastle':1,'pirate':1,'carnival':1,'mushroom':1,'cyberpunk':1,'olympus':1,'lab':1,'canyon':1,'santa':1,'stadium':1,'rockfest':1,'onsen':1,'honey':1,'library':1,'cheese':1,'dino':1,'alien':1,'gyeongju':1,'venice':1,'snowclock':1,'fireworks':1,'baseball':1,'retro20':1};
   function syncRoomThumb() {
     let S = null; try { S = V.st(); } catch (e) {}
     if (!S || !S.room) return;
@@ -44401,7 +44403,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   const MP = () => root.JWMap;
   const MD = () => root.JWMode;
   const esc = (s) => String(s == null ? '' : s).replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]));
-  const MAPHAS = {'arcade':1,'arctic':1,'atlantis':1,'bamboo':1,'clock':1,'default':1,'dessert':1,'egypt':1,'fuji':1,'kitchen':1,'mansion':1,'newyork':1,'paris':1,'rainbow':1,'school':1,'seoul':1,'site':1,'space':1,'train':1,'volcano':1,'wuxia':1};
+  const MAPHAS = {'arcade':1,'arctic':1,'atlantis':1,'bamboo':1,'clock':1,'default':1,'dessert':1,'egypt':1,'fuji':1,'kitchen':1,'mansion':1,'newyork':1,'paris':1,'rainbow':1,'school':1,'seoul':1,'site':1,'space':1,'train':1,'volcano':1,'wuxia':1,'london':1,'skycastle':1,'pirate':1,'carnival':1,'mushroom':1,'cyberpunk':1,'olympus':1,'lab':1,'canyon':1,'santa':1,'stadium':1,'rockfest':1,'onsen':1,'honey':1,'library':1,'cheese':1,'dino':1,'alien':1,'gyeongju':1,'venice':1,'snowclock':1,'fireworks':1,'baseball':1,'retro20':1};
 
   /* ---------------- 싱글 위저드: 썸네일 카드 그리드 ---------------- */
   function decorateWizardMaps() {
@@ -44827,13 +44829,14 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   if (!V) return;
   var doc = document;
   var $ = function (id) { return doc.getElementById(id); };
-  var MAPHAS = { arcade: 1, arctic: 1, atlantis: 1, bamboo: 1, clock: 1, default: 1, dessert: 1, egypt: 1, fuji: 1, kitchen: 1, mansion: 1, newyork: 1, paris: 1, rainbow: 1, school: 1, seoul: 1, site: 1, space: 1, train: 1, volcano: 1, wuxia: 1 };
-  var MAP_ORDER = ['default', 'dessert', 'site', 'space', 'bamboo', 'custom', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano', 'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji'];
+  var MAPHAS = { arcade: 1, arctic: 1, atlantis: 1, bamboo: 1, clock: 1, default: 1, dessert: 1, egypt: 1, fuji: 1, kitchen: 1, mansion: 1, newyork: 1, paris: 1, rainbow: 1, school: 1, seoul: 1, site: 1, space: 1, train: 1, volcano: 1, wuxia: 1, london: 1, skycastle: 1, pirate: 1, carnival: 1, mushroom: 1, cyberpunk: 1, olympus: 1, lab: 1, canyon: 1, santa: 1, stadium: 1, rockfest: 1, onsen: 1, honey: 1, library: 1, cheese: 1, dino: 1, alien: 1, gyeongju: 1, venice: 1, snowclock: 1, fireworks: 1, baseball: 1, retro20: 1 };
+  var MAP_ORDER = ['default', 'dessert', 'site', 'space', 'bamboo', 'custom', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano', 'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji', 'london', 'skycastle', 'pirate', 'carnival', 'mushroom', 'cyberpunk', 'olympus', 'lab', 'canyon', 'santa', 'stadium', 'rockfest', 'onsen', 'honey', 'library', 'cheese', 'dino', 'alien', 'gyeongju', 'venice', 'snowclock', 'fireworks', 'baseball', 'retro20'];
   var THEME = {
     default: 'nature', dessert: 'nature', site: 'city', space: 'special', bamboo: 'nature', custom: 'special',
     atlantis: 'nature', arcade: 'city', arctic: 'nature', mansion: 'special', volcano: 'nature', school: 'city',
     clock: 'special', kitchen: 'city', train: 'special', wuxia: 'nature', rainbow: 'nature', newyork: 'city',
-    seoul: 'city', paris: 'city', egypt: 'city', fuji: 'city'
+    seoul: 'city', paris: 'city', egypt: 'city', fuji: 'city',
+    london: 'city', skycastle: 'nature', pirate: 'special', carnival: 'city', mushroom: 'nature', cyberpunk: 'city', olympus: 'nature', lab: 'special', canyon: 'nature', santa: 'special', stadium: 'city', rockfest: 'city', onsen: 'nature', honey: 'nature', library: 'special', cheese: 'nature', dino: 'special', alien: 'special', gyeongju: 'city', venice: 'city', snowclock: 'nature', fireworks: 'city', baseball: 'city', retro20: 'special'
   };
   var MODE_CAT = {
     normal: 'basic', classic: 'basic', pureclassic: 'basic',
@@ -44857,6 +44860,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     ['mid', '⚖️ 중거리'],
     ['long', '🏔️ 장거리'],
     ['easy', '🌱 쉬움 · 보통'],
+    ['easiest', '🫧 쉬움 전용'],
     ['hard', '🔥 어려움 · 극악'],
     ['city', '🏙️ 도시 · 세계'],
     ['nature', '🌸 판타지 · 자연'],
@@ -45201,6 +45205,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (MAP_FILTER === 'all') return true;
     if (MAP_FILTER === 'short' || MAP_FILTER === 'mid' || MAP_FILTER === 'long') return tierOf(id) === MAP_FILTER;
     if (MAP_FILTER === 'easy' || MAP_FILTER === 'hard') return easyOf(id) === MAP_FILTER;
+      if (MAP_FILTER === 'easiest') return (window.__jw50easy ? window.__jw50easy(id) : false);
     return (THEME[id] || 'special') === MAP_FILTER;
   }
 
@@ -45430,6 +45435,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     var J = root.JW53;
     if (f === 'short' || f === 'mid' || f === 'long') return J.tierOf(id) === f;
     if (f === 'easy' || f === 'hard') return J.easyOf(id) === f;
+      if (f === 'easiest') return (window.__jw50easy ? window.__jw50easy(id) : false);
     return (J.THEME[id] || 'special') === f;
   }
   function mapTotal(id) {
@@ -46054,6 +46060,16 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 </script>
 <!-- ===== v4.8.5-3 PATCH END ===== -->
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -56790,6 +56806,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
     if (!f || f === 'all') return true;
     if (f === 'short' || f === 'mid' || f === 'long') return J.tierOf ? J.tierOf(id) === f : true;
     if (f === 'easy' || f === 'hard') return J.easyOf ? J.easyOf(id) === f : true;
+    if (f === 'easiest') return (window.__jw50easy ? window.__jw50easy(id) : false);
     return (J.THEME && J.THEME[id] || 'special') === f;
   }
   function modeCat(id) {
@@ -58306,6 +58323,2029 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
   root.JW49 = root.JW49 || {};
   root.JW49.notice = notice;
   root.JW49NOTICE = notice;
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.0-world : 새 맵 24종 (기존 21 + 신규 24 = 총 45맵)
+   - 기존 21맵 · 25종 미니게임 · 보스 러시는 한 글자도 건드리지 않는다.
+   - 각 맵: 고유 16비트 풍경(decor) · 고유 발판 그림(plat) · 전용 sky/중력
+   - 난이도: 쉬움 / 보통 / 어려움 / 극악 (발판 폭·간격이 실제로 다르다)
+   - 등록: root.JWMap 위에 한 겹 더 얹는다 (JWMap43 → JW50MAP → 기존)
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  if (root.JW50MAP) return;
+
+  var W = 540, WALLW = 42, ABYSS_Y = 1480;
+
+  /* ---------------- 공통 유틸 ---------------- */
+  function hash(n) {
+    n = (n | 0) ^ 0x9e3779b9;
+    n = Math.imul(n ^ (n >>> 16), 0x85ebca6b);
+    n = Math.imul(n ^ (n >>> 13), 0xc2b2ae35);
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
+  }
+  function R(c, x, y, w, h, col) { c.fillStyle = col; c.fillRect(x | 0, y | 0, w | 0, h | 0); }
+  function CIR(c, x, y, r, col) { c.fillStyle = col; c.beginPath(); c.arc(x, y, r, 0, 6.3); c.fill(); }
+  function TRI(c, x1, y1, x2, y2, x3, y3, col) {
+    c.fillStyle = col; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.lineTo(x3, y3); c.closePath(); c.fill();
+  }
+  function POLY(c, pts, col) {
+    c.fillStyle = col; c.beginPath();
+    for (var i = 0; i < pts.length; i += 2) { if (i === 0) c.moveTo(pts[0], pts[1]); else c.lineTo(pts[i], pts[i + 1]); }
+    c.closePath(); c.fill();
+  }
+  function now() { return root.__jwtime || (performance.now() / 1000); }
+  function makeCanvas(w, h) {
+    var cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    var c = cv.getContext('2d');
+    c.imageSmoothingEnabled = false;
+    return { cv: cv, c: c };
+  }
+  var BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  function ditherV(c, x, y, w, h, cols) {
+    var segs = cols.length - 1;
+    for (var yy = 0; yy < h; yy++) {
+      var t = (yy / Math.max(1, h - 1)) * segs;
+      var idx = Math.min(segs - 1, t | 0);
+      var th = ((t - idx) * 16) | 0;
+      for (var xx = 0; xx < w; xx += 2) {
+        var col = BAYER[((yy & 3) << 2) + (xx & 3)] < th ? cols[idx + 1] : cols[idx];
+        c.fillStyle = col; c.fillRect(x + xx, y + yy, 2, 1);
+      }
+    }
+  }
+  function dots(c, seed, n, w, h, cols, sz) {
+    for (var k = 0; k < n; k++) {
+      var x = Math.floor(hash(seed + k * 7) * w), y = Math.floor(hash(seed + k * 13 + 5) * h);
+      R(c, x, y, sz || 2, sz || 2, cols[k % cols.length]);
+    }
+  }
+  function stars(c, seed, n, w, h, cols) {
+    for (var k = 0; k < n; k++) {
+      var x = Math.floor(hash(seed + k * 2 + 1) * w), y = Math.floor(hash(seed + k * 5 + 9) * h * 0.62);
+      var t = hash(seed + k * 3 + 4);
+      R(c, x, y, 2, 2, cols[t > 0.85 ? 0 : (t > 0.5 ? 1 : 2)]);
+      if (t > 0.94) { R(c, x - 2, y, 1, 1, cols[0]); R(c, x + 2, y, 1, 1, cols[0]); R(c, x, y - 2, 1, 1, cols[0]); R(c, x, y + 2, 1, 1, cols[0]); }
+    }
+  }
+  function mountain(c, cx, base, halfW, top, col) {
+    POLY(c, [cx - halfW, base, cx, top, cx + halfW, base], col);
+  }
+  function cloud(c, x, y, s, col) {
+    CIR(c, x, y, 13 * s, col); CIR(c, x + 16 * s, y + 4 * s, 10 * s, col);
+    CIR(c, x - 15 * s, y + 5 * s, 9 * s, col); R(c, x - 20 * s, y + 4 * s, 42 * s, 10 * s, col);
+  }
+  function pine(c, x, y, h, col, dark) {
+    R(c, x - 2, y, 5, h * 0.22, dark || col);
+    TRI(c, x - h * 0.24, y, x, y - h, x + h * 0.24, y, col);
+    TRI(c, x - h * 0.18, y - h * 0.42, x, y - h * 1.18, x + h * 0.18, y - h * 0.42, col);
+  }
+
+  /* ---------------- 발판 생성 (기존 4.3 생성기와 동일 규칙) ---------------- */
+  function zoneOf(i, total) {
+    var t = total || 88, r = i / t;
+    if (r <= 17 / 88) return 1;
+    if (r <= 35 / 88) return 2;
+    if (r <= 53 / 88) return 3;
+    if (r <= 71 / 88) return 4;
+    return 5;
+  }
+  function mk(index, x, y, w, h, art, type, zoneId, safe) {
+    return {
+      index: index, x: x, y: y, baseX: x, baseY: y, w: w, h: h, type: type || 'normal', art: art, safe: !!safe, zoneId: zoneId,
+      moveRange: 0, moveSpeed: 0, movePhase: 0,
+      crumbleTimer: 0, crumbled: false, respawnTimer: 0,
+      spikeOffsetX: Math.floor(w * 0.5) - 12, spikeW: 24,
+      rotRadius: Math.round(w * 0.45 + 16), rotSpeed: 0, angle: 0, sag: 0
+    };
+  }
+  function abyss(A, id, ledges) {
+    A.push({ index: 0, x: WALLW, y: ABYSS_Y, w: W - WALLW * 2, h: 34, type: 'abyss_floor', zoneId: 6, art: id });
+    (ledges || [{ x: 95, y: 340, w: 150 }, { x: 300, y: 700, w: 150 }, { x: 105, y: 1060, w: 155 }])
+      .forEach(function (l, i) {
+        A.push({ index: -i - 1, x: l.x, y: l.y, w: l.w, h: 22, type: 'normal', zoneId: 6, art: id });
+      });
+  }
+
+  /* 난이도별 밸런스: 쉬움은 발판이 넓고 간격이 완만, 극악은 좁고 가파르다 */
+  var BAL = {
+    '쉬움': { total: 60, dy0: 86, dyK: 16, dyJ: 2, stepMin: 74, stepSpan: 34, wMin: 124, wSpan: 46, wShrink: 0.05, safeW: 186, safeEvery: 6 },
+    '보통': { total: 76, dy0: 94, dyK: 24, dyJ: 3, stepMin: 82, stepSpan: 42, wMin: 104, wSpan: 38, wShrink: 0.12, safeW: 164, safeEvery: 8 },
+    '어려움': { total: 90, dy0: 102, dyK: 30, dyJ: 4, stepMin: 88, stepSpan: 48, wMin: 88, wSpan: 34, wShrink: 0.17, safeW: 150, safeEvery: 9 },
+    '극악': { total: 100, dy0: 106, dyK: 32, dyJ: 5, stepMin: 90, stepSpan: 52, wMin: 76, wSpan: 30, wShrink: 0.2, safeW: 144, safeEvery: 10 }
+  };
+  function gen(P, A, cfg) {
+    var B = BAL[cfg.diff] || BAL['보통'];
+    var TOT = cfg.total || B.total;
+    var TK = TOT <= 65 ? { w: 1.14, dy: 0.9 } : TOT <= 89 ? { w: 1.0, dy: 1.0 } : { w: 0.92, dy: 1.06 };
+    abyss(A, cfg.id, cfg.ledges);
+    var cy = 0, cx = W / 2 - 80;
+    for (var i = 1; i <= TOT; i++) {
+      var prog = i / TOT;
+      if (i === 1) { P.push(mk(1, W / 2 - 125, 0, 250, 28, cfg.startArt || 'start', 'normal', 1, true)); continue; }
+      if (i === TOT) {
+        cy -= (cfg.summitDy || 124);
+        P.push(mk(TOT, W / 2 - 132, cy, 264, 32, cfg.summitArt || 'summit', 'summit', 5, true));
+        continue;
+      }
+      var dy = Math.round((B.dy0 + prog * B.dyK + (i % 3) * B.dyJ) * TK.dy);
+      cy -= dy;
+      var safe = (i % (B.safeEvery || 8) === 0);
+      var w = safe ? Math.max(130, Math.round(B.safeW * (TK.w > 1 ? 1.04 : 1)))
+        : Math.max(56, Math.round((B.wMin + hash(i * 13 + cfg.seed) * B.wSpan) * (1 - prog * B.wShrink) * TK.w));
+      /* 쉬움: 추가로 넓게 · 가파름 완화 */
+      if (cfg.diff === '쉬움' && !safe) w = Math.round(w * 1.12);
+      var dir = (i % 2 === 0) ? 1 : -1;
+      var stepX = B.stepMin + Math.floor(hash(i * 31 + cfg.seed) * B.stepSpan);
+      if (cfg.diff === '쉬움') stepX = Math.round(stepX * 0.94);
+      var nx = cx + dir * stepX;
+      var minX = WALLW + 12, maxX = W - WALLW - w - 12;
+      if (nx < minX) nx = minX + 24 + (i % 3) * 14;
+      if (nx > maxX) nx = maxX - 24 - (i % 3) * 14;
+      cx = nx;
+      var a = cfg.art(i, prog, safe);
+      var p = mk(i, cx, cy, w, cfg.h || 20, a.art, a.type, zoneOf(i, TOT), safe);
+      if (cfg.extra) cfg.extra(i, p, prog, safe);
+      P.push(p);
+    }
+  }
+
+  /* ---------------- 발판 그리기 (스타일 15종) ---------------- */
+  function stamp(c, p, px0, py0) {
+    if (p.index === 1 || p.index % 5 === 0) {
+      R(c, px0 + 4, py0 + 7, 34, 11, 'rgba(8,6,16,.82)');
+      c.fillStyle = p.safe ? '#fde047' : '#dbe4ff';
+      c.font = 'bold 10px "Galmuri11", monospace';
+      c.textAlign = 'left';
+      c.fillText('#' + p.index, px0 + 6, py0 + 16);
+    }
+  }
+  function summitSign(c, px0, py0, w, label, col) {
+    c.font = 'bold 13px "Galmuri11", monospace';
+    c.textAlign = 'center';
+    c.fillStyle = col || '#ffe066';
+    c.fillText('★ ' + label + ' ★', px0 + w / 2, py0 - 54);
+  }
+
+  function paint(kind, c, p, px0, py0, w, h, P) {
+    var t = now();
+    switch (kind) {
+      case 'brick':
+        R(c, px0, py0, w, h, P.deep); R(c, px0, py0, w, 5, P.top);
+        for (var bx = 2; bx < w - 4; bx += 18) R(c, px0 + bx, py0 + 6, 1, h - 9, P.line);
+        R(c, px0 + 1, py0 + h - 4, w - 2, 3, P.line);
+        break;
+      case 'stone':
+        R(c, px0, py0, w, h, P.deep); R(c, px0, py0, w, 4, P.top);
+        R(c, px0 + 2, py0 + 4, w - 4, h - 7, P.body);
+        for (var sx = 6; sx < w - 8; sx += 22) {
+          R(c, px0 + sx, py0 + 6, 15, 5, P.line); R(c, px0 + sx + 8, py0 + 12, 12, 4, P.line);
+        }
+        R(c, px0, py0 + h - 3, w, 3, P.edge || P.line);
+        break;
+      case 'wood':
+        R(c, px0, py0, w, h, P.deep); R(c, px0, py0 + 1, w, 5, P.top);
+        for (var wx = 3; wx < w - 6; wx += 16) {
+          R(c, px0 + wx, py0 + 6, 13, h - 10, P.body);
+          R(c, px0 + wx + 2, py0 + 8, 9, 1, P.line);
+        }
+        R(c, px0, py0 + h - 3, w, 3, P.edge || P.line);
+        break;
+      case 'metal':
+        R(c, px0, py0, w, h, P.deep); R(c, px0, py0, w, 4, P.top);
+        for (var mx = 5; mx < w - 6; mx += 14) {
+          R(c, px0 + mx, py0 + 6, 10, h - 10, P.body);
+          R(c, px0 + mx + 3, py0 + 4, 2, 2, P.accent);
+        }
+        R(c, px0, py0 + h - 3, w, 3, P.line);
+        break;
+      case 'neon':
+        R(c, px0 - 1, py0 - 1, w + 2, h + 2, P.deep);
+        R(c, px0 + 1, py0 + 2, w - 2, h - 4, P.body);
+        R(c, px0, py0, w, 3, P.accent);
+        R(c, px0, py0 + h - 4, w, 2, P.accent2 || P.accent);
+        if (p.safe) { R(c, px0 + 4, py0 + 6, w - 8, 2, 'rgba(255,255,255,.35)'); }
+        break;
+      case 'crystal':
+        R(c, px0, py0, w, h, P.deep);
+        POLY(c, [px0 + 2, py0 + h, px0 + w * 0.2, py0 + 1, px0 + w * 0.42, py0 + h], P.body);
+        POLY(c, [px0 + w * 0.34, py0 + h, px0 + w * 0.56, py0 + 2, px0 + w * 0.74, py0 + h], P.top);
+        POLY(c, [px0 + w * 0.68, py0 + h, px0 + w * 0.86, py0 + 3, px0 + w - 1, py0 + h], P.body);
+        break;
+      case 'ice':
+        R(c, px0, py0, w, h, P.deep); R(c, px0, py0, w, 4, P.top);
+        R(c, px0 + 2, py0 + 5, w - 4, h - 8, P.body);
+        for (var ix = 5; ix < w - 6; ix += 17) TRI(c, px0 + ix, py0 + h - 2, px0 + ix + 6, py0 + 3, px0 + ix + 12, py0 + h - 2, P.accent);
+        R(c, px0, py0 + h - 3, w, 3, P.line);
+        break;
+      case 'snow':
+        R(c, px0, py0, w, h, P.deep);
+        R(c, px0 + 1, py0 + 1, w - 2, h - 2, P.body);
+        for (var nx = 1; nx < w - 2; nx += 7) CIR(c, px0 + nx, py0 + 2, 3, P.top);
+        R(c, px0, py0 + h - 3, w, 3, P.line);
+        break;
+      case 'leaf':
+        R(c, px0, py0, w, h, P.deep);
+        R(c, px0, py0 + 2, w, 5, P.top);
+        R(c, px0 + 1, py0 + 7, w - 2, h - 10, P.body);
+        for (var lx = 4; lx < w - 6; lx += 11) {
+          R(c, px0 + lx, py0 + 1, 4, 3, P.accent);
+          R(c, px0 + lx + 2, py0 - 2, 2, 3, P.accent);
+        }
+        R(c, px0, py0 + h - 3, w, 3, P.line);
+        break;
+      case 'candy':
+        R(c, px0, py0, w, h, P.deep); R(c, px0, py0, w, 5, P.top);
+        R(c, px0 + 1, py0 + 5, w - 2, h - 9, P.body);
+        for (var cx2 = 3; cx2 < w - 4; cx2 += 12) R(c, px0 + cx2, py0 + 6, 4, h - 10, P.accent);
+        R(c, px0, py0 + h - 3, w, 3, P.line);
+        break;
+      case 'wax':
+        R(c, px0, py0, w, h, '#7c4a06'); R(c, px0, py0 + 1, w, 5, '#ffd45e');
+        for (var hx = 2; hx < w - 8; hx += 11) {
+          CIR(c, px0 + hx + 4, py0 + 11, 4, '#f0a72a');
+          R(c, px0 + hx + 3, py0 + 8, 3, 3, '#ffe28a');
+        }
+        R(c, px0, py0 + h - 3, w, 3, '#5b3404');
+        break;
+      case 'cheese':
+        R(c, px0, py0, w, h, '#b47708'); R(c, px0, py0, w, 5, '#ffd95e');
+        R(c, px0 + 1, py0 + 5, w - 2, h - 9, '#e8a821');
+        for (var hxx = 6; hxx < w - 8; hxx += 16) { CIR(c, px0 + hxx, py0 + 11, 3, '#b47708'); CIR(c, px0 + hxx + 8, py0 + 15, 2, '#a86c05'); }
+        R(c, px0, py0 + h - 3, w, 3, '#8a5a06');
+        break;
+      case 'bone':
+        R(c, px0, py0, w, h, '#5b5443'); R(c, px0, py0, w, 5, '#f4ead1');
+        R(c, px0 + 1, py0 + 5, w - 2, h - 9, '#d9cfb4');
+        for (var ox = 5; ox < w - 8; ox += 14) { R(c, px0 + ox, py0 + 8, 9, 3, '#8a7f66'); R(c, px0 + ox + 3, py0 + 13, 6, 2, '#8a7f66'); }
+        R(c, px0, py0 + h - 3, w, 3, '#4b4536');
+        break;
+      case 'drip':
+        R(c, px0, py0, w, h, P.deep); R(c, px0, py0, w, 4, P.top);
+        R(c, px0 + 2, py0 + 4, w - 4, h - 7, P.body);
+        for (var dx = 6; dx < w - 6; dx += 13) R(c, px0 + dx, py0 + h - 2, 3, 3 + ((dx * 7) % 5), P.accent);
+        R(c, px0, py0 + h - 3, w, 3, P.line);
+        break;
+      case 'sand':
+        R(c, px0, py0, w, h, P.deep); R(c, px0, py0, w, 5, P.top);
+        R(c, px0 + 1, py0 + 5, w - 2, h - 8, P.body);
+        for (var dxx = 4; dxx < w - 6; dxx += 15) R(c, px0 + dxx, py0 + 8, 10, 2, P.line);
+        R(c, px0, py0 + h - 3, w, 3, P.line);
+        break;
+      case 'cloud':
+        R(c, px0, py0, w, h, 'rgba(214,232,255,.55)');
+        for (var cxx = 0; cxx < w; cxx += 12) CIR(c, px0 + cxx + 6, py0 + 3, 6, P.top || '#f2f7ff');
+        R(c, px0 + 1, py0 + 6, w - 2, h - 8, P.body || 'rgba(226,238,255,.85)');
+        break;
+      case 'start':
+        R(c, px0, py0, w, h, P.deep); R(c, px0, py0, w, 5, P.top);
+        R(c, px0 + 2, py0 + 5, w - 4, h - 8, P.body);
+        for (var stx = 6; stx < w - 8; stx += 14) R(c, px0 + stx, py0 + 9, 8, 4, P.accent);
+        R(c, px0, py0 + h - 3, w, 3, P.line);
+        break;
+      case 'summit':
+        R(c, px0, py0, w, h, P.deep); R(c, px0, py0, w, 6, P.top);
+        R(c, px0 + 3, py0 + 6, w - 6, h - 9, P.body);
+        CIR(c, px0 + w / 2, py0 + 2, 11, 'rgba(255,224,102,.85)');
+        CIR(c, px0 + w / 2, py0 + 2, 6, '#fff6c2');
+        break;
+      default:
+        R(c, px0, py0, w, h, P.deep); R(c, px0, py0, w, 4, P.top); R(c, px0 + 2, py0 + 4, w - 4, h - 6, P.body);
+    }
+    if (p.type === 'summit') summitSign(c, px0, py0, w, p.summitLabel || '정상', P.accent);
+    stamp(c, p, px0, py0);
+  }
+
+  /* ==========================================================================
+     맵 정의 24종
+     ========================================================================== */
+  var DEF = [
+    /* 1 */ {
+      id: 'london', name: '런던 빅벤 & 대관람차', emoji: '🎡', diff: '보통', diffColor: '#93c5fd',
+      desc: '안개 낀 템스강 · 시계탑 지붕 · 대관람차 발판',
+      zones: ['6. 템스강 안개', '1. 빅벤 광장', '2. 붉은 전화부스', '3. 대관람차 바퀴', '4. 시계탑 지붕', '5. 🎡 빅벤 정상'],
+      phys: { grav: 1360, jump: 1, horiz: 1 },
+      sky: ['#16233a', '#2c3f5c', '#5b7794'],
+      pal: { top: '#e6edf7', body: '#8496ad', deep: '#3f4f66', line: '#26334a', accent: '#f2d08a' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'brick' };
+        var r = i % 8;
+        if (r === 3) return { art: 'metal', type: 'ice' };
+        if (r === 6) return { art: 'neon', type: 'moving' };
+        if (r === 5) return { art: 'wood' };
+        return { art: 'brick' };
+      },
+      extra: function (i, p) { if (p.art === 'neon') { p.moveRange = 24; p.moveSpeed = 0.5; p.movePhase = i; } },
+      decor: function (c) {
+        ditherV(c, 0, 0, W, 150, ['rgba(200,216,236,0)', 'rgba(210,226,244,.13)', 'rgba(200,216,236,0)']);
+        /* 빅벤 */
+        R(c, 96, 250, 58, 300, 'rgba(112,98,68,.92)');
+        R(c, 96, 250, 58, 12, 'rgba(168,150,102,.95)');
+        CIR(c, 125, 236, 26, 'rgba(168,150,102,.95)');
+        CIR(c, 125, 236, 19, 'rgba(246,240,214,.95)');
+        R(c, 123, 224, 4, 12, 'rgba(60,54,40,.9)'); R(c, 125, 236, 10, 3, 'rgba(60,54,40,.9)');
+        TRI(c, 125, 196, 112, 216, 138, 216, 'rgba(120,102,72,.9)');
+        for (var wy = 270; wy < 520; wy += 34) R(c, 108, wy, 34, 16, 'rgba(58,52,38,.6)');
+        /* 대관람차 */
+        c.strokeStyle = 'rgba(96,116,146,.72)'; c.lineWidth = 4;
+        c.beginPath(); c.arc(390, 330, 96, 0, 6.3); c.stroke();
+        c.lineWidth = 2;
+        for (var a = 0; a < 12; a++) {
+          var ang = a * Math.PI / 6;
+          c.beginPath(); c.moveTo(390, 330); c.lineTo(390 + Math.cos(ang) * 96, 330 + Math.sin(ang) * 96); c.stroke();
+          CIR(c, 390 + Math.cos(ang) * 96, 330 + Math.sin(ang) * 96, 7, 'rgba(226,236,248,.85)');
+        }
+        TRI(c, 390, 330, 358, 520, 422, 520, 'rgba(96,110,136,.5)');
+        R(c, 340, 516, 100, 8, 'rgba(80,94,120,.6)');
+        /* 강 */
+        for (var k = 0; k < 8; k++) R(c, (k * 71) % W, 640 + (k % 3) * 18, 46, 3, 'rgba(150,180,212,.2)');
+        dots(c, 3, 34, W, 720, ['rgba(240,246,255,.35)', 'rgba(190,208,232,.25)'], 2);
+      }
+    },
+    /* 2 */ {
+      id: 'skycastle', name: '천공성 & 황금 용', emoji: '🐉', diff: '극악', diffColor: '#f87171',
+      desc: '구름 위 성벽 · 황금 용의 비늘 발판 · 무너지는 돌',
+      zones: ['6. 구름 바다', '1. 성문 아래', '2. 성벽 오르막', '3. 둥지 첨탑', '4. 용의 비늘', '5. 🐉 천공성 정상'],
+      phys: { grav: 1390, jump: 1, horiz: 1 },
+      sky: ['#1b1430', '#3b2a58', '#6d4f8a'],
+      pal: { top: '#ffe6a3', body: '#c9a35a', deep: '#6d4f22', line: '#4a3312', accent: '#ffd166' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'stone' };
+        var r = i % 7;
+        if (r === 2) return { art: 'crystal', type: 'normal' };
+        if (r === 5) return { art: 'brick', type: 'crumble' };
+        if (r === 4) return { art: 'neon', type: 'moving' };
+        return { art: 'stone' };
+      },
+      extra: function (i, p) { if (p.type === 'moving') { p.moveRange = 34; p.moveSpeed = 0.7; p.movePhase = i * 0.8; } },
+      decor: function (c) {
+        stars(c, 17, 46, W, 720, ['rgba(255,240,190,.85)', 'rgba(210,190,255,.6)', 'rgba(255,255,255,.45)']);
+        /* 성 */
+        R(c, 150, 300, 240, 260, 'rgba(58,44,80,.9)');
+        [150, 330].forEach(function (tx) {
+          R(c, tx, 246, 60, 320, 'rgba(72,56,98,.95)');
+          TRI(c, tx - 6, 246, tx + 30, 186, tx + 66, 246, 'rgba(96,74,124,.95)');
+          R(c, tx + 18, 320, 22, 14, 'rgba(255,214,120,.55)');
+        });
+        R(c, 240, 200, 60, 360, 'rgba(84,64,112,.95)');
+        TRI(c, 234, 200, 270, 140, 306, 200, 'rgba(110,84,142,.95)');
+        for (var k = 0; k < 6; k++) R(c, 160 + k * 40, 500, 24, 16, 'rgba(255,214,120,.35)');
+        /* 용 실루엣 */
+        c.strokeStyle = 'rgba(255,206,92,.75)'; c.lineWidth = 9;
+        c.beginPath(); c.moveTo(40, 200); c.bezierCurveTo(120, 120, 190, 260, 250, 170); c.stroke();
+        c.beginPath(); c.moveTo(250, 170); c.bezierCurveTo(310, 96, 380, 210, 470, 130); c.stroke();
+        TRI(c, 470, 130, 510, 108, 486, 156, 'rgba(255,206,92,.8)');
+        CIR(c, 40, 200, 15, 'rgba(255,220,120,.85)');
+        cloud(c, 90, 620, 1.5, 'rgba(190,170,225,.5)');
+        cloud(c, 400, 660, 1.9, 'rgba(190,170,225,.42)');
+      }
+    },
+    /* 3 */ {
+      id: 'pirate', name: '해적선 돛대 & 크라켄', emoji: '🏴‍☠️', diff: '어려움', diffColor: '#fca5a5',
+      desc: '흔들리는 돛대 · 촉수 발판 · 거친 파도',
+      zones: ['6. 심해 소용돌이', '1. 갑판', '2. 돛대 오르기', '3. 까마귀 둥지', '4. 크라켄 촉수', '5. 🏴‍☠️ 해적선 정상'],
+      phys: { grav: 1370, jump: 1, horiz: 1 },
+      sky: ['#0d1b2a', '#1b3a52', '#2e5c76'],
+      pal: { top: '#e7d3a1', body: '#9c7442', deep: '#4a3319', line: '#33220f', accent: '#f2c14e' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'wood' };
+        var r = i % 7;
+        if (r === 2 || r === 6) return { art: 'wood', type: 'moving' };
+        if (r === 4) return { art: 'drip' };
+        return { art: 'wood' };
+      },
+      extra: function (i, p) { if (p.type === 'moving') { p.moveRange = 30; p.moveSpeed = 0.62; p.movePhase = i * 0.9; } },
+      decor: function (c) {
+        /* 파도 */
+        for (var k = 0; k < 4; k++) {
+          POLY(c, [0, 560 + k * 40, 90, 540 + k * 40, 180, 566 + k * 40, 280, 538 + k * 40, 380, 566 + k * 40, 460, 540 + k * 40, 540, 566 + k * 40, 540, 720, 0, 720], 'rgba(24,64,92,' + (0.85 - k * 0.16) + ')');
+        }
+        /* 배 몸체 */
+        POLY(c, [70, 430, 470, 430, 410, 540, 130, 540], 'rgba(74,51,25,.95)');
+        R(c, 70, 424, 400, 12, 'rgba(122,88,44,.95)');
+        /* 돛대 + 돛 */
+        R(c, 258, 150, 10, 290, 'rgba(96,70,36,.95)');
+        TRI(c, 268, 170, 268, 360, 400, 340, 'rgba(238,230,208,.72)');
+        TRI(c, 258, 180, 258, 350, 150, 330, 'rgba(226,216,192,.6)');
+        R(c, 250, 140, 26, 10, 'rgba(40,40,40,.9)');
+        /* 촉수 */
+        c.strokeStyle = 'rgba(126,58,96,.7)'; c.lineWidth = 14;
+        for (var q = 0; q < 3; q++) {
+          c.beginPath(); c.moveTo(40 + q * 190, 720);
+          c.bezierCurveTo(70 + q * 190, 620, 10 + q * 190, 540, 60 + q * 190, 470);
+          c.stroke();
+        }
+        /* 달 */
+        CIR(c, 460, 110, 30, 'rgba(230,238,248,.35)');
+      }
+    },
+    /* 4 */ {
+      id: 'carnival', name: '한밤중 네온 놀이공원', emoji: '🎡', diff: '보통', diffColor: '#f9a8d4',
+      desc: '네온 관람차 · 회전 컵 · 야간 조명',
+      zones: ['6. 야간 주차장', '1. 입구 아치', '2. 게임 부스', '3. 관람차 바퀴', '4. 롤러코스터 선로', '5. 🎡 네온 정상'],
+      phys: { grav: 1350, jump: 1, horiz: 1 },
+      sky: ['#140b26', '#2c1140', '#451a5c'],
+      pal: { top: '#ffd6f2', body: '#7c3fa8', deep: '#2a0f42', line: '#1a0829', accent: '#28e0ff', accent2: '#ff5fd2' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'neon' };
+        var r = i % 7;
+        if (r === 3) return { art: 'neon', type: 'moving' };
+        if (r === 5) return { art: 'metal', type: 'ice' };
+        return { art: 'neon' };
+      },
+      extra: function (i, p) { if (p.type === 'moving') { p.moveRange = 28; p.moveSpeed = 0.72; p.movePhase = i; } },
+      decor: function (c) {
+        stars(c, 23, 40, W, 720, ['rgba(255,230,250,.8)', 'rgba(140,220,255,.6)', 'rgba(255,255,255,.4)']);
+        /* 관람차 */
+        c.strokeStyle = 'rgba(255,95,210,.55)'; c.lineWidth = 4;
+        c.beginPath(); c.arc(150, 340, 100, 0, 6.3); c.stroke();
+        c.lineWidth = 2;
+        for (var a = 0; a < 10; a++) {
+          var ang = a * Math.PI / 5;
+          c.beginPath(); c.moveTo(150, 340); c.lineTo(150 + Math.cos(ang) * 100, 340 + Math.sin(ang) * 100); c.stroke();
+          CIR(c, 150 + Math.cos(ang) * 100, 340 + Math.sin(ang) * 100, 6, a % 2 ? 'rgba(40,224,255,.9)' : 'rgba(255,217,102,.9)');
+        }
+        /* 롤러코스터 */
+        c.strokeStyle = 'rgba(40,224,255,.4)'; c.lineWidth = 5;
+        c.beginPath(); c.moveTo(250, 520); c.bezierCurveTo(340, 420, 420, 560, 540, 440); c.stroke();
+        /* 부스 */
+        for (var k = 0; k < 4; k++) {
+          var bx = 20 + k * 130, by = 540;
+          R(c, bx, by, 86, 60, 'rgba(28,12,46,.9)');
+          for (var s = 0; s < 6; s++) R(c, bx + s * 15, by - 12, 8, 12, s % 2 ? 'rgba(255,95,210,.8)' : 'rgba(255,230,140,.8)');
+          R(c, bx + 12, by + 12, 26, 18, 'rgba(40,224,255,.35)');
+        }
+        for (var g = 0; g < 24; g++) CIR(c, (g * 47) % W, 300 + (g * 71) % 260, 2, g % 2 ? 'rgba(255,217,102,.6)' : 'rgba(255,120,220,.55)');
+      }
+    },
+    /* 5 */ {
+      id: 'mushroom', name: '요정 버섯 숲 & 세계수', emoji: '🍄', diff: '쉬움', diffColor: '#86efac',
+      desc: '넓은 버섯 발판 · 반딧불 · 세계수 줄기',
+      zones: ['6. 이끼 구덩이', '1. 버섯 마을', '2. 이끼 오솔길', '3. 세계수 뿌리', '4. 반딧불 가지', '5. 🍄 세계수 정상'],
+      phys: { grav: 1300, jump: 1, horiz: 1 },
+      sky: ['#0d2a20', '#1c4a35', '#2f7350'],
+      pal: { top: '#f7a8b8', body: '#c94f6d', deep: '#5c1f31', line: '#3a1120', accent: '#fff3b0' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'leaf' };
+        var r = i % 8;
+        if (r === 2) return { art: 'leaf' };
+        if (r === 5) return { art: 'wood' };
+        return { art: 'leaf' };
+      },
+      decor: function (c) {
+        /* 세계수 */
+        R(c, 230, 120, 90, 600, 'rgba(70,44,28,.92)');
+        R(c, 230, 120, 20, 600, 'rgba(96,64,40,.9)');
+        CIR(c, 275, 150, 130, 'rgba(46,120,74,.5)');
+        CIR(c, 275, 120, 96, 'rgba(62,150,92,.42)');
+        CIR(c, 180, 200, 70, 'rgba(52,132,82,.45)');
+        CIR(c, 370, 210, 78, 'rgba(52,132,82,.4)');
+        /* 버섯 */
+        [[50, 600, 34], [120, 640, 26], [430, 610, 30], [490, 650, 22]].forEach(function (m) {
+          R(c, m[0] - 5, m[1], 10, m[2] * 0.7, 'rgba(240,236,220,.7)');
+          CIR(c, m[0], m[1], m[2] * 0.6, 'rgba(220,92,120,.72)');
+          CIR(c, m[0] - 6, m[1] - 4, 3, 'rgba(255,240,240,.7)');
+          CIR(c, m[0] + 7, m[1] + 2, 2, 'rgba(255,240,240,.6)');
+        });
+        /* 반딧불 */
+        for (var k = 0; k < 30; k++) {
+          CIR(c, (k * 53) % W, 200 + (k * 97) % 460, 2, 'rgba(255,246,170,' + (0.35 + (k % 3) * 0.15) + ')');
+        }
+        ditherV(c, 0, 560, W, 160, ['rgba(12,42,30,0)', 'rgba(20,64,44,.5)', 'rgba(12,42,30,0)']);
+      }
+    },
+    /* 6 */ {
+      id: 'cyberpunk', name: '사이버펑크 네온 빌딩', emoji: '🤖', diff: '극악', diffColor: '#f87171',
+      desc: '네온 간판 · 홀로그램 발판 · 젖은 지붕',
+      zones: ['6. 지하 골목', '1. 간판 거리', '2. 골목 옥상', '3. 홀로그램 타워', '4. 안테나 정상', '5. 🤖 네온 스카이'],
+      phys: { grav: 1420, jump: 1, horiz: 1 },
+      sky: ['#07060f', '#150a26', '#2b0f3d'],
+      pal: { top: '#5ef2ff', body: '#1c2f45', deep: '#080f1c', line: '#04080f', accent: '#ff2e88', accent2: '#5ef2ff' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'metal' };
+        var r = i % 7;
+        if (r === 2) return { art: 'neon', type: 'ice' };
+        if (r === 4) return { art: 'metal', type: 'crumble' };
+        if (r === 6) return { art: 'neon', type: 'moving' };
+        return { art: 'metal' };
+      },
+      extra: function (i, p) { if (p.type === 'moving') { p.moveRange = 26; p.moveSpeed = 0.9; p.movePhase = i; } },
+      decor: function (c) {
+        for (var k = 0; k < 9; k++) {
+          var bx = (k * 63) % W, hh = 220 + (k % 4) * 90;
+          R(c, bx, 720 - hh, 54, hh, 'rgba(10,14,26,.96)');
+          for (var wy = 720 - hh + 14; wy < 700; wy += 26) {
+            if ((k + wy) % 3 === 0) R(c, bx + 8, wy, 10, 10, 'rgba(255,220,120,.28)');
+            else R(c, bx + 8, wy, 10, 10, 'rgba(94,242,255,.16)');
+          }
+        }
+        /* 네온 사인 */
+        R(c, 60, 300, 8, 120, 'rgba(255,46,136,.65)');
+        R(c, 380, 250, 8, 160, 'rgba(94,242,255,.6)');
+        R(c, 200, 200, 90, 16, 'rgba(255,217,102,.5)');
+        R(c, 210, 226, 40, 12, 'rgba(255,46,136,.45)');
+        for (var g = 0; g < 26; g++) R(c, (g * 43) % W, (g * 61) % 700, 2, 8, 'rgba(94,242,255,.18)');
+      }
+    },
+    /* 7 */ {
+      id: 'olympus', name: '올림포스 신전', emoji: '🏛️', diff: '어려움', diffColor: '#fca5a5',
+      desc: '대리석 기둥 · 황금 조각상 · 구름 신전',
+      zones: ['6. 대지의 균열', '1. 신전 계단', '2. 대리석 회랑', '3. 제단', '4. 신들의 구름', '5. 🏛️ 올림포스 정상'],
+      phys: { grav: 1370, jump: 1, horiz: 1 },
+      sky: ['#2b3a5c', '#5c7398', '#a9bcd8'],
+      pal: { top: '#fffaf0', body: '#d8cfbb', deep: '#7b7263', line: '#57503f', accent: '#e8c46a' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'stone' };
+        var r = i % 8;
+        if (r === 3) return { art: 'brick', type: 'crumble' };
+        if (r === 6) return { art: 'cloud' };
+        return { art: 'stone' };
+      },
+      decor: function (c) {
+        /* 신전 */
+        R(c, 176, 300, 190, 220, 'rgba(214,205,184,.85)');
+        TRI(c, 136, 300, 271, 210, 406, 300, 'rgba(236,228,208,.9)');
+        R(c, 136, 296, 270, 10, 'rgba(248,242,226,.9)');
+        for (var k = 0; k < 6; k++) {
+          R(c, 186 + k * 30, 320, 16, 200, 'rgba(246,240,226,.9)');
+          R(c, 186 + k * 30, 316, 18, 8, 'rgba(255,252,242,.95)');
+        }
+        R(c, 170, 520, 202, 14, 'rgba(226,218,198,.9)');
+        /* 황금 조각상 */
+        R(c, 300, 236, 10, 26, 'rgba(232,196,106,.9)');
+        CIR(c, 305, 230, 7, 'rgba(240,208,120,.95)');
+        /* 구름 */
+        cloud(c, 70, 620, 1.7, 'rgba(226,236,246,.5)');
+        cloud(c, 430, 650, 1.4, 'rgba(226,236,246,.45)');
+        dots(c, 7, 34, W, 720, ['rgba(255,250,235,.4)', 'rgba(232,214,166,.3)'], 2);
+      }
+    },
+    /* 8 */ {
+      id: 'lab', name: '미친 과학자의 실험실', emoji: '🧪', diff: '어려움', diffColor: '#fca5a5',
+      desc: '거품 나는 플라스크 · 테슬라 코일 · 초록 번개',
+      zones: ['6. 폐기물 탱크', '1. 작업대', '2. 약품 선반', '3. 테슬라 코일', '4. 대형 원심분리기', '5. 🧪 실험실 정상'],
+      phys: { grav: 1380, jump: 1, horiz: 1 },
+      sky: ['#0a1410', '#123024', '#1c4a36'],
+      pal: { top: '#c8f5d0', body: '#3f7a56', deep: '#0d2419', line: '#071a10', accent: '#8ef0a5' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'metal' };
+        var r = i % 7;
+        if (r === 2) return { art: 'neon', type: 'ice' };
+        if (r === 4) return { art: 'metal', type: 'moving' };
+        if (r === 6) return { art: 'drip' };
+        return { art: 'metal' };
+      },
+      extra: function (i, p) { if (p.type === 'moving') { p.moveRange = 24; p.moveSpeed = 0.6; p.movePhase = i * 1.3; } },
+      decor: function (c) {
+        /* 선반 */
+        for (var s = 0; s < 3; s++) {
+          R(c, 20, 420 + s * 90, 500, 8, 'rgba(44,70,58,.9)');
+          for (var k = 0; k < 12; k++) {
+            var bx = 30 + k * 40;
+            R(c, bx, 392 + s * 90, 22, 28, 'rgba(30,52,42,.9)');
+            R(c, bx + 4, 398 + s * 90, 14, 16, k % 3 === 0 ? 'rgba(142,240,165,.5)' : k % 3 === 1 ? 'rgba(120,220,255,.45)' : 'rgba(255,180,120,.42)');
+            R(c, bx + 9, 388 + s * 90, 4, 6, 'rgba(60,90,74,.9)');
+          }
+        }
+        /* 테슬라 코일 */
+        R(c, 430, 300, 44, 130, 'rgba(40,62,54,.9)');
+        CIR(c, 452, 296, 20, 'rgba(142,240,165,.35)');
+        for (var q = 0; q < 5; q++) {
+          R(c, 300 + q * 18, 150 + (q % 3) * 26, 3, 60 + q * 10, 'rgba(142,240,165,.28)');
+        }
+        /* 거품 */
+        for (var g = 0; g < 22; g++) CIR(c, (g * 61) % W, 120 + (g * 83) % 500, 3 + (g % 3), 'rgba(142,240,165,' + (0.12 + (g % 4) * 0.06) + ')');
+        ditherV(c, 0, 560, W, 160, ['rgba(10,30,20,0)', 'rgba(20,60,42,.5)', 'rgba(10,30,20,0)']);
+      }
+    },
+    /* 9 */ {
+      id: 'canyon', name: '서쪽 그랜드 캐니언', emoji: '🌵', diff: '어려움', diffColor: '#fca5a5',
+      desc: '붉은 메사 · 선인장 · 광산 발판',
+      zones: ['6. 협곡 바닥', '1. 사막 입구', '2. 붉은 메사', '3. 광산 다리', '4. 바위 첨탑', '5. 🌵 캐니언 정상'],
+      phys: { grav: 1380, jump: 1, horiz: 1 },
+      sky: ['#3b1a1c', '#8a3c22', '#d97a3e'],
+      pal: { top: '#ffd9a0', body: '#b5612f', deep: '#5c2712', line: '#3d180a', accent: '#8bc34a' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'sand' };
+        var r = i % 8;
+        if (r === 3) return { art: 'wood', type: 'crumble' };
+        if (r === 6) return { art: 'wood', type: 'ice' };
+        return { art: 'sand' };
+      },
+      decor: function (c) {
+        /* 메사 */
+        POLY(c, [0, 520, 90, 380, 200, 380, 240, 520, 240, 720, 0, 720], 'rgba(140,60,30,.9)');
+        POLY(c, [300, 470, 360, 300, 470, 300, 520, 470, 520, 720, 300, 720], 'rgba(112,46,22,.9)');
+        POLY(c, [0, 520, 90, 380, 200, 380, 240, 520], 'rgba(182,86,44,.65)');
+        POLY(c, [300, 470, 360, 300, 470, 300, 520, 470], 'rgba(168,78,40,.6)');
+        for (var k = 0; k < 5; k++) R(c, 20 + k * 100, 470 + (k % 2) * 40, 70, 6, 'rgba(200,110,60,.35)');
+        /* 선인장 */
+        [[70, 600], [420, 580], [260, 640]].forEach(function (s) {
+          R(c, s[0], s[1] - 60, 12, 60, 'rgba(88,140,70,.85)');
+          R(c, s[0] - 12, s[1] - 44, 12, 8, 'rgba(88,140,70,.85)');
+          R(c, s[0] - 12, s[1] - 62, 8, 20, 'rgba(88,140,70,.85)');
+        });
+        /* 해 */
+        CIR(c, 440, 130, 40, 'rgba(255,196,110,.45)');
+        ditherV(c, 0, 620, W, 100, ['rgba(60,26,14,0)', 'rgba(80,34,18,.5)', 'rgba(60,26,14,0)']);
+      }
+    },
+    /* 10 */ {
+      id: 'santa', name: '산타 선물 공장 & 거대 트리', emoji: '🎄', diff: '쉬움', diffColor: '#86efac',
+      desc: '넓은 선물 상자 · 트리 장식 · 눈 내리는 공장',
+      zones: ['6. 눈 쌓인 마당', '1. 선물 상자 더미', '2. 공장 컨베이어', '3. 트리 아래', '4. 별 장식 가지', '5. 🎄 거대 트리 정상'],
+      phys: { grav: 1320, jump: 1, horiz: 1 },
+      sky: ['#101a34', '#25385c', '#4c6b96'],
+      pal: { top: '#fff6f0', body: '#c0392b', deep: '#5d1a14', line: '#3d0f0b', accent: '#ffd166' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'candy' };
+        var r = i % 8;
+        if (r === 3) return { art: 'snow' };
+        if (r === 6) return { art: 'candy' };
+        return { art: 'wood' };
+      },
+      decor: function (c) {
+        /* 거대 트리 */
+        TRI(c, 100, 620, 270, 120, 440, 620, 'rgba(28,86,56,.85)');
+        TRI(c, 130, 500, 270, 180, 410, 500, 'rgba(36,104,68,.85)');
+        TRI(c, 160, 390, 270, 220, 380, 390, 'rgba(44,124,80,.85)');
+        for (var k = 0; k < 26; k++) {
+          CIR(c, 150 + (k * 53) % 240, 240 + (k * 71) % 340, 4, k % 3 === 0 ? 'rgba(255,209,102,.9)' : k % 3 === 1 ? 'rgba(255,120,120,.85)' : 'rgba(140,220,255,.8)');
+        }
+        CIR(c, 270, 200, 16, 'rgba(255,232,140,.85)');
+        /* 공장 */
+        R(c, 380, 460, 150, 180, 'rgba(80,44,36,.85)');
+        TRI(c, 372, 460, 455, 410, 538, 460, 'rgba(190,120,110,.7)');
+        for (var w = 0; w < 3; w++) R(c, 398 + w * 44, 500, 28, 24, 'rgba(255,214,120,.5)');
+        /* 눈송이 */
+        for (var s = 0; s < 40; s++) R(c, (s * 47) % W, (s * 83) % 700, 2, 2, 'rgba(255,255,255,' + (0.25 + (s % 3) * 0.15) + ')');
+      }
+    },
+    /* 11 */ {
+      id: 'stadium', name: '초대형 스타디움', emoji: '⚽', diff: '보통', diffColor: '#93c5fd',
+      desc: '조명탑 · 관중석 지붕 · 잔디 발판',
+      zones: ['6. 잔디 구장', '1. 관중석 입구', '2. 터널', '3. 조명탑', '4. 지붕 구조물', '5. ⚽ 스타디움 정상'],
+      phys: { grav: 1370, jump: 1, horiz: 1 },
+      sky: ['#0c1a2e', '#173a5e', '#2c6b94'],
+      pal: { top: '#c8f7c5', body: '#2f7d4e', deep: '#123a24', line: '#0a2416', accent: '#e8f4ff' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'leaf' };
+        var r = i % 8;
+        if (r === 3) return { art: 'metal', type: 'ice' };
+        if (r === 6) return { art: 'metal' };
+        return { art: 'leaf' };
+      },
+      decor: function (c) {
+        /* 관중석 */
+        for (var t = 0; t < 4; t++) {
+          R(c, 0, 560 + t * 40, W, 34, 'rgba(20,44,68,' + (0.9 - t * 0.12) + ')');
+          for (var k = 0; k < 30; k++) CIR(c, (k * 19 + t * 7) % W, 572 + t * 40, 2, k % 3 === 0 ? 'rgba(255,220,140,.5)' : 'rgba(200,220,240,.35)');
+        }
+        /* 조명탑 */
+        [[70, 200], [460, 180]].forEach(function (L) {
+          R(c, L[0], L[1], 8, 260, 'rgba(150,170,190,.5)');
+          R(c, L[0] - 22, L[1] - 26, 52, 26, 'rgba(40,60,84,.9)');
+          for (var s = 0; s < 6; s++) CIR(c, L[0] - 14 + s * 11, L[1] - 16, 4, 'rgba(255,252,220,.85)');
+          POLY(c, [L[0] - 20, L[1] + 6, L[0] + 30, L[1] + 6, L[0] + 120, 640, L[0] - 110, 640], 'rgba(255,250,210,.07)');
+        });
+        /* 골대 */
+        R(c, 210, 470, 6, 60, 'rgba(240,248,255,.7)'); R(c, 330, 470, 6, 60, 'rgba(240,248,255,.7)');
+        R(c, 210, 470, 126, 5, 'rgba(240,248,255,.7)');
+      }
+    },
+    /* 12 */ {
+      id: 'rockfest', name: '록 페스티벌 무대', emoji: '🎸', diff: '어려움', diffColor: '#fca5a5',
+      desc: '스피커 스택 · 조명 레이저 · 흔들리는 무대',
+      zones: ['6. 관객석', '1. 무대 아래', '2. 스피커 탑', '3. 조명 트러스', '4. 앰프 지붕', '5. 🎸 페스티벌 정상'],
+      phys: { grav: 1380, jump: 1, horiz: 1 },
+      sky: ['#100416', '#2a0a2e', '#4a1040'],
+      pal: { top: '#f2a8ff', body: '#3a1440', deep: '#160518', line: '#0b020d', accent: '#ff5f7e' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'metal' };
+        var r = i % 7;
+        if (r === 2) return { art: 'metal', type: 'moving' };
+        if (r === 5) return { art: 'neon', type: 'ice' };
+        return { art: 'metal' };
+      },
+      extra: function (i, p) { if (p.type === 'moving') { p.moveRange = 26; p.moveSpeed = 0.75; p.movePhase = i * 1.1; } },
+      decor: function (c) {
+        /* 무대 */
+        R(c, 40, 470, 460, 250, 'rgba(22,6,26,.95)');
+        R(c, 40, 462, 460, 12, 'rgba(90,24,80,.9)');
+        /* 스피커 스택 */
+        for (var s = 0; s < 4; s++) {
+          var bx = 60 + s * 120;
+          for (var k = 0; k < 3; k++) {
+            R(c, bx, 500 + k * 60, 76, 52, 'rgba(14,4,18,.95)');
+            CIR(c, bx + 38, 524 + k * 60, 16, 'rgba(60,20,64,.95)');
+            CIR(c, bx + 38, 524 + k * 60, 8, 'rgba(120,40,110,.9)');
+          }
+        }
+        /* 레이저 */
+        c.strokeStyle = 'rgba(255,95,126,.4)'; c.lineWidth = 3;
+        for (var q = 0; q < 4; q++) {
+          c.beginPath(); c.moveTo(270, 120); c.lineTo(40 + q * 150, 470); c.stroke();
+        }
+        R(c, 220, 90, 100, 34, 'rgba(30,10,36,.95)');
+        for (var l = 0; l < 5; l++) CIR(c, 234 + l * 22, 107, 5, 'rgba(255,240,180,.8)');
+        for (var g = 0; g < 20; g++) CIR(c, (g * 59) % W, 200 + (g * 91) % 300, 2, 'rgba(255,168,255,.4)');
+      }
+    },
+    /* 13 */ {
+      id: 'onsen', name: '등불 온천 목조 탑', emoji: '🏮', diff: '보통', diffColor: '#93c5fd',
+      desc: '김이 나는 온천 · 붉은 등불 · 목조 발판',
+      zones: ['6. 온천 노천탕', '1. 목조 다리', '2. 등불 골목', '3. 탑 1층', '4. 탑 3층', '5. 🏮 온천 탑 정상'],
+      phys: { grav: 1340, jump: 1, horiz: 1 },
+      sky: ['#1b1220', '#3a2232', '#6b4150'],
+      pal: { top: '#f6dca8', body: '#8a5a34', deep: '#3a2110', line: '#25140a', accent: '#ff8a5c' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'wood' };
+        var r = i % 8;
+        if (r === 3) return { art: 'wood', type: 'ice' };
+        if (r === 6) return { art: 'tile' };
+        return { art: 'wood' };
+      },
+      decor: function (c) {
+        /* 탑 */
+        for (var t = 0; t < 4; t++) {
+          var tw = 220 - t * 34, tx = 270 - tw / 2, ty = 620 - t * 120;
+          R(c, tx, ty - 90, tw, 90, 'rgba(92,58,34,.92)');
+          TRI(c, tx - 26, ty - 90, 270, ty - 128, tx + tw + 26, ty - 90, 'rgba(64,34,24,.95)');
+          R(c, tx + 10, ty - 74, tw - 20, 10, 'rgba(230,200,150,.25)');
+        }
+        /* 등불 */
+        for (var k = 0; k < 8; k++) {
+          var lx = 30 + k * 66, ly = 380 + (k % 3) * 60;
+          R(c, lx, ly, 20, 26, 'rgba(255,120,80,.75)');
+          R(c, lx + 4, ly + 4, 12, 16, 'rgba(255,214,150,.85)');
+          R(c, lx + 8, ly - 6, 4, 8, 'rgba(60,40,30,.8)');
+        }
+        /* 김이 나는 온천 */
+        R(c, 0, 640, W, 80, 'rgba(120,190,200,.28)');
+        for (var s = 0; s < 10; s++) {
+          c.strokeStyle = 'rgba(226,240,244,.22)'; c.lineWidth = 4;
+          c.beginPath(); c.moveTo(20 + s * 54, 630); c.bezierCurveTo(30 + s * 54, 580, 10 + s * 54, 540, 24 + s * 54, 500); c.stroke();
+        }
+      }
+    },
+    /* 14 */ {
+      id: 'honey', name: '거대 벌집 왕국', emoji: '🍯', diff: '쉬움', diffColor: '#86efac',
+      desc: '육각 벌집 발판 · 꿀 방울 · 넓은 층',
+      zones: ['6. 꿀 웅덩이', '1. 벌집 입구', '2. 육각 벌집', '3. 꿀 저장고', '4. 여왕벌 방', '5. 🍯 벌집 정상'],
+      phys: { grav: 1330, jump: 1, horiz: 1 },
+      sky: ['#2a1a04', '#523208', '#8a5c14'],
+      pal: { top: '#ffe28a', body: '#e8a821', deep: '#7c4a06', line: '#5b3404', accent: '#fff3b8' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'wax' };
+        var r = i % 8;
+        if (r === 3) return { art: 'wax', type: 'ice' };
+        if (r === 5) return { art: 'drip' };
+        return { art: 'wax' };
+      },
+      decor: function (c) {
+        /* 벌집 벽 */
+        for (var k = 0; k < 26; k++) {
+          var hx = (k * 63) % (W + 40) - 20, hy = 160 + ((k * 47) % 420);
+          CIR(c, hx, hy, 22, 'rgba(200,140,26,.16)');
+          CIR(c, hx, hy, 15, 'rgba(232,178,48,.12)');
+        }
+        /* 꿀 방울 */
+        for (var d = 0; d < 6; d++) {
+          var dx = 40 + d * 82, dy = 420 + (d % 3) * 60;
+          R(c, dx, dy, 10, 26, 'rgba(255,206,84,.5)');
+          CIR(c, dx + 5, dy + 28, 8, 'rgba(255,206,84,.55)');
+        }
+        /* 벌 */
+        for (var b = 0; b < 8; b++) {
+          var bx = 30 + (b * 71) % 480, by = 200 + (b * 53) % 340;
+          R(c, bx, by, 10, 7, 'rgba(50,36,10,.8)');
+          R(c, bx + 2, by, 3, 7, 'rgba(255,214,90,.9)');
+          CIR(c, bx - 1, by + 2, 3, 'rgba(210,230,255,.35)');
+        }
+        ditherV(c, 0, 620, W, 100, ['rgba(42,26,4,0)', 'rgba(90,58,10,.5)', 'rgba(42,26,4,0)']);
+      }
+    },
+    /* 15 */ {
+      id: 'library', name: '마법 도서관 & 둥둥 책', emoji: '📚', diff: '어려움', diffColor: '#fca5a5',
+      desc: '떠다니는 책 발판 · 촛불 · 나선 계단',
+      zones: ['6. 서고 지하', '1. 열람실', '2. 책장 미로', '3. 나선 계단', '4. 마법서 선반', '5. 📚 도서관 정상'],
+      phys: { grav: 1360, jump: 1, horiz: 1 },
+      sky: ['#180f22', '#33204a', '#553a6e'],
+      pal: { top: '#e8d9ff', body: '#6b4a8f', deep: '#2a1838', line: '#190e22', accent: '#ffd479' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'wood' };
+        var r = i % 7;
+        if (r === 2) return { art: 'brick', type: 'moving' };
+        if (r === 5) return { art: 'brick', type: 'crumble' };
+        return { art: 'wood' };
+      },
+      extra: function (i, p) { if (p.type === 'moving') { p.moveRange = 26; p.moveSpeed = 0.55; p.movePhase = i * 1.4; } },
+      decor: function (c) {
+        /* 책장 */
+        for (var s = 0; s < 3; s++) {
+          for (var shelf = 0; shelf < 4; shelf++) {
+            R(c, 20 + s * 180, 200 + shelf * 120, 150, 10, 'rgba(70,44,30,.9)');
+            for (var b = 0; b < 7; b++) {
+              R(c, 26 + s * 180 + b * 20, 168 + shelf * 120, 14, 32, ['rgba(120,60,60,.7)', 'rgba(60,80,120,.7)', 'rgba(80,120,80,.7)', 'rgba(140,110,60,.7)'][b % 4]);
+            }
+          }
+        }
+        /* 떠 있는 책 */
+        for (var k = 0; k < 6; k++) {
+          var bx = 40 + k * 84, by = 420 + (k % 3) * 70;
+          R(c, bx, by, 34, 8, 'rgba(200,170,255,.35)');
+          TRI(c, bx + 8, by - 10, bx + 26, by - 10, bx + 17, by - 22, 'rgba(230,210,255,.3)');
+        }
+        /* 촛불 */
+        for (var cd = 0; cd < 5; cd++) {
+          var cx = 60 + cd * 110;
+          R(c, cx, 620, 8, 26, 'rgba(240,230,200,.5)');
+          CIR(c, cx + 4, 612, 5, 'rgba(255,214,140,.6)');
+        }
+      }
+    },
+    /* 16 */ {
+      id: 'cheese', name: '거대 스위스 치즈 탑', emoji: '🧀', diff: '쉬움', diffColor: '#86efac',
+      desc: '치즈 구멍 · 탄력 있는 노란 바퀴 · 넓은 발판',
+      zones: ['6. 우유 호수', '1. 치즈 창고', '2. 노란 치즈 바퀴', '3. 알프스 목장', '4. 꼭대기 치즈', '5. 🧀 치즈 정상'],
+      phys: { grav: 1310, jump: 1, horiz: 1 },
+      sky: ['#12243c', '#33597e', '#6c9cbc'],
+      pal: { top: '#ffe89a', body: '#e8a821', deep: '#8a5a06', line: '#5e3c04', accent: '#fff6c8' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'cheese' };
+        var r = i % 8;
+        if (r === 3) return { art: 'cheese', type: 'ice' };
+        if (r === 6) return { art: 'snow' };
+        return { art: 'cheese' };
+      },
+      decor: function (c) {
+        /* 알프스 산 */
+        mountain(c, 120, 560, 190, 240, 'rgba(216,228,240,.55)');
+        mountain(c, 380, 580, 210, 280, 'rgba(198,214,232,.5)');
+        POLY(c, [60, 300, 120, 240, 180, 300, 160, 320, 120, 288, 90, 322], 'rgba(255,255,255,.65)');
+        POLY(c, [310, 340, 380, 280, 450, 340, 424, 356, 380, 320, 340, 356], 'rgba(255,255,255,.6)');
+        /* 치즈 바퀴 */
+        CIR(c, 90, 600, 62, 'rgba(232,168,33,.85)');
+        CIR(c, 90, 600, 52, 'rgba(255,214,90,.9)');
+        CIR(c, 68, 580, 10, 'rgba(180,120,20,.7)'); CIR(c, 108, 616, 12, 'rgba(180,120,20,.7)'); CIR(c, 96, 572, 7, 'rgba(180,120,20,.7)');
+        CIR(c, 430, 630, 44, 'rgba(232,168,33,.8)');
+        CIR(c, 430, 630, 34, 'rgba(255,214,90,.85)');
+        CIR(c, 418, 618, 8, 'rgba(180,120,20,.65)');
+        ditherV(c, 0, 600, W, 120, ['rgba(18,36,60,0)', 'rgba(30,60,90,.45)', 'rgba(18,36,60,0)']);
+      }
+    },
+    /* 17 */ {
+      id: 'dino', name: '공룡 박물관 화석 탑', emoji: '🦖', diff: '보통', diffColor: '#93c5fd',
+      desc: '화석 뼈 발판 · 유리 진열장 · 따뜻한 조명',
+      zones: ['6. 지하 수장고', '1. 입구 홀', '2. 화석 벽', '3. 공룡 골격', '4. 천장 조명', '5. 🦖 박물관 정상'],
+      phys: { grav: 1360, jump: 1, horiz: 1 },
+      sky: ['#1a1408', '#332818', '#57432c'],
+      pal: { top: '#f4ead1', body: '#cbbf9e', deep: '#5b5443', line: '#3a352a', accent: '#e0b06a' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'bone' };
+        var r = i % 8;
+        if (r === 3) return { art: 'bone', type: 'ice' };
+        if (r === 6) return { art: 'bone', type: 'crumble' };
+        return { art: 'bone' };
+      },
+      decor: function (c) {
+        /* 진열장 */
+        for (var s = 0; s < 3; s++) {
+          R(c, 20 + s * 176, 200, 152, 400, 'rgba(40,34,22,.7)');
+          R(c, 26 + s * 176, 206, 140, 388, 'rgba(120,150,170,.12)');
+          for (var sh = 0; sh < 3; sh++) R(c, 26 + s * 176, 300 + sh * 120, 140, 6, 'rgba(180,160,120,.5)');
+        }
+        /* 공룡 골격 실루엣 */
+        c.strokeStyle = 'rgba(232,220,190,.5)'; c.lineWidth = 5;
+        c.beginPath(); c.moveTo(120, 560); c.bezierCurveTo(180, 460, 250, 520, 300, 430); c.stroke();
+        c.beginPath(); c.moveTo(300, 430); c.bezierCurveTo(350, 350, 420, 400, 470, 330); c.stroke();
+        for (var k = 0; k < 9; k++) {
+          var rx = 130 + k * 40, ry = 540 - k * 24;
+          c.beginPath(); c.moveTo(rx, ry + 10); c.lineTo(rx + 6, ry + 44); c.stroke();
+        }
+        CIR(c, 470, 322, 20, 'rgba(232,220,190,.35)');
+        /* 스포트라이트 */
+        POLY(c, [60, 60, 120, 60, 200, 620, 20, 620], 'rgba(255,236,190,.06)');
+        POLY(c, [400, 60, 470, 60, 530, 620, 340, 620], 'rgba(255,236,190,.06)');
+        ditherV(c, 0, 620, W, 100, ['rgba(26,20,8,0)', 'rgba(60,46,24,.5)', 'rgba(26,20,8,0)']);
+      }
+    },
+    /* 18 */ {
+      id: 'alien', name: '외계 수정 동굴 탈출', emoji: '🛸', diff: '극악', diffColor: '#f87171',
+      desc: '깜빡이는 수정 · 낮은 중력 · 좁은 발판',
+      zones: ['6. 심연 동굴', '1. 수정 입구', '2. 보랏빛 결정', '3. 외계 생물 둥지', '4. 탈출 굴', '5. 🛸 지표 탈출'],
+      phys: { grav: 1120, jump: 1, horiz: 1 },
+      sky: ['#0a0618', '#1c0c3a', '#341a5e'],
+      pal: { top: '#d9b8ff', body: '#7c3fd0', deep: '#2a0f52', line: '#180733', accent: '#6ef2ff' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'crystal' };
+        var r = i % 7;
+        if (r === 2) return { art: 'crystal', type: 'ice' };
+        if (r === 4) return { art: 'crystal', type: 'moving' };
+        if (r === 6) return { art: 'crystal', type: 'crumble' };
+        return { art: 'crystal' };
+      },
+      extra: function (i, p) { if (p.type === 'moving') { p.moveRange = 30; p.moveSpeed = 0.8; p.movePhase = i * 1.2; } },
+      decor: function (c) {
+        /* 동굴 벽 */
+        POLY(c, [0, 0, 60, 0, 30, 220, 0, 320], 'rgba(10,6,24,.9)');
+        POLY(c, [540, 0, 480, 0, 512, 260, 540, 360], 'rgba(10,6,24,.9)');
+        for (var k = 0; k < 14; k++) {
+          var cx = 30 + (k * 71) % 470, cy = 120 + (k * 113) % 480;
+          TRI(c, cx - 12, cy + 26, cx, cy - 20, cx + 12, cy + 26, 'rgba(124,63,208,.34)');
+          TRI(c, cx - 6, cy + 22, cx, cy - 8, cx + 6, cy + 22, 'rgba(110,242,255,.25)');
+        }
+        /* 지표 빛 */
+        POLY(c, [180, 0, 360, 0, 300, 260, 240, 260], 'rgba(110,242,255,.08)');
+        for (var g = 0; g < 26; g++) CIR(c, (g * 53) % W, (g * 89) % 700, 2, 'rgba(110,242,255,.3)');
+        ditherV(c, 0, 600, W, 120, ['rgba(10,6,24,0)', 'rgba(52,26,94,.5)', 'rgba(10,6,24,0)']);
+      }
+    },
+    /* 19 */ {
+      id: 'gyeongju', name: '경주 한옥 & 첨성대 달밤', emoji: '🏯', diff: '보통', diffColor: '#93c5fd',
+      desc: '기와지붕 발판 · 첨성대 · 달빛 마당',
+      zones: ['6. 연못', '1. 한옥 마당', '2. 기와 담장', '3. 첨성대', '4. 소나무 언덕', '5. 🏯 달빛 정상'],
+      phys: { grav: 1350, jump: 1, horiz: 1 },
+      sky: ['#0b1526', '#1c3352', '#3a5c85'],
+      pal: { top: '#cfd8e6', body: '#5b6172', deep: '#232833', line: '#151a22', accent: '#f2e2b0' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'stone' };
+        var r = i % 8;
+        if (r === 3) return { art: 'drip' };
+        if (r === 6) return { art: 'wood' };
+        return { art: 'stone' };
+      },
+      decor: function (c) {
+        /* 달 */
+        CIR(c, 410, 130, 46, 'rgba(248,246,224,.75)');
+        CIR(c, 424, 118, 40, 'rgba(11,21,38,.92)');
+        /* 첨성대 */
+        POLY(c, [150, 620, 210, 620, 200, 400, 160, 400], 'rgba(150,146,130,.85)');
+        for (var k = 0; k < 8; k++) R(c, 152, 420 + k * 24, 56, 6, 'rgba(96,94,82,.9)');
+        R(c, 152, 620, 56, 8, 'rgba(110,106,92,.9)');
+        R(c, 158, 388, 44, 14, 'rgba(170,166,148,.9)');
+        /* 한옥 */
+        R(c, 280, 480, 200, 120, 'rgba(60,52,44,.9)');
+        POLY(c, [262, 480, 380, 420, 498, 480], 'rgba(48,56,68,.95)');
+        POLY(c, [262, 480, 380, 428, 498, 480], 'rgba(70,80,96,.5)');
+        for (var w = 0; w < 3; w++) R(c, 300 + w * 60, 510, 36, 44, 'rgba(255,214,150,.35)');
+        /* 소나무 */
+        pine(c, 470, 620, 120, 'rgba(40,74,60,.8)', 'rgba(50,38,28,.9)');
+        pine(c, 80, 660, 90, 'rgba(36,66,54,.75)', 'rgba(50,38,28,.9)');
+        stars(c, 33, 40, W, 720, ['rgba(240,248,255,.8)', 'rgba(180,210,250,.6)', 'rgba(255,255,255,.4)']);
+      }
+    },
+    /* 20 */ {
+      id: 'venice', name: '베네치아 운하 & 붉은 종탑', emoji: '🚤', diff: '보통', diffColor: '#93c5fd',
+      desc: '곤돌라 · 아치 다리 · 붉은 벽돌 종탑',
+      zones: ['6. 운하 물길', '1. 곤돌라 정박지', '2. 아치 다리', '3. 광장', '4. 종탑 아래', '5. 🚤 종탑 정상'],
+      phys: { grav: 1350, jump: 1, horiz: 1 },
+      sky: ['#2a1424', '#6b2f30', '#c07a4a'],
+      pal: { top: '#ffd9b0', body: '#a4492f', deep: '#4a1c12', line: '#2e100a', accent: '#7fd6e8' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'brick' };
+        var r = i % 8;
+        if (r === 3) return { art: 'wood', type: 'moving' };
+        if (r === 6) return { art: 'brick', type: 'ice' };
+        return { art: 'brick' };
+      },
+      extra: function (i, p) { if (p.type === 'moving') { p.moveRange = 22; p.moveSpeed = 0.45; p.movePhase = i * 1.1; } },
+      decor: function (c) {
+        /* 종탑 */
+        R(c, 120, 260, 70, 320, 'rgba(150,72,48,.92)');
+        R(c, 120, 260, 70, 14, 'rgba(190,110,74,.95)');
+        TRI(c, 112, 260, 155, 200, 198, 260, 'rgba(120,54,36,.95)');
+        R(c, 136, 300, 38, 40, 'rgba(255,226,168,.55)');
+        R(c, 136, 300, 38, 4, 'rgba(255,240,200,.6)');
+        /* 궁전 */
+        R(c, 230, 430, 280, 200, 'rgba(214,168,120,.8)');
+        for (var a = 0; a < 5; a++) {
+          c.fillStyle = 'rgba(120,72,52,.75)';
+          c.beginPath(); c.arc(260 + a * 58, 460, 22, Math.PI, 6.3); c.fill();
+          R(c, 240 + a * 58, 460, 4, 50, 'rgba(120,72,52,.7)');
+          R(c, 274 + a * 58, 460, 4, 50, 'rgba(120,72,52,.7)');
+          R(c, 244 + a * 58, 492, 34, 26, 'rgba(80,50,40,.55)');
+        }
+        /* 운하 */
+        R(c, 0, 630, W, 90, 'rgba(40,110,124,.6)');
+        for (var k = 0; k < 10; k++) R(c, (k * 61) % W, 640 + (k % 4) * 18, 40, 3, 'rgba(180,230,240,.25)');
+        /* 곤돌라 */
+        POLY(c, [330, 700, 420, 700, 408, 720, 342, 720], 'rgba(20,18,24,.9)');
+        R(c, 372, 660, 4, 42, 'rgba(40,30,30,.9)');
+      }
+    },
+    /* 21 */ {
+      id: 'snowclock', name: '눈보라 설산 시계 종탑', emoji: '❄️', diff: '극악', diffColor: '#f87171',
+      desc: '눈보라 · 얼음 발판 · 시계 종탑',
+      zones: ['6. 눈보라 계곡', '1. 얼어붙은 마을', '2. 설산 능선', '3. 종탑 아래', '4. 시계 문자판', '5. ❄️ 종탑 정상'],
+      phys: { grav: 1400, jump: 1, horiz: 1 },
+      sky: ['#0a1424', '#1e3350', '#436b96'],
+      pal: { top: '#f2f8ff', body: '#9fbedd', deep: '#3b5875', line: '#243a52', accent: '#ffd166' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'snow' };
+        var r = i % 7;
+        if (r === 2) return { art: 'ice', type: 'ice' };
+        if (r === 4) return { art: 'snow', type: 'crumble' };
+        if (r === 6) return { art: 'ice', type: 'moving' };
+        return { art: 'snow' };
+      },
+      extra: function (i, p) { if (p.type === 'moving') { p.moveRange = 28; p.moveSpeed = 0.7; p.movePhase = i; } },
+      decor: function (c) {
+        mountain(c, 110, 640, 220, 220, 'rgba(200,220,240,.5)');
+        mountain(c, 400, 660, 240, 260, 'rgba(178,204,230,.45)');
+        POLY(c, [40, 320, 110, 220, 180, 320, 150, 344, 110, 300, 74, 346], 'rgba(255,255,255,.6)');
+        /* 종탑 */
+        R(c, 218, 300, 104, 300, 'rgba(58,74,96,.92)');
+        R(c, 218, 300, 104, 12, 'rgba(96,118,146,.95)');
+        TRI(c, 208, 300, 270, 232, 332, 300, 'rgba(40,54,72,.95)');
+        CIR(c, 270, 380, 38, 'rgba(240,246,255,.85)');
+        CIR(c, 270, 380, 32, 'rgba(40,56,78,.9)');
+        R(c, 268, 356, 4, 24, 'rgba(255,226,150,.95)');
+        R(c, 270, 380, 18, 4, 'rgba(255,226,150,.95)');
+        /* 눈 */
+        for (var s = 0; s < 70; s++) R(c, (s * 37) % W, (s * 67) % 700, 2, 3, 'rgba(255,255,255,' + (0.2 + (s % 4) * 0.12) + ')');
+        /* 마을 */
+        for (var k = 0; k < 4; k++) {
+          R(c, 20 + k * 40, 600, 32, 40, 'rgba(60,48,40,.75)');
+          TRI(c, 16 + k * 40, 600, 36 + k * 40, 574, 56 + k * 40, 600, 'rgba(220,232,244,.6)');
+        }
+      }
+    },
+    /* 22 */ {
+      id: 'fireworks', name: '불꽃축제 & 황금 고층빌딩', emoji: '🎆', diff: '어려움', diffColor: '#fca5a5',
+      desc: '불꽃이 터지는 밤 · 황금 마천루 · 유리 발판',
+      zones: ['6. 강변 광장', '1. 마천루 아래', '2. 유리 커튼월', '3. 옥상 정원', '4. 첨탑', '5. 🎆 불꽃 정상'],
+      phys: { grav: 1380, jump: 1, horiz: 1 },
+      sky: ['#0a0a1c', '#20124a', '#432068'],
+      pal: { top: '#ffe9a8', body: '#c99a38', deep: '#4a3208', line: '#2e1f04', accent: '#ff7a5c', accent2: '#ffd166' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'metal' };
+        var r = i % 7;
+        if (r === 2) return { art: 'neon', type: 'ice' };
+        if (r === 4) return { art: 'metal', type: 'moving' };
+        return { art: 'metal' };
+      },
+      extra: function (i, p) { if (p.type === 'moving') { p.moveRange = 24; p.moveSpeed = 0.66; p.movePhase = i * 0.9; } },
+      decor: function (c) {
+        stars(c, 41, 50, W, 720, ['rgba(255,240,200,.8)', 'rgba(200,190,255,.6)', 'rgba(255,255,255,.4)']);
+        /* 불꽃 */
+        var bursts = [[120, 150, 46, '255,122,92'], [380, 110, 40, '255,209,102'], [270, 240, 34, '160,230,255'], [470, 300, 26, '255,168,255']];
+        bursts.forEach(function (b, bi) {
+          for (var q = 0; q < 18; q++) {
+            var ang = q * Math.PI * 2 / 18 + bi;
+            var r0 = b[2] * (0.55 + hash(bi * 31 + q) * 0.45);
+            R(c, b[0] + Math.cos(ang) * r0 - 1, b[1] + Math.sin(ang) * r0 - 1, 3, 3, 'rgba(' + b[3] + ',.7)');
+          }
+          CIR(c, b[0], b[1], 6, 'rgba(255,255,230,.35)');
+        });
+        /* 마천루 */
+        for (var k = 0; k < 7; k++) {
+          var bx = 10 + k * 76, hh = 240 + (k % 3) * 110;
+          R(c, bx, 720 - hh, 58, hh, 'rgba(20,14,40,.95)');
+          R(c, bx, 720 - hh, 58, 6, 'rgba(201,154,56,.5)');
+          for (var wy = 720 - hh + 16; wy < 700; wy += 24) R(c, bx + 8, wy, 42, 10, (k + wy) % 3 ? 'rgba(255,214,120,.22)' : 'rgba(255,122,92,.28)');
+        }
+        R(c, 0, 660, W, 60, 'rgba(30,20,60,.9)');
+        for (var w = 0; w < 12; w++) R(c, (w * 47) % W, 664 + (w % 3) * 12, 30, 2, 'rgba(255,200,140,.2)');
+      }
+    },
+    /* 23 */ {
+      id: 'baseball', name: '야구장 나이트 게임', emoji: '⚾', diff: '보통', diffColor: '#93c5fd',
+      desc: '조명 아래 다이아몬드 · 외야 펜스 · 전광판',
+      zones: ['6. 불펜', '1. 덕아웃', '2. 내야 스탠드', '3. 외야 펜스', '4. 전광판', '5. ⚾ 야구장 정상'],
+      phys: { grav: 1360, jump: 1, horiz: 1 },
+      sky: ['#08111e', '#122a44', '#1f4a66'],
+      pal: { top: '#e6f7ee', body: '#2a6a4a', deep: '#0f2e20', line: '#081c14', accent: '#ffd166' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'leaf' };
+        var r = i % 8;
+        if (r === 3) return { art: 'metal', type: 'ice' };
+        if (r === 6) return { art: 'sand' };
+        return { art: 'leaf' };
+      },
+      decor: function (c) {
+        /* 스탠드 */
+        for (var t = 0; t < 3; t++) {
+          R(c, 0, 520 + t * 44, W, 40, 'rgba(14,34,52,' + (0.92 - t * 0.1) + ')');
+          for (var k = 0; k < 26; k++) CIR(c, (k * 21 + t * 9) % W, 532 + t * 44, 3, k % 4 === 0 ? 'rgba(255,220,140,.45)' : 'rgba(190,214,236,.3)');
+        }
+        /* 전광판 */
+        R(c, 180, 200, 180, 90, 'rgba(16,26,38,.95)');
+        R(c, 190, 210, 160, 70, 'rgba(30,60,50,.85)');
+        for (var d = 0; d < 4; d++) R(c, 200 + d * 38, 226, 28, 12, 'rgba(140,255,180,.4)');
+        R(c, 210, 250, 120, 8, 'rgba(255,220,120,.35)');
+        /* 조명 */
+        [[60, 170], [480, 170]].forEach(function (L) {
+          R(c, L[0], L[1], 7, 220, 'rgba(140,160,180,.45)');
+          R(c, L[0] - 20, L[1] - 22, 46, 22, 'rgba(30,44,60,.92)');
+          for (var s = 0; s < 5; s++) CIR(c, L[0] - 12 + s * 11, L[1] - 12, 4, 'rgba(255,252,220,.8)');
+        });
+        /* 다이아몬드 */
+        POLY(c, [180, 660, 270, 620, 360, 660, 270, 700], 'rgba(120,90,60,.5)');
+        R(c, 0, 690, W, 30, 'rgba(20,54,36,.9)');
+      }
+    },
+    /* 24 */ {
+      id: 'retro20', name: '2.0 오리지널', emoji: '✨', diff: '쉬움', diffColor: '#86efac',
+      desc: '예전 v2.0 그대로의 레트로 픽셀 · 단순한 발판 · 순수 감성',
+      zones: ['6. 아래 하늘', '1. 첫 발판', '2. 구름 길', '3. 별 구간', '4. 하늘 계단', '5. ✨ 오리지널 정상'],
+      phys: { grav: 1340, jump: 1, horiz: 1 },
+      sky: ['#1a2444', '#2a3a66', '#3e5490'],
+      pal: { top: '#f4f8ff', body: '#4b6bb0', deep: '#1e2c50', line: '#121c34', accent: '#ffd166' },
+      art: function (i, prog, safe) {
+        if (safe) return { art: 'brick' };
+        var r = i % 6;
+        if (r === 2) return { art: 'cloud' };
+        if (r === 4) return { art: 'brick' };
+        return { art: 'brick' };
+      },
+      decor: function (c) {
+        /* 레트로 단순 구름 */
+        for (var k = 0; k < 9; k++) {
+          var cx = (k * 67) % W, cy = 120 + (k * 97) % 480;
+          R(c, cx, cy, 52, 14, 'rgba(226,236,252,.5)');
+          R(c, cx + 8, cy - 10, 36, 12, 'rgba(238,244,255,.55)');
+        }
+        /* 별 */
+        for (var s = 0; s < 24; s++) {
+          var sx = (s * 47) % W, sy = (s * 71) % 420;
+          R(c, sx, sy, 3, 3, 'rgba(255,246,200,.7)');
+          if (s % 4 === 0) { R(c, sx - 4, sy + 1, 3, 1, 'rgba(255,246,200,.5)'); R(c, sx + 4, sy + 1, 3, 1, 'rgba(255,246,200,.5)'); }
+        }
+        /* 단순 격자 바닥 */
+        for (var gx = 0; gx < W; gx += 30) R(c, gx, 660, 30, 2, 'rgba(120,150,210,.25)');
+        R(c, 0, 700, W, 20, 'rgba(30,44,80,.7)');
+      }
+    }
+  ];
+
+  /* ==========================================================================
+     API + 등록
+     ========================================================================== */
+  var BY = {};
+  var LIST = [];
+  var decorCache = {};
+
+  DEF.forEach(function (d) {
+    var m = {
+      id: d.id, name: d.name, emoji: d.emoji, diff: d.diff, diffColor: d.diffColor,
+      total: (BAL[d.diff] || BAL['보통']).total,
+      desc: d.desc, zones: d.zones, phys: d.phys, sky: d.sky,
+      new50: true,
+      build: function (P, A) {
+        gen(P, A, {
+          id: d.id, diff: d.diff, seed: (d.id.charCodeAt(0) * 977 + d.id.length * 31) | 0,
+          ledges: null,
+          art: d.art, extra: d.extra
+        });
+      },
+      decor: d.decor,
+      plat: function (c, p, px0, py0) {
+        paint(p.art, c, p, px0, py0, p.w | 0, p.h | 0, d.pal);
+      }
+    };
+    m.zones[0] = m.zones[0];
+    BY[d.id] = m;
+    LIST.push(m);
+  });
+
+  function decorFor(m) {
+    if (decorCache[m.id] !== undefined) return decorCache[m.id];
+    if (!m.decor) { decorCache[m.id] = null; return null; }
+    var o = makeCanvas(W, 720);
+    try { m.decor(o.c); } catch (e) { console.warn('v50 decor', m.id, e); }
+    o.c.globalCompositeOperation = 'destination-out';
+    var f = 96;
+    var g1 = o.c.createLinearGradient(0, 0, 0, f);
+    g1.addColorStop(0, 'rgba(0,0,0,1)'); g1.addColorStop(1, 'rgba(0,0,0,0)');
+    o.c.fillStyle = g1; o.c.fillRect(0, 0, W, f);
+    var g2 = o.c.createLinearGradient(0, 720 - f, 0, 720);
+    g2.addColorStop(0, 'rgba(0,0,0,0)'); g2.addColorStop(1, 'rgba(0,0,0,1)');
+    o.c.fillStyle = g2; o.c.fillRect(0, 720 - f, W, f);
+    o.c.globalCompositeOperation = 'source-over';
+    decorCache[m.id] = o.cv;
+    return o.cv;
+  }
+
+  var API = {
+    list: LIST,
+    byId: function (id) { return BY[id] || null; },
+    has: function (id) { return !!BY[id]; },
+    ids: function () { return LIST.map(function (m) { return m.id; }); },
+    total: function (id) { var m = BY[id]; return m ? m.total : null; },
+    diffOf: function (id) { var m = BY[id]; return m ? m.diff : null; },
+    build: function (id, platforms, abyssArr) {
+      var m = BY[id];
+      if (!m) return false;
+      platforms.length = 0; abyssArr.length = 0;
+      m.build(platforms, abyssArr);
+      platforms.sort(function (a, b) { return a.index - b.index; });
+      platforms.forEach(function (p) { if (!p.baseY && p.baseY !== 0) p.baseY = p.y; });
+      return true;
+    },
+    gravity: function (id) { var m = BY[id]; return m ? m.phys.grav : null; },
+    drawBg: function (id, ctx, camY, logicalH) {
+      var m = BY[id];
+      if (!m) return false;
+      var sky = m.sky || ['#0b1024', '#141b33', '#1e2745'];
+      var gg = ctx.createLinearGradient(0, 0, 0, logicalH);
+      gg.addColorStop(0, sky[0]); gg.addColorStop(0.55, sky[1]); gg.addColorStop(1, sky[2]);
+      ctx.fillStyle = gg; ctx.fillRect(0, 0, W, logicalH);
+      var dec = decorFor(m);
+      if (dec) {
+        ctx.globalAlpha = 0.92;
+        var par = 0.55, tileH = 720;
+        var start = Math.floor((camY * par) / tileH) * tileH;
+        for (var i = -1; i < Math.ceil(logicalH / tileH) + 2; i++) {
+          var yy = (start + i * tileH - camY * par) | 0;
+          if (yy > logicalH + 10 || yy + tileH < -10) continue;
+          ctx.drawImage(dec, 0, 0, W, tileH, 0, yy, W, tileH);
+        }
+        ctx.globalAlpha = 1;
+      }
+      return true;
+    },
+    drawPlat: function (id, ctx, p, px0, py0) {
+      var m = BY[id];
+      if (!m) return false;
+      m.plat(ctx, p, px0, py0);
+      return true;
+    },
+    zoneName: function (id, y) {
+      var m = BY[id];
+      if (!m) return null;
+      var tot = m.total || 60;
+      var est = Math.max(1, Math.min(tot, Math.round(1 + (-y) / (150 * tot / 88))));
+      return m.zones[zoneOf(est, tot)] || m.zones[1];
+    },
+    hideCampfire: function (id) { return !!BY[id]; },
+    ambient: function (id, dt, st) { var m = BY[id]; if (m && m.ambient) m.ambient(dt, st); },
+    landFx: function () { return null; },
+    chargeRate: function () { return 1; },
+    drawFx: function () {}
+  };
+  root.JW50MAP = API;
+
+  /* 한 겹 더 얹기: JW50MAP → (기존 JWMap43 → JWMap41) */
+  var M = root.JWMap;
+  if (!M) return;
+  if (M.__v50) return;
+  M.__v50 = true;
+  var O = {
+    byId: M.byId, build: M.build, drawBg: M.drawBg, drawPlat: M.drawPlat, zoneName: M.zoneName,
+    hideCampfire: M.hideCampfire, gravity: M.gravity, phys: M.phys, ambient: M.ambient,
+    drawFx: M.drawFx, landSfx: M.landSfx, jumpSfx: M.jumpSfx, chargeRate: M.chargeRate
+  };
+  LIST.forEach(function (m) {
+    if (!M.list.some(function (x) { return x.id === m.id; })) M.list.push(m);
+  });
+  M.byId = function (id) { return API.byId(id) || O.byId.apply(M, arguments); };
+  M.build = function (id, plats, ab) { return API.has(id) ? API.build(id, plats, ab) : O.build.apply(M, arguments); };
+  M.drawBg = function (id, ctx, camY, lh) { return API.has(id) ? API.drawBg(id, ctx, camY, lh) : O.drawBg.apply(M, arguments); };
+  M.drawPlat = function (id, ctx, p, px0, py0) { return API.has(id) ? API.drawPlat(id, ctx, p, px0, py0) : O.drawPlat.apply(M, arguments); };
+  M.zoneName = function (id, y) { return API.has(id) ? API.zoneName(id, y) : O.zoneName.apply(M, arguments); };
+  M.hideCampfire = function (id) { return API.has(id) ? true : O.hideCampfire.apply(M, arguments); };
+  M.gravity = function (id) { var g = API.gravity(id); return g == null ? O.gravity.apply(M, arguments) : g; };
+  M.phys = function (id) { var m = API.byId(id); return m ? m.phys : O.phys.apply(M, arguments); };
+  M.ambient = function (id, dt, st) {
+    if (API.has(id)) { try { V43.mapSt = st; } catch (e) {} API.ambient(id, dt, st); }
+    else O.ambient.apply(M, arguments);
+  };
+
+  /* 총 층수(mapTotal)도 새 맵을 알아야 한다 */
+  try {
+    var V = root.JW43;
+    if (V && !V.__v50tot) {
+      V.__v50tot = true;
+      var ot = V.mapTotal;
+      V.mapTotal = function (id) {
+        var mid = id || (root.JWMap && root.JWMap.current) || 'default';
+        var t = API.total(mid);
+        if (t) return t;
+        return ot.apply(V, arguments);
+      };
+      if (V.MAPTOTAL) LIST.forEach(function (m) { V.MAPTOTAL[m.id] = m.total; });
+    }
+  } catch (e) { console.warn('v50 total', e); }
+
+  console.log('[JW50] maps', LIST.length, 'total', M.list.length);
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.0-modes : 새 등반 모드 4종
+     🔀 자리 바꾸기(스왑)  ·  🧊 강풍·빙판 극한 등반
+     🪝 밧줄 스윙(그래플링) ·  ⏩ 올라갈수록 2배속
+   - 싱글(봇 포함) · 멀티 · 제안하기 · 랭킹 필터에 모두 자동 등장
+   - 기존 모드·맵·미니게임 로직은 건드리지 않는다 (래퍼만 덧댄다)
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW50MODE) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var now = function () { return performance.now(); };
+  var W = 540;
+  var ST = { mode: '', t: 0, seq: 0 };
+  var SP = { k: 1, prog: 0 };
+
+  var NEW4 = [
+    { id: 'swap', name: '자리 바꾸기', emoji: '🔀', desc: '15초마다 두 플레이어의 위치가 서로 뒤바뀝니다 · 2초 전 예고', tag: '신규' },
+    { id: 'windice', name: '강풍 · 빙판 극한 등반', emoji: '🧊', desc: '발판이 미끄럽고 좌/우 강풍이 번갈아 붑니다', tag: '신규' },
+    { id: 'grapple', name: '밧줄 스윙', emoji: '🪝', desc: '공중에서 점프 버튼을 누르면 위쪽 발판에 밧줄을 걸어 그네처럼 도약', tag: '신규' },
+    { id: 'rush2x', name: '올라갈수록 2배속', emoji: '⏩', desc: '높이 오를수록 BGM·점프·이동 템포가 점점 빨라집니다', tag: '신규' }
+  ];
+  var BY = {};
+  NEW4.forEach(function (m) { BY[m.id] = m; });
+
+  function md() { return root.JWMode; }
+  function jw() { return root.__jwg; }
+  function S() { try { return V.st() || null; } catch (e) { return null; } }
+  function player() { var j = jw(); return j ? j.player : null; }
+  function game() { var j = jw(); return j ? j.game : null; }
+  function plats() { var j = jw(); return (j && j.platforms) || []; }
+  function toast(t, k, s, ms) { try { V.toast(t, k, s, ms || 2400); } catch (e) {} }
+  function beep(f, d, v, ty, f2) { try { V.beep(f, d || 0.08, v || 0.1, ty || 'square', f2); } catch (e) {} }
+  function txt(x, y, t, c) { var j = jw(); if (j && j.addText) j.addText(x, y, t, c); }
+  function parts(x, y, c, n, sp) { var j = jw(); if (j && j.addParticles) j.addParticles(x, y, c, n || 12, sp || 160); }
+
+  function curMode() {
+    var M = md(), s = S();
+    if (s && (s.phase === 'race' || s.phase === 'count' || s.phase === 'result')) return (s.room && s.room.mode) || 'normal';
+    if (M && M.solo) return M.solo.mode || 'normal';
+    return (M && M.rules && M.rules.mode) || 'normal';
+  }
+  function inRun() {
+    var g = game();
+    return !!(g && g.inPlay && !g.paused && !g.victory);
+  }
+  function isMulti() {
+    var s = S();
+    return !!(s && (s.phase === 'race' || s.phase === 'count'));
+  }
+
+  /* ================================================================
+     공통: 모드 시작/종료 정리
+     ================================================================ */
+  var savedIce = null;
+  function clearMode() {
+    if (savedIce) {
+      savedIce.forEach(function (s) { if (s.p) s.p.type = s.ty; });
+      savedIce = null;
+    }
+    ST.swap = null; ST.w = null; ST.g = null;
+    SP.k = 1; SP.prog = 0;
+    setBgmRate(1);
+  }
+  function enterMode(m) {
+    clearMode();
+    ST.mode = m; ST.t = 0; ST.seq = 0;
+    if (m === 'swap') ST.swap = { next: 15, warned: false, pair: null, at: 0 };
+    if (m === 'windice') {
+      ST.w = { t: 0, dir: Math.random() < 0.5 ? -1 : 1, burst: 0, next: 4.5 };
+      /* 발판을 빙판으로 (원래 타입은 복구용으로 기억) */
+      savedIce = [];
+      plats().forEach(function (p) {
+        if (!p || p.index <= 0) return;
+        savedIce.push({ p: p, ty: p.type });
+        if (p.type !== 'abyss_floor') p.type = 'ice';
+      });
+      toast('🧊 빙판 등반', 'lucky', '발판이 미끄럽습니다 · 좌우 강풍 주의!', 2600);
+    }
+    if (m === 'grapple') ST.g = { on: false, ax: 0, ay: 0, L: 0, th: 0, om: 0, cd: 0, prev: false, until: 0 };
+    if (m === 'rush2x') { SP.k = 1; toast('⏩ 2배속 등반', 'lucky', '높이 오를수록 빨라집니다!', 2400); }
+    if (BY[m]) beep(720, 0.1, 0.12, 'square', 1080);
+  }
+
+  function setBgmRate(r) {
+    try {
+      var t = root.JW43MP3 && root.JW43MP3.tracks;
+      if (!t) return;
+      Object.keys(t).forEach(function (k) {
+        var a = t[k];
+        if (a && typeof a === 'object' && 'playbackRate' in a && !a.paused) {
+          try { a.playbackRate = Math.max(0.85, Math.min(2, r)); } catch (e) {}
+        }
+      });
+    } catch (e) {}
+  }
+
+  /* ================================================================
+     ① 🔀 자리 바꾸기
+     ================================================================ */
+  function swapCandidates() {
+    var out = [];
+    var s = S();
+    if (s && s.peers && s.peers.size) {
+      s.peers.forEach(function (pr) {
+        if (!pr || pr.stale) return;
+        out.push({ pid: pr.pid, nick: pr.nick, x: pr.rx !== undefined ? pr.rx : pr.x, y: pr.ry !== undefined ? pr.ry : pr.y, plat: pr.plat, peer: true });
+      });
+    }
+    try {
+      var rows = window.__jwgBotRows ? window.__jwgBotRows() : [];
+      var bots = (V.R && V.R.bots) || [];
+      rows.forEach(function (r, i) {
+        out.push({ pid: r.pid, nick: r.nick, y: r.y, bot: bots[i] || null, botIdx: i });
+      });
+    } catch (e) {}
+    return out;
+  }
+  function pickPair() {
+    var c = swapCandidates();
+    if (!c.length) return null;
+    var i = (Math.random() * c.length) | 0;
+    return { pid: c[i].pid, nick: c[i].nick, me: true, other: c[i] };
+  }
+  function otherPeer(pid) {
+    var s = S();
+    if (!s || !s.peers) return null;
+    var pr = s.peers.get(pid);
+    if (!pr) return null;
+    return { pid: pr.pid, nick: pr.nick, x: pr.rx !== undefined ? pr.rx : pr.x, y: pr.ry !== undefined ? pr.ry : pr.y };
+  }
+  /* 방장이 뽑은 두 사람의 자리를 각자 로컬에서 맞바꾼다 */
+  function applyPair(a, b) {
+    var s = S();
+    if (!s) return;
+    var mePid = s.me.pid;
+    if (mePid === a) { var o = otherPeer(b); if (o) ST.swap.pair = { pid: b, nick: o.nick, other: o }; }
+    else if (mePid === b) { var o2 = otherPeer(a); if (o2) ST.swap.pair = { pid: a, nick: o2.nick, other: o2 }; }
+  }
+  function warnSwap(info) {
+    var p = player();
+    if (!p) return;
+    txt(p.x + 14, p.y - 34, '🔀 2초 뒤 자리 바뀜!', '#fca5a5');
+    toast('🔀 자리 바꾸기 예고', 'danger', (info && info.nick ? info.nick + ' 님과 ' : '') + '2초 뒤 위치가 뒤바뀝니다!', 1900);
+    beep(320, 0.1, 0.12, 'sawtooth', 240);
+  }
+  function platAtY(y) {
+    var best = null, bd = 1e9;
+    plats().forEach(function (q) {
+      if (!q || q.index <= 0) return;
+      var d = Math.abs(q.y - y);
+      if (d < bd) { bd = d; best = q; }
+    });
+    return best;
+  }
+  function doSwap(other, reason) {
+    var p = player();
+    if (!p) return;
+    var myY = p.y, myX = p.x;
+    var tp = platAtY(other.y);
+    var nx = tp ? tp.x + Math.max(6, (tp.w - p.w) / 2) : Math.max(50, Math.min(W - 80, other.x || W / 2));
+    var ny = tp ? tp.y - p.h : other.y - p.h;
+    p.x = nx; p.y = ny; p.vx = 0; p.vy = 0; p.onGround = true; p.plat = tp || p.plat; p.charging = false; p.charge = 0;
+    parts(myX + 14, myY + 16, '#f472b6', 20, 200);
+    parts(nx + 14, ny + 16, '#38bdf8', 20, 200);
+    txt(nx + 14, ny - 26, '🔀 자리 바꿈!', '#f9a8d4');
+    beep(880, 0.09, 0.12, 'square', 1320);
+    /* 봇이면 봇도 반대로 옮겨 준다 */
+    if (other.bot) { other.bot.x = myX; other.bot.y = myY; }
+    var g = game();
+    if (g) { g.shakeT = Math.max(g.shakeT || 0, 0.18); g.shakeMag = Math.max(g.shakeMag || 0, 6); }
+  }
+  function swapTick(dt) {
+    var st = ST.swap;
+    if (!st) return;
+    st.next -= dt;
+    if (!st.warned && st.next <= 2) {
+      st.warned = true;
+      if (isMulti() && S() && S().isHost) {
+        var s0 = S();
+        var pids = [s0.me.pid];
+        s0.peers.forEach(function (pr) { if (!pr.stale) pids.push(pr.pid); });
+        if (pids.length >= 2) {
+          var i1 = (Math.random() * pids.length) | 0;
+          var i2 = (Math.random() * (pids.length - 1)) | 0;
+          if (i2 >= i1) i2++;
+          var a = pids[i1], b = pids[i2];
+          try { V.send({ t: 'v48swap', a: a, b: b, n: ++st.seq }); } catch (e) {}
+          applyPair(a, b);
+        }
+      } else if (isMulti()) {
+        /* 참가자: 방장 메시지를 기다린다 (ST.swap.pair 는 hookNet 이 채움) */
+      } else {
+        st.pair = pickPair();
+      }
+      warnSwap(st.pair);
+    }
+    if (st.next <= 0) {
+      st.next = 15; st.warned = false;
+      if (st.pair && st.pair.other) doSwap(st.pair.other);
+      else if (st.pair && st.pair.pid) { var op = otherPeer(st.pair.pid); if (op) doSwap(op); }
+      st.pair = null;
+    }
+  }
+
+  /* ================================================================
+     ② 🧊 강풍 · 빙판
+     ================================================================ */
+  function windTick(dt) {
+    var w = ST.w, p = player();
+    if (!w || !p) return;
+    /* 경기가 새로 시작되며 발판이 다시 만들어져도 계속 빙판 유지 */
+    if (savedIce) {
+      for (var si = 0; si < savedIce.length; si++) {
+        var sp2 = savedIce[si].p;
+        if (sp2 && !sp2.crumbled && sp2.type !== 'ice') sp2.type = 'ice';
+      }
+    }
+    w.burst -= dt;
+    if (w.burst <= 0) {
+      w.t -= dt;
+      if (w.t <= 0) {
+        w.t = 5.5 + Math.random() * 2.5;
+        w.dir = Math.random() < 0.5 ? -1 : 1;
+        w.burst = 2.4;
+        w.warn = 0.7;
+        toast('🌪️ ' + (w.dir > 0 ? '오른쪽' : '왼쪽') + ' 강풍!', 'danger', '발판이 미끄럽습니다 · 몸이 밀립니다', 1700);
+        beep(240, 0.12, 0.1, 'sawtooth', 160);
+      }
+    } else {
+      if (w.warn > 0) w.warn -= dt;
+      var f = (p.onGround ? 120 : 235) * w.dir;
+      p.vx += f * dt;
+      if (w.burst > 0 && Math.random() < 0.45) {
+        parts(p.x + (Math.random() < 0.5 ? -20 : 40), p.y + 18, w.dir > 0 ? '#a5f3fc' : '#bae6fd', 2, 120);
+      }
+    }
+  }
+
+  /* ================================================================
+     ③ 🪝 밧줄 스윙
+     ================================================================ */
+  function anchorsAbove(p) {
+    var out = [];
+    plats().forEach(function (q) {
+      if (!q || q.index <= 0) return;
+      var cx = q.x + q.w / 2, cy = q.y;
+      var dx = cx - (p.x + 14), dy = cy - (p.y + 8);
+      if (dy > -44 || dy < -300) return;
+      if (Math.abs(dx) > 200) return;
+      out.push({ q: q, x: cx, y: cy, d: Math.abs(dx) + Math.abs(dy) * 0.4 });
+    });
+    out.sort(function (a, b) { return a.d - b.d; });
+    return out;
+  }
+  function grappleTick(dt) {
+    var g = ST.g, p = player();
+    if (!g || !p) return;
+    var j = jw();
+    var key = !!(j && j.keys && j.keys.jump);
+    var pressed = key && !g.prev;
+    g.prev = key;
+    if (g.cd > 0) g.cd -= dt;
+
+    if (!g.on) {
+      if (pressed && !p.onGround && g.cd <= 0) {
+        var list = anchorsAbove(p);
+        if (list.length) {
+          var a = list[0];
+          g.on = true;
+          g.ax = a.x; g.ay = a.y;
+          var dx = (p.x + 14) - g.ax, dy = (p.y + 17) - g.ay;
+          g.L = Math.max(80, Math.min(230, Math.sqrt(dx * dx + dy * dy)));
+          g.th = Math.atan2(dx, dy);
+          g.om = (p.vx * Math.cos(g.th) - p.vy * Math.sin(g.th)) / g.L;
+          g.until = now() + 3000;
+          p.charging = false; p.charge = 0;
+          txt(p.x + 14, p.y - 24, '🪝 밧줄!', '#a5f3fc');
+          beep(760, 0.08, 0.11, 'square', 1240);
+        } else {
+          g.cd = 0.25;
+        }
+      }
+      return;
+    }
+
+    /* 매달린 상태: 진자 운동 */
+    var grav = 1300;
+    var dir = (j && j.keys && j.keys.left ? -1 : 0) + (j && j.keys && j.keys.right ? 1 : 0);
+    g.om += -(grav / g.L) * Math.sin(g.th) * dt;
+    g.om += dir * 2.0 * dt;
+    g.om *= Math.max(0, 1 - 0.35 * dt);
+    g.th += g.om * dt;
+    p.x = g.ax + Math.sin(g.th) * g.L - 14;
+    p.y = g.ay + Math.cos(g.th) * g.L - 17;
+    p.vx = Math.cos(g.th) * g.L * g.om;
+    p.vy = -Math.sin(g.th) * g.L * g.om;
+    p.onGround = false; p.plat = null;
+    p.x = Math.max(20, Math.min(W - 48, p.x));
+
+    var release = pressed || now() > g.until || p.y > g.ay + g.L * 1.02;
+    if (release) {
+      g.on = false; g.cd = 0.35;
+      var burst = 210;
+      p.vy = -Math.sin(g.th) * g.L * g.om * 1.06 - burst;
+      p.vx = Math.cos(g.th) * g.L * g.om * 1.06;
+      if (Math.abs(p.vy) < 180) p.vy -= 160;
+      parts(p.x + 14, p.y + 16, '#a5f3fc', 16, 190);
+      txt(p.x + 14, p.y - 22, '🪝 발사!', '#7dd3fc');
+      beep(980, 0.1, 0.12, 'square', 1560);
+    }
+  }
+
+  /* ================================================================
+     ④ ⏩ 올라갈수록 2배속
+     ================================================================ */
+  function rushTick(dt) {
+    var p = player();
+    var pl = plats();
+    if (!p || !pl.length) return;
+    var top = pl[pl.length - 1].y || -1100;
+    var prog = Math.max(0, Math.min(1, (0 - p.y) / Math.max(1, (0 - top))));
+    SP.prog = prog;
+    SP.k = 1 + 0.85 * prog;
+    setBgmRate(1 + prog * 1.0);
+  }
+
+  /* ================================================================
+     엔진 배율 래퍼 (2배속 모드 전용)
+     ================================================================ */
+  function wrapEngine() {
+    var J = root.JWG;
+    if (!J || J.__v50w) return;
+    J.__v50w = true;
+    var og = J.gravity, oj = J.jumpPower, oh = J.horizPower, oc = J.chargeRate;
+    J.gravity = function () {
+      var b = og.apply(J, arguments);
+      return (ST.mode === 'rush2x') ? b * SP.k : b;
+    };
+    J.jumpPower = function () {
+      var b = oj.apply(J, arguments);
+      return (ST.mode === 'rush2x') ? b * Math.sqrt(SP.k) : b;
+    };
+    J.horizPower = function () {
+      var b = oh.apply(J, arguments);
+      return (ST.mode === 'rush2x') ? b * Math.sqrt(SP.k) : b;
+    };
+    J.chargeRate = function () {
+      var b = oc.apply(J, arguments) || 1;
+      return (ST.mode === 'rush2x') ? b * (1 + 0.55 * SP.prog) : b;
+    };
+  }
+
+  /* ================================================================
+     매 프레임
+     ================================================================ */
+  function frameTick(dt) {
+    var m = curMode();
+    if (m !== ST.mode) {
+      if (BY[m]) enterMode(m); else { clearMode(); ST.mode = m; }
+    }
+    if (!BY[m]) return;
+    if (!inRun()) return;
+    if (m === 'swap') swapTick(dt);
+    else if (m === 'windice') windTick(dt);
+    else if (m === 'grapple') grappleTick(dt);
+    else if (m === 'rush2x') rushTick(dt);
+  }
+
+  /* ================================================================
+     화면 오버레이
+     ================================================================ */
+  function drawFx(ctx, camY, lh) {
+    var m = ST.mode;
+    if (!BY[m]) return;
+    var p = player();
+    if (!p) return;
+    var sx = p.x, sy = p.y - camY;
+    var BYY = (lh || 740) - 108;      /* 하단 버튼 사이 빈 공간 */
+    ctx.save();
+    ctx.textAlign = 'center';
+    if (m === 'swap' && ST.swap) {
+      var left = Math.max(0, ST.swap.next);
+      if (left <= 2.4) {
+        ctx.globalAlpha = 0.35 + 0.25 * Math.sin(now() / 90);
+        ctx.fillStyle = '#f43f5e';
+        ctx.fillRect(0, 0, W, lh);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px "Galmuri11", monospace';
+        ctx.fillText('🔀 ' + left.toFixed(1) + '초 뒤 자리 바뀜!', W / 2, BYY);
+      } else {
+        ctx.fillStyle = 'rgba(226,232,240,.85)';
+        ctx.font = 'bold 11px "Galmuri11", monospace';
+        ctx.fillText('🔀 다음 자리 바꾸기 ' + Math.ceil(left) + '초', W / 2, BYY);
+      }
+    }
+    if (m === 'windice' && ST.w) {
+      var w = ST.w;
+      var blowing = w.burst > 0;
+      var dir = w.dir;
+      var yy = BYY;
+      ctx.globalAlpha = blowing ? 0.9 : 0.35;
+      ctx.fillStyle = blowing ? '#7dd3fc' : '#94a3b8';
+      ctx.font = 'bold 13px "Galmuri11", monospace';
+      ctx.fillText(blowing ? (dir > 0 ? '🌪️ 강풍 →→→' : '←←← 강풍 🌪️') : '🧊 빙판 지대 · 바람 대기', W / 2, yy);
+      var k, ax, len;
+      for (k = 0; k < 5; k++) {
+        var off = ((now() / (blowing ? 9 : 26) + k * 60) % (W + 120)) - 60;
+        ax = dir > 0 ? off : (W - off);
+        var ay = 96 + (k % 3) * 22;
+        ctx.globalAlpha = blowing ? 0.55 : 0.16;
+        ctx.fillStyle = '#a5f3fc';
+        ctx.fillRect(ax, ay, 18, 2);
+        ctx.fillRect(ax + (dir > 0 ? 15 : 0), ay - 2, 4, 6);
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (m === 'grapple' && ST.g) {
+      var g = ST.g;
+      if (g.on) {
+        var ay2 = g.ay - camY;
+        ctx.strokeStyle = '#fcd34d';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(g.ax, ay2); ctx.lineTo(sx + 14, sy + 17); ctx.stroke();
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath(); ctx.arc(g.ax, ay2, 5, 0, 6.3); ctx.fill();
+        ctx.fillStyle = 'rgba(253,224,71,.9)';
+        ctx.font = 'bold 10px "Galmuri11", monospace';
+        ctx.fillText('한 번 더 누르면 발사!', W / 2, BYY);
+      } else {
+        ctx.fillStyle = 'rgba(165,243,252,.75)';
+        ctx.font = 'bold 10px "Galmuri11", monospace';
+        ctx.fillText('🪝 공중에서 점프 버튼 = 밧줄', W / 2, BYY);
+      }
+    }
+    if (m === 'rush2x') {
+      var k2 = SP.k;
+      ctx.fillStyle = 'rgba(8,12,24,.6)';
+      ctx.fillRect(W / 2 - 78, BYY - 22, 156, 32);
+      ctx.fillStyle = '#fde047';
+      ctx.font = 'bold 12px "Galmuri11", monospace';
+      ctx.fillText('⏩ 템포 ×' + k2.toFixed(2), W / 2, BYY - 2);
+      ctx.fillStyle = '#0ea5e9';
+      ctx.fillRect(W / 2 - 70, BY + 3, 140 * Math.min(1, (k2 - 1) / 0.85), 3);
+    }
+    ctx.restore();
+  }
+
+  /* ================================================================
+     등록
+     ================================================================ */
+  function register() {
+    var M = md();
+    if (!M) return;
+    NEW4.forEach(function (m) {
+      if (!M.MODES.some(function (x) { return x.id === m.id; })) M.MODES.push(m);
+    });
+    try {
+      var K = root.JW53 || {};
+      if (K.MODE_CAT) { K.MODE_CAT.swap = 'versus'; K.MODE_CAT.windice = 'survive'; K.MODE_CAT.grapple = 'sense'; K.MODE_CAT.rush2x = 'speed'; }
+      if (K.MODE_DESC) NEW4.forEach(function (m) { K.MODE_DESC[m.id] = m.desc; });
+    } catch (e) {}
+  }
+
+  /* 모드 상태 초기화 훅 (싱글 시작/멀티 카운트다운) */
+  function hookStart() {
+    var M = md();
+    if (M && !M.__v50start) {
+      M.__v50start = true;
+      var os = M.startSolo;
+      M.startSolo = function () {
+        var r = os.apply(this, arguments);
+        try { ST.mode = ''; clearMode(); } catch (e) {}
+        return r;
+      };
+    }
+  }
+
+  /* 틱 훅: 물리 틱이 끝난 뒤 한 번 */
+  function hookTick() {
+    var J = root.JWG;
+    if (!J || J.__v50tick) return;
+    J.__v50tick = true;
+    var ot = J.tick;
+    J.tick = function (dt) {
+      var r = ot.apply(this, arguments);
+      try { frameTick(dt); } catch (e) { console.warn('v50 mode', e); }
+      return r;
+    };
+  }
+
+  /* 네트워크: 방장이 알린 스왑 대상 */
+  function hookNet() {
+    try {
+      V.onNet(function (m) {
+        if (!m || m.t !== 'v48swap') return;
+        if (ST.mode !== 'swap' || !ST.swap) return;
+        var s = S();
+        if (!s || !s.phase || s.phase !== 'race') return;
+        if (m._p && s.hostPid && m._p !== s.hostPid) return;
+        applyPair(m.a, m.b);
+        if (ST.swap.pair) { ST.swap.warned = false; ST.swap.next = Math.min(ST.swap.next, 2); }
+      });
+    } catch (e) {}
+  }
+
+  function boot() {
+    if (root.JW50MODE) return;
+    register();
+    hookStart();
+    hookTick();
+    wrapEngine();
+    hookNet();
+    var prev = V.onDrawFx || function () {};
+    V.onDrawFx = function (ctx, camY, lh) {
+      prev.apply(this, arguments);
+      try { drawFx(ctx, camY, lh); } catch (e) {}
+    };
+    root.JW50MODE = { list: NEW4, byId: function (id) { return BY[id] || null; }, has: function (id) { return !!BY[id]; }, st: ST, sp: SP, cur: curMode };
+    console.log('[JW50] modes', NEW4.length, 'ok');
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 120); });
+  else setTimeout(boot, 120);
+  setTimeout(boot, 1200);
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.0-easy : '쉬움' 난이도 정식 등록 + 필터 도우미 + 맵 카드 라벨 보강
+   - 난이도 5단계: 쉬움 / 보통 / 어려움 / 극악 (+ 기존 '기본')
+   - 맵 선택 · 방 설정 · 제안하기 · 랭킹 필터가 모두 이 도우미를 쓴다
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW50DIFF) return;
+
+  var ORDER = { '쉬움': 1, '기본': 2, '보통': 2, '어려움': 3, '극악': 4 };
+  var COLOR = { '쉬움': '#86efac', '기본': '#93c5fd', '보통': '#93c5fd', '어려움': '#fca5a5', '극악': '#f87171' };
+
+  function diffOf(id) {
+    var d = '';
+    try { var m = root.JWMap && root.JWMap.byId ? root.JWMap.byId(id) : null; d = (m && m.diff) || ''; } catch (e) {}
+    return d || '기본';
+  }
+  function isEasy(id) { return diffOf(id) === '쉬움'; }
+  function rank(id) { return ORDER[diffOf(id)] || 2; }
+  function color(id) { return COLOR[diffOf(id)] || '#93c5fd'; }
+
+  root.JW50DIFF = { diffOf: diffOf, isEasy: isEasy, rank: rank, color: color, ORDER: ORDER };
+  /* 여러 모듈(클로저)에서 공통으로 쓰는 전역 술어 */
+  window.__jw50easy = function (id) { return diffOf(id) === '쉬움'; };
+
+  /* 45맵 카운터를 타이틀/로비 문구에도 반영 */
+  function mapCount() {
+    try { return (root.JWMap && root.JWMap.list) ? root.JWMap.list.length : 0; } catch (e) { return 0; }
+  }
+  root.JW50DIFF.count = mapCount;
+
+  /* 난이도 배지가 '쉬움'이면 색을 초록으로 (맵 카드가 diffColor 를 쓰지 않는 곳 보완) */
+  function tintEasy() {
+    try {
+      var list = root.JWMap && root.JWMap.list;
+      if (!list) return;
+      list.forEach(function (m) {
+        if (!m) return;
+        if (m.diff === '쉬움' && m.diffColor !== '#86efac') m.diffColor = '#86efac';
+        if (!m.diffColor) m.diffColor = COLOR[m.diff] || '#93c5fd';
+      });
+    } catch (e) {}
+  }
+  setTimeout(tintEasy, 200);
+  setTimeout(tintEasy, 1200);
+  console.log('[JW50] difficulty ready · maps', mapCount());
+})(window);
+
+</script>
+<script>
+/* ==========================================================================
+   v5.0-mglock : 🕹️ 미니게임 25종 진입 잠금 (🔒 준비 중)
+   - 코드는 그대로 두고 '들어가는 문'만 잠근다. 아래 LOCK 을 false 로 바꾸면
+     즉시 다시 열린다 (삭제 없음 · 기록/구현 100% 보존).
+   - 싱글 ①모드의 🕹️ 미니게임 카테고리 · 멀티 방 설정 🎮 모드 · 대기실
+     [🚀 미니게임 시작] · 제안하기 미니게임 탭 · 모든 MG.enter 경로를 막는다.
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW50MGLOCK !== undefined) return;
+
+  var LOCK = true;                 /* ← false 로 바꾸면 잠금 해제 */
+  root.JW50MGLOCK = LOCK;
+  root.JW50MG_SETLOCK = function (on) { root.JW50MGLOCK = !!on; LOCK = !!on; paint(); };
+
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var MSG = '🔒 미니게임은 지금 준비 중이에요';
+
+  function toast() { try { V.toast('🔒 준비 중', 'chat', '미니게임 25종은 다음 업데이트에서 다시 열려요', 2400); } catch (e) {} }
+  function beep() { try { V.beep(300, 0.08, 0.08, 'square', 220); } catch (e) {} }
+
+  /* ---------------- 스타일 ---------------- */
+  function css() {
+    if ($('v50mgcss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v50mgcss';
+    s.textContent = [
+      '.v50lock{position:relative !important;filter:grayscale(.55) brightness(.78);}',
+      '.v50lock .ic,.v50lock .tx{opacity:.72;}',
+      '.v50lock::after{content:"🔒 준비 중";position:absolute;right:4px;top:4px;z-index:3;',
+      '  font-size:8.5px;font-weight:900;color:#0b1220;background:linear-gradient(180deg,#fde68a,#f59e0b);',
+      '  border:1px solid #b45309;border-radius:6px;padding:1px 5px;box-shadow:0 2px 0 rgba(0,0,0,.35);}',
+      '#v53MgChip.v50lockchip,#v50mgSetChip{filter:grayscale(.4);}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+
+  /* ---------------- 카드 잠금 표시 ---------------- */
+  function mark(el) {
+    if (!el || el.__v50lock) return;
+    el.__v50lock = true;
+    el.classList.add('v50lock');
+    if (el.tagName === 'BUTTON') el.setAttribute('aria-disabled', 'true');
+  }
+  function paint() {
+    css();
+    if (!LOCK) return;
+    doc.querySelectorAll('#v53MgGrid [data-mgi]').forEach(mark);
+    doc.querySelectorAll('[data-mgpick]').forEach(mark);
+    doc.querySelectorAll('#v48mgSetList .v48m').forEach(mark);
+    doc.querySelectorAll('#v48mgHub .v48m').forEach(mark);
+    doc.querySelectorAll('#v49Prop [data-act="mg"]').forEach(mark);
+    var chip = $('v53MgChip');
+    if (chip && chip.textContent.indexOf('🔒') < 0) chip.textContent = '🔒 미니게임';
+    var setChip = doc.querySelector('#v53SetBody [data-mdf="mg"]');
+    if (setChip && setChip.textContent.indexOf('🔒') < 0) setChip.textContent = '🔒 미니게임';
+    var start = $('v53MgStart');
+    if (start && start.style.display !== 'none') { start.style.display = 'none'; }
+    var eng = $('mpStartBtn');
+    if (eng && eng.style.display === 'none') {
+      var s = null;
+      try { s = V.st(); } catch (e) {}
+      if (s && s.room && s.room.__x43 && s.room.__x43.mg) eng.style.display = '';
+    }
+  }
+  setInterval(function () { try { paint(); } catch (e) {} }, 600);
+
+  /* ---------------- 클릭 차단 (캡처 단계) ---------------- */
+  var SEL = '#v53MgGrid [data-mgi],[data-mgpick],#v48mgSetList .v48m,#v48mgHub .v48m,#v53MgStart,#v53MgChip,#v53ModeBar [data-mgcat],[data-mdf="mg"],#v49Prop [data-act="mg"]';
+  doc.addEventListener('click', function (e) {
+    if (!LOCK) return;
+    var t = e.target && e.target.closest ? e.target.closest(SEL) : null;
+    if (!t) {
+      /* 미니게임 셸 안에서 시작 버튼을 누르는 경우까지 차단 */
+      var inShell = e.target && e.target.closest ? e.target.closest('#v48mg') : null;
+      if (inShell && !(e.target.closest && e.target.closest('#v48mgBack'))) { e.preventDefault(); e.stopPropagation(); toast(); beep(); }
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    toast(); beep();
+  }, true);
+
+  /* ---------------- MG.enter 자체를 잠근다 (모든 진입 경로의 최종 관문) ---------------- */
+  function wrapEnter() {
+    var MG = root.JW48MG;
+    if (!MG || !MG.enter || MG.__v50lock) return false;
+    MG.__v50lock = true;
+    var oe = MG.enter;
+    MG.enter = function () {
+      if (LOCK) { toast(); beep(); return; }
+      return oe.apply(this, arguments);
+    };
+    return true;
+  }
+  if (!wrapEnter()) {
+    var tries = 0;
+    var iv = setInterval(function () {
+      tries++;
+      if (wrapEnter() || tries > 40) clearInterval(iv);
+    }, 150);
+  }
+
+  /* 방에 이미 미니게임이 선택된 경우: 시작 버튼 숨김 + 안내 */
+  function guardRoomStart() {
+    if (!LOCK) return;
+    var s = null;
+    try { s = V.st(); } catch (e) {}
+    if (!s || !s.room) return;
+    var mg = (s.room.__x43 && s.room.__x43.mg) || '';
+    if (!mg) return;
+    var start = $('v53MgStart');
+    if (start) start.style.display = 'none';
+    var eng = $('mpStartBtn');
+    if (eng) eng.style.display = '';
+  }
+  setInterval(function () { try { guardRoomStart(); } catch (e) {} }, 900);
+
+  paint();
+  setTimeout(paint, 800);
+  console.log('[JW50] minigames locked =', LOCK);
 })(window);
 
 </script>
