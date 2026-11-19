@@ -388,6 +388,16 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       <div class="spec">발판 91개 · 구역 6개 · 이벤트 9종 · 단일 파일 122KB</div>
       <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
     </a>
+    <a class="card" href="../muse-v5-7/" data-ai="muse" style="--a:#7dd3fc;--a2:#6366f1;--glow:125,211,252">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
+        <path d="M24 4l5 14 14 5-14 5-5 14-5-14-14-5 14-5z" fill="currentColor"/>
+      </svg></span>
+      <div class="tag">Muse 버전</div>
+      <h2>Muse <small>UI+폰트+편리성 대규모 테스트판</small></h2>
+      <p>Galmuri 전역 통일, 모서리 4px, 설명 11px, safe-area, 백업·즐겨찾기·조작 설정 직행.</p>
+      <div class="spec">v5.1-final2 기반 · v5.6 버그 수정 포함 · 루트 미반영</div>
+      <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
+    </a>
     <a class="card" href="../muse-v5-6/" data-ai="muse" style="--a:#7dd3fc;--a2:#6366f1;--glow:125,211,252">
       <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
         <path d="M24 4l5 14 14 5-14 5-5 14-5-14-14-5 14-5z" fill="currentColor"/>
@@ -786,6 +796,18 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       name: 'Muse', tag: 'Muse 버전', tagClass: 'u',
       accent: '#7dd3fc', accent2: '#6366f1', glow: '125,211,252',
       versions: [
+        {
+          ver: 'v5.7 (테스트)', label: 'UI+폰트+편리성 대규모 — Galmuri 전역 통일 · 모서리 4px · 설명 11px · 백업·즐겨찾기·조작 설정 직행', href: '../muse-v5-7/', latest: false,
+          date: '2026.11.20',
+          spec: 'v5.1-final2 기반 · v5.6 버그 수정 포함 · 루트 미반영',
+          notes: [
+            '🔤 폰트: Galmuri 전역 통일 — Jua 잔재 오버라이드로 이김 · 30여 개 화면 앵커 · Jua 추가 없음',
+            '🟪 모서리 4px 전역 통일 · 모드/맵 설명 8~9.5px → 11px · 작은 글씨 11px · safe-area 패딩 5곳',
+            '💾 백업 키 10개 → 20개 · 즐겨찾기 포맷 충돌 수정 · 타이틀에서 조작 설정 직행 버튼',
+            '🎓 튜토리얼 다시 보기 → 그만 보기 시 실전 자동 시작 안 함 · 재도전 더블클릭 가드 · 백업 복사 iOS 폴백',
+            '⚠️ 루트 index.html 미반영 테스트판 — 정식 반영은 OK 후에만'
+          ]
+        },
         {
           ver: 'v5.6 (테스트)', label: '버그 싹 다 잡기 — v5.5 잔여 10건 전부 수정 · 호스트 권위 판정 · 릴레이·깃발·좀비·보스·이벤트·전적', href: '../muse-v5-6/', latest: false,
           date: '2026.11.20',
