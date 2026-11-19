@@ -46145,6 +46145,7 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
 
 
 
+
 <!-- ===== v4.8-boss PATCH START ===== -->
 <script>
 /* ==========================================================================
@@ -57610,6 +57611,17 @@ html body.v47-play #v43QuickChat button{ font-family:"Jua",sans-serif !important
       pop.classList.add('hidden');
       enqueue({ pid: pid, nick: nick, patch: patch, label: label });
     }).observe(pop, { attributes: true, attributeFilter: ['class'] });
+    /* 관찰자를 붙이기 전에 이미 떠 있던 제안도 놓치지 않는다 */
+    if (!pop.classList.contains('hidden')) {
+      var p0 = {};
+      try { p0 = JSON.parse(pop.dataset.patch || '{}'); } catch (e) { p0 = {}; }
+      var nick0 = '';
+      try { nick0 = ((pop.querySelector('.who') || {}).textContent || '').replace(/\s*님의\s*제안\s*$/, '').trim(); } catch (e) {}
+      var lab0 = '';
+      try { lab0 = (pop.querySelector('.what') || {}).textContent || ''; } catch (e) {}
+      pop.classList.add('hidden');
+      enqueue({ pid: pop.dataset.pid || '', nick: nick0, patch: p0, label: lab0 });
+    }
   }
   setInterval(watchOldPop, 700);
   U.propQueue = QUEUE;
