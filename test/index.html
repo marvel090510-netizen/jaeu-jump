@@ -388,6 +388,26 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       <div class="spec">발판 91개 · 구역 6개 · 이벤트 9종 · 단일 파일 122KB</div>
       <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
     </a>
+    <a class="card" href="../muse-v5-3/" data-ai="muse" style="--a:#7dd3fc;--a2:#6366f1;--glow:125,211,252">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
+        <path d="M24 4l5 14 14 5-14 5-5 14-5-14-14-5 14-5z" fill="currentColor"/>
+      </svg></span>
+      <div class="tag">Muse 버전</div>
+      <h2>Muse <small>UI 다시하기 테스트판</small></h2>
+      <p>v5-2 되돌리기 — Galmuri만, 각진 픽셀 유지, 하단 네비 잘림 수정. Jua·둥근 모서리 없음.</p>
+      <div class="spec">v5.1-final2 기반 · UI+폰트만 · 44px 터치 버튼</div>
+      <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
+    </a>
+    <a class="card" href="../muse-v5-2/" data-ai="muse" style="--a:#7dd3fc;--a2:#6366f1;--glow:125,211,252">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
+        <path d="M24 4l5 14 14 5-14 5-5 14-5-14-14-5 14-5z" fill="currentColor"/>
+      </svg></span>
+      <div class="tag">Muse 버전</div>
+      <h2>Muse <small>UI 개편 테스트판</small></h2>
+      <p>UI 전체 통일 모바일 게임 느낌 — 버튼·패널·상단 바 통일, Jua 폰트, NEW·자물쇠 표시.</p>
+      <div class="spec">v5.1-final2 기반 · UI+폰트만 · 44px 터치 버튼</div>
+      <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
+    </a>
   </div>
 
   <footer>
@@ -748,6 +768,38 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
             '점프하면 게임이 멈추던 치명 오류(점프 직후 참조 오류로 루프 정지) 수정',
             '충전 중 일시정지 후 재개하면 의도치 않게 점프하던 문제, 승리·타이틀 전환 시 터치 입력이 잠기던 문제 수정',
             '아이폰 홈 인디케이터·아이패드 안전영역 여백과 백그라운드 입력 잠김 보정'
+          ]
+        }
+      ]
+    },
+    muse: {
+      name: 'Muse', tag: 'Muse 버전', tagClass: 'u',
+      accent: '#7dd3fc', accent2: '#6366f1', glow: '125,211,252',
+      versions: [
+        {
+          ver: 'v5.3 (테스트)', label: 'UI 다시하기 — v5-2 되돌리기 · Galmuri만 · 각진 픽셀 · 하단 네비 "스킨·꾸미기" 잘림 수정 · Jua 없음', href: '../muse-v5-3/', latest: false,
+          date: '2026.11.20',
+          spec: 'v5.1-final2 기반 · UI+폰트만 · 루트 미반영',
+          notes: [
+            '🎮 하단 네비 잘림 수정: nowrap 때문에 넘치던 "스킨·꾸미기" 라벨을 2줄까지 허용 · 버튼 높이 고정 해제(min-height 56px)',
+            '🟪 각진 픽셀 유지: 타이틀 버튼·메인 버튼·패널 모서리 4px로 통일 · v5-2의 둥근 12px 되돌림',
+            '🔤 폰트: Galmuri11만 사용 · Jua 링크·Jua 지정 없음 (v5-2는 모든 버튼·헤더를 Jua로 덮었음)',
+            '🖼️ 픽셀 선명도 가드: image-rendering pixelated 재확인 · filter/blur 없음 · 이미지·맵·캐릭터 안 건드림',
+            '📐 모달 헤더 높이·여백 그대로 · 위쪽 3px 포인트 라인만 inset 추가 · JS 추가 없음 · 게임 로직 변경 없음',
+            '⚠️ 루트 index.html 미반영 테스트판 — 정식 반영은 OK 후에만'
+          ]
+        },
+        {
+          ver: 'v5.2 (테스트)', label: 'UI 전체 통일 모바일 게임 느낌 — 버튼·패널·상단 바 통일 · Jua 폰트 · NEW/자물쇠 표시 · 44px 터치', href: '../muse-v5-2/', latest: false,
+          date: '2026.11.20',
+          spec: 'v5.1-final2 기반 · UI+폰트만 · 루트 미반영',
+          notes: [
+            '🎮 버튼 통일: 큼직한 둥근 픽셀 테두리 + 입체감 + 눌림 애니메이션, 최소 44px 터치 영역',
+            '🃏 패널 카드화 + 모달 헤더 리본 통일(52px, Jua 18px, 금색 하단 띠)',
+            '🔤 폰트: Galmuri11 유지 + Jua 추가 — 버튼·헤더는 Jua, 본문·HUD 숫자는 Galmuri11',
+            '🆕 NEW 배지·빨간 점(깜빡임)·잠긴 항목 자물쇠 표시 스타일 추가',
+            '📐 글씨 최소 폰 11px/패드 12px · 폰 가로·패드 겹침 방지 · 세이프에어리어 여백',
+            '⚠️ 루트 index.html 미반영 테스트판 — 정식 반영은 OK 후에만'
           ]
         }
       ]
