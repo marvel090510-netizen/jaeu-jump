@@ -4701,8 +4701,8 @@ extends CanvasLayer
     originRandom: false,
     events: true,
     buffs: true,
-    /* 4.4: 함정은 멀티 레이스·방 규칙 전용 — 싱글 기본값 OFF (직접 켜면 동작) */
-    traps: false,
+    /* v4.8.6 __v486trap: 일반·챌린지는 함정까지 기본 ON (끄고 싶으면 방 규칙/설정에서 OFF) */
+    traps: true,
     items: true,
     collide: true,
     evList: null,      /* null = 전체, 아니면 켜진 key 배열 */
@@ -41308,7 +41308,7 @@ extends CanvasLayer
      14. 모드별 권장 기본 세팅 (모드를 바꾸면 한 번만 자동 적용 · 방장이 이후 자유롭게 변경)
      ====================================================================== */
   var PRESET = {
-    classic: { events: false, items: false, buffs: false, traps: false },
+    classic: { events: true, items: true, buffs: true, traps: true },   /* __v486trap */
     pureclassic: { events: false, items: false, buffs: false, traps: false },
     chain: { collide: false },
     tag: { collide: true, originPct: 0 },
