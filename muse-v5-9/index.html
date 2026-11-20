@@ -75348,7 +75348,12 @@ if (typeof module !== 'undefined' && module.exports) {
     /* 관전 중이 아니면 숨겼던 옛 1등/꼴찌 버튼을 되살린다 */
     var sb0 = $('v43SpecBtns');
     if (!on) {
-      if (prevOn && sb0) sb0.style.removeProperty('display');
+      if (prevOn) {
+        if (sb0) sb0.style.removeProperty('display');
+        /* 관전이 끝나면 순위표를 원래 자리 계산으로 돌려준다 */
+        var rk0 = $('v97Rank');
+        if (rk0) { rk0.__t = null; rk0.style.removeProperty('top'); }
+      }
       prevOn = false;
       return;
     }
