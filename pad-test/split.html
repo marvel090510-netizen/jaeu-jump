@@ -36,7 +36,9 @@
 
   function el(id) { return D.getElementById(id); }
   function kb(n) { return n >= 1024 ? Math.round(n / 1024) + 'KB' : n + 'B'; }
-  function ms(n) { return Math.round(n).toLocaleString('en-US') + 'ms'; }
+  function fmt(n) { return Math.round(n).toLocaleString('en-US') + 'ms'; }
+  function dur(n) { return n < 3000 ? Math.round(n) + 'ms' : (Math.round(n / 100) / 10) + '초'; }
+  var ms = fmt;
 
   function build() {
     var host = D.body || D.documentElement;
@@ -92,7 +94,10 @@
     P.lastPaint = now();
     var last = P.marks.length ? P.marks[P.marks.length - 1] : { label: 'A. HTML 파싱 시작 (대기)', t: 0 };
     if (d.big) d.big.textContent = last.label;
-    if (d.el) d.el.textContent = '경과 ' + ms(now()) + (P.marks.length ? ' · 이 단계 찍힘 ' + ms(last.t) : '');
+    if (d.el) {
+      d.el.textContent = '경과 ' + dur(now())
+        + (P.marks.length ? ' · 마지막 단계 ' + dur(last.t) + ' · ' + dur(Math.max(0, now() - last.t)) + '째 새 단계 없음' : '');
+    }
     if (d.net) {
       var tw = P.net.tw === 'ok' ? '완료' : (P.net.tw === 'fail' ? '실패' : (P.net.tw === 'timeout' ? '실패(8초 초과)' : '대기 중'));
       var gl = P.net.gl === 'ok' ? '완료' : (P.net.gl === 'fail' ? '실패' : (P.net.gl === 'timeout' ? '실패(8초 초과)' : '대기 중'));
@@ -122,6 +127,7 @@
   /* 단계 기록 */
   P.mark = function (code, label) {
     P.marks.push({ code: code, label: label, t: now() });
+    P.stallMarked = false;
     try { paint(); } catch (e) {}
     return code;
   };
@@ -142,7 +148,7 @@
     if (bar) bar.style.display = 'none';
     if (pill) {
       var last = P.marks.length ? P.marks[P.marks.length - 1] : null;
-      pill.textContent = '진단 ' + (last ? last.code : 'A') + ' · ' + Math.round(now() / 100) / 10 + 's';
+      pill.textContent = '진단 ' + (last ? last.code : 'A') + ' · ' + dur(now());
       pill.style.display = 'block';
     }
   };
@@ -201,6 +207,11 @@
       lastLagAt = t;
       P.err('메인 스레드 ' + Math.round(drift) + 'ms 정지 (이 사이 화면이 멈춰 있었음)');
     }
+    /* 15초째 새 단계가 없으면 "여기서 멈춘 것"으로 표시 */
+    if (!P.stallMarked && P.marks.length && t - P.marks[P.marks.length - 1].t > 15000 && !P.collapsed) {
+      P.stallMarked = true;
+      P.err('⚠ ' + dur(t - P.marks[P.marks.length - 1].t) + '째 새 단계 없음 → 이 단계에서 멈춘 것으로 보임');
+    }
     var veil = el('v59Veil');
     if (veil) seenVeil = true;
     if (seenVeil && !veil && P.veil !== 'gone') { P.veil = 'gone'; P.mark('veiloff', '베일(#v59Veil) 제거됨'); }
@@ -233,7 +244,7 @@
   try{sessionStorage.setItem('jw51_wipe_done','1');}catch(e){}
   window.__JW51WIPE=rm.length;
 }catch(e){}})();
-</script>
+</script><script>window.__pt&&__pt.mark("B","B. head 스크립트(jw51wipe) 완료")</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>성공하고싶은 재우 - 한 번 더, 정상까지!</title>
   <script src="https://cdn.tailwindcss.com" onload="window.__pt&&__pt.netDone('tw','ok','C','C. tailwind CDN 로드 완료')" onerror="window.__pt&&__pt.netDone('tw','fail','C','C. tailwind CDN 로드 실패')"></script>
