@@ -132,8 +132,10 @@
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
+  var MENTION_NAMES = ["말동무의 친구", "재미나이", "말동무", "태겸", "뮤즈", "모두"];
+  var MENTION_RE = new RegExp("@(" + MENTION_NAMES.join("|") + ")(?![가-힣A-Za-z0-9_])", "g");
   function withMentions(s) {
-    return esc(s).replace(/@([가-힣A-Za-z0-9_]+|모두)/g, '<span class="mention">@$1</span>');
+    return esc(s).replace(MENTION_RE, '<span class="mention">@$1</span>');
   }
   function fmtTime(ts) {
     if (!ts) return "";
