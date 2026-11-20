@@ -350,7 +350,7 @@ html body #titleScreen {
   <!-- v5.10 B5: 맵 진입 베일 — #v59Veil은 로드 후 제거되므로 진입용은 따로 둔다 (기본 숨김) -->
   <div id="v59EntryVeil" style="position:fixed;inset:0;z-index:99998;background:#06040d;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;opacity:0;transition:opacity .22s ease-out;pointer-events:none;">
     <div style="font-family:'Galmuri11',monospace;font-size:26px;font-weight:900;color:#fde68a;text-shadow:0 3px 0 #7c2d12;">성공하고싶은 재우</div>
-    <div style="font-family:'Galmuri11',monospace;font-size:13px;color:#93c5fd;">맵을 불러오는 중…</div>
+    <div id="v59EntryVeilSub" style="font-family:'Galmuri11',monospace;font-size:13px;color:#93c5fd;">맵을 불러오는 중…</div>
   </div>
 
   <!-- ALWAYS-LIVE GAME CANVAS -->
@@ -1650,27 +1650,52 @@ html body #titleScreen {
           }
         } catch (e) {}
       }
-      /* v5.10 B5: 진입 베일 — 첫 프레임/배경이 준비되기 전 어두운 화면을 로딩 화면으로 가린다 */
-      function showEntryVeil() {
+      /* v5.11 로딩: 진입 베일 — 아트 준비될 때까지 기다리는 로딩 화면 (onDone 콜백으로 게임 시작 게이트)
+         완료 조건: 아트 그림 완료(stats.last===cur) / 아트 없는 맵(custom·SKIP) / 아트 최종 실패(err 2, 폴백이 그림) / 타임아웃 4초
+         이미 주기가 돌고 있으면 콜백만 연결하고 새로 시작하지 않는다 — 연타·튜토리얼 재호출에도 대기 시계가 초기화되지 않게 */
+      function showEntryVeil(onDone) {
         var v = document.getElementById('v59EntryVeil');
-        if (!v) return;
+        if (!v) { if (typeof onDone === 'function') onDone(); return; }
+        if (window.__v59VeilRun) {
+          if (typeof onDone === 'function') window.__v59VeilRun.cbs.push(onDone);
+          return;
+        }
+        var run = window.__v59VeilRun = { cbs: (typeof onDone === 'function') ? [onDone] : [] };
+        var fired = false;
+        function finish() {
+          if (fired) return; fired = true;
+          window.__v59VeilRun = null;
+          v.style.opacity = '0';
+          v.style.pointerEvents = 'none';
+          setTimeout(function () { v.style.display = 'none'; }, 250);
+          var cbs = run.cbs; run.cbs = [];
+          for (var i = 0; i < cbs.length; i++) { try { cbs[i](); } catch (e) {} }
+        }
+        try {
+          var cur0 = (window.JWMap && window.JWMap.current) || 'default';
+          var sub = document.getElementById('v59EntryVeilSub');
+          var mn = null;
+          try { var _m = (window.JWMap && window.JWMap.byId) ? window.JWMap.byId(cur0) : null; mn = _m && (_m.name || _m.title); } catch (e) {}
+          if (sub) sub.textContent = (mn ? mn + ' · ' : '') + '맵을 불러오는 중…';
+        } catch (e) {}
         v.style.display = 'flex';
+        v.style.pointerEvents = 'auto';
         setTimeout(function () { v.style.opacity = '1'; }, 30);
         var t0 = Date.now();
         var iv = setInterval(function () {
           var done = false;
           try {
             var cur = (window.JWMap && window.JWMap.current) || 'default';
-            var st = (window.JW51ART && window.JW51ART.stats) ? window.JW51ART.stats() : null;
+            var ART = window.JW51ART;
+            var st = (ART && ART.stats) ? ART.stats() : null;
             if (st && st.last === cur) done = true;
+            else if (ART && ART.has && !ART.has(cur)) done = true; /* 아트 없는 맵: 기다릴 것이 없음 */
+            else if (ART && ART.state) { var _s = ART.state(cur); if (_s && _s.err === 2) done = true; /* 최종 실패: 폴백이 그림 */ }
           } catch (e) {}
-          if (!done && Date.now() - t0 > 1500) done = true;
-          if (done) {
-            clearInterval(iv);
-            v.style.opacity = '0';
-            setTimeout(function () { v.style.display = 'none'; }, 250);
-          }
+          if (!done && Date.now() - t0 > 4000) done = true;
+          if (done) { clearInterval(iv); finish(); }
         }, 100);
+        setTimeout(function () { clearInterval(iv); finish(); }, 4500); /* 안전망 */
       }
       function addText(x, y, txt, col = '#fde047') {
         /* v5.10 B2: 같은 문구는 중복 쌓지 않고 기존 것을 갱신 (PERFECT! 겹침 방지) */
@@ -2837,22 +2862,27 @@ html body #titleScreen {
         document.getElementById('btnQuickOriginTest').classList.remove('hidden');
         document.getElementById('btnQuickPlayToggle').textContent = '🏠 타이틀 화면';
 
-        game.inPlay = true;
-        game.paused = false;
-        game.victory = false;
-        /* v5.10 B5: 진입 베일 표시 — 아트 준비되면 숨김, 1.5초 타임아웃 */
-        try { showEntryVeil(); } catch (e) {}
-        resetWorldAndPlayer(false);
-        /* muse-v5-8: Enter/퀵플레이 재시작도 솔로 상태를 보장 — 결과창이 뜬 채로 다음 판이 돌면 스테일 기록이 남는다 */
-        try {
-          var _se58b = document.getElementById('soloEnd');
-          if (_se58b) _se58b.classList.add('hidden');
-          var _jm58 = window.JWMode;
-          var _inRoom58 = !!(window.JW43 && JW43.st && JW43.st() && JW43.st().room);
-          if (_jm58 && _jm58.solo && !_jm58.solo.active && !_inRoom58 && _jm58.startSolo) {
-            _jm58.startSolo(_jm58.rules && _jm58.rules.mode, (window.JWMap && window.JWMap.current) || 'default');
-          }
-        } catch (e) {}
+        /* v5.11 로딩: 플레이 시작을 진입 베일에 게이트 — 아트 준비(또는 실패·무아트·타임아웃) 후 시작 */
+        var __v59started = false;
+        function __v59beginPlay() {
+          if (__v59started) return; __v59started = true;
+          game.inPlay = true;
+          game.paused = false;
+          game.victory = false;
+          resetWorldAndPlayer(false);
+          /* muse-v5-8: Enter/퀵플레이 재시작도 솔로 상태를 보장 — 결과창이 뜬 채로 다음 판이 돌면 스테일 기록이 남는다 */
+          try {
+            var _se58b = document.getElementById('soloEnd');
+            if (_se58b) _se58b.classList.add('hidden');
+            var _jm58 = window.JWMode;
+            var _inRoom58 = !!(window.JW43 && JW43.st && JW43.st() && JW43.st().room);
+            if (_jm58 && _jm58.solo && !_jm58.solo.active && !_inRoom58 && _jm58.startSolo) {
+              _jm58.startSolo(_jm58.rules && _jm58.rules.mode, (window.JWMap && window.JWMap.current) || 'default');
+            }
+          } catch (e) {}
+        }
+        try { showEntryVeil(__v59beginPlay); } catch (e) { __v59beginPlay(); }
+        setTimeout(__v59beginPlay, 4500); /* 안전망: 베일 콜백이 오지 않아도 시작 */
       }
 
       function returnToTitle() {
@@ -3053,6 +3083,8 @@ extends CanvasLayer
           document.getElementById('btnRestartRun').addEventListener('click', () => {
             game.paused = false;
             document.getElementById('pauseModal').classList.add('hidden');
+            /* v5.11: 다시 도전도 진입 베일로 가림 — 같은 맵이라 아트 준비됨, 즉시 닫힘 */
+            try { showEntryVeil(); } catch (e) {}
             resetWorldAndPlayer(false);
           });
           document.getElementById('btnQuitToTitle').addEventListener('click', () => {
@@ -13767,7 +13799,7 @@ extends CanvasLayer
   #v43WizModes .v43-mm b { display:block; font-size:11px; font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
   #v43WizModes .v43-mm span { display:block; font-size:9px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
   #v43WizCats button{flex:0 0 auto;min-height:36px;padding:6px 10px;border-radius:10px;border:2px solid #33456a;background:#16213a;color:#cbd5e1;font-size:11px;font-weight:900;}
-  #v43WizCats button.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;color:#3a2205;}
+  #v43WizCats button.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;color:#4a2f00;}
   #v43WizModes .v43-mfav{color:#fbbf24;text-shadow:0 1px 2px rgba(0,0,0,.6);}
   #v43WizFav .v43-sec{font-size:11px;font-weight:900;color:#fde047;margin:2px 0 0;}
   #v44SoloNote { grid-column:1/-1; }
@@ -25149,6 +25181,8 @@ extends CanvasLayer
   }
   function start(mapId) {
     if (!mapId) return;
+    /* v5.11: 시작 전에 배경 아트 예열 — 진입 베일 대기 시간 단축 */
+    try { if (window.JW51ART && JW51ART.warm) JW51ART.warm(mapId); } catch (e) {}
     MD().rules.mode = pickedMode || 'normal';
     MD().rules.map = mapId;
     MP().current = mapId;
@@ -40002,7 +40036,7 @@ extends CanvasLayer
       '#titleScreen #btnStartGame:active,#titleScreen #btnMultiplayer:active{transform:scale(.98);filter:brightness(1.06);}',
       '#titleScreen #btnStartGame{background:linear-gradient(165deg,#ffd977,#f0a91d) !important;border-color:rgba(255,238,180,.9) !important;}',
       '#titleScreen #btnStartGame span.block{color:#5b3a04 !important;font-size:10px !important;letter-spacing:.04em;}',
-      '#titleScreen #btnStartGame span.font-black{color:#2b1a00 !important;font-size:17px !important;line-height:1.15 !important;}',
+      '#titleScreen #btnStartGame span.font-black{color:#4a2f00 !important;font-size:17px !important;line-height:1.15 !important;}',
       '#titleScreen #btnStartGame span.font-black > span{font-size:10px !important;color:#6b4708 !important;}',
       '#titleScreen #btnMultiplayer{background:linear-gradient(165deg,#a78bfa,#7c3aed) !important;border-color:rgba(233,213,255,.75) !important;}',
       '#titleScreen #btnMultiplayer span.block{color:#efe6ff !important;font-size:10px !important;letter-spacing:.04em;}',
@@ -40041,7 +40075,7 @@ extends CanvasLayer
       '#v43SideArt .sa-rec{justify-content:center !important;gap:18px !important;}',
       '#v43SideArt .sa-h:first-child{text-align:center !important;}',
       '#v49SideQuick{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:10px;',
-      '  min-height:46px;border-radius:14px;font-size:14px;font-weight:900;color:#2b1a00;',
+      '  min-height:46px;border-radius:14px;font-size:14px;font-weight:900;color:#4a2f00;',
       '  background:linear-gradient(165deg,#ffd977,#f0a91d);border:1px solid rgba(255,238,180,.9);',
       '  box-shadow:0 10px 24px rgba(240,169,29,.28);}',
 
@@ -41367,7 +41401,7 @@ extends CanvasLayer
       '#titleScreen #btnStartGame,#titleScreen #btnMultiplayer{border-radius:18px !important;padding:13px 12px !important;',
       '  min-height:76px !important;display:flex !important;align-items:center !important;gap:10px !important;}',
       '#titleScreen #btnStartGame{background:linear-gradient(180deg,#ffe8a3 0%,#ffc63c 46%,#eda314 100%) !important;',
-      '  border:1px solid rgba(255,242,196,.95) !important;color:#2b1a00 !important;',
+      '  border:1px solid rgba(255,242,196,.95) !important;color:#4a2f00 !important;',
       '  box-shadow:inset 0 2px 0 rgba(255,255,255,.8),inset 0 -7px 0 rgba(150,88,6,.32),0 6px 0 #6d4204,0 14px 24px rgba(0,0,0,.42) !important;}',
       '#titleScreen #btnMultiplayer{background:linear-gradient(180deg,#c3b0ff 0%,#9b7bf2 46%,#7644e0 100%) !important;',
       '  border:1px solid rgba(235,225,255,.9) !important;color:#fff !important;',
@@ -41377,13 +41411,13 @@ extends CanvasLayer
       '#titleScreen #btnMultiplayer:active{box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 1px 0 #3d1d80 !important;}',
       '#titleScreen .v50-b-ico{flex:0 0 auto;width:38px;height:38px;border-radius:12px;display:flex;align-items:center;',
       '  justify-content:center;background:rgba(255,255,255,.32);border:1px solid rgba(255,255,255,.5);',
-      '  box-shadow:inset 0 1px 0 rgba(255,255,255,.7);color:#2b1a00;}',
+      '  box-shadow:inset 0 1px 0 rgba(255,255,255,.7);color:#4a2f00;}',
       '#titleScreen #btnMultiplayer .v50-b-ico{background:rgba(24,8,64,.28);border-color:rgba(235,225,255,.45);color:#fff;}',
       '#titleScreen .v50-b-ico img{width:30px;height:30px;image-rendering:pixelated;}',
       '#titleScreen .v50-b-tx{flex:1 1 auto;min-width:0;text-align:center;display:flex;flex-direction:column;gap:2px;}',
       '#titleScreen .v50-b-tx b{font-size:19px !important;font-weight:900 !important;line-height:1.1 !important;letter-spacing:-.02em;}',
       '#titleScreen .v50-b-tx i{font-style:normal;font-size:10.5px !important;font-weight:800 !important;opacity:.78;letter-spacing:.02em;}',
-      '#titleScreen #btnStartGame .v50-b-tx b{color:#2b1a00 !important;}',
+      '#titleScreen #btnStartGame .v50-b-tx b{color:#4a2f00 !important;}',
       '#titleScreen #btnStartGame .v50-b-tx i{color:#6b4708 !important;}',
       '#titleScreen #btnMultiplayer .v50-b-tx b{color:#fff !important;}',
       '#titleScreen #btnMultiplayer .v50-b-tx i{color:#efe6ff !important;}',
@@ -41403,7 +41437,7 @@ extends CanvasLayer
       '#titleScreen #v43TitleRow button span:first-child{display:flex !important;align-items:center;justify-content:center;height:22px;}',
       /* 빠른 시작 · 조작 설정 */
       '#v49SideQuick{gap:8px !important;border-radius:16px !important;}',
-      '#v49SideQuick .v50-ico{color:#2b1a00;}',
+      '#v49SideQuick .v50-ico{color:#4a2f00;}',
 
       /* ---------- (8) 모드 선택 ---------- */
       '#v43WizModes .v49-grp{display:none !important;}',
@@ -41457,7 +41491,7 @@ extends CanvasLayer
       '  background:linear-gradient(180deg,rgba(30,58,138,.9),rgba(15,23,42,.92));',
       '  border:1px solid rgba(147,197,253,.65);box-shadow:0 10px 26px rgba(0,0,0,.5);}',
       '#v50Baton.me{background:linear-gradient(180deg,rgba(251,191,36,.95),rgba(217,119,6,.95));',
-      '  color:#2b1a00;border-color:rgba(255,240,190,.95);}',
+      '  color:#4a2f00;border-color:rgba(255,240,190,.95);}',
       '#v50Baton .who{font-size:15px;font-weight:900;}',
       '#v50Baton .tag{font-size:10.5px;font-weight:800;opacity:.85;}',
       /* ---------- (13) 기권 버튼: 상단 우측 [🏳️][🔄][⏸] 한 줄, 하단엔 채팅만 ---------- */
@@ -43210,7 +43244,7 @@ html body .mp-chip, html body .v42-chip, html body .v42-tab, html body .v43-tier
   display:inline-flex !important; align-items:center !important; justify-content:center !important;
 }
 html body .mp-chip.on, html body .v42-chip.on, html body .v42-tab.on, html body .v43-tierbtn.on{
-  background:linear-gradient(180deg,#ffd257,#f5a524) !important; color:#3a1d00 !important; border-color:var(--px-ink) !important;
+  background:linear-gradient(180deg,#ffd257,#f5a524) !important; color:#4a2f00 !important; border-color:var(--px-ink) !important;
   box-shadow:inset 0 -3px 0 #c97a0c, inset 0 2px 0 rgba(255,255,255,.5), 0 2px 0 var(--px-ink) !important;
 }
 /* 주요 버튼(한 화면에 하나): 금색 · 보조: 하늘색 · 위험: 빨강 */
@@ -43223,7 +43257,7 @@ html body #btnRestartRun, html body #btnQuitToTitle, html body .v43-go, html bod
 html body .mp-btn:active, html body .v44-btn:active, html body .v42-btn:active, html body .pixel-btn-gold:active, html body .pixel-btn-blue:active, html body .v43-go:active{
   transform:translateY(3px) !important; box-shadow:inset 0 -2px 0 rgba(0,0,0,.28), 0 1px 0 var(--px-ink) !important; }
 html body .pixel-btn-gold, html body #btnResume, html body .mp-btn.gold, html body .v43-go{
-  background:linear-gradient(180deg,#ffd257 0%,#ffb02e 50%,#f08a1a 100%) !important; color:#3a1d00 !important; }
+  background:linear-gradient(180deg,#ffd257 0%,#ffb02e 50%,#f08a1a 100%) !important; color:#4a2f00 !important; }
 html body .pixel-btn-blue{ background:linear-gradient(180deg,#8fd3ff,#4aa8f0 55%,#2d7fd0) !important; color:#06223f !important; }
 /* 텍스트 크기 하한 (패드에서 8~10px 이던 글씨) */
 @media (min-width:700px) and (min-height:700px){
@@ -43255,7 +43289,7 @@ html body.v485-guest #v43TitleEdit, html body.v485-guest #v46PubBtn, html body.v
 html body.v485-guest [data-v50slot="bot"], html body.v485-guest [data-v50bot], html body.v485-guest #v50BotCtl{ display:none !important; }
 /* 방 설정: '✅ 완료' + '확인' 중복 → 아래 '확인' 하나만 */
 html body #v50Set #v42RulesDone, html body #v50Set #v42RulesStart{ display:none !important; }
-html body #v50Set .v50s-ok{ min-width:160px !important; min-height:48px !important; background:linear-gradient(180deg,#ffd257,#ffb02e 50%,#f08a1a) !important; color:#3a1d00 !important; }
+html body #v50Set .v50s-ok{ min-width:160px !important; min-height:48px !important; background:linear-gradient(180deg,#ffd257,#ffb02e 50%,#f08a1a) !important; color:#4a2f00 !important; }
 /* 빠른 채팅 4개: 2×2 로 접어 높이를 줄인다 */
 html body.v47-play #v43QuickChat{ display:flex !important; flex-direction:column !important; gap:6px !important; width:auto !important; align-items:stretch !important; }
 html body.v47-play #v43QuickChat.hidden{ display:none !important; }
@@ -45943,7 +45977,7 @@ button, [role="button"]{touch-action:manipulation;}
     '  box-shadow:inset 0 -4px 0 #141c33,inset 0 2px 0 rgba(255,255,255,.16),0 4px 0 #05030a;',
     '  text-shadow:0 1px 0 rgba(0,0,0,.45);cursor:pointer;transition:transform .07s ease,box-shadow .07s ease;}',
     '.v53btn:active{transform:translateY(4px);box-shadow:inset 0 -4px 0 #141c33,inset 0 2px 0 rgba(255,255,255,.16),0 0 0 #05030a;}',
-    '.v53btn.gold{background:linear-gradient(180deg,#ffe08a,#ffc23a 45%,#f39a1c);color:#3a2205;border-color:#5a3204;',
+    '.v53btn.gold{background:linear-gradient(180deg,#ffe08a,#ffc23a 45%,#f39a1c);color:#4a2f00;border-color:#5a3204;',
     '  box-shadow:inset 0 -5px 0 #c46d0b,inset 0 2px 0 rgba(255,255,255,.7),0 4px 0 #5a3204;text-shadow:0 1px 0 rgba(255,255,255,.4);}',
     '.v53btn.green{background:linear-gradient(180deg,#a7f3d0,#34d399 48%,#059669);color:#04231a;border-color:#043b2b;',
     '  box-shadow:inset 0 -5px 0 #047857,inset 0 2px 0 rgba(255,255,255,.45),0 4px 0 #043b2b;}',
@@ -45959,7 +45993,7 @@ button, [role="button"]{touch-action:manipulation;}
     '.v53chip{flex:0 0 auto;font-family:"Jua",sans-serif;font-size:10.5px;font-weight:400;color:#aebbd4;',
     '  padding:5px 7px;background:linear-gradient(180deg,#1c2745,#141c33);border:2px solid #0a0f1e;border-radius:8px;',
     '  box-shadow:inset 0 -3px 0 #0a0f1e,0 2px 0 #05030a;white-space:nowrap;cursor:pointer;}',
-    '.v53chip.on{color:#3a2205;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;',
+    '.v53chip.on{color:#4a2f00;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;',
     '  box-shadow:inset 0 -3px 0 #b5750b,0 2px 0 #5a3204;}',
 
     /* 싱글 ② 맵 그리드 */
@@ -46353,7 +46387,7 @@ button, [role="button"]{touch-action:manipulation;}
       '#v53SetTabs button{font-family:"Jua",sans-serif;font-size:11.5px;color:#c7d6ee;padding:8px 2px;',
       '  background:linear-gradient(180deg,#1b2745,#131c33);border:2px solid #0a0f1e;border-radius:9px;',
       '  box-shadow:inset 0 -3px 0 #0a0f1e,0 2px 0 #05030a;}',
-      '#v53SetTabs button.on{color:#3a2205;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;',
+      '#v53SetTabs button.on{color:#4a2f00;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;',
       '  box-shadow:inset 0 -3px 0 #b5750b,0 2px 0 #5a3204;}',
       '#v53SetBody{display:flex;flex-direction:column;gap:6px;overflow-y:auto;overscroll-behavior:contain;',
       '  padding-right:1px;min-height:0;}',
@@ -46384,7 +46418,7 @@ button, [role="button"]{touch-action:manipulation;}
       '.v53R .op{display:flex;gap:3px;flex-wrap:wrap;margin-left:auto;}',
       '.v53R .op button{font-family:"Jua",sans-serif;font-size:10.5px;color:#b9c9e4;padding:4px 7px;border-radius:7px;',
       '  background:#111a30;border:2px solid #334155;}',
-      '.v53R .op button.on{color:#3a2205;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;}',
+      '.v53R .op button.on{color:#4a2f00;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;}',
       '.v53Note{font-size:9.5px;font-weight:800;color:#8fa2c0;line-height:1.4;}',
       '#v53PropBtn{margin-left:auto;}'
     ].join('\n');
@@ -46716,7 +46750,7 @@ button, [role="button"]{touch-action:manipulation;}
       '.v53TCat{display:flex;gap:4px;flex-wrap:wrap;}',
       '.v53TCat button{font-family:"Jua",sans-serif;font-size:10.5px;color:#aebbd4;padding:5px 7px;border-radius:8px;',
       '  background:linear-gradient(180deg,#1c2745,#141c33);border:2px solid #0a0f1e;box-shadow:inset 0 -3px 0 #0a0f1e;}',
-      '.v53TCat button.on{color:#3a2205;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;}',
+      '.v53TCat button.on{color:#4a2f00;background:linear-gradient(180deg,#ffe08a,#f5b21c);border-color:#5a3204;}',
       '.v53TList{display:flex;flex-direction:column;gap:5px;max-height:46dvh;overflow-y:auto;overscroll-behavior:contain;}',
       '.v53T{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:10px;min-width:0;text-align:left;',
       '  background:linear-gradient(180deg,#1b2540,#121a2e);border:2px solid #0b1022;',
@@ -46937,7 +46971,7 @@ button, [role="button"]{touch-action:manipulation;}
     'html body #v43Friends .v485btn:active, html body #485Hub .v485btn:active, html body #v485hDetail .v485btn:active{',
     '  transform:translateY(3px) !important;box-shadow:inset 0 -3px 0 #101728,0 0 0 #05030a !important;}',
     'html body #v43Friends .v485btn.gold, html body #v485hDetail .v485btn.gold{',
-    '  color:#3a2205 !important;background:linear-gradient(180deg,#ffe08a,#ffc23a 45%,#f39a1c) !important;',
+    '  color:#4a2f00 !important;background:linear-gradient(180deg,#ffe08a,#ffc23a 45%,#f39a1c) !important;',
     '  border-color:#5a3204 !important;box-shadow:inset 0 -4px 0 #c46d0b,inset 0 2px 0 rgba(255,255,255,.7),0 3px 0 #5a3204 !important;}',
     'html body #v43Friends .v485btn.green, html body #v485hDetail .v485btn.green{',
     '  color:#04231a !important;background:linear-gradient(180deg,#a7f3d0,#34d399 48%,#059669) !important;',
@@ -46959,11 +46993,11 @@ button, [role="button"]{touch-action:manipulation;}
     '  color:#b9c9e4 !important;padding:9px 4px !important;border-radius:9px !important;',
     '  border:2px solid #0a0f1e !important;background:linear-gradient(180deg,#28365a,#18213c) !important;',
     '  box-shadow:inset 0 -3px 0 #0a0f1e,0 3px 0 #05030a !important;}',
-    'html body .v485fh-tab.on{color:#3a2205 !important;background:linear-gradient(180deg,#ffe08a,#f5b21c) !important;',
+    'html body .v485fh-tab.on{color:#4a2f00 !important;background:linear-gradient(180deg,#ffe08a,#f5b21c) !important;',
     '  border-color:#5a3204 !important;box-shadow:inset 0 -4px 0 #b5750b,0 3px 0 #5a3204 !important;}',
     'html body .v485fh-tab.on b{color:#5a3204 !important;}',
     /* 내 코드 버튼 */
-    'html body #v485hCode{font-family:"Jua",sans-serif !important;font-size:10.5px !important;color:#3a2205 !important;',
+    'html body #v485hCode{font-family:"Jua",sans-serif !important;font-size:10.5px !important;color:#4a2f00 !important;',
     '  background:linear-gradient(180deg,#ffe08a,#f5b21c) !important;border:2px solid #5a3204 !important;border-radius:7px !important;',
     '  box-shadow:inset 0 -3px 0 #b5750b,0 2px 0 #5a3204 !important;padding:3px 7px !important;}',
     /* 친구카드 안의 작은 버튼(요청 수락/거절/취소) */
@@ -47445,7 +47479,7 @@ button, [role="button"]{touch-action:manipulation;}
       '  border-radius:11px;border:1px solid rgba(160,190,235,.26);background:rgba(255,255,255,.06);',
       '  color:#e8effc;font-size:12px;font-weight:800;cursor:pointer;}',
       '.v48mg-b:active{transform:scale(.97);background:rgba(255,255,255,.12);}',
-      '.v48mg-b.gold{background:linear-gradient(180deg,#ffd66e,#f0a72a);color:#3a2205;border-color:#c98a17;}',
+      '.v48mg-b.gold{background:linear-gradient(180deg,#ffd66e,#f0a72a);color:#4a2f00;border-color:#c98a17;}',
       '.v48mg-b.blue{background:linear-gradient(180deg,#63b8f6,#2f7fd0);color:#052036;border-color:#2a6aa8;}',
       '.v48mg-b.ghost{background:rgba(255,255,255,.04);}',
       '#v48mgHub{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:6px;padding:0 10px 10px;overflow:auto;}',
@@ -48003,7 +48037,7 @@ button, [role="button"]{touch-action:manipulation;}
             var gr = g.createLinearGradient(0, y, 0, y + h);
             gr.addColorStop(0, '#ffd97a'); gr.addColorStop(1, '#ef9f22');
             g.fillStyle = gr; g.fill();
-            g.fillStyle = '#3a2205';
+            g.fillStyle = '#4a2f00';
           } else if (opt.color === 'blue') {
             var gb = g.createLinearGradient(0, y, 0, y + h);
             gb.addColorStop(0, '#66baf7'); gb.addColorStop(1, '#2b74c4');
@@ -52819,7 +52853,7 @@ button, [role="button"]{touch-action:manipulation;}
       '  border:2px solid rgba(160,190,235,.3);background:linear-gradient(180deg,#243654,#162032);color:#e8effc;',
       '  box-shadow:0 3px 0 #070c16;}',
       '#v48ju .row button.play{background:linear-gradient(180deg,#63b8f6,#2f7fd0);color:#052036;border-color:#2a6aa8;}',
-      '#v48ju .row button.on{background:linear-gradient(180deg,#ffd66e,#f0a72a);color:#3a2205;border-color:#c98a17;}',
+      '#v48ju .row button.on{background:linear-gradient(180deg,#ffd66e,#f0a72a);color:#4a2f00;border-color:#c98a17;}',
       '#v48ju .note{font-size:10px;color:#8fa3c4;line-height:1.4;margin-top:4px;}'
     ].join('\n');
     doc.head.appendChild(s);
@@ -53550,7 +53584,7 @@ button, [role="button"]{touch-action:manipulation;}
       '  color:#e8effc;font-size:10.5px;font-weight:800;cursor:pointer;white-space:nowrap;}',
       '#v48c2ui .c2b:active{transform:scale(.97);background:rgba(255,255,255,.14);}',
       '#v48c2ui .c2b.off{opacity:.5;}',
-      '#v48c2ui .c2b.gold{background:linear-gradient(180deg,#ffd66e,#ef9f22);color:#3a2205;border-color:#c98a17;}',
+      '#v48c2ui .c2b.gold{background:linear-gradient(180deg,#ffd66e,#ef9f22);color:#4a2f00;border-color:#c98a17;}',
       '#v48c2ui .c2s{pointer-events:none;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;',
       '  border-radius:8px;background:rgba(8,13,26,.62);border:1px solid rgba(160,200,255,.18);',
       '  color:#cbd5e1;font-size:10px;font-weight:700;}',
@@ -59286,7 +59320,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '#v48rk .tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;}',
       '#v48rk .tab{height:40px;border-radius:12px;border:2px solid #2a3b58;background:linear-gradient(180deg,#1b2540,#121a2d);color:#a8bad5;',
       '  font-family:"Jua",sans-serif;font-size:14px;box-shadow:0 3px 0 #070c16,inset 0 1px 0 rgba(255,255,255,.08);white-space:nowrap;}',
-      '#v48rk .tab.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;color:#3a2205;',
+      '#v48rk .tab.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;color:#4a2f00;',
       '  box-shadow:0 3px 0 #6b4405,inset 0 1px 0 rgba(255,255,255,.5);}',
       /* 필터 */
       '#v48rk .flt{display:flex;flex-direction:column;gap:7px;padding:9px 10px;border-radius:13px;background:#0c1524;border:1.5px solid #1b2942;}',
@@ -59303,7 +59337,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '#v48rk .chip{flex:0 0 auto;font-family:"Jua",sans-serif;font-size:12.5px;color:#b6c6de;padding:8px 11px;min-height:36px;',
       '  background:linear-gradient(180deg,#1d2a44,#141d31);border:2px solid #22304a;border-radius:10px;white-space:nowrap;',
       '  box-shadow:0 2px 0 #070c16,inset 0 1px 0 rgba(255,255,255,.07);display:flex;align-items:center;}',
-      '#v48rk .chip.on{color:#3a2205;background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;',
+      '#v48rk .chip.on{color:#4a2f00;background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;',
       '  box-shadow:0 2px 0 #6b4405,inset 0 1px 0 rgba(255,255,255,.45);}',
       /* 포디움 */
       '#v48rk .pod{display:grid;grid-template-columns:1fr 1.16fr 1fr;gap:7px;align-items:end;margin-top:2px;}',
@@ -59997,11 +60031,11 @@ if (typeof module !== 'undefined' && module.exports) {
       '  background:linear-gradient(180deg,#1e2a48,#151d34); border:2px solid #0a0f1e; border-radius:10px;',
       '  box-shadow:inset 0 -3px 0 #0a0f1e, 0 2px 0 #05030a; cursor:pointer; }',
       '#v49Prop .v49p-tab span{ font-size:15px; line-height:1; }',
-      '#v49Prop .v49p-tab.on{ color:#3a2205; background:linear-gradient(180deg,#ffe08a,#f5b21c); border-color:#5a3204;',
+      '#v49Prop .v49p-tab.on{ color:#4a2f00; background:linear-gradient(180deg,#ffe08a,#f5b21c); border-color:#5a3204;',
       '  box-shadow:inset 0 -3px 0 #b5750b, 0 2px 0 #5a3204; }',
       '#v49Prop .v49p-tab em{ position:absolute; top:-5px; right:-4px; min-width:16px; height:16px; padding:0 4px;',
       '  display:none; align-items:center; justify-content:center; border-radius:9px; font-style:normal; font-size:10px;',
-      '  font-weight:900; color:#3a2205; background:#fde047; border:2px solid #7c2d12; }',
+      '  font-weight:900; color:#4a2f00; background:#fde047; border:2px solid #7c2d12; }',
       '#v49Prop .v49p-tab.has em{ display:flex; }',
       /* 본문 */
       '#v49Prop .v49p-body{ flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain;',
@@ -60016,7 +60050,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '#v49Prop .v49p-chip{ flex:0 0 auto; font-family:"Jua",sans-serif; font-size:11px; font-weight:700; color:#c8d8f0;',
       '  padding:6px 9px; border-radius:9px; background:linear-gradient(180deg,#1c2745,#141c33); border:2px solid #0a0f1e;',
       '  box-shadow:inset 0 -3px 0 #0a0f1e, 0 2px 0 #05030a; white-space:nowrap; cursor:pointer; }',
-      '#v49Prop .v49p-chip.on{ color:#3a2205; background:linear-gradient(180deg,#ffe08a,#f5b21c); border-color:#5a3204;',
+      '#v49Prop .v49p-chip.on{ color:#4a2f00; background:linear-gradient(180deg,#ffe08a,#f5b21c); border-color:#5a3204;',
       '  box-shadow:inset 0 -3px 0 #b5750b, 0 2px 0 #5a3204; }',
       /* 맵 카드 그리드 */
       '#v49Prop .v49p-maps{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }',
@@ -60035,7 +60069,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '#v49Prop .v49p-map .tag{ position:absolute; top:4px; left:4px; font-size:8.5px; font-weight:900; color:#052e16;',
       '  background:#86efac; border-radius:6px; padding:1px 4px; border:1px solid #166534; }',
       '#v49Prop .v49p-map .ok{ position:absolute; top:4px; right:4px; width:20px; height:20px; border-radius:50%;',
-      '  display:none; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:#3a2205;',
+      '  display:none; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:#4a2f00;',
       '  background:#fde047; border:2px solid #7c2d12; }',
       '#v49Prop .v49p-map.sel{ box-shadow:inset 0 0 0 3px #fbbf24, 0 3px 0 #05030a; }',
       '#v49Prop .v49p-map.sel .ok{ display:flex; }',
@@ -60054,7 +60088,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '#v49Prop .v49p-mode i{ font-style:normal; font-size:9.5px; font-weight:800; color:#b6c8e2; line-height:1.25;',
       '  word-break:keep-all; display:block; max-height:2.5em; overflow:hidden; }',
       '#v49Prop .v49p-mode .ok{ position:absolute; top:-5px; right:-4px; width:20px; height:20px; border-radius:50%;',
-      '  display:none; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:#3a2205;',
+      '  display:none; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:#4a2f00;',
       '  background:#fde047; border:2px solid #7c2d12; }',
       '#v49Prop .v49p-mode.sel{ box-shadow:inset 0 0 0 3px #fbbf24, 0 3px 0 #05030a; }',
       '#v49Prop .v49p-mode.sel .ok{ display:flex; }',
@@ -60072,7 +60106,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '#v49Prop .v49p-mg b{ font-family:"Jua",sans-serif; font-size:12px; font-weight:700; color:#fff; line-height:1.18;',
       '  word-break:keep-all; display:block; max-height:2.4em; overflow:hidden; }',
       '#v49Prop .v49p-mg .ok{ position:absolute; top:-5px; right:-4px; width:20px; height:20px; border-radius:50%;',
-      '  display:none; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:#3a2205;',
+      '  display:none; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:#4a2f00;',
       '  background:#fde047; border:2px solid #7c2d12; }',
       '#v49Prop .v49p-mg.sel{ box-shadow:inset 0 0 0 3px #fbbf24, 0 3px 0 #05030a; }',
       '#v49Prop .v49p-mg.sel .ok{ display:flex; }',
@@ -60090,7 +60124,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '  box-shadow:inset 0 -3px 0 #0a0f1e, 0 2px 0 #05030a; cursor:pointer; }',
       '#v49Prop .v49p-rule .op button:active{ transform:translateY(2px); }',
       '#v49Prop .v49p-rule .op button.cur{ color:#bbf7d0; border-color:#166534; }',
-      '#v49Prop .v49p-rule .op button.on{ color:#3a2205; background:linear-gradient(180deg,#ffe08a,#f5b21c); border-color:#5a3204;',
+      '#v49Prop .v49p-rule .op button.on{ color:#4a2f00; background:linear-gradient(180deg,#ffe08a,#f5b21c); border-color:#5a3204;',
       '  box-shadow:inset 0 -3px 0 #b5750b, 0 2px 0 #5a3204; }',
       /* 닉변빵 */
       '#v49Prop .v49p-bet{ display:flex; flex-direction:column; gap:8px; padding:11px; border-radius:12px;',
@@ -60101,7 +60135,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '#v49Prop .v49p-big-btn{ flex:1 1 40%; font-family:"Jua",sans-serif; font-size:12.5px; color:#fff; padding:9px 8px;',
       '  border-radius:10px; background:linear-gradient(180deg,#3b2a55,#241838); border:2px solid #0a0f1e;',
       '  box-shadow:inset 0 -3px 0 #0a0f1e, 0 3px 0 #05030a; cursor:pointer; }',
-      '#v49Prop .v49p-big-btn.on{ color:#3a2205; background:linear-gradient(180deg,#ffe08a,#f5b21c); border-color:#5a3204;',
+      '#v49Prop .v49p-big-btn.on{ color:#4a2f00; background:linear-gradient(180deg,#ffe08a,#f5b21c); border-color:#5a3204;',
       '  box-shadow:inset 0 -3px 0 #b5750b, 0 3px 0 #5a3204; }',
       /* 하단 전송 바 */
       '#v49Prop .v49p-ft{ flex:0 0 auto; display:flex; align-items:center; gap:7px; padding-top:6px; border-top:2px solid #1b2743; }',
@@ -60157,7 +60191,7 @@ if (typeof module !== 'undefined' && module.exports) {
       'html.theme-light #v49Prop .v49p-now{ background:#eaf1fb !important; border-color:#c2d2e8 !important; color:#22324a !important; }',
       'html.theme-light #v49Prop .v49p-now i{ color:#5a6e8c !important; }',
       'html.theme-light #v49Prop .v49p-tab{ background:linear-gradient(180deg,#f4f8ff,#e2eaf7) !important; border-color:#b9c9e0 !important; color:#2a3b55 !important; }',
-      'html.theme-light #v49Prop .v49p-tab.on{ color:#3a2205 !important; background:linear-gradient(180deg,#ffe08a,#f5b21c) !important; }',
+      'html.theme-light #v49Prop .v49p-tab.on{ color:#4a2f00 !important; background:linear-gradient(180deg,#ffe08a,#f5b21c) !important; }',
       'html.theme-light #v49Prop .v49p-map{ background:linear-gradient(180deg,#f8fbff,#e7eefa) !important; border-color:#c3d2e6 !important; }',
       'html.theme-light #v49Prop .v49p-map b{ color:#16233a !important; }',
       'html.theme-light #v49Prop .v49p-map i{ color:#4c5f7c !important; }',
@@ -60167,7 +60201,7 @@ if (typeof module !== 'undefined' && module.exports) {
       'html.theme-light #v49Prop .v49p-rule{ background:linear-gradient(180deg,#f6faff,#e8eff9) !important; border-color:#c6d5e8 !important; }',
       'html.theme-light #v49Prop .v49p-rule .lb{ color:#1b2a44 !important; }',
       'html.theme-light #v49Prop .v49p-rule .op button,html.theme-light #v49Prop .v49p-chip{ background:linear-gradient(180deg,#f7faff,#e4ecf8) !important; border-color:#b9c9e0 !important; color:#24354f !important; }',
-      'html.theme-light #v49Prop .v49p-rule .op button.on,html.theme-light #v49Prop .v49p-chip.on{ color:#3a2205 !important; background:linear-gradient(180deg,#ffe08a,#f5b21c) !important; }',
+      'html.theme-light #v49Prop .v49p-rule .op button.on,html.theme-light #v49Prop .v49p-chip.on{ color:#4a2f00 !important; background:linear-gradient(180deg,#ffe08a,#f5b21c) !important; }',
       'html.theme-light #v49Prop .v49p-selp{ color:#1b2a44 !important; }',
       'html.theme-light #v49Prop .v49p-ft{ border-top-color:#cdd8e8 !important; }',
       'html.theme-light #v49Prop .v49p-bet{ background:linear-gradient(180deg,#fdeef3,#f7e2ea) !important; border-color:#e7a6bd !important; }',
@@ -63693,6 +63727,8 @@ if (typeof module !== 'undefined' && module.exports) {
       }
       ctx.restore();
     }
+    /* v5.11: V20 존 배경도 준비 완료로 표시 — 진입 베일이 retro20에서 타임아웃까지 기다리지 않게 */
+    STAT.last = 'retro20'; STAT.lastAt = Date.now();
     return true;
   }
 
@@ -63702,6 +63738,8 @@ if (typeof module !== 'undefined' && module.exports) {
     if (JW51ART.SKIP[id] || NO_ART[id]) return false;
     var e = imgFor(id);
     if (!e.ok) {
+      /* v5.11: 이미지 최종 실패(err 2)는 폴백(파노/존 배경)에 넘긴다 — 평면 하늘만 영원히 보이는 것을 막음 */
+      if (e.err === 2) return false;
       /* 이미지 오는 동안: 하늘만 깔아 검은 화면을 막는다 */
       var sky = skyOf(id);
       var gg = ctx.createLinearGradient(0, 0, 0, lh);
@@ -70623,7 +70661,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '#v57PlM .tabs{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px 12px 0;}',
       '#v57PlM .tab{height:40px;border-radius:12px;border:2px solid #2a3b58;background:linear-gradient(180deg,#1b2540,#121a2d);color:#a8bad5;',
       '  font-family:"Jua",sans-serif;font-size:14px;box-shadow:0 3px 0 #070c16;}',
-      '#v57PlM .tab.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;color:#3a2205;}',
+      '#v57PlM .tab.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;color:#4a2f00;}',
       '#v57PlM .list{flex:1 1 auto;min-height:0;overflow-y:auto;padding:10px 12px 14px;display:flex;flex-direction:column;gap:8px;}',
       '#v57PlM .row{display:flex;align-items:center;gap:10px;padding:11px;border-radius:13px;background:#0d1728;border:2px solid #1e2b44;}',
       '#v57PlM .row.on{border-color:#38bdf8;background:linear-gradient(180deg,rgba(37,99,235,.2),rgba(13,23,40,.95));}',
@@ -70830,7 +70868,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '#v57Prof .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 12px 0;}',
       '#v57Prof .tab{height:40px;border-radius:11px;border:2px solid #2a3b58;background:linear-gradient(180deg,#1b2540,#121a2d);color:#a8bad5;',
       '  font-family:"Jua",sans-serif;font-size:13px;box-shadow:0 3px 0 #070c16;white-space:nowrap;}',
-      '#v57Prof .tab.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;color:#3a2205;box-shadow:0 3px 0 #6b4405;}',
+      '#v57Prof .tab.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;color:#4a2f00;box-shadow:0 3px 0 #6b4405;}',
       '#v57Prof .body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:10px 12px 14px;display:flex;flex-direction:column;gap:7px;}',
       '#v57Prof .skgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}',
       '#v57Prof .skcard{display:flex;flex-direction:column;align-items:center;gap:4px;padding:9px 5px;border-radius:12px;',
@@ -71260,7 +71298,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '#v486pop .btns{display:flex;flex-direction:column;gap:8px;margin-top:16px;}',
       '#v486pop button{min-height:46px;border-radius:13px;border:2px solid #0b1020;font-family:"Jua",sans-serif;font-size:15px;',
       '  background:linear-gradient(180deg,#26344f,#16202f);color:#dbe7f8;box-shadow:0 4px 0 #05030a;}',
-      '#v486pop button.pri{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);color:#3a2205;border-color:#5a3204;}',
+      '#v486pop button.pri{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);color:#4a2f00;border-color:#5a3204;}',
       '#v486pop button:active{transform:translateY(2px);box-shadow:0 2px 0 #05030a;}',
       /* 다음 맵 버튼 */
       '#v486Next{width:100%;min-height:46px;margin-top:8px;border-radius:13px;border:2px solid #0b5c4a;',
@@ -72493,9 +72531,9 @@ if (typeof module !== 'undefined' && module.exports) {
     '  box-shadow:inset 0 -3px 0 rgba(0,0,0,.35),0 3px 8px rgba(0,0,0,.35) !important;text-shadow:0 1px 0 rgba(0,0,0,.45) !important;}',
     'html body .v44-codextabs button:active{transform:translateY(2px) !important;}',
     'html body .v44-codextabs button.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d) !important;',
-    '  border-color:#7a4a06 !important;color:#3a2205 !important;text-shadow:0 1px 0 rgba(255,255,255,.35) !important;}',
+    '  border-color:#7a4a06 !important;color:#4a2f00 !important;text-shadow:0 1px 0 rgba(255,255,255,.35) !important;}',
     'html body #v44CodexTabs button.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d) !important;',
-    '  border-color:#7a4a06 !important;color:#3a2205 !important;}',
+    '  border-color:#7a4a06 !important;color:#4a2f00 !important;}',
     /* ── 서브필터(전체/맵/모드/아이템·함정) ── */
     'html body #v50CxTabs{gap:6px !important;margin:4px 0 6px !important;}',
     'html body #v50CxTabs button{min-height:40px !important;border-radius:12px !important;font-size:12px !important;font-weight:900 !important;',
@@ -72603,7 +72641,7 @@ if (typeof module !== 'undefined' && module.exports) {
     'html body #v50Set .v50s-tabs button{min-height:42px !important;border-radius:12px !important;font-size:12.5px !important;font-weight:900 !important;',
     '  background:linear-gradient(180deg,#26344f,#162032) !important;border:2px solid #3b4c6b !important;color:#dfeaf9 !important;}',
     'html body #v50Set .v50s-tabs button.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d) !important;',
-    '  border-color:#7a4a06 !important;color:#3a2205 !important;}'
+    '  border-color:#7a4a06 !important;color:#4a2f00 !important;}'
   ].join('\n');
 
   function css() {
@@ -72941,7 +72979,7 @@ if (typeof module !== 'undefined' && module.exports) {
     'html body #pauseModal .v97grid > button{padding:10px 8px !important;font-size:13px !important;line-height:1.15 !important;',
     '  min-height:44px !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     'html body #pauseModal #btnResume{background:linear-gradient(180deg,#ffe08a,#f7b91f 58%,#d9930b) !important;',
-    '  border-color:#7a4a06 !important;color:#3a2205 !important;font-size:17px !important;',
+    '  border-color:#7a4a06 !important;color:#4a2f00 !important;font-size:17px !important;',
     '  box-shadow:inset 0 2px 0 rgba(255,255,255,.5),inset 0 -5px 0 rgba(150,90,0,.45),0 5px 0 #6b3f04 !important;}',
     'html body #pauseModal #btnQuitToTitle{background:linear-gradient(180deg,#4a2230,#2a1220) !important;border-color:#7a2438 !important;color:#ffd3dc !important;}',
     'html body #pauseModal #btnRestartRun{background:linear-gradient(180deg,#6a2a2a,#3a1618) !important;border-color:#8a3030 !important;color:#ffd9d9 !important;}',
@@ -72965,7 +73003,7 @@ if (typeof module !== 'undefined' && module.exports) {
     'html body #v51AchM .v51chip, html body #v51BoardM .v51chip{min-height:38px;padding:7px 13px !important;font-size:12.5px !important;',
     '  border-radius:999px !important;border:2px solid #33456b !important;background:linear-gradient(180deg,#243654,#162032) !important;color:#dbe7f8 !important;}',
     'html body #v51AchM .v51chip.on, html body #v51BoardM .v51chip.on{background:linear-gradient(180deg,#ffe08a,#f7b91f 58%,#d9930b) !important;',
-    '  border-color:#7a4a06 !important;color:#3a2205 !important;box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 #6b3f04 !important;}',
+    '  border-color:#7a4a06 !important;color:#4a2f00 !important;box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 #6b3f04 !important;}',
     'html body #v51AchM .v51ach{border-radius:12px !important;border:2px solid #22314f !important;background:rgba(8,13,24,.6) !important;padding:8px 9px !important;}',
     'html body #v51AchM .v51ach.on{border-color:#e0a63a !important;background:linear-gradient(180deg,rgba(251,191,36,.12),rgba(8,13,24,.7)) !important;}',
     'html body #v51AchM .v51ach .tx b{font-size:13px !important;color:#fff !important;}',
@@ -72984,7 +73022,7 @@ if (typeof module !== 'undefined' && module.exports) {
     'html body #v51DM #v51DMIn{min-height:44px !important;border-radius:12px !important;font-size:13.5px !important;}',
     'html body #v51DM .v51row{gap:7px !important;}',
     'html body #v51DM #v51DMSend{background:linear-gradient(180deg,#ffe08a,#f7b91f 58%,#d9930b) !important;',
-    '  border-color:#7a4a06 !important;color:#3a2205 !important;font-size:14px !important;padding:10px 14px !important;',
+    '  border-color:#7a4a06 !important;color:#4a2f00 !important;font-size:14px !important;padding:10px 14px !important;',
     '  box-shadow:inset 0 2px 0 rgba(255,255,255,.5),inset 0 -4px 0 rgba(150,90,0,.4),0 4px 0 #6b3f04 !important;}',
 
     /* ---------- ⑧ 친구창 ---------- */
@@ -73014,7 +73052,7 @@ if (typeof module !== 'undefined' && module.exports) {
     '  box-shadow:inset 0 2px 0 rgba(255,255,255,.10),inset 0 -3px 0 rgba(0,0,0,.4),0 3px 0 #060a14 !important;}',
     'html body #v53Set .op button:not(.on){background:linear-gradient(180deg,#2a3a5c,#161f33) !important;color:#d6e2f4 !important;border-color:#33456b !important;}',
     'html body #v53Set .op button.on{background:linear-gradient(180deg,#ffe08a,#f7b91f 58%,#d9930b) !important;',
-    '  border-color:#7a4a06 !important;color:#3a2205 !important;box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 #6b3f04 !important;}',
+    '  border-color:#7a4a06 !important;color:#4a2f00 !important;box-shadow:inset 0 2px 0 rgba(255,255,255,.45),0 3px 0 #6b3f04 !important;}',
     'html body #v53Set .v53R > b{font-size:12.5px !important;color:#cfe0f8 !important;}',
     'html body #v53Set .v53chip{min-height:36px !important;font-size:12px !important;font-weight:900 !important;border-radius:999px !important;}',
     'html body #v53Set .v53btn{font-size:13px !important;border-radius:11px !important;}',
@@ -74099,6 +74137,26 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   inp.addEventListener('input', apply);
   new MutationObserver(apply).observe(box, { childList: true, subtree: true });
+})();
+</script>
+<script>
+/* v5.11 카드·로비 수정 — 최후순위 오버라이드 (구체성 높은 셀렉터 + !important).
+   (a) 모드 카드 설명 2줄 + 카테고리 라벨 별도 줄 — v52fixCss의 max-height:21px 캡(2줄 20.64px에 0.36px 여유)을 뚫음
+   (b) 맵 카드 설명 2줄 온전 표시 — v53 기본 max-height:24px 캡(2줄 24.3px)을 뚫음
+   (c) 로비 빈 슬롯 행 전체 너비 — v93의 2열 그리드(≥620px)에서 .mps-row가 반쪽 열에 갇히던 문제 수정
+   (c2) 좁은 화면(390px) — 봇/초대 버튼 아이콘 전용 (svg는 width/height 명시라 font-size:0에도 남음) */
+(function () {
+  if (document.getElementById('v59cardFixCss')) return;
+  var st = document.createElement('style');
+  st.id = 'v59cardFixCss';
+  st.textContent = [
+    'html body #v43Wiz #v53ModeGrid .v53mm .tx > i.ds{font-size:8.6px !important;line-height:1.25 !important;height:auto !important;max-height:none !important;display:-webkit-box !important;-webkit-line-clamp:2 !important;-webkit-box-orient:vertical !important;overflow:hidden !important;flex-shrink:0 !important;}',
+    'html body #v43Wiz #v53ModeGrid .v53mm .tx > .cat{display:block !important;font-size:9px !important;line-height:1.25 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;flex-shrink:0 !important;margin-top:2px !important;}',
+    'html body #v43Wiz #v53MapGrid .v53m > .ds{font-size:9px !important;line-height:1.35 !important;height:auto !important;max-height:none !important;display:-webkit-box !important;-webkit-line-clamp:2 !important;-webkit-box-orient:vertical !important;overflow:hidden !important;}',
+    'html body #mpLobby #mpRoomPlayers > .mps-row{grid-column:1 / -1 !important;}',
+    '@media (max-width:480px){html body #mpLobby .mps-slot .v50-slot-b{font-size:0 !important;padding:4px 7px !important;gap:0 !important;}}'
+  ].join('\n');
+  document.head.appendChild(st);
 })();
 </script>
 </body>
