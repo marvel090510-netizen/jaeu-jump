@@ -207,8 +207,10 @@
       lastLagAt = t;
       P.err('메인 스레드 ' + Math.round(drift) + 'ms 정지 (이 사이 화면이 멈춰 있었음)');
     }
-    /* 15초째 새 단계가 없으면 "여기서 멈춘 것"으로 표시 */
-    if (!P.stallMarked && P.marks.length && t - P.marks[P.marks.length - 1].t > 15000 && !P.collapsed) {
+    /* 15초째 새 단계가 없으면 "여기서 멈춘 것"으로 표시 (부팅 완료 G 전까지만) */
+    var booted = false;
+    for (var mi = 0; mi < P.marks.length; mi++) { if (P.marks[mi].code === 'G') { booted = true; break; } }
+    if (!booted && !P.stallMarked && P.marks.length && t - P.marks[P.marks.length - 1].t > 15000 && !P.collapsed) {
       P.stallMarked = true;
       P.err('⚠ ' + dur(t - P.marks[P.marks.length - 1].t) + '째 새 단계 없음 → 이 단계에서 멈춘 것으로 보임');
     }
