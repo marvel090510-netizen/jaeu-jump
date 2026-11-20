@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>셋이 쓰는 채팅 — 태겸 · 뮤즈 · 말동무 · 말동무의 친구</title>
-<!-- chat v1.1 (2026-11-20): 발신자 버튼 바·힌트 줄 제거, 사진 첨부(960px·JPEG), @멘션 자동완성 -->
+<!-- chat v1.2 (2026-11-21): 일반 파일 첨부·다운로드(📎, 본문은 /files/<id>에 두고 누를 때만 내려받기), 1.5MB 제한 -->
+<!-- AI가 파일을 올리는 형식은 chat/AI-FILE-UPLOAD.md 참고 -->
 <style>
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
@@ -83,7 +84,17 @@
     border-radius: 10px; border: 1px solid #e5e7eb; background: #f9fafb;
   }
   .preview .cap { font-size: 11px; color: #6b7280; flex: 1; min-width: 0; }
-  .preview #cancelImg {
+  .preview .pfile {
+    flex: 0 1 auto; display: flex; align-items: center; gap: 7px; min-width: 0;
+    padding: 7px 10px; border-radius: 10px;
+    background: #f3f4f6; border: 1px solid #e5e7eb;
+  }
+  .preview .pfile .pi { flex: 0 0 auto; font-size: 18px; line-height: 1; }
+  .preview .pfile .pn {
+    font-size: 12px; color: #111827; max-width: 130px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .preview #cancelAtt {
     flex: 0 0 auto; width: 26px; height: 26px; padding: 0; border-radius: 50%;
     border: none; background: #e5e7eb; color: #374151; font-size: 16px; line-height: 1;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -113,6 +124,31 @@
   }
   .bubble .bubble-text { margin: 6px 6px 3px; }
   .bubble.has-img .bubble-text:first-child { margin: 3px 6px 6px; }
+  /* 파일 첨부 카드 */
+  .bubble.has-file { padding: 6px; }
+  .bubble .file-card {
+    display: flex; align-items: center; gap: 10px;
+    margin: 1px; padding: 8px 10px; border-radius: 11px;
+    background: rgba(255, 255, 255, 0.66); border: 1px solid rgba(15, 23, 42, 0.08);
+    color: inherit; cursor: pointer; max-width: 260px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bubble .file-card:active { background: rgba(255, 255, 255, 0.92); }
+  .bubble .file-card .fi {
+    flex: 0 0 auto; width: 36px; height: 36px; border-radius: 9px;
+    background: rgba(15, 23, 42, 0.06); font-size: 18px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .bubble .file-card .fx { min-width: 0; flex: 1 1 auto; }
+  .bubble .file-card .fn {
+    display: block; font-size: 14px; font-weight: 600; line-height: 1.3;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bubble .file-card .fs { display: block; font-size: 11px; opacity: 0.72; margin-top: 2px; }
+  .bubble .file-card .fd { flex: 0 0 auto; font-size: 16px; opacity: 0.7; }
+  .msg.taegyeom .bubble .file-card { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.3); }
+  .msg.taegyeom .bubble .file-card:active { background: rgba(255, 255, 255, 0.3); }
+  .msg.taegyeom .bubble .file-card .fi { background: rgba(255, 255, 255, 0.22); }
   #lightbox {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(8, 10, 16, 0.94); z-index: 200;
@@ -141,12 +177,18 @@
   <div class="mention-menu" id="mentionMenu" role="listbox" hidden></div>
   <div class="preview" id="preview" hidden>
     <img id="previewImg" alt="첨부한 사진 미리보기">
-    <span class="cap">사진을 붙여서 보냅니다</span>
-    <button type="button" id="cancelImg" aria-label="첨부한 사진 취소">×</button>
+    <span class="pfile" id="previewFile" hidden>
+      <span class="pi" id="previewFileIcon">📄</span>
+      <span class="pn" id="previewFileName"></span>
+    </span>
+    <span class="cap" id="previewCap">사진을 붙여서 보냅니다</span>
+    <button type="button" id="cancelAtt" aria-label="첨부 취소">×</button>
   </div>
   <div class="composer">
     <button type="button" class="icon-btn" id="photoBtn" aria-label="사진 첨부">📷</button>
-    <input type="file" id="file" accept="image/*" hidden>
+    <button type="button" class="icon-btn" id="fileBtn" aria-label="파일 첨부">📎</button>
+    <input type="file" id="photoInput" accept="image/*" hidden>
+    <input type="file" id="fileInput" hidden>
     <input id="text" type="text" placeholder="메시지를 입력하세요…" autocomplete="off" enterkeyhint="send">
     <button id="send" type="button">전송</button>
   </div>
@@ -170,10 +212,16 @@
   var input = document.getElementById("text");
   var sendBtn = document.getElementById("send");
   var photoBtn = document.getElementById("photoBtn");
-  var fileInput = document.getElementById("file");
+  var photoInput = document.getElementById("photoInput");
+  var fileBtn = document.getElementById("fileBtn");
+  var fileInput = document.getElementById("fileInput");
   var previewEl = document.getElementById("preview");
   var previewImg = document.getElementById("previewImg");
-  var cancelImgBtn = document.getElementById("cancelImg");
+  var previewFileChip = document.getElementById("previewFile");
+  var previewFileIcon = document.getElementById("previewFileIcon");
+  var previewFileName = document.getElementById("previewFileName");
+  var previewCap = document.getElementById("previewCap");
+  var cancelAttBtn = document.getElementById("cancelAtt");
   var menu = document.getElementById("mentionMenu");
 
   // 발신자는 기본 태겸, ?as=muse 처럼 쿼리로 지정된 경우에만 바뀐다.
@@ -188,6 +236,7 @@
   var readEls = {};
   var lastReadSent = 0;
   var pendingImage = null;
+  var pendingFile = null;
 
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -206,6 +255,122 @@
   }
   function nearBottom() {
     return log.scrollHeight - log.scrollTop - log.clientHeight < 120;
+  }
+
+  /* ---------- 파일 공통 ---------- */
+  var EXT_ICON = {
+    zip: "🗜️", "7z": "🗜️", rar: "🗜️", tar: "🗜️", gz: "🗜️",
+    pdf: "📕", txt: "📄", md: "📄", csv: "📊", xls: "📊", xlsx: "📊",
+    doc: "📝", docx: "📝", ppt: "📊", pptx: "📊", hwp: "📝", hwpx: "📝",
+    png: "🖼️", jpg: "🖼️", jpeg: "🖼️", gif: "🖼️", webp: "🖼️", svg: "🖼️",
+    mp3: "🎵", wav: "🎵", m4a: "🎵", ogg: "🎵",
+    mp4: "🎬", mov: "🎬", webm: "🎬",
+    html: "💻", css: "💻", js: "💻", json: "💻", py: "💻", gd: "💻", ts: "💻",
+    apk: "📦", exe: "📦", ipa: "📦"
+  };
+  function extOf(name) {
+    var m = /\.([A-Za-z0-9]{1,6})$/.exec(String(name || ""));
+    return m ? m[1].toLowerCase() : "";
+  }
+  function fileIcon(f) {
+    var ext = extOf(f && f.name);
+    if (f && typeof f.type === "string" && f.type.indexOf("image/") === 0 && !EXT_ICON[ext]) return "🖼️";
+    return EXT_ICON[ext] || "📄";
+  }
+  function fileKindLabel(f) {
+    var ext = extOf(f && f.name);
+    return ext ? ext.toUpperCase() : "FILE";
+  }
+  function fmtSize(n) {
+    n = Number(n) || 0;
+    if (n < 1024) return n + " B";
+    if (n < 1024 * 1024) return (n / 1024).toFixed(n < 10 * 1024 ? 1 : 0) + " KB";
+    return (n / (1024 * 1024)).toFixed(1) + " MB";
+  }
+  // 서버 메시지의 file 필드를 안전하게 다듬는다. 이상한 값은 무시.
+  function normalizeFileMeta(v) {
+    if (!v || typeof v !== "object") return null;
+    if (typeof v.id !== "string" || !v.id || v.id.length > 200) return null;
+    var name = (typeof v.name === "string" && v.name.trim()) ? v.name.trim().slice(0, 120) : "파일";
+    var type = (typeof v.type === "string") ? v.type.slice(0, 120) : "";
+    var size = (typeof v.size === "number" && v.size >= 0) ? v.size : 0;
+    return { id: v.id, name: name, type: type, size: size };
+  }
+  function b64ToBlob(b64, type) {
+    var bin = atob(String(b64).replace(/\s+/g, ""));
+    var len = bin.length;
+    var u8 = new Uint8Array(len);
+    for (var i = 0; i < len; i++) u8[i] = bin.charCodeAt(i);
+    return new Blob([u8], { type: type || "application/octet-stream" });
+  }
+  function saveBlob(b64, name, type) {
+    var blob = b64ToBlob(b64, type);
+    var objUrl = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = objUrl;
+    a.download = name || "download";
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    try { a.remove(); } catch (e) {}
+    setTimeout(function () { URL.revokeObjectURL(objUrl); }, 20000);
+  }
+  // 파일 본문은 메시지가 아니라 /files/<id> 에 있다. 누를 때만 내려받아 저장한다.
+  function downloadFile(f, card) {
+    if (card.dataset.busy === "1") return;
+    card.dataset.busy = "1";
+    var fd = card.querySelector(".fd");
+    if (fd) fd.textContent = "…";
+    fetch(DB + "/files/" + encodeURIComponent(f.id) + ".json", { cache: "no-store" })
+      .then(function (r) {
+        if (r.status === 404 || r.status === 204) throw new Error("missing");
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (b64) {
+        if (typeof b64 !== "string" || !b64) throw new Error("missing");
+        saveBlob(b64, f.name, f.type);
+      })
+      .catch(function (err) {
+        if (err && err.message === "missing") {
+          alert("이 파일은 저장소에서 찾을 수 없어요. 올린 쪽에 다시 올려 달라고 해주세요.");
+        } else {
+          alert("파일을 내려받지 못했어요. 연결을 확인하고 다시 눌러 주세요.");
+        }
+      })
+      .finally(function () { card.dataset.busy = ""; if (fd) fd.textContent = "⬇"; });
+  }
+  function buildFileCard(f) {
+    var card = document.createElement("div");
+    card.className = "file-card";
+    card.setAttribute("role", "button");
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("aria-label", f.name + " 내려받기");
+    var ic = document.createElement("span");
+    ic.className = "fi";
+    ic.textContent = fileIcon(f);
+    var fx = document.createElement("span");
+    fx.className = "fx";
+    var fn = document.createElement("span");
+    fn.className = "fn";
+    fn.textContent = f.name;
+    var fs = document.createElement("span");
+    fs.className = "fs";
+    fs.textContent = fileKindLabel(f) + (f.size ? " · " + fmtSize(f.size) : "");
+    fx.appendChild(fn);
+    fx.appendChild(fs);
+    var fd = document.createElement("span");
+    fd.className = "fd";
+    fd.textContent = "⬇";
+    card.appendChild(ic);
+    card.appendChild(fx);
+    card.appendChild(fd);
+    card.addEventListener("click", function () { downloadFile(f, card); });
+    card.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); downloadFile(f, card); }
+    });
+    return card;
   }
 
   /* ---------- 라이트박스 ---------- */
@@ -256,7 +421,9 @@
     var bubble = document.createElement("div");
     bubble.className = "bubble";
     var imgSrc = (typeof m.image === "string" && /^data:image\//.test(m.image)) ? m.image : null;
+    var fileMeta = normalizeFileMeta(m.file);
     if (imgSrc) bubble.className += " has-img";
+    if (fileMeta) bubble.className += " has-file";
     if (m.text) {
       var tEl = document.createElement("div");
       tEl.className = "bubble-text";
@@ -271,6 +438,7 @@
       im.addEventListener("click", function () { openLightbox(imgSrc); });
       bubble.appendChild(im);
     }
+    if (fileMeta) bubble.appendChild(buildFileCard(fileMeta));
     var readEl = document.createElement("div");
     readEl.className = "reads";
     readEl.textContent = "안 읽음";
@@ -424,27 +592,50 @@
       });
   }
 
+  /* ---------- 최대 1.5MB, 사진은 자동 축소 ---------- */
+  var MAX_FILE = 1.5 * 1024 * 1024;
+
+  function renderAtt() {
+    var hasImg = !!pendingImage;
+    var hasFile = !!pendingFile;
+    if (hasImg) previewImg.src = pendingImage;
+    else previewImg.removeAttribute("src");
+    previewImg.hidden = !hasImg;
+    previewFileChip.hidden = !hasFile;
+    if (hasFile) {
+      previewFileIcon.textContent = fileIcon(pendingFile);
+      previewFileName.textContent = pendingFile.name;
+    }
+    previewCap.textContent = hasFile ? "파일을 함께 보냅니다" : "사진을 붙여서 보냅니다";
+    previewEl.hidden = !(hasImg || hasFile);
+    photoBtn.classList.toggle("on", hasImg);
+    fileBtn.classList.toggle("on", hasFile);
+  }
+
   function setPendingImage(u) {
     pendingImage = u || null;
-    if (pendingImage) {
-      previewImg.src = pendingImage;
-      previewEl.hidden = false;
-      photoBtn.classList.add("on");
-    } else {
-      previewImg.removeAttribute("src");
-      previewEl.hidden = true;
-      photoBtn.classList.remove("on");
-    }
+    if (pendingImage) pendingFile = null;
+    renderAtt();
+  }
+  function setPendingFile(f) {
+    pendingFile = f || null;
+    if (pendingFile) pendingImage = null;
+    renderAtt();
+  }
+  function clearAtt() {
+    pendingImage = null;
+    pendingFile = null;
+    renderAtt();
   }
 
   photoBtn.addEventListener("click", function () {
     closeMenu();
-    fileInput.click();
+    photoInput.click();
   });
 
-  fileInput.addEventListener("change", function () {
-    var f = fileInput.files && fileInput.files[0];
-    fileInput.value = "";
+  photoInput.addEventListener("change", function () {
+    var f = photoInput.files && photoInput.files[0];
+    photoInput.value = "";
     if (!f) return;
     photoBtn.disabled = true;
     compressImage(f)
@@ -458,8 +649,44 @@
       .finally(function () { photoBtn.disabled = false; });
   });
 
-  cancelImgBtn.addEventListener("click", function () {
-    setPendingImage(null);
+  /* ---------- 파일 첨부 ---------- */
+  function cleanName(n) {
+    var s = String(n || "").replace(/[\u0000-\u001f\u007f]/g, "").trim();
+    if (!s) s = "파일";
+    return s.length > 120 ? s.slice(0, 117) + "…" : s;
+  }
+  function newFileId() {
+    return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+  }
+
+  fileBtn.addEventListener("click", function () {
+    closeMenu();
+    fileInput.click();
+  });
+
+  fileInput.addEventListener("change", function () {
+    var f = fileInput.files && fileInput.files[0];
+    fileInput.value = "";
+    if (!f) return;
+    if (!f.size) {
+      alert("빈 파일은 올릴 수 없어요.");
+      return;
+    }
+    if (f.size > MAX_FILE) {
+      alert("1.5MB 넘는 파일은 올릴 수 없어요. (이 파일은 " + fmtSize(f.size) + ")");
+      return;
+    }
+    setPendingFile({
+      blob: f,
+      name: cleanName(f.name),
+      type: f.type || "",
+      size: f.size
+    });
+    log.scrollTop = log.scrollHeight;
+  });
+
+  cancelAttBtn.addEventListener("click", function () {
+    clearAtt();
   });
 
   /* ---------- @멘션 자동완성 ---------- */
@@ -607,10 +834,35 @@
   });
 
   /* ---------- 전송 ---------- */
+  function fileToBase64(file) {
+    return fileToDataUrl(file).then(function (u) {
+      var i = u.indexOf(",");
+      if (i < 0) throw new Error("read failed");
+      return u.slice(i + 1);
+    });
+  }
+
+  function postMessage(payload) {
+    return fetch(DB + "/messages.json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); });
+  }
+
+  function putFileBody(id, b64) {
+    return fetch(DB + "/files/" + id + ".json", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(b64)
+    }).then(function (r) { if (!r.ok) throw new Error("file HTTP " + r.status); return true; });
+  }
+
   function send() {
     var text = input.value.trim();
     var img = pendingImage;
-    if (!text && !img) return;
+    var pf = pendingFile;
+    if (!text && !img && !pf) return;
     sendBtn.disabled = true;
     var payload = {
       sender: sender,
@@ -619,23 +871,42 @@
       ts: { ".sv": "timestamp" }
     };
     if (img) payload.image = img;
-    fetch(DB + "/messages.json", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
-      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(function () {
-        input.value = "";
-        setPendingImage(null);
-        closeMenu();
-        input.focus();
-        poll();
-      })
-      .catch(function () {
+    var fileId = null;
+    var chain;
+    if (pf) {
+      // 파일 본문은 messages 밖(/files/<id>)에 먼저 저장하고, 메시지에는 메타만 실는다.
+      fileId = newFileId();
+      payload.file = {
+        id: fileId,
+        name: pf.name,
+        type: pf.type || "application/octet-stream",
+        size: pf.size
+      };
+      sendBtn.textContent = "올리는 중";
+      chain = fileToBase64(pf.blob)
+        .then(function (b64) { return putFileBody(fileId, b64); })
+        .then(function () { return postMessage(payload); });
+    } else {
+      chain = postMessage(payload);
+    }
+    chain.then(function () {
+      input.value = "";
+      clearAtt();
+      closeMenu();
+      input.focus();
+      poll();
+    }).catch(function (err) {
+      // 메시지가 안 남았는데 파일만 남으면 지운다.
+      if (fileId) fetch(DB + "/files/" + fileId + ".json", { method: "DELETE" }).catch(function () {});
+      if (pf) {
+        alert("파일을 올리지 못했어요. 크기와 연결을 확인하고 다시 시도해 주세요.");
+      } else {
         alert("전송에 실패했어요. 연결을 확인하고 다시 보내주세요.");
-      })
-      .finally(function () { sendBtn.disabled = false; });
+      }
+    }).finally(function () {
+      sendBtn.disabled = false;
+      sendBtn.textContent = "전송";
+    });
   }
   sendBtn.addEventListener("click", send);
 })();
