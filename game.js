@@ -1,7 +1,7 @@
 /* 성공하고싶은 재우 — 게임 본체 (v5.15 정식 루트)
    muse-v5-9/index.html(v5.15) <body> 안의 인라인 <script> 108개를 순서 그대로 이어 붙인 파일이다.
    iPad Safari 가 3.4MB 통짜 인라인을 파싱하며 메인 스레드가 멈추던 문제(베일이 안 걷힘)를
-   없애기 위해 분리했고, index.html 은 <script src="game.js?v=515tw2" defer></script> 로 불러온다.
+   없애기 위해 분리했고, index.html 은 <script src="game.js?v=515tw3" defer></script> 로 불러온다.
    각 블록은 원래 그대로(대부분 IIFE)라 한 블록의 예외가 다음 블록을 막지 않는다. */
 
 /* ── block 1 (muse-v5-9/index.html 979줄) ── */
