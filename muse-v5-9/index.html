@@ -2491,7 +2491,7 @@ html body #titleScreen {
         try {
           H = window.JW51PLAT && JW51PLAT.H;
           if (H) {
-            kc = H.kind(p.type, { b: rMid, d: rDark, t: rTop, a: rTop });
+            kc = H.kind(p.type === 'normal' && p._glass ? 'glass' : (p.art === 'syrup' ? 'syrup' : p.type), { b: rMid, d: rDark, t: rTop, a: rTop });
             if (kc) { kHi = H.mix(kc, '#ffffff', 0.40); kLo = H.mix(kc, '#05070c', 0.30); }
           }
         } catch (e) {}
@@ -2505,10 +2505,10 @@ html body #titleScreen {
           const alpha = p.crumbled ? 0.12 : (p._fake ? 0.34 : 0.62);
           ctx.save();
           ctx.globalAlpha = alpha;
-          rect(ctx, px, py, w, h, p.safe ? '#5eead4' : '#7dd3fc');
-          rect(ctx, px + 2, py + 2, w - 4, h - 4, p.safe ? '#a7f3d0' : '#bae6fd');
+          rect(ctx, px, py, w, h, p.safe ? '#5eead4' : (kc ? kLo : rMid));
+          rect(ctx, px + 2, py + 2, w - 4, h - 4, p.safe ? '#a7f3d0' : (kc ? kc : rTop));
           ctx.restore();
-          rect(ctx, px, py, w, 3, p.safe ? '#99f6e4' : '#e0f2fe');
+          rect(ctx, px, py, w, 3, p.safe ? '#99f6e4' : (kc ? kHi : rTop));
           /* 빛 반사 줄: 강화유리 2줄 · 가짜 1줄 */
           rect(ctx, px + 6, py + 5, Math.max(10, w - 12), 1, p.safe ? '#ecfeff' : 'rgba(255,255,255,.85)');
           if (!p._fake || p.safe) rect(ctx, px + 10, py + 9, Math.max(8, w - 20), 1, 'rgba(224,242,254,.75)');
