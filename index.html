@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
-<head><!-- v5.13 split 정식 루트(/) 승격 · muse-v5-9 빌드 (base href 제거) · muse-v5-5: v5.4 기반 전체 버그 수정 (싱글/멀티/일반) --><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="성공하고싶은 재우"><meta name="theme-color" content="#0b1024"><link rel="manifest" href="./manifest.json"><meta property="og:image" content="https://marvel090510-netizen.github.io/jaeu-jump/cover.jpg"><meta property="og:title" content="성공하고싶은 재우 - 한 번 더, 정상까지!"><meta property="og:description" content="Jump King 스타일 16비트 세로 등반 게임 · 맵 21종 · 모드 15종"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
+<head><!-- muse-v5-5: v5.4 기반 전체 버그 수정 (싱글/멀티/일반) --><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="성공하고싶은 재우"><meta name="theme-color" content="#0b1024"><link rel="manifest" href="./manifest.json"><meta property="og:image" content="https://marvel090510-netizen.github.io/jaeu-jump/cover.jpg"><meta property="og:title" content="성공하고싶은 재우 - 한 번 더, 정상까지!"><meta property="og:description" content="Jump King 스타일 16비트 세로 등반 게임 · 맵 21종 · 모드 15종"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
   <meta charset="UTF-8" />
 <script id="jw51wipe">/* v5.1-final 1회 초기화 (__v51wipe) */
 (function(){try{
@@ -19,9 +19,9 @@
 </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>성공하고싶은 재우 - 한 번 더, 정상까지!</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
-  <script src="game.js?v=513split" defer></script>
+  <script src="game.js?v=515tw" defer></script>
   <style>
     * {
       box-sizing: border-box;
@@ -339,6 +339,97 @@ html body #titleScreen {
   padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
 }
 </style>
+<script id="v515cam">/* v5.15 폰 시야: 화면이 세로로 길수록 카메라를 캐릭터 아래로 내려
+   위쪽(올라갈 곳)을 더 보여 준다. 기준 740(패드 높이)에서는 기존 240 그대로. */
+window.v515CamOff=function(){
+  try{
+    var vw=window.innerWidth||0, vh=window.innerHeight||0;
+    var H=window.__jwCamH||0;
+    if(!H&&vw&&vh) H=Math.max(740,540*vh/vw);
+    if(!H) return 240;
+    if(H<=800) return 240;
+    var off=Math.round(H*0.60);
+    if(off>H-240) off=H-240;
+    return off<240?240:off;
+  }catch(e){ return 240; }
+};
+</script>
+<link rel="stylesheet" href="tw.css?v=515tw">
+  <!-- ===== v5.15 폰 UI 3종 (390x844 기준) — 패드/데스크톱(561px~)은 건드리지 않는다 ===== -->
+  <style id="v515phone">
+  @media (max-width: 560px) {
+    /* ── ① 타이틀: 배너 위쪽부터 '다른 AI 테스트 버전'까지 스크롤 없이 한 화면에 ── */
+    html body #titleScreen { padding-bottom: max(4px, env(safe-area-inset-bottom)) !important; }
+    html body #titleScreen > div.relative.z-10 {
+      justify-content: flex-start !important;   /* 가운데 정렬이면 넘칠 때 위아래가 같이 잘린다 */
+      gap: 5px !important;
+      padding: calc(env(safe-area-inset-top, 0px) + 6px) 12px 4px !important;
+    }
+    html body #titleScreen .inline-flex.items-center.gap-2 {
+      padding: 2px 9px !important; margin-bottom: 3px !important;
+    }
+    html body #titleScreen .inline-flex.items-center.gap-2 > span {
+      font-size: 9.5px !important; line-height: 1.35 !important;
+    }
+    /* 배너: 로고가 잘리지 않게 위쪽 기준으로 낮춘다 */
+    html body #titleScreen #v43Cover {
+      aspect-ratio: 16 / 5.0 !important; object-position: center 34% !important;
+      border-radius: 12px !important;
+    }
+    /* 내 재우 카드 */
+    html body #titleScreen .mt-3.flex.items-center.gap-3.p-3 {
+      padding: 6px 9px !important; margin-top: 4px !important;
+      grid-template-columns: 36px 1fr !important; gap: 1px 8px !important; border-radius: 13px !important;
+    }
+    html body #titleScreen #titlePortraitImg { width: 36px !important; height: 36px !important; border-radius: 9px !important; }
+    html body #titleScreen #v43TitleProf .tn { font-size: 15px !important; }
+    html body #titleScreen #v43ProfEdit { padding: 2px 7px !important; font-size: 9.5px !important; }
+    html body #titleScreen #titleBestHeight { font-size: 16px !important; }
+    html body #titleScreen #titleBestPlat { font-size: 9px !important; padding: 1px 6px !important; }
+    html body #titleScreen .mt-3.flex.items-center.gap-3.p-3 span.px-2,
+    html body #titleScreen .mt-3.flex.items-center.gap-3.p-3 .px-2 { padding: 0 5px !important; }
+    /* 도전 시작 / 멀티 레이스 */
+    html body #titleScreen .grid.grid-cols-2 { margin-top: 4px !important; gap: 6px !important; }
+    html body #titleScreen .grid.grid-cols-2 > #btnStartGame,
+    html body #titleScreen .grid.grid-cols-2 > #btnMultiplayer {
+      padding: 3px 8px !important; border-radius: 12px !important;
+      min-height: 68px !important; height: 68px !important;
+    }
+    html body #titleScreen #btnStartGame .v50-b-tx b, html body #titleScreen #btnMultiplayer .v50-b-tx b { font-size: 14px !important; }
+    html body #titleScreen #btnStartGame .v50-b-ico img { width: 24px !important; height: 24px !important; }
+    /* 퀵 메뉴 6칸 (탭 크기 44px 는 유지) */
+    html body #titleScreen #v51Quick { gap: 3px !important; margin-top: 3px !important; }
+    html body #titleScreen #v51Quick .v51q { padding: 3px 8px !important; border-radius: 9px !important; }
+    html body #titleScreen #v51Quick .v51q b { font-size: 11px !important; }
+    html body #titleScreen #v51Quick .v51q i { font-size: 8px !important; }
+    html body #titleScreen #v51Quick .v51q .ic {
+      flex: 0 0 18px !important; width: 18px !important; height: 18px !important; font-size: 12px !important;
+    }
+    /* BGM 주크박스 */
+    html body #titleScreen #v48mgTitleWrap { margin-top: 3px !important; }
+    html body #titleScreen #v48mgTitleWrap #v48mgJuke {
+      height: 30px !important; min-height: 30px !important; font-size: 11px !important;
+    }
+    /* 하단 독 */
+    html body #titleScreen #v43TitleRow { margin-top: 4px !important; gap: 5px !important; }
+    html body #titleScreen #v43TitleRow.v42-trow > button {
+      height: 48px !important; min-height: 48px !important; font-size: 8.5px !important; gap: 1px !important;
+    }
+    html body #titleScreen #v43TitleRow.v42-trow > button span:first-child { font-size: 16px !important; height: 17px !important; }
+    /* 다른 AI 테스트 버전 */
+    html body #titleScreen #v43TestLink {
+      height: 28px !important; min-height: 28px !important; line-height: 28px !important;
+      font-size: 11px !important; padding: 0 !important;
+    }
+
+    /* ── ② 인게임 좌상단 HUD: 폰에서는 한 단계 더 작게 (발판·사다리 가림 최소화) ──
+       HUD 내부 크기는 --hc(UI 배율) 하나로 비례해서 줄어든다. */
+    html body #v49Hud {
+      width: min(46vw, 168px) !important;
+      --hc: 0.82 !important;
+    }
+  }
+  </style>
 </head>
 <body class="relative w-full h-full overflow-hidden select-none">
   <!-- muse-v5-13-perf: 같은 값을 다시 쓰는 DOM 변이를 무효화하는 최소 가드.
@@ -437,9 +528,48 @@ html body #titleScreen {
        인라인 스타일만 써서 파싱 즉시 보이고, load 후 또는 3초 뒤에 스스로 사라진다. -->
   <div id="v59Veil" style="position:fixed;inset:0;z-index:99999;background:#06040d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
     <div style="font-family:'Galmuri11',monospace;font-size:26px;font-weight:900;color:#fde68a;text-shadow:0 3px 0 #7c2d12;">성공하고싶은 재우</div>
-    <div style="font-family:'Galmuri11',monospace;font-size:13px;color:#93c5fd;">로딩 중…</div>
+    <div id="v59VeilSub" style="font-family:'Galmuri11',monospace;font-size:13px;color:#93c5fd;">로딩 중…</div>
   </div>
-  <script>(function(){var done=false;function off(){if(done)return;done=true;var v=document.getElementById('v59Veil');if(v&&v.parentNode)v.parentNode.removeChild(v);}window.addEventListener('load',off);setTimeout(off,3000);})();</script>
+  <script id="v515veil">/* v5.15 정식 루트: 베일은 '타이틀이 실제로 그려진 뒤' 걷는다.
+  기존 v5.9 는 load 또는 3초 뒤 무조건 걷어서, 스크립트가 아직 도는 동안
+  스타일 없는 반쪽 화면이 얼어붙은 것처럼 보였다. 준비 판정 + 최대 15초 + 경과 초 표시. */
+(function(){
+  var done=false, t0=Date.now();
+  var sub=document.getElementById('v59VeilSub');
+  function ready(){
+    try{
+      if(window.__JWTITLE_READY) return true;
+      var cov=document.getElementById('v43Cover');
+      var side=document.getElementById('v50SideMapImg');
+      var covOk=!!(cov && cov.complete && cov.naturalWidth>0);
+      var sideOk=!!(side && side.complete && side.naturalWidth>0);
+      /* v51 퀵메뉴는 타이틀 초기화가 끝나야 그려진다 = '실제로 준비됨' 신호
+         (btnStartGame 은 정적 마크업이라 준비 신호로 쓸 수 없다) */
+      var painted=!!document.getElementById('v51Quick');
+      return painted && (covOk || sideOk);
+    }catch(e){ return false; }
+  }
+  function off(){
+    if(done) return; done=true;
+    if(window.__veilT) clearInterval(window.__veilT);
+    var v=document.getElementById('v59Veil');
+    if(v){
+      v.style.transition='opacity .22s ease-out';
+      v.style.opacity='0';
+      setTimeout(function(){ if(v&&v.parentNode) v.parentNode.removeChild(v); }, 240);
+    }
+  }
+  window.__v515veilOff=off;
+  window.__veilT=setInterval(function(){
+    if(ready()) { off(); return; }
+    if(Date.now()-t0>15000) { off(); return; }
+    if(sub){
+      var el=Math.round((Date.now()-t0)/1000);
+      if(el>=2) sub.textContent='로딩 중… '+el+'초';
+    }
+  },200);
+  window.addEventListener('load',function(){ if(ready()) off(); });
+})();</script>
   <!-- v5.10 B5: 맵 진입 베일 — #v59Veil은 로드 후 제거되므로 진입용은 따로 둔다 (기본 숨김) -->
   <div id="v59EntryVeil" style="position:fixed;inset:0;z-index:99998;background:#06040d;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;opacity:0;transition:opacity .22s ease-out;pointer-events:none;">
     <div style="font-family:'Galmuri11',monospace;font-size:26px;font-weight:900;color:#fde68a;text-shadow:0 3px 0 #7c2d12;">성공하고싶은 재우</div>
@@ -938,7 +1068,7 @@ html body #titleScreen {
   </div>
 
   <!-- ==================== CORE ENGINE SCRIPT ==================== -->
-  <!-- v5.13 split: 본문 인라인 <script> 107개(3.1MB)를 game.js 로 분리. iPad Safari 메인 스레드 정지(로딩 중… 멈춤) 해결 -->
+  <!-- v5.15 split: 본문 인라인 <script> 108개(3.1MB)를 game.js 로 분리. iPad Safari 메인 스레드 정지(로딩 중… 멈춤) 해결 -->
   
 
 
@@ -990,7 +1120,7 @@ html body #titleScreen {
     padding:1px 6px 1px 4px; font-size:9.5px; font-weight:900; color:#dbe7f7; max-width:150px; text-shadow:0 1px 0 rgba(5,3,10,.9);
     -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
   .mp-rk.me { border-color:rgba(251,191,36,.85); background:rgba(9,13,26,.8); }
-  .mp-rk .rkn { max-width:52px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mp-rk .rkn { max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .mp-rk .rkh { font-size:8px; font-weight:900; color:#a5f3fc; white-space:nowrap; }
   .mp-rk .rkd { font-size:8.5px; font-weight:800; color:rgba(251,191,36,.92); }
   .mp-rk .rkme { color:#fde047; }
@@ -3663,6 +3793,7 @@ button, [role="button"]{touch-action:manipulation;}
 
 
 <!-- ===== v4.8-boss PATCH END ===== -->
+
 
 
 

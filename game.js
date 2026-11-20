@@ -1,10 +1,10 @@
-/* 성공하고싶은 재우 — 게임 본체 (v5.13 정식 루트)
-   원래 index.html <body> 안에 있던 인라인 <script> 107개를 순서 그대로 이어 붙인 파일이다.
-   iPad Safari 가 3.4MB 통짜 인라인을 파싱하다 메인 스레드가 멈추던 문제(베일이 안 걷힘)를
-   없애기 위해 분리했고, index.html 은 <script src="game.js?v=513split" defer></script> 로 불러온다.
+/* 성공하고싶은 재우 — 게임 본체 (v5.15 정식 루트)
+   muse-v5-9/index.html(v5.15) <body> 안의 인라인 <script> 108개를 순서 그대로 이어 붙인 파일이다.
+   iPad Safari 가 3.4MB 통짜 인라인을 파싱하며 메인 스레드가 멈추던 문제(베일이 안 걷힘)를
+   없애기 위해 분리했고, index.html 은 <script src="game.js?v=515tw" defer></script> 로 불러온다.
    각 블록은 원래 그대로(대부분 IIFE)라 한 블록의 예외가 다음 블록을 막지 않는다. */
 
-/* ── block 1 (원본 index.html 940줄) ── */
+/* ── block 1 (muse-v5-9/index.html 979줄) ── */
 
     (function () {
       'use strict';
@@ -75,8 +75,7 @@
           [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => setTimeout(() => this.tone(f, 'square', 0.2, 0.13), i * 85));
         }
         /* v5.12 SFX: audio/sfx/*.mp3 (e8ca25e 정규화본) — 로드 실패 시 기존 beep 폴백.
-           v5.13 정식 루트에서는 document.baseURI가 .../jaeu-jump/index.html 이므로 문서 기준
-           상대 경로 'audio/sfx/'가 .../jaeu-jump/audio/sfx/ 로 풀린다 (하위 폴더 빌드도 base 없이 동일).
+           <base href="../">라 document.baseURI는 이미 .../jaeu-jump/ — 'audio/sfx/'로 해결한다.
            (v5.11까지 '../audio/sfx/'라 도메인 루트로 가서 404·전부 무음이었다 — B1) */
         _sfxUrl(name) { try { return new URL('audio/sfx/' + name + '.mp3', document.baseURI).href; } catch (e) { return 'audio/sfx/' + name + '.mp3'; } }
         _sfxEl(name) {
@@ -1593,7 +1592,7 @@
           const snapY = roomIdx * roomH;
           game.camY += (snapY - game.camY) * Math.min(1, dt * 16);
         } else {
-          const targetY = player.y - 240;
+          const targetY = player.y - (window.v515CamOff ? v515CamOff() : 240);
           game.camY += (targetY - game.camY) * Math.min(1, dt * 8.5);
         }
 
@@ -1829,7 +1828,7 @@
         let ox = ((canvas.width - viewW) >> 1);
         if (zoomK !== 1) ox = Math.round(canvas.width / 2 - (player.x + 14) * scale);
         const logicalH = Math.ceil(canvas.height / scale);
-        game.camH = logicalH; game.camW = viewW;
+        game.camH = logicalH; game.camW = viewW; window.__jwCamH = logicalH;
 
         const sx = game.shakeT > 0 ? ((Math.random() - 0.5) * game.shakeMag * 2) | 0 : 0;
         const sy = game.shakeT > 0 ? ((Math.random() - 0.5) * game.shakeMag * 2) | 0 : 0;
@@ -2485,6 +2484,9 @@ extends CanvasLayer
           } catch (err) {
             console.error('Frame Error:', err);
           }
+          /* v5.14: 렌더 직후 같은 프레임 좌표로 DOM 오버레이(머리 위 이름표 등)를 맞춘다.
+             별도 rAF/setInterval로 돌리면 카메라와 한 프레임씩 어긋나 이름표가 허공에 뜬다. */
+          try { if (window.__jwgAfter) window.__jwgAfter(); } catch (e) {}
           requestAnimationFrame(frame);
         }
         requestAnimationFrame(frame);
@@ -2499,7 +2501,7 @@ extends CanvasLayer
   
 ;
 
-/* ── block 2 (원본 index.html 3985줄) ── */
+/* ── block 2 (muse-v5-9/index.html 4026줄) ── */
 
 /* ===== 재우 4.0 실시간 통신 (공용 WSS 릴레이 풀 pub/sub) ===== */
 (function (root) {
@@ -2800,7 +2802,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 3 (원본 index.html 4283줄) ── */
+/* ── block 3 (muse-v5-9/index.html 4324줄) ── */
 
 /* ===== 4.1: 신규 맵 5종 (배경·발판·기믹·사운드) ===== */
 /* ==========================================================================
@@ -3684,7 +3686,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 4 (원본 index.html 5164줄) ── */
+/* ── block 4 (muse-v5-9/index.html 5205줄) ── */
 
 /* ===== 4.1: 모드 5종 · 버프/함정 · 스킨 · 결과 리포트 ===== */
 /* ==========================================================================
@@ -4773,7 +4775,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 5 (원본 index.html 6250줄) ── */
+/* ── block 5 (muse-v5-9/index.html 6291줄) ── */
 
 /* ==========================================================================
    성공하고싶은 재우 4.1 : 실시간 멀티 레이스 / 방 규칙 / 친구 / 채팅 / 관전 /
@@ -7027,7 +7029,7 @@ extends CanvasLayer
     }).map((r, i) => {
       const diff = (myY - r.y) / 13.4;
       const dtxt = r.me ? '' : (diff > 0 ? '▲' + diff.toFixed(1) + 'm' : (diff < 0 ? '▼' + Math.abs(diff).toFixed(1) + 'm' : '='));
-      const nm = String(r.nick).replace(/\s*\(나\)$/, '').slice(0, 8);
+      const nm = String(r.nick).replace(/\s*\(나\)$/, '').slice(0, 10);
       return '<div class="mp-rk ' + (r.me ? 'me' : '') + '" data-pid="' + esc(r.pid) + '">' +
         '<span class="mp-dot" style="background:' + colorHex(r.color) + ';width:6px;height:6px"></span>' +
         '<span>' + (r.fin ? '🏁' : (i + 1) + '.') + '</span>' +
@@ -7103,22 +7105,36 @@ extends CanvasLayer
     ctx.fillStyle = '#94a3b8'; ctx.fillText('0m', tx + tw / 2, H - 2);
     const pctEl = $('mpAltPct');
     if (pctEl) pctEl.textContent = Math.round(myPct) + '%';
-    /* 마커: 내/상대/봇 캐릭터 얼굴 + 순위 숫자 + 1등 왕관 */
+    /* 마커: 내/상대/봇 캐릭터 얼굴 + 순위 숫자 + 1등 왕관
+       v5.14: 같은 높이(0m 등)에 여러 명이 모이면 얼굴이 한 점에 뭉개졌다.
+       y가 붙어 있으면 x를 8px씩 벌리고, 아래쪽 '0m' 라벨과도 겹치지 않게 위로 올린다. */
+    const takenY = [];
     rows.forEach((r, i) => {
       const y = posOf(r.y);
+      let k = 0;
+      for (let q = 0; q < takenY.length; q++) if (Math.abs(takenY[q] - y) < 14) k++;
+      takenY.push(y);
       const col = colorHex(r.color);
       const sp = spriteFor(r.color, 'idle1', r.sk);
       const fw = 14, fh = 16;
-      const fx = tx + tw + 3;
-      const fy = Math.max(14, Math.min(H - fh - 2, y - fh / 2));
+      const fx = tx + tw + 3 + Math.min(2, k) * 8;
+      const fy = Math.max(14, Math.min(H - fh - 12, y - fh / 2));
       ctx.fillStyle = col; ctx.fillRect(tx + tw, y - 1, 4, 2);
       if (r.me) { ctx.fillStyle = '#fde047'; ctx.fillRect(fx - 2, fy - 2, fw + 4, fh + 4); }
       ctx.fillStyle = '#05030a'; ctx.fillRect(fx - 1, fy - 1, fw + 2, fh + 2);
       if (sp) { try { ctx.drawImage(sp, fx, fy, fw, fh); } catch (e) {} }
       ctx.textAlign = 'left';
       ctx.font = 'bold 8px "Galmuri11", monospace';
-      ctx.fillStyle = r.me ? '#fde047' : '#e2e8f0';
-      ctx.fillText(r.fin ? '🏁' : String(i + 1), fx + fw + 2, fy + fh - 3);
+      if (k === 0) {
+        ctx.fillStyle = r.me ? '#fde047' : '#e2e8f0';
+        ctx.fillText(r.fin ? '🏁' : String(i + 1), fx + fw + 2, fy + fh - 3);
+      } else {
+        /* 겹친 순위는 얼굴 위에 작게 찍는다 (오른쪽 번호 자리가 없다) */
+        ctx.fillStyle = 'rgba(5,3,10,.82)';
+        ctx.fillRect(fx, fy + fh - 7, 7, 7);
+        ctx.fillStyle = r.me ? '#fde047' : '#e2e8f0';
+        ctx.fillText(r.fin ? '🏁' : String(i + 1), fx + 1, fy + fh - 1);
+      }
       if (i === 0) {
         ctx.fillStyle = '#fbbf24';
         ctx.fillRect(fx + 4, fy - 4, 6, 2); ctx.fillRect(fx + 3, fy - 6, 1, 2); ctx.fillRect(fx + 6, fy - 7, 1, 3); ctx.fillRect(fx + 9, fy - 6, 1, 2);
@@ -7237,31 +7253,39 @@ extends CanvasLayer
       const tRank = pl && pl.ti ? (titleById(pl.ti).rank || 0) : 0; /* muse-v5-8: 칭호 등급별 이름표 테두리 */
       ctx.font = 'bold 10px "Galmuri11", monospace';
       ctx.textAlign = 'center';
-      const label = pr.nick + (ti ? ' ' + ti : '');
-      const nameW = Math.min(180, ctx.measureText(label).width + 10);
+      let label = pr.nick + (ti ? ' ' + ti : '');
+      /* v5.14: 긴 닉네임+칭호는 상자 폭(200) 안으로 말줄임해 잘리지 않게 한다 */
+      let nameW = ctx.measureText(label).width + 10;
+      if (nameW > 200) {
+        while (label.length > 2 && ctx.measureText(label + '…').width + 10 > 200) label = label.slice(0, -1);
+        label = label + '…';
+        nameW = ctx.measureText(label).width + 10;
+      }
+      /* v5.14: 상대 이름표가 화면 좌우·하단 경계에서 반쯤 잘리지 않게 안으로 당긴다 */
+      const lcx = Math.max(nameW / 2 + 3, Math.min(537 - nameW / 2, rx + 14));
+      const lcy = Math.max(16, Math.min(logicalH - 15, ry - 22));
       ctx.fillStyle = 'rgba(5,3,10,.85)';
-      ctx.fillRect(rx + 14 - nameW / 2, ry - 22, nameW, 13);
-      /* muse-v5-8: 칭호 등급별 이름표 테두리 — 희귀(3-4) 금색, 전설(5-6) 무지개, 그 외 플레이어 색 */
+      ctx.fillRect(lcx - nameW / 2, lcy, nameW, 13);
       if (tRank >= 5) {
-        const sg = ctx.createLinearGradient(rx + 14 - nameW / 2, 0, rx + 14 + nameW / 2, 0);
+        const sg = ctx.createLinearGradient(lcx - nameW / 2, 0, lcx + nameW / 2, 0);
         sg.addColorStop(0, '#f87171'); sg.addColorStop(0.3, '#fbbf24'); sg.addColorStop(0.6, '#34d399'); sg.addColorStop(1, '#a78bfa');
         ctx.strokeStyle = sg;
       } else if (tRank >= 3) ctx.strokeStyle = '#fbbf24';
       else ctx.strokeStyle = hex;
       ctx.lineWidth = 1;
-      ctx.strokeRect(rx + 14 - nameW / 2 + 0.5, ry - 21.5, nameW - 1, 12);
+      ctx.strokeRect(lcx - nameW / 2 + 0.5, lcy + 0.5, nameW - 1, 12);
       if (grad) {
-        const grd = ctx.createLinearGradient(rx + 14 - nameW / 2, 0, rx + 14 + nameW / 2, 0);
+        const grd = ctx.createLinearGradient(lcx - nameW / 2, 0, lcx + nameW / 2, 0);
         grd.addColorStop(0, '#f87171'); grd.addColorStop(0.3, '#fbbf24');
         grd.addColorStop(0.6, '#34d399'); grd.addColorStop(1, '#a78bfa');
         ctx.fillStyle = grd;
       } else ctx.fillStyle = hex;
-      ctx.fillText(label, rx + 14, ry - 12);
+      ctx.fillText(label, lcx, lcy + 10);
       if (pr.elim) {
         ctx.fillStyle = 'rgba(3,5,12,.75)';
-        ctx.fillRect(rx + 14 - nameW / 2, ry - 22, nameW, 13);
+        ctx.fillRect(lcx - nameW / 2, lcy, nameW, 13);
         ctx.fillStyle = '#f87171';
-        ctx.fillText('탈락', rx + 14, ry - 12);
+        ctx.fillText('탈락', lcx, lcy + 10);
       }
       /* v4.6: 팀전 릴레이 [🔵 A팀] · 술래 [👹 술래] 배지 */
       try {
@@ -7273,30 +7297,34 @@ extends CanvasLayer
         if (badge) {
           ctx.font = 'bold 9px "Galmuri11", monospace';
           const bw2 = ctx.measureText(badge).width + 8;
+          const bcx = Math.max(bw2 / 2 + 3, Math.min(537 - bw2 / 2, lcx));
+          const bcy = Math.max(0, lcy - 14);
           ctx.fillStyle = 'rgba(5,3,10,.85)';
-          ctx.fillRect(rx + 14 - bw2 / 2, ry - 36, bw2, 12);
+          ctx.fillRect(bcx - bw2 / 2, bcy, bw2, 12);
           if (mode === 'tag' && badge === '술래') {
             /* 술래는 이모지 대신 붉은 배지 */
             ctx.fillStyle = 'rgba(159,18,57,.92)';
-            ctx.fillRect(rx + 14 - bw2 / 2, ry - 36, bw2, 12);
+            ctx.fillRect(bcx - bw2 / 2, bcy, bw2, 12);
             ctx.strokeStyle = 'rgba(252,165,165,.9)'; ctx.lineWidth = 1;
-            ctx.strokeRect(rx + 14 - bw2 / 2 + 0.5, ry - 35.5, bw2 - 1, 11);
+            ctx.strokeRect(bcx - bw2 / 2 + 0.5, bcy + 0.5, bw2 - 1, 11);
             ctx.fillStyle = '#ffe4e6';
           } else {
             ctx.fillStyle = bcol;
           }
-          ctx.fillText(badge, rx + 14, ry - 27);
+          ctx.fillText(badge, bcx, bcy + 9);
         }
       } catch (e) {}
 
       // 말풍선
       if (pr.bub && now() < pr.bubT) {
         const bw = Math.min(150, ctx.measureText(pr.bub).width + 14);
+        const bcx2 = Math.max(bw / 2 + 3, Math.min(537 - bw / 2, rx + 14));
+        const bcy2 = Math.max(0, Math.min(logicalH - 18, lcy - 24));
         ctx.fillStyle = '#fff';
-        ctx.fillRect(rx + 14 - bw / 2, ry - 46, bw, 16);
-        ctx.strokeStyle = '#05030a'; ctx.strokeRect(rx + 14 - bw / 2 + .5, ry - 45.5, bw - 1, 15);
+        ctx.fillRect(bcx2 - bw / 2, bcy2, bw, 16);
+        ctx.strokeStyle = '#05030a'; ctx.strokeRect(bcx2 - bw / 2 + .5, bcy2 + .5, bw - 1, 15);
         ctx.fillStyle = '#0b1020';
-        ctx.fillText(pr.bub, rx + 14, ry - 34);
+        ctx.fillText(pr.bub, bcx2, bcy2 + 12);
       }
     });
 
@@ -7327,9 +7355,11 @@ extends CanvasLayer
       }
     }
     if (S.spectating) {
-      /* 관전: 현재 1등(없으면 첫 상대)을 부드럽게 따라간다 — 봇도 포함 (v5.12 B4) */
-      let best = null;
-      aliveRacers().forEach((pr) => { if (!pr.elim && (!best || (pr.ry !== undefined ? pr.ry : pr.y) < (best.ry !== undefined ? best.ry : best.y))) best = pr; });
+      /* v5.14: 관전 대상(specId)이 정해져 있으면 그 주자를 따라간다 — ◀/▶ 전환이 실제 화면에 반영되게.
+         없으면 기존처럼 현재 1등(없으면 첫 상대)을 부드럽게 따라간다 — 봇도 포함 (v5.12 B4) */
+      let best = S.specId ? specTarget(S.specId) : null;
+      if (best && best.elim) best = null;
+      if (!best) aliveRacers().forEach((pr) => { if (!pr.elim && (!best || (pr.ry !== undefined ? pr.ry : pr.y) < (best.ry !== undefined ? best.ry : best.y))) best = pr; });
       if (best) {
         const ty = (best.ry !== undefined ? best.ry : best.y) - 240;
         game.camY += (ty - game.camY) * Math.min(1, dt * 5);
@@ -8977,7 +9007,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 6 (원본 index.html 10739줄) ── */
+/* ── block 6 (muse-v5-9/index.html 10808줄) ── */
 
 /* =====================================================================
     재우 4.2 · 10종 신기능 엔진
@@ -11668,7 +11698,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 7 (원본 index.html 14486줄) ── */
+/* ── block 7 (muse-v5-9/index.html 14555줄) ── */
 
 /* ==========================================================================
    성공하고싶은 재우 4.3 : 공통 코어 (네임스페이스 · 맵 연결 · 썸네일)
@@ -12306,7 +12336,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 8 (원본 index.html 15121줄) ── */
+/* ── block 8 (muse-v5-9/index.html 15190줄) ── */
 
 /* ==========================================================================
    재우 4.3 : 4.3 전용 메시지 버스 (방 버스 · 프레즌스 버스에 얹기)
@@ -12410,7 +12440,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 9 (원본 index.html 15222줄) ── */
+/* ── block 9 (muse-v5-9/index.html 15291줄) ── */
 
 /* ==========================================================================
    재우 4.3 : 스킨 20종 (기존 12 + 신규 8) · 색상 12종 (기존 6 + 신규 6)
@@ -12697,7 +12727,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 10 (원본 index.html 15506줄) ── */
+/* ── block 10 (muse-v5-9/index.html 15575줄) ── */
 
 /* ==========================================================================
    성공하고싶은 재우 4.3 : 신규 맵 11종 (총 16맵)
@@ -14490,7 +14520,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 11 (원본 index.html 17296줄) ── */
+/* ── block 11 (muse-v5-9/index.html 17365줄) ── */
 
 /* ==========================================================================
    성공하고싶은 재우 4.3 : 연속 수직 파노라마 배경 (seamless)
@@ -16706,7 +16736,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 12 (원본 index.html 19509줄) ── */
+/* ── block 12 (muse-v5-9/index.html 19578줄) ── */
 
 /* ==========================================================================
    재우 4.3 : 모드 개편 + 신규 모드 4종
@@ -17946,7 +17976,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 13 (원본 index.html 20746줄) ── */
+/* ── block 13 (muse-v5-9/index.html 20815줄) ── */
 
 /* ==========================================================================
    재우 4.3 : 신규 함정 6종 (총 14종) + 화면 연출 함정 구현
@@ -18069,7 +18099,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 14 (원본 index.html 20866줄) ── */
+/* ── block 14 (muse-v5-9/index.html 20935줄) ── */
 
 /* ==========================================================================
    재우 4.3 : 마무리 연출
@@ -18304,7 +18334,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 15 (원본 index.html 21098줄) ── */
+/* ── block 15 (muse-v5-9/index.html 21167줄) ── */
 
 /* ==========================================================================
    재우 4.3 : 신규 아이템 7종 + 개별 선택 필터
@@ -18731,7 +18761,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 16 (원본 index.html 21522줄) ── */
+/* ── block 16 (muse-v5-9/index.html 21591줄) ── */
 
 /* ==========================================================================
    재우 4.3 : 방 설정 10종 + 비방장 제안 + 변경 강조 + 봇 통합 + 버전 안내
@@ -20019,7 +20049,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 17 (원본 index.html 22807줄) ── */
+/* ── block 17 (muse-v5-9/index.html 22876줄) ── */
 
 /* ==========================================================================
    재우 4.3 : 멀티 재참여(Rejoin)
@@ -20191,7 +20221,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 18 (원본 index.html 22976줄) ── */
+/* ── block 18 (muse-v5-9/index.html 23045줄) ── */
 
 /* ==========================================================================
    재우 4.3 : 맵별 + 모드별 최고 기록 분리 저장
@@ -20565,7 +20595,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 19 (원본 index.html 23347줄) ── */
+/* ── block 19 (muse-v5-9/index.html 23416줄) ── */
 
 /* ==========================================================================
    재우 4.3 : 친구 확실하게
@@ -21175,7 +21205,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 20 (원본 index.html 23954줄) ── */
+/* ── block 20 (muse-v5-9/index.html 24023줄) ── */
 
 /* ==========================================================================
    재우 4.3 : 편리성(QoL) + 손맛·연출·통계
@@ -23207,7 +23237,7 @@ extends CanvasLayer
     } catch (e) {}
     var a = $('v43TPNick'), b = $('v43TPTitle'), c = $('v43TPStatus');
     if (a) a.textContent = nick;
-    if (b && !b.querySelector('.v51badge')) b.textContent = titleName;   /* __v51badge */
+    if (b && !b.querySelector('.v51badge, .v58-ti')) b.textContent = titleName;   /* __v51badge — v5.15: v58-ti 칩도 배지라 건드리지 않는다 (안 그러면 900ms마다 배지가 텍스트로 지워졌다 다시 그려져 깜빡인다) */
     if (c) c.textContent = (prof.status || '').trim() || '프로필을 눌러 꾸며 보세요';
   }
   function openProfile() {
@@ -23346,18 +23376,35 @@ extends CanvasLayer
     } catch (e) {}
     try { if (V.QOL && V.QOL.bgm && root.__jwBgmResume) root.__jwBgmResume(); } catch (e) {}
   }
+  /* v5.15: 페이지가 안 보일 때 오디오 정지 — BGM(HTML audio) 일시정지 + 효과음 AudioContext 중단.
+     __pageGone 플래그: pagehide/숨김 때 켜고 pageshow/보임 때 끈다. bgmSync가 900ms마다 돌면서
+     doc.hidden만 보고 다시 틀어버리는 걸 막는다 (인스타 인앱 브라우저에서 doc.hidden이 안 바뀌어도 BGM이 계속 나는 문제). */
+  var __pageGone = false;
+  function audioPauseOnHide() {
+    __pageGone = true;
+    try { bgmPauseAll(); } catch (e) {}
+    try {
+      var sfx = J() && J().sfx;
+      if (sfx && sfx.ctx && sfx.ctx.state === 'running') sfx.ctx.suspend();
+    } catch (e) {}
+  }
   function wireAudio() {
     ['visibilitychange', 'pageshow', 'focus'].forEach(function (ev) {
       root.addEventListener(ev, function () {
-        if (doc.visibilityState === 'hidden' && ev === 'visibilitychange') { try { bgmPauseAll(); } catch (e) {} return; }
+        if (doc.visibilityState === 'hidden' && ev === 'visibilitychange') { try { audioPauseOnHide(); } catch (e) {} return; }
+        __pageGone = false;
         resumeAudio();
         bgmUnlock();
         setTimeout(resumeAudio, 120);
         setTimeout(resumeAudio, 600);
       });
     });
+    /* v5.15: 페이지 닫힐 때(pagehide) BGM 정지 — 인스타 인앱 브라우저에서 visibilitychange만으로는 안 멈추고
+       페이지를 닫아도 BGM이 계속 나는 문제. pageshow 때 위 핸들러가 다시 재개한다. */
+    root.addEventListener('pagehide', function () { try { audioPauseOnHide(); } catch (e) {} });
     ['pointerdown', 'touchstart', 'keydown'].forEach(function (ev) {
-      doc.addEventListener(ev, function () { resumeAudio(); bgmUnlock(); fsAuto(); }, { passive: true });
+      /* v5.15: 강제 전체화면 제거 — fsAuto() 호출 삭제, 전체화면은 ⛶ 버튼으로만 */
+      doc.addEventListener(ev, function () { resumeAudio(); bgmUnlock(); }, { passive: true });
     });
   }
 
@@ -23914,8 +23961,9 @@ extends CanvasLayer
   function bgmSync() {
     bgmInit();
     if (!BGM.main) return;
-    /* 화면이 숨겨져 있으면 전부 멈추고, 다시 보이면 visibilitychange 에서 알맞은 곡을 재개 */
-    if (doc.hidden) { bgmPauseAll(); return; }
+    /* 화면이 숨겨져 있으면 전부 멈추고, 다시 보이면 visibilitychange 에서 알맞은 곡을 재개
+       v5.15: __pageGone(pagehide/숨김)도 같은 처리 — 900ms 타이머가 doc.hidden=false만 보고 다시 틀어버리는 걸 막는다 */
+    if (doc.hidden || __pageGone) { bgmPauseAll(); return; }
     var q = V.QOL || {};
     var want = q.bgm === false ? 0 : Math.max(0, Math.min(1, Number(q.bgmVol == null ? 0.32 : q.bgmVol)));
     var g = J() && J().game;
@@ -24015,8 +24063,7 @@ extends CanvasLayer
     });
   }
 
-  /* ================================================================ 15. 전체화면 */
-  var FS = { tried: false };
+  /* ================================================================ 15. 전체화면 (v5.15: 강제 진입 제거 — ⛶ 버튼으로만) */
   function fsToggle() {
     try {
       if (document.fullscreenElement || document.webkitFullscreenElement) {
@@ -24056,16 +24103,6 @@ extends CanvasLayer
     var icon = doc.querySelector('link[rel=apple-touch-icon]');
     if (icon && (icon.getAttribute('href') || '').indexOf('./') === 0) icon.setAttribute('href', sp + icon.getAttribute('href').slice(2));
   }
-  function fsAuto() {
-    if (FS.tried) return;
-    FS.tried = true;
-    if (!doc.documentElement.requestFullscreen) return;
-    try {
-      var pr = doc.documentElement.requestFullscreen();
-      if (pr && pr.then) pr.then(function () { doc.body.classList.add('v43-fs'); }).catch(function () {});
-    } catch (e) {}
-  }
-
   /* ================================================================ 주기 작업 */
   function tick() {
     try { wireRulesEntry(); } catch (e) {}
@@ -24117,7 +24154,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 21 (원본 index.html 26893줄) ── */
+/* ── block 21 (muse-v5-9/index.html 26969줄) ── */
 
 /* ==========================================================================
    재우 4.4 : 신규 모드 15종 + 방 규칙 스위치 4종
@@ -28815,6 +28852,7 @@ extends CanvasLayer
       const i = Number(b.getAttribute('data-pslot'));
       if (!presets()[i]) { if (V.savePresetSlot) V.savePresetSlot(i); injectTitlePresets(); return; }
       if (V.loadPresetSlot) V.loadPresetSlot(i);
+      const w = $('v43Wiz'); if (w) w.classList.add('hidden'); /* v5.15: 원터치 출발 시 모드창 닫기 */
       const st = $('btnStartGame');
       if (st) { st.__v43skip = true; st.click(); setTimeout(() => { st.__v43skip = false; }, 500); }
     }));
@@ -28865,25 +28903,35 @@ extends CanvasLayer
      ================================================================ */
   function pingTick() {
     if (!Q.ping) return;
-    const t = performance.now();
-    if (t - QS.nextPing > 2200) {
-      QS.nextPing = t;
-      try { V.send({ t: 'v44ping', ts: Math.round(t) }); } catch (e) {}
-    }
+    const S = V.st();
+    const racing = !!(S && (S.phase === 'race' || S.phase === 'count') && S.peers && S.peers.size > 0);
     const el = $('v44Ping');
     if (el) {
-      const S = V.st();
-      const racing = !!(S && (S.phase === 'race' || S.phase === 'count'));
-      el.classList.toggle('hidden', !(racing && S.peers.size > 0));
+      el.classList.toggle('hidden', !racing);
       if (racing) el.textContent = '📶 ' + (QS.ping > 0 ? QS.ping + 'ms' : '--ms');
       el.style.color = QS.ping === 0 ? '#94a3b8' : (QS.ping < 120 ? '#6ee7b7' : QS.ping < 260 ? '#fde047' : '#fca5a5');
+    }
+    /* v5.14: 레이스 중일 때만 · 한 번에 하나만 측정한다.
+       전에는 로비에서도 2.2초마다 보내고, 응답이 여러 명에게서 오면 그중 마지막 것이
+       RTT를 덮어써 수치가 튀었다. */
+    if (!racing) { QS.inFlight = 0; return; }
+    const t = performance.now();
+    if (QS.inFlight && t - QS.inFlight > 4000) QS.inFlight = 0;   /* 무응답 → 재시도 허용 */
+    if (QS.inFlight) return;                                        /* 중복 측정 금지 */
+    if (t - QS.nextPing > 2200) {
+      QS.nextPing = t;
+      QS.inFlight = t;
+      try { V.send({ t: 'v44ping', ts: Math.round(t) }); } catch (e) { QS.inFlight = 0; }
     }
   }
   V.onNet && V.onNet(function (m) {
     if (!m) return;
     if (m.t === 'v44ping') { try { V.send({ t: 'v44pong', ts: m.ts, to: m._p }); } catch (e) {} }
     else if (m.t === 'v44pong' && (!m.to || !V.st() || m.to === V.st().me.pid)) { /* v4.8.5: 내 핑에 대한 응답만 */
-      const rtt = Math.max(0, Math.round(performance.now() - (m.ts || 0)));
+      /* v5.14: 내가 방금 보낸 핑의 응답만 반영 (여러 명의 pong이 섞여 튀는 것 방지) */
+      if (!QS.inFlight || Math.abs((m.ts || 0) - QS.inFlight) > 1) return;
+      const rtt = Math.max(0, Math.min(4000, Math.round(performance.now() - (m.ts || 0))));
+      QS.inFlight = 0;
       QS.ping = QS.ping ? Math.round(QS.ping * 0.6 + rtt * 0.4) : rtt;
     }
   });
@@ -40202,7 +40250,7 @@ extends CanvasLayer
   }
   function shortNick(n) {
     var s = String(n || '').replace(/\s*\(나\)$/, '').trim();
-    return s.length > 6 ? s.slice(0, 6) + '…' : s;
+    return s.length > 12 ? s.slice(0, 12) + '…' : s;
   }
 
   /* ======================================================================
@@ -40224,7 +40272,7 @@ extends CanvasLayer
       /* --- 인게임 순위표: v51 전용(잘림 없음) --- */
       '#mpRankLine{display:none !important;}',
       '#v51Rank{position:fixed;left:8px;top:calc(env(safe-area-inset-top,0px) + 96px);z-index:26;',
-      '  display:none;flex-direction:column;gap:3px;width:150px;max-width:56vw;pointer-events:none;}',
+      '  display:none;flex-direction:column;gap:3px;width:190px;max-width:70vw;pointer-events:none;}',
       '#v51Rank.on{display:flex;}',
       '#v51Rank .r{display:flex;align-items:center;gap:4px;padding:2px 6px;border-radius:6px;',
       '  background:rgba(9,13,26,.74);border:1px solid rgba(96,165,250,.42);',
@@ -40238,7 +40286,7 @@ extends CanvasLayer
       '#v51Rank .vv{flex:0 0 auto;color:#a5f3fc;font-size:9.5px;}',
       '#v51Rank .r.me .vv{color:#fde047;}',
       '#v51Rank .who{flex:0 0 auto;color:#fde047;font-size:9px;}',
-      '@media (min-width:768px){#v51Rank{top:calc(env(safe-area-inset-top,0px) + 84px);width:170px;}}',
+      '@media (min-width:768px){#v51Rank{top:calc(env(safe-area-inset-top,0px) + 84px);width:210px;}}',
       'body.v51-painton #v51Rank{top:calc(env(safe-area-inset-top,0px) + 200px);}',
       '@media (min-width:768px){body.v51-painton #v51Rank{top:calc(env(safe-area-inset-top,0px) + 188px);}}',
 
@@ -40609,7 +40657,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v5.13 · 45 MAPS';
+      sp[1].textContent = '★ v5.15 · 45 MAPS';
     }
   }
 
@@ -40622,10 +40670,14 @@ extends CanvasLayer
     var col = t.querySelector(':scope > div.relative.z-10');
     if (!col) return;
     var wide = root.innerWidth >= 760 && root.innerHeight >= 780;
-    var want = wide ? 'space-evenly' : 'center';
-    if (col.style.getPropertyValue('justify-content') !== want) {
+    /* v5.15 폰: 세로가 모자라므로 '가운데 정렬' 대신 위에서부터 쌓는다.
+       가운데 정렬이면 내용이 화면보다 길 때 배너 위쪽과 맨 아래 버튼이 함께 잘린다. */
+    var phone = root.innerWidth <= 560;
+    var want = wide ? 'space-evenly' : (phone ? 'flex-start' : 'center');
+    var gap = wide ? '6px' : (phone ? '6px' : '14px');
+    if (col.style.getPropertyValue('justify-content') !== want || col.style.getPropertyValue('gap') !== gap) {
       col.style.setProperty('justify-content', want, 'important');
-      col.style.setProperty('gap', wide ? '6px' : '14px', 'important');
+      col.style.setProperty('gap', gap, 'important');
     }
   }
 
@@ -40739,7 +40791,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 22 (원본 index.html 43990줄) ── */
+/* ── block 22 (muse-v5-9/index.html 44077줄) ── */
 
 /* ==========================================================================
    재우 4.8.5 : 버그 수정 레이어 + 한눈에 보이는 HUD/UI (게임 분위기 유지)
@@ -40910,7 +40962,9 @@ extends CanvasLayer
   var LEFT = ['v51Rank', 'v44TopLeft', 'v44Chip', 'v43ModeChip', 'v50GtPill', 'v43Oxy', 'modeBar', 'v44HudLine', 'v47Timer', 'v485FinCd', 'v44Mission', 'v43RelayToggle'];
   var BOTTOM = ['v485Hazard', 'v46ZombBelow', 'v44MemNote', 'v43SpecBtns', 'mpSpectateBar'];
   /* 그 밖에 HUD 카드·우상단 버튼과 부딪히는 '떠 있는' 칩은 자동으로 왼쪽 차선에 넣는다 */
-  var NEVER = /^(gameCanvas|touchLayer|touchBtnLeft|touchBtnRight|touchBtnJump|btnPauseHud|v44FastRestart|v47Forfeit|v49Hud|mpChatFab|mpChatPanel|v43QuickChat|mpToasts|v44Ping|mpAltBar|v50AltBots|v485Hazard|v46ZombBelow|v44MemNote|v43SpecBtns|mpSpectateBar|pauseModal|settingsModal|mpRaceMenu|mpResult|soloEnd|mpCount)$/;
+  /* v5.14: 머리 위 이름표(#v97Tag·#v51IGTag)는 캐릭터를 따라 움직여야 하므로 절대 자동 차선 배치 대상이 아니다.
+     여기에 넣지 않으면 200ms마다 transform:none + left/top !important 로 고정돼 이름표가 허공에 떠 버린다. */
+  var NEVER = /^(gameCanvas|touchLayer|touchBtnLeft|touchBtnRight|touchBtnJump|btnPauseHud|v44FastRestart|v47Forfeit|v49Hud|mpChatFab|mpChatPanel|v43QuickChat|mpToasts|v44Ping|mpAltBar|v50AltBots|v485Hazard|v46ZombBelow|v44MemNote|v43SpecBtns|mpSpectateBar|pauseModal|settingsModal|mpRaceMenu|mpResult|soloEnd|mpCount|v97Tag|v51IGTag)$/;
   function strays(known) {
     var out = [];
     var kids = [].slice.call(document.body.children).concat([].slice.call(($('gameHud') || document.body).children));
@@ -41158,7 +41212,26 @@ extends CanvasLayer
       if (fs && fs < f - 0.2) { e.style.setProperty('font-size', f + 'px', 'important'); e.__v485fs = true; }
     }
   }
-  setInterval(function () { try { run(); } catch (e) {} }, 700);
+  /* v5.15: 이 순회는 전 화면 텍스트 노드를 getComputedStyle 로 훑어 1회 400ms대가 걸린다(0.7초마다).
+     인게임에서는 아예 돌리지 않고, 타이틀·모달에서도 DOM 이 실제로 바뀐 뒤에만 다시 훑는다. */
+  var v485mut = 0, v485last = -1;
+  try { new MutationObserver(function () { v485mut++; }).observe(document.body, { childList: true, subtree: true }); } catch (e) {}
+  function v485inGame() {
+    try {
+      var j = window.__jwg;
+      if (j && j.game && (j.game.inPlay || j.game.victory)) return true;
+      var h = document.getElementById('gameHud');
+      if (h && h.offsetParent !== null && !h.classList.contains('hidden')) return true;
+      return false;
+    } catch (e) { return false; }
+  }
+  setInterval(function () {
+    try {
+      if (v485inGame()) return;
+      if (v485mut === v485last) return;
+      v485last = v485mut; run();
+    } catch (e) {}
+  }, 1000);
   window.addEventListener('resize', function () {
     document.querySelectorAll('*').forEach(function (e) { if (e.__v485fs) { e.style.removeProperty('font-size'); e.__v485fs = false; } });
     setTimeout(run, 60);
@@ -41168,7 +41241,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 23 (원본 index.html 44418줄) ── */
+/* ── block 23 (muse-v5-9/index.html 44507줄) ── */
 
 /* ==========================================================================
    v4.8.5-2 : 소셜 허브 (친구창 전면 개편) · 프레즌스 고속화 · 스킨 실시간 동기화
@@ -42447,19 +42520,20 @@ extends CanvasLayer
   /* ---------- 관전 화면 + 훈수 ---------- */
   #v45Spec { background:#04060c; }
   #v45SpecCv { flex:1; min-height:0; width:100%; height:100%; display:block; }
-  #v485Coach { display:flex; flex-direction:column; gap:4px; padding:6px 8px 8px;
-    background:linear-gradient(180deg,rgba(8,12,22,.55),rgba(6,10,18,.98)); border-top:1px solid rgba(96,165,250,.28); }
-  .v485c-feed { min-height:16px; display:flex; flex-direction:column; gap:1px; max-height:44px; overflow:hidden; }
-  .v485c-line { font-size:10px; font-weight:900; color:#fde68a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .v485c-tip { font-size:9.5px; font-weight:800; color:#94a3b8; }
-  .v485c-quick { display:flex; gap:3px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:1px; }
-  .v485c-quick button { flex:0 0 auto; font-size:10.5px; font-weight:900; padding:6px 8px; color:#e0f2fe;
+  #v485Coach { display:flex; flex-direction:column; gap:3px; padding:4px 6px; flex:0 0 auto;
+    padding-bottom:calc(4px + env(safe-area-inset-bottom,0px));
+    background:linear-gradient(180deg,rgba(8,12,22,.72),rgba(6,10,18,.99)); border-top:1px solid rgba(96,165,250,.28); }
+  .v485c-feed { min-height:12px; display:flex; flex-direction:column; gap:0; max-height:14px; overflow:hidden; }
+  .v485c-line { font-size:9.5px; font-weight:900; color:#fde68a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .v485c-tip { display:none; }
+  .v485c-quick { display:flex; gap:3px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:0; }
+  .v485c-quick button { flex:0 0 auto; font-size:10px; font-weight:900; padding:4px 7px; min-height:32px; color:#e0f2fe;
     background:#0c2233; border:2px solid #0e7490; }
   .v485c-quick button:active { transform:translateY(1px); background:#155e75; }
   .v485c-row { display:flex; gap:4px; }
   .v485c-row input { flex:1; min-width:0; background:#060a15; border:2px solid #334155; color:#e2e8f0;
-    font-size:11px; font-weight:800; padding:6px; font-family:inherit; }
-  .v485c-row button { flex:0 0 auto; font-size:11px; font-weight:900; padding:0 10px; color:#04210f;
+    font-size:11px; font-weight:800; padding:4px 6px; font-family:inherit; }
+  .v485c-row button { flex:0 0 auto; font-size:11px; font-weight:900; padding:0 10px; min-height:32px; color:#04210f;
     background:linear-gradient(180deg,#4ade80,#16a34a); border:2px solid #86efac; }
   #v485CoachBubble { position:absolute; left:50%; transform:translate(-50%,-8px); top:96px; z-index:46;
     max-width:78%; display:none; gap:6px; align-items:center; padding:7px 10px;
@@ -43113,7 +43187,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 24 (원본 index.html 46385줄) ── */
+/* ── block 24 (muse-v5-9/index.html 46475줄) ── */
 
 /* ==========================================================================
    v4.8.5-3 : A. 공통 · 맵 16비트 썸네일 · 싱글 위저드 카테고리(맵/모드)
@@ -43530,7 +43604,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 25 (원본 index.html 46799줄) ── */
+/* ── block 25 (muse-v5-9/index.html 46889줄) ── */
 
 /* ==========================================================================
    v4.8.5-3 : B. 멀티 대기실 — 💡 제안하기 버튼 복구 · 방 설정 4탭 개편 · 잔여 텍스트 제거
@@ -43920,7 +43994,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 26 (원본 index.html 47186줄) ── */
+/* ── block 26 (muse-v5-9/index.html 47276줄) ── */
 
 /* ==========================================================================
    v4.8.5-3 : C. 칭호 대개편 — 등급 배지 · 카테고리 탭 · 해금 진행도 + 즉시 갱신
@@ -44181,7 +44255,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 27 (원본 index.html 47444줄) ── */
+/* ── block 27 (muse-v5-9/index.html 47534줄) ── */
 
 /* ==========================================================================
    v4.8.5-3 : D. 친구창 3D 픽셀 버튼 · 모달 깜빡임 0 · 모드 금지요소 차단
@@ -44369,7 +44443,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 28 (원본 index.html 47784줄) ── */
+/* ── block 28 (muse-v5-9/index.html 47874줄) ── */
 
 /* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
 (function () {
@@ -44391,7 +44465,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 29 (원본 index.html 47864줄) ── */
+/* ── block 29 (muse-v5-9/index.html 47954줄) ── */
 
 /* ==========================================================================
    v4.8-mg2 : 00 코어 — 🕹️ 미니게임 셸 · 캔버스 · 입력 · 기록 · 대전 버스
@@ -45202,7 +45276,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 30 (원본 index.html 48672줄) ── */
+/* ── block 30 (muse-v5-9/index.html 48762줄) ── */
 
 /* ==========================================================================
    v4.8-mg2 : 10 전용관(로비) — 25종 카드 · 혼자/봇/친구 · 같은 시드 코드 · 초대
@@ -45339,7 +45413,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 31 (원본 index.html 48806줄) ── */
+/* ── block 31 (muse-v5-9/index.html 48896줄) ── */
 
 /* ==========================================================================
    v4.8-mg1 : 20 미니게임 ① 🧩 블록 블라스트 · 🧱 대전 테트리스 · 🐍 지렁이
@@ -46097,7 +46171,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 32 (원본 index.html 49561줄) ── */
+/* ── block 32 (muse-v5-9/index.html 49651줄) ── */
 
 /* ==========================================================================
    v4.8-mg1 : 21 미니게임 ② ⚫ 스피드 오목 · 🔢 2048 스피드전 · 💣 지뢰찾기 · 🃏 메모리
@@ -46708,7 +46782,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 33 (원본 index.html 50169줄) ── */
+/* ── block 33 (muse-v5-9/index.html 50259줄) ── */
 
 /* ==========================================================================
    v4.8-mg1 : 22 미니게임 ③ 🏓 하이퍼 핑퐁 · 🫧 버블 슈터
@@ -47018,7 +47092,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 34 (원본 index.html 50476줄) ── */
+/* ── block 34 (muse-v5-9/index.html 50566줄) ── */
 
 /* ==========================================================================
    v4.8-mg1 : 23 미니게임 ④ ☄️ 운석 피하기 · ⏱️ 정확히 5.00초 · 💡 반짝 순서
@@ -47348,7 +47422,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 35 (원본 index.html 50803줄) ── */
+/* ── block 35 (muse-v5-9/index.html 50893줄) ── */
 
 /* ==========================================================================
    v4.8-mg2 : 24 미니게임 ⑤ 🎯 딱 한 번 점프 다트 · 🪙 하늘 코인 받기 · ⬡ 헥사곤 발판 버티기
@@ -47866,7 +47940,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 36 (원본 index.html 51318줄) ── */
+/* ── block 36 (muse-v5-9/index.html 51408줄) ── */
 
 /* ==========================================================================
    v4.8-mg2 : 25 미니게임 ⑥ 🌉 흔들다리 균형 · 🕳️ 구멍 뚫기 비행 · 🥌 빙판 컬링
@@ -48282,7 +48356,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 37 (원본 index.html 51731줄) ── */
+/* ── block 37 (muse-v5-9/index.html 51821줄) ── */
 
 /* ==========================================================================
    v4.8-mg2 : 26 미니게임 ⑦ 👟 머리 밟기 배틀 · 🟩 안전한 발판 찾기 · 🎵 리듬 점프
@@ -48766,7 +48840,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 38 (원본 index.html 52212줄) ── */
+/* ── block 38 (muse-v5-9/index.html 52302줄) ── */
 
 /* ==========================================================================
    v4.8-mg2 : 27 미니게임 ⑧ 🦖 장애물 뛰어넘기 · 🎣 대어 낚시 · 📦 흔들리지 마! 배달 · 🔑 어둠 속 열쇠 탈출
@@ -49442,7 +49516,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 39 (원본 index.html 52885줄) ── */
+/* ── block 39 (muse-v5-9/index.html 52975줄) ── */
 
 /* ==========================================================================
    v4.8-mg1 : 30 등반 신규 — 🎈 풍선 터뜨리기 모드 · ⚡ 원버튼 스피드런
@@ -49706,7 +49780,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 40 (원본 index.html 53146줄) ── */
+/* ── block 40 (muse-v5-9/index.html 53236줄) ── */
 
 /* ==========================================================================
    v4.8-mg1 : 31 🎵 BGM 주크박스 — 23+1 트랙 중 원하는 곡을 로비/보스/맵 BGM으로
@@ -50059,7 +50133,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 41 (원본 index.html 53496줄) ── */
+/* ── block 41 (muse-v5-9/index.html 53586줄) ── */
 
 /* ==========================================================================
    v4.8-mg1 : 32 😈 시작 전 닉변빵 — 제안 → 수락 → 승패 확정 시 패자 닉네임 변경
@@ -50393,7 +50467,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 42 (원본 index.html 53827줄) ── */
+/* ── block 42 (muse-v5-9/index.html 53917줄) ── */
 
 /* ==========================================================================
    v4.8-mg1 : 33 📣 관전자 응원 / 장난 — 관전 중 응원(속도·기분) 또는 가벼운 장난
@@ -50565,7 +50639,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 43 (원본 index.html 53996줄) ── */
+/* ── block 43 (muse-v5-9/index.html 54086줄) ── */
 
 /* ==========================================================================
    v4.8-mg2 : 34 등반 신규 ② — 🚪 협동 스위치 문 · 🧪 물약 조합 · ⏪ 시간 역행
@@ -51324,7 +51398,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 44 (원본 index.html 54752줄) ── */
+/* ── block 44 (muse-v5-9/index.html 54842줄) ── */
 
 /* ==========================================================================
    v5.1-tut : 🎓 정식 배포 1회 — 모두 튜토리얼부터 다시
@@ -51347,7 +51421,7 @@ extends CanvasLayer
 
 ;
 
-/* ── block 45 (원본 index.html 54772줄) ── */
+/* ── block 45 (muse-v5-9/index.html 54862줄) ── */
 
 /* ==========================================================================
    muse-v5.9: 보스 v2 픽셀 스프라이트 데이터 (boss-sprites-v2.js, 입체감 패스)
@@ -54009,7 +54083,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 46 (원본 index.html 57431줄) ── */
+/* ── block 46 (muse-v5-9/index.html 57521줄) ── */
 
 /* ==========================================================================
    v4.8-boss : 41 보스 아트 — 21맵 전용 보스 21종 픽셀 드로잉
@@ -54701,7 +54775,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 47 (원본 index.html 58120줄) ── */
+/* ── block 47 (muse-v5-9/index.html 58210줄) ── */
 
 /* ==========================================================================
    v4.8-boss : 42 보스 러시 연출 — 등장 인트로 배너 · 격파 클리어 배너 · 👑 보스 도감
@@ -55194,7 +55268,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 48 (원본 index.html 58610줄) ── */
+/* ── block 48 (muse-v5-9/index.html 58700줄) ── */
 
 /* ==========================================================================
    v4.8-mgint : 45 🕹️ 미니게임 25종을 싱글/멀티 '안'으로 통합
@@ -55696,7 +55770,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 49 (원본 index.html 59109줄) ── */
+/* ── block 49 (muse-v5-9/index.html 59199줄) ── */
 
 /* ==========================================================================
    v4.8-uilab : 46 대기실/설정 다듬기
@@ -56015,7 +56089,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 50 (원본 index.html 59425줄) ── */
+/* ── block 50 (muse-v5-9/index.html 59515줄) ── */
 
 /* ==========================================================================
    v4.8-joinlab : 47 방 참가 로딩창 — 초대 · 초대링크(?room=) · 공개방 · 코드 입력
@@ -56318,7 +56392,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 51 (원본 index.html 59725줄) ── */
+/* ── block 51 (muse-v5-9/index.html 59815줄) ── */
 
 /* ==========================================================================
    v4.8-rank (v5.6 대개편) : 🏆 명예의 전당
@@ -56889,7 +56963,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 52 (원본 index.html 60293줄) ── */
+/* ── block 52 (muse-v5-9/index.html 60383줄) ── */
 
 /* ==========================================================================
    v4.9-prop : 💡 제안하기 전면 개편 (비방장 → 방장)
@@ -57784,7 +57858,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 53 (원본 index.html 61185줄) ── */
+/* ── block 53 (muse-v5-9/index.html 61275줄) ── */
 
 /* ==========================================================================
    v4.9-fix : 방 설정 세부규칙 적용 + 봇 표시 동기화
@@ -57996,7 +58070,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 54 (원본 index.html 61394줄) ── */
+/* ── block 54 (muse-v5-9/index.html 61484줄) ── */
 
 /* ==========================================================================
    v4.9-back : 뒤로가기 방지 전수 보강
@@ -58167,7 +58241,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 55 (원본 index.html 61562줄) ── */
+/* ── block 55 (muse-v5-9/index.html 61652줄) ── */
 
 /* ==========================================================================
    v4.9-hud : ⏱️ 타임어택 남은 시간 표시 복구/보강
@@ -58297,7 +58371,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 56 (원본 index.html 61689줄) ── */
+/* ── block 56 (muse-v5-9/index.html 61779줄) ── */
 
 /* ==========================================================================
    v4.9-font : 얇고 흐린 작은 글씨 → 두껍고 선명하게 통일
@@ -58407,7 +58481,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 57 (원본 index.html 61796줄) ── */
+/* ── block 57 (muse-v5-9/index.html 61886줄) ── */
 
 /* ==========================================================================
    v4.9-ui : 하단 안내 배너(#v49Notice) 추가
@@ -58479,7 +58553,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 58 (원본 index.html 61865줄) ── */
+/* ── block 58 (muse-v5-9/index.html 61955줄) ── */
 
 /* ==========================================================================
    v5.0-world : 새 맵 24종 (기존 21 + 신규 24 = 총 45맵)
@@ -59798,7 +59872,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 59 (원본 index.html 63181줄) ── */
+/* ── block 59 (muse-v5-9/index.html 63271줄) ── */
 
 /* ==========================================================================
    v5.0-modes : 새 등반 모드 4종
@@ -60345,7 +60419,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 60 (원본 index.html 63725줄) ── */
+/* ── block 60 (muse-v5-9/index.html 63815줄) ── */
 
 /* ==========================================================================
    v5.0-easy : '쉬움' 난이도 정식 등록 + 필터 도우미 + 맵 카드 라벨 보강
@@ -60400,7 +60474,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 61 (원본 index.html 63777줄) ── */
+/* ── block 61 (muse-v5-9/index.html 63867줄) ── */
 
 /* ==========================================================================
    v5.0-mglock : 🕹️ 미니게임 25종 진입 잠금 (🔒 준비 중)
@@ -60532,7 +60606,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 62 (원본 index.html 63906줄) ── */
+/* ── block 62 (muse-v5-9/index.html 63996줄) ── */
 
 /* ==========================================================================
    v5.1-artbg : 인게임 배경 = 16비트 정상등반 일러스트(assets/maps/{id}.jpg)
@@ -61033,7 +61107,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 63 (원본 index.html 64404줄) ── */
+/* ── block 63 (muse-v5-9/index.html 64494줄) ── */
 
 /* ==========================================================================
    v5.1-common : 이번 업데이트의 공통 토대
@@ -61375,7 +61449,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 64 (원본 index.html 64743줄) ── */
+/* ── block 64 (muse-v5-9/index.html 64833줄) ── */
 
 /* ==========================================================================
    v5.1-tutorial (재작성) : 진짜 게임 화면·진짜 발판·진짜 재우·진짜 ◀ ▶ ⏫ 로 배우는 튜토리얼
@@ -61843,7 +61917,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 65 (원본 index.html 65208줄) ── */
+/* ── block 65 (muse-v5-9/index.html 65298줄) ── */
 
 /* ==========================================================================
    v5.1-trajectory : 점프 사정거리(예상 궤적) = 실제 물리 엔진 그대로
@@ -62095,7 +62169,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 66 (원본 index.html 65457줄) ── */
+/* ── block 66 (muse-v5-9/index.html 65547줄) ── */
 
 /* ==========================================================================
    v5.1-platart (v3 · IMG_1076 복원 + 더 깔끔하게)
@@ -62794,7 +62868,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 67 (원본 index.html 66153줄) ── */
+/* ── block 67 (muse-v5-9/index.html 66243줄) ── */
 
 /* ==========================================================================
    v5.1-retro : ✨ 2.0 오리지널(retro20) = 실제 v2.0 맵 그대로
@@ -62890,7 +62964,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 68 (원본 index.html 66246줄) ── */
+/* ── block 68 (muse-v5-9/index.html 66336줄) ── */
 
 /* ==========================================================================
    v5.1-titles : 칭호 대개편 — 등급 · 일러스트 배지 · 45맵 클리어/1위 칭호
@@ -63454,7 +63528,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 69 (원본 index.html 66807줄) ── */
+/* ── block 69 (muse-v5-9/index.html 66897줄) ── */
 
 /* ==========================================================================
    v5.1-qol11 : 편의성 11종 + 설정(햅틱·UI 크기·공략·궤적)
@@ -64125,7 +64199,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 70 (원본 index.html 67475줄) ── */
+/* ── block 70 (muse-v5-9/index.html 67565줄) ── */
 
 /* ==========================================================================
    v5.1-friends : 친구창 정돈 + 1:1 채팅(DM) + 읽지 않음 배지 + 친구 검색
@@ -64421,7 +64495,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 71 (원본 index.html 67768줄) ── */
+/* ── block 71 (muse-v5-9/index.html 67858줄) ── */
 
 /* ==========================================================================
    v5.1-spec : 관전 정리 — 친구 싱글 관전 + 판 종료 결과 안내 + 멀티 관전 바 정돈
@@ -64476,12 +64550,16 @@ if (typeof module !== 'undefined' && module.exports) {
     m.style.background = 'rgba(3,5,12,.96)';
     m.innerHTML =
       '<div style="position:absolute;inset:0;display:flex;flex-direction:column">' +
-      '  <div id="v51SpTop" style="display:flex;align-items:center;gap:8px;padding:8px 10px;padding-top:calc(8px + env(safe-area-inset-top,0px));' +
-      '    background:linear-gradient(180deg,rgba(10,16,30,.96),rgba(10,16,30,.55));border-bottom:1px solid #1f2b45">' +
-      '    <button type="button" class="v51btn dark sm" id="v51SpBack" style="flex:0 0 auto">✕ 나가기</button>' +
-      '    <div style="flex:1;min-width:0"><b id="v51SpTitle" style="display:block;font-family:\'Jua\',sans-serif;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">👁️ 관전</b>' +
-      '    <i id="v51SpSub" style="font-style:normal;font-size:10px;color:#9fb2d1">실시간</i></div>' +
-      '    <button type="button" class="v51btn dark sm" id="v51SpNext" style="flex:0 0 auto">🔄 다음 친구</button>' +
+      '  <div id="v51SpTop" style="display:flex;align-items:center;gap:6px;padding:6px 8px;padding-top:calc(6px + env(safe-area-inset-top,0px));' +
+      '    background:linear-gradient(180deg,rgba(10,16,30,.97),rgba(10,16,30,.8));border-bottom:1px solid #1f2b45">' +
+      '    <button type="button" class="v51btn dark sm" id="v51SpBack" style="flex:0 0 auto;min-width:44px;min-height:44px;padding:0 9px" title="관전 나가기">✕</button>' +
+      '    <button type="button" class="v51btn dark sm" id="v51SpPrev" style="flex:0 0 auto;min-width:44px;min-height:44px;padding:0;font-size:16px" title="이전 친구 관전">◀</button>' +
+      '    <div style="flex:1;min-width:0;text-align:center">' +
+      '      <b id="v51SpTitle" style="display:block;font-family:\'Jua\',sans-serif;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">👁️ 관전</b>' +
+      '      <i id="v51SpSub" style="display:block;font-style:normal;font-size:10px;color:#9fb2d1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">불러오는 중…</i>' +
+      '    </div>' +
+      '    <button type="button" class="v51btn dark sm" id="v51SpNext" style="flex:0 0 auto;min-width:44px;min-height:44px;padding:0;font-size:16px" title="다음 친구 관전">▶</button>' +
+      '    <span id="v51SpIdx" style="flex:0 0 auto;min-width:26px;text-align:center;font-size:10px;font-weight:900;color:#93c5fd">1/1</span>' +
       '  </div>' +
       '  <div style="position:relative;flex:1 1 auto;min-height:0">' +
       '    <canvas id="v51SpCv" style="position:absolute;inset:0;width:100%;height:100%"></canvas>' +
@@ -64493,11 +64571,19 @@ if (typeof module !== 'undefined' && module.exports) {
       '        <b id="v51SpResT" style="display:block;font-family:\'Jua\',sans-serif;font-size:19px;color:#fff;margin-top:6px">클리어했어요!</b>' +
       '        <i id="v51SpResS" style="display:block;font-style:normal;font-size:11px;color:#9fb2d1;margin-top:4px">새 판 대기 중</i>' +
       '        <div style="display:flex;gap:8px;margin-top:14px">' +
-      '          <button type="button" class="v51btn dark" id="v51SpWait" style="flex:1">새 판 기다리기</button>' +
-      '          <button type="button" class="v51btn" id="v51SpExit" style="flex:1">나가기</button>' +
+      '          <button type="button" class="v51btn dark" id="v51SpWait" style="flex:1;min-height:44px">새 판 기다리기</button>' +
+      '          <button type="button" class="v51btn" id="v51SpExit" style="flex:1;min-height:44px">나가기</button>' +
       '        </div>' +
       '      </div>' +
       '    </div>' +
+      '  </div>' +
+      '  <div id="v51SpCheer" style="flex:0 0 auto;display:flex;align-items:center;gap:5px;padding:5px 8px;' +
+      '    padding-bottom:calc(5px + env(safe-area-inset-bottom,0px));background:rgba(8,12,22,.92);border-top:1px solid #1f2b45">' +
+      '    <span style="flex:0 0 auto;font-size:9.5px;font-weight:900;color:#7f93b3">응원</span>' +
+      '    <button type="button" data-v51cheer="왼쪽!" class="v51btn dark sm" style="flex:1 1 0;min-width:0;min-height:34px;padding:0 4px;font-size:11px">⬅️ 왼쪽</button>' +
+      '    <button type="button" data-v51cheer="오른쪽!" class="v51btn dark sm" style="flex:1 1 0;min-width:0;min-height:34px;padding:0 4px;font-size:11px">➡️ 오른쪽</button>' +
+      '    <button type="button" data-v51cheer="점프!" class="v51btn dark sm" style="flex:1 1 0;min-width:0;min-height:34px;padding:0 4px;font-size:11px">⬆️ 점프</button>' +
+      '    <button type="button" data-v51cheer="가즈아!" class="v51btn dark sm" style="flex:1 1 0;min-width:0;min-height:34px;padding:0 4px;font-size:11px">🔥 가즈아</button>' +
       '  </div>' +
       '</div>';
     doc.body.appendChild(m);
@@ -64508,30 +64594,82 @@ if (typeof module !== 'undefined' && module.exports) {
       SPEC.endAt = 0; SPEC.res = null;
       C.toast('⏳ 새 판 대기', 'chat', '친구가 다시 시작하면 이어서 볼 수 있어요', 2200);
     });
-    $('v51SpNext').addEventListener('click', function () {
-      var list = friendTags().filter(function (t) { return t !== SPEC.tag; });
-      if (!list.length) { C.toast('👀 다른 친구 없음', 'chat', '지금 플레이 중인 친구가 한 명뿐이에요', 1800); return; }
-      open(list[0]);
+    $('v51SpPrev').addEventListener('click', function () { switchSpec(-1); });
+    $('v51SpNext').addEventListener('click', function () { switchSpec(1); });
+    Array.prototype.forEach.call(m.querySelectorAll('[data-v51cheer]'), function (b) {
+      b.addEventListener('click', function () { cheer(b.getAttribute('data-v51cheer')); });
     });
+  }
+
+  /* v5.14: 여러 친구가 동시에 플레이 중이면 ◀ / ▶ 로 관전 대상을 바로 바꾼다 */
+  function specList() {
+    var tags = friendTags();
+    if (SPEC.tag && tags.indexOf(SPEC.tag) < 0) tags.unshift(SPEC.tag);
+    return tags;
+  }
+  function switchSpec(dir) {
+    var list = specList();
+    if (list.length < 2) {
+      C.toast('👀 다른 친구 없음', 'chat', '지금 플레이 중인 친구가 한 명뿐이에요', 1700);
+      return;
+    }
+    var i = list.indexOf(SPEC.tag);
+    if (i < 0) i = 0;
+    var nx = list[(i + dir + list.length) % list.length];
+    open(nx);
+  }
+  /* v5.14: 응원 한마디 — 게임이 이미 받는 v43coach 메시지를 그대로 쓴다 */
+  var lastCheer = 0;
+  function cheer(text) {
+    if (!SPEC.tag) return;
+    var t = Date.now();
+    if (t - lastCheer < 1500) { C.toast('⏳ 조금만', 'chat', '응원은 1.5초에 한 번', 1100); return; }
+    var me = C.meTag();
+    if (!me) return;
+    lastCheer = t;
+    var nick = '';
+    try { nick = (V.st().me.nick || '') || ''; } catch (e) {}
+    C.sendPres({ t: 'v43coach', to: SPEC.tag, from: me, fromNick: nick || '친구', text: String(text || '').slice(0, 30), ts: t });
+    C.toast('📣 응원 전송', 'lucky', text + ' · 친구 화면에 바로 뜹니다', 1500);
+    try { C.beep(1040, 0.07, 0.09, 'square', 1480); } catch (e) {}
   }
 
   function open(tag) {
     ensure();
     if (!tag) return;
+    /* v5.14: 대상을 바꿔 열 때 이전 루프를 반드시 끊는다 (두 루프가 겹쳐 그리면 깜빡인다) */
+    if (SPEC.raf) { try { (C.caf0 || cancelAnimationFrame)(SPEC.raf); } catch (e) {} SPEC.raf = 0; }
     SPEC.open = true; SPEC.tag = tag; SPEC.nick = friendNick(tag);
     var p = pos(tag) || {};
     SPEC.map = p.map || 'default';
     SPEC.dx = p.x || 270; SPEC.dy = p.y || 0;
+    SPEC.vs = 0; SPEC.lastT = 0; SPEC.painted = false; SPEC.idxAt = 0;
     SPEC.res = null; SPEC.endAt = 0;
     SPEC.world = null; SPEC.worldKey = '';   /* v5.11 S3: 관전 대상 바뀌면 발판 캐시 초기화 */
     var m = $('v51Spec');
     m.classList.remove('hide');
     $('v51SpRes').classList.add('hide');
-    $('v51SpTitle').textContent = '👁️ ' + SPEC.nick + ' 님 관전';
-    $('v51SpSub').textContent = mapLabel(SPEC.map) + ' · 실시간';
+    paintHead();
     watchBroadcast();
     C.beep(880, 0.08, 0.1, 'square', 1180);
     loop();
+  }
+  /* v5.14: 상단 HUD — 닉네임 · 몇 번째 친구인지 / 맵 · 층 · 높이 · 진행률 */
+  function paintHead(p) {
+    var t = $('v51SpTitle');
+    if (t) {
+      var list = specList();
+      var i = list.indexOf(SPEC.tag);
+      t.textContent = '👁️ ' + SPEC.nick + ' 님';
+    }
+    var idx = $('v51SpIdx');
+    if (idx) {
+      var l2 = specList();
+      var n = l2.indexOf(SPEC.tag) + 1;
+      idx.textContent = (n > 0 ? n : 1) + '/' + Math.max(1, l2.length);
+    }
+    var s = $('v51SpSub');
+    if (s && !p) s.textContent = mapLabel(SPEC.map) + ' · 불러오는 중…';
   }
   function close() {
     SPEC.open = false;
@@ -64565,7 +64703,8 @@ if (typeof module !== 'undefined' && module.exports) {
   var lastWatch = 0;
   function watchBroadcast() {
     var t = Date.now();
-    if (t - lastWatch < 2500) return;
+    /* v5.14: 관전 중에는 1.2초마다 좌표를 다시 요청한다 (전 2.5초 → 6초 창이 2번 비어 뚝뚝 끊겼다) */
+    if (t - lastWatch < 1200) return;
     lastWatch = t;
     var me = C.meTag();
     if (!me || !SPEC.tag) return;
@@ -64634,11 +64773,26 @@ if (typeof module !== 'undefined' && module.exports) {
       if (!SPEC.res) showRes('end', SPEC.nick, '연결이 끊겼어요');
       return;
     }
-    /* 보간 */
-    SPEC.dx += (p.x - SPEC.dx) * 0.25;
-    SPEC.dy += (p.y - SPEC.dy) * 0.25;
+    /* v5.14 보간: 프레임레이트와 무관한 시간 기반 스무딩 + 새 판·순간이동은 즉시 스냅.
+       좌표가 1~2초 간격으로 와도 부드럽게 이어지고, 순간이동에서 화면이 흔들리지 않는다. */
+    var nowP = (window.performance && window.performance.now) ? window.performance.now() : Date.now();
+    var dtS = SPEC.lastT ? Math.min(0.12, (nowP - SPEC.lastT) / 1000) : 0.016;
+    SPEC.lastT = nowP;
+    if (!SPEC.painted || Math.abs(p.y - SPEC.dy) > 260) {
+      SPEC.dx = p.x; SPEC.dy = p.y; SPEC.vs = 0; SPEC.painted = true;
+    } else {
+      var aY = 1 - Math.exp(-dtS / 0.075);
+      var aX = 1 - Math.exp(-dtS / 0.06);
+      var prevY = SPEC.dy;
+      SPEC.dx += (p.x - SPEC.dx) * aX;
+      SPEC.dy += (p.y - SPEC.dy) * aY;
+      SPEC.vs = (SPEC.dy - prevY) / Math.max(dtS, 0.001);
+    }
     var viewH = 740;
     var scale = cw / W;
+    /* v5.14: 캔버스 비율이 540:740과 달라 생기던 아래쪽 검은 여백을 없앤다.
+       폭 기준 배율은 그대로 두고 보이는 세로 범위만 캔버스 높이에 맞춘다. */
+    viewH = Math.max(700, chh / (scale || 1));
     var camY = SPEC.dy - viewH * 0.58;
     c.save();
     c.scale(scale, scale);
@@ -64659,6 +64813,14 @@ if (typeof module !== 'undefined' && module.exports) {
       }
       SPEC.world = wld;
       SPEC.worldKey = wkey;
+      /* v5.14: 진행률(%) 계산용 월드 상·하한 */
+      var wMinY = 0, wMaxY = 0;
+      for (var wi = 0; wi < ((wld && wld.plats) || []).length; wi++) {
+        var wq = wld.plats[wi]; if (!wq) continue;
+        if (wq.y > wMaxY) wMaxY = wq.y;
+        if (wq.y < wMinY) wMinY = wq.y;
+      }
+      SPEC.wMin = wMinY; SPEC.wMax = wMaxY;
     }
     var plats = (SPEC.world && SPEC.world.plats) || [];
     var isDefault = !!(SPEC.world && SPEC.world.isDefault);
@@ -64702,10 +64864,16 @@ if (typeof module !== 'undefined' && module.exports) {
     c.fillStyle = '#bae6fd';
     c.fillText(nm, fx + 14, fy - 14);
     c.restore();
-    /* 하단 정보 */
+    /* 상단 HUD: 맵 · 층 · 높이(m) · 진행률(%) */
     var sub = $('v51SpSub');
-    var txt = mapLabel(p.map || 'default') + ' · ' + (p.floor || 1) + '층 · 실시간';
+    var hM = Math.max(0, -p.y) / 13.4;
+    var pct = null;
+    if (typeof SPEC.wMin === 'number' && typeof SPEC.wMax === 'number' && SPEC.wMax > SPEC.wMin) {
+      pct = Math.max(0, Math.min(100, Math.round(100 - ((p.y - SPEC.wMin) / (SPEC.wMax - SPEC.wMin)) * 100)));
+    }
+    var txt = mapLabel(p.map || 'default') + ' · ' + (p.floor || 1) + '층 · ' + hM.toFixed(1) + 'm' + (pct != null ? ' · ' + pct + '%' : '');
     if (sub && sub.textContent !== txt) sub.textContent = txt;
+    if (!SPEC.idxAt || now - SPEC.idxAt > 1200) { SPEC.idxAt = now; paintHead(p); }
     watchBroadcast();
   }
 
@@ -64765,7 +64933,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 72 (원본 index.html 68109줄) ── */
+/* ── block 72 (muse-v5-9/index.html 68293줄) ── */
 
 /* ==========================================================================
    v5.1-perf : 전체 최적화 — 프레임·메모리·DOM·타이머
@@ -64849,8 +65017,10 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   function markIdle() {
-    var idle = isIdle();
-    doc.body.classList.toggle('v51idle', !!idle);
+    /* v5.15: 값이 그대로인데 0.7초마다 classList 를 다시 쓰면 매번 스타일 재계산이 걸린다. */
+    var idle = !!isIdle();
+    if (ST.lastIdle === idle) return;
+    doc.body.classList.toggle('v51idle', idle);
     ST.lastIdle = idle;
   }
 
@@ -64896,7 +65066,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 73 (원본 index.html 68237줄) ── */
+/* ── block 73 (muse-v5-9/index.html 68421줄) ── */
 
 /* ==========================================================================
    v5.1-skins (hotfix2) : 캐릭터(스킨)마다 다른 대사
@@ -65114,7 +65284,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 74 (원본 index.html 68452줄) ── */
+/* ── block 74 (muse-v5-9/index.html 68636줄) ── */
 
 /* ==========================================================================
    v5.1-fav (hotfix2) : ★ 즐겨찾기 — 누르면 즉시 맨 위로 + '★ 즐겨찾기' 카테고리 탭
@@ -65367,7 +65537,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 75 (원본 index.html 68702줄) ── */
+/* ── block 75 (muse-v5-9/index.html 68886줄) ── */
 
 /* ==========================================================================
    v5.1-bgm : BGM 사고 방지 — 끄면 즉시 정지 · 한 번에 한 곡만 · 주크박스 충돌 0
@@ -65457,7 +65627,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 76 (원본 index.html 68789줄) ── */
+/* ── block 76 (muse-v5-9/index.html 68973줄) ── */
 
 /* ==========================================================================
    v5.1-titlelux : 칭호 비주얼 업그레이드 + 칭호 도감 UI 정돈
@@ -65645,7 +65815,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 77 (원본 index.html 68974줄) ── */
+/* ── block 77 (muse-v5-9/index.html 69158줄) ── */
 
 /* ==========================================================================
    v5.1-flicker (단순화) : 정적 CSS + 모달 스와이프 스크롤 허용
@@ -65708,7 +65878,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 78 (원본 index.html 69034줄) ── */
+/* ── block 78 (muse-v5-9/index.html 69218줄) ── */
 
 /* ==========================================================================
    v5.1-fullscreen (재작성) : '버튼을 눌렀을 때만' 전체 화면 — 자동 진입/재진입 없음
@@ -65791,7 +65961,8 @@ if (typeof module !== 'undefined' && module.exports) {
     return false;
   }
   function isAndroid() { return /Android/i.test(ua()); }
-  var AUTO = isAndroid() && !isIOS();
+  /* v5.15: 강제 전체화면 제거 — Android 자동 진입도 끔, 전체화면은 버튼으로만 */
+  var AUTO = false;
   function autoEnter() {
     if (!AUTO) return;
     if (fsEl()) return;
@@ -65830,7 +66001,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 79 (원본 index.html 69153줄) ── */
+/* ── block 79 (muse-v5-9/index.html 69338줄) ── */
 
 /* ==========================================================================
    v5.1-boss24 : 새 맵 24종 전용 보스 — 이름·도발·체력·전용 패턴 3종
@@ -66117,7 +66288,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 80 (원본 index.html 69437줄) ── */
+/* ── block 80 (muse-v5-9/index.html 69622줄) ── */
 
 /* ==========================================================================
    v5.1-bossart24 : 새 맵 24종 전용 보스 픽셀 아트 (96×96 로컬 좌표계)
@@ -66744,7 +66915,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 81 (원본 index.html 70061줄) ── */
+/* ── block 81 (muse-v5-9/index.html 70246줄) ── */
 
 /* ==========================================================================
    v5.1-modepure : 🎯 모드별 부가요소 차단
@@ -66950,7 +67121,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 82 (원본 index.html 70264줄) ── */
+/* ── block 82 (muse-v5-9/index.html 70449줄) ── */
 
 /* ==========================================================================
    v5.6-titles5 : 🏅 칭호를 5곳 모두에 —
@@ -67218,7 +67389,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 83 (원본 index.html 70529줄) ── */
+/* ── block 83 (muse-v5-9/index.html 70714줄) ── */
 
 /* ==========================================================================
    v5.6-friends-ui : 👥 친구창 · 친구 프로필 정돈
@@ -67365,10 +67536,10 @@ if (typeof module !== 'undefined' && module.exports) {
       try { ti = T5() ? T5().tiOf(nick) : ''; } catch (e) {}
       if (!ti) { try { ti = (root.JW485HUB && JW485HUB.actOf && (JW485HUB.actOf(tag) || {}).ti) || ''; } catch (e) {} }
       var h = badge(ti, true);
-      var old = top.querySelector('.v51badge');
-      if (!h) { if (old) old.remove(); continue; }
+      var old = top.querySelector('.v51badge, .v58-ti'); /* v5.15: v58-ti 칩도 배지 — 안 찾으면 예전 배지가 남아 중복으로 쌓인다 */
+      if (!h) { if (old) { var ow = old.closest ? old.closest('[data-ti]') : null; (ow || old).remove(); } continue; }
       if (old && old.getAttribute('data-ti') === ti) continue;
-      if (old) old.remove();
+      if (old) { var ow2 = old.closest ? old.closest('[data-ti]') : null; (ow2 || old).remove(); }
       var wrap = doc.createElement('span');
       wrap.setAttribute('data-ti', ti);
       wrap.style.cssText = 'display:inline-flex;vertical-align:middle';
@@ -67521,7 +67692,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 84 (원본 index.html 70829줄) ── */
+/* ── block 84 (muse-v5-9/index.html 71014줄) ── */
 
 /* ==========================================================================
    v5.6-hearts : ❤️ 하트 HUD 는 "하트를 실제로 쓰는 모드"에서만
@@ -67626,7 +67797,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 85 (원본 index.html 70931줄) ── */
+/* ── block 85 (muse-v5-9/index.html 71116줄) ── */
 
 /* ==========================================================================
    v5.6-tag : 🏅 인게임 내 캐릭터 위 닉네임 + 칭호 배지
@@ -67675,6 +67846,18 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   var lastSig = '';
+  /* v5.14: 캔버스 사각형은 화면 크기가 바뀔 때만 변한다. 매 프레임 getBoundingClientRect()로
+     레이아웃을 다시 계산하면 인게임 DOM 갱신과 부딪혀 이름표가 늦게 따라온다. */
+  var RECT = null, RECT_AT = 0, RECT_W = 0, RECT_H = 0;
+  function canvasRect(cv) {
+    var now = (window.performance && window.performance.now) ? window.performance.now() : Date.now();
+    var w = window.innerWidth, h = window.innerHeight;
+    if (!RECT || w !== RECT_W || h !== RECT_H || now - RECT_AT > 1500) {
+      try { RECT = cv.getBoundingClientRect(); } catch (e) { RECT = null; }
+      RECT_AT = now; RECT_W = w; RECT_H = h;
+    }
+    return RECT;
+  }
   function frame() {
     var j = root.__jwg;
     var cv = $('gameCanvas');
@@ -67684,10 +67867,11 @@ if (typeof module !== 'undefined' && module.exports) {
       return;
     }
     var p = j.player;
-    var r = cv.getBoundingClientRect();
-    if (!r.width || !r.height) { tag.style.display = 'none'; return; }
+    var r = canvasRect(cv);
+    if (!r || !r.width || !r.height) { tag.style.display = 'none'; return; }
+    var camY = (j.game && typeof j.game.camY === 'number') ? j.game.camY : 0;
     var pr;
-    try { pr = V.proj(p.x + 14, p.y - 6); } catch (e) { tag.style.display = 'none'; return; }
+    try { pr = V.proj(p.x + 14, (p.y - camY) - 6); } catch (e) { tag.style.display = 'none'; return; }
     var sx = r.width / (cv.width || 1), sy = r.height / (cv.height || 1);
     var x = r.left + pr.x * sx;
     var y = r.top + pr.y * sy - 6;
@@ -67696,16 +67880,22 @@ if (typeof module !== 'undefined' && module.exports) {
     var sig = nick + '|' + bd + '|' + vw();
     if (sig !== lastSig) {
       lastSig = sig;
-      tag.innerHTML = '<div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;max-width:180px;' +
-        'padding:3px 8px 4px;border-radius:10px;background:rgba(8,14,26,.72);border:1.5px solid rgba(150,195,255,.35);' +
-        'box-shadow:0 2px 8px rgba(0,0,0,.45);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);">' +
-        '<span style="font-size:11px;font-weight:900;color:#eaf2ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;' +
+      tag.innerHTML = '<div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;max-width:190px;' +
+        'padding:3px 8px 4px;border-radius:10px;background:rgba(8,14,26,.78);border:1.5px solid rgba(150,195,255,.38);' +
+        'box-shadow:0 2px 8px rgba(0,0,0,.45);">' +
+        '<span style="font-size:11px;font-weight:900;color:#eaf2ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;' +
         'text-shadow:0 1px 2px #000;">' + esc(nick) + '</span>' +
         (bd ? '<span style="display:flex">' + bd + '</span>' : '') +
         '</div>';
+      tag.__w = tag.offsetWidth || 120;
+      tag.__h = tag.offsetHeight || 30;
     }
-    tag.style.left = x + 'px';
-    tag.style.top = y + 'px';
+    /* v5.14: 화면 좌우·상하 경계에서 반쯤 잘리지 않게 안전 영역으로 클램핑 */
+    var tw = tag.__w || 120, th = tag.__h || 30;
+    var vwid = window.innerWidth, vhei = window.innerHeight;
+    x = Math.max(tw / 2 + 6, Math.min(vwid - tw / 2 - 6, x));
+    y = Math.max(th + 10, Math.min(vhei - 96, y));
+    tag.style.transform = 'translate3d(' + Math.round(x) + 'px,' + Math.round(y) + 'px,0) translate(-50%,-100%)';
     tag.style.display = 'block';
   }
   function vw() { return window.innerWidth + 'x' + window.innerHeight; }
@@ -67771,7 +67961,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 86 (원본 index.html 71073줄) ── */
+/* ── block 86 (muse-v5-9/index.html 71277줄) ── */
 
 /* ==========================================================================
    v5.6-clearguard : 🏁 "안 깼는데 클리어" 방지
@@ -67842,7 +68032,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 87 (원본 index.html 71141줄) ── */
+/* ── block 87 (muse-v5-9/index.html 71345줄) ── */
 
 /* ==========================================================================
    v5.7-noflick : 창 전환 깜빡임 0
@@ -67927,7 +68117,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 88 (원본 index.html 71223줄) ── */
+/* ── block 88 (muse-v5-9/index.html 71427줄) ── */
 
 /* ==========================================================================
    v5.7-plate : 🌈 이름표 · 🖼️ 테두리를 칭호와 똑같이 5곳 전체에
@@ -68064,7 +68254,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 89 (원본 index.html 71357줄) ── */
+/* ── block 89 (muse-v5-9/index.html 71561줄) ── */
 
 /* ==========================================================================
    v5.8-plates : 🌈 이름표 · 🖼️ 테두리 해금 시스템 (칭호와 같은 결)
@@ -68320,7 +68510,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 90 (원본 index.html 71610줄) ── */
+/* ── block 90 (muse-v5-9/index.html 71814줄) ── */
 
 /* ==========================================================================
    v5.9-profile : 👤 내 프로필 하나로 통합 (스킨 · 테두리 · 이름표 · 칭호)
@@ -68581,7 +68771,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 91 (원본 index.html 71868줄) ── */
+/* ── block 91 (muse-v5-9/index.html 72072줄) ── */
 
 /* ==========================================================================
    v5.9-2 (90_fix) : 실기기 전수 버그 사냥 — UI 겹침 · 잘림 · 죽은 카드 · HUD 정리
@@ -68772,7 +68962,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 92 (원본 index.html 72056줄) ── */
+/* ── block 92 (muse-v5-9/index.html 72260줄) ── */
 
 /* ==========================================================================
    v4.8.6-extra : ① 해금 축하 팝업 + NEW 빨간 점  ② 결과창 [다음 맵]
@@ -69045,7 +69235,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 93 (원본 index.html 72326줄) ── */
+/* ── block 93 (muse-v5-9/index.html 72530줄) ── */
 
 /* ==========================================================================
    v4.8.6-guard : ① 거짓 클리어 2차 차단(고도 검증)  ② 하트 사망 이중 차단
@@ -69151,7 +69341,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 94 (원본 index.html 72429줄) ── */
+/* ── block 94 (muse-v5-9/index.html 72633줄) ── */
 
 /* ==========================================================================
    v4.8.6-lobbyx : 🕶️ 멀티 대기실 '어두운 막' 제거 + 참가자 카드 대개편
@@ -69610,7 +69800,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 95 (원본 index.html 72885줄) ── */
+/* ── block 95 (muse-v5-9/index.html 73089줄) ── */
 
 /* ==========================================================================
    v4.8.6-titlefix : 🏠 메인(타이틀) 화면 정리
@@ -69711,13 +69901,16 @@ if (typeof module !== 'undefined' && module.exports) {
   function paintTitleBadge() {
     var el = $('v43TPTitle');
     if (!el) return;
-    if (el.querySelector('.v51badge')) return;      /* 이미 배지 */
     var id = equippedId();
+    /* v5.15: 배지가 이미 현재 칭호면 그대로 둔다 (v58-ti 칩도 배지). id가 바뀌었을 때만 다시 칠한다 — 안 그러면
+       v51badge만 검사하던 가드가 v58-ti 칩을 못 알아보고 innerHTML을 계속 다시 써서 MutationObserver 마이크로태스크 루프로 화면이 먹통이 된다 */
+    if (el.querySelector('.v51badge, .v58-ti') && el.getAttribute('data-v51b') === (id || '')) return; /* 이미 현재 배지 */
     var txt = String(el.textContent || '').trim();
     if (!id && (!txt || txt === '🌱 도전자' || txt === '자동 선택')) return;
     var html = badgeFor(id, id ? '' : txt);
     if (!html) return;
     el.innerHTML = html;
+    try { el.setAttribute('data-v51b', id || ''); } catch (e) {}
   }
 
   /* ---------- 3. 프로필 테두리 ---------- */
@@ -69791,7 +69984,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 96 (원본 index.html 73063줄) ── */
+/* ── block 96 (muse-v5-9/index.html 73270줄) ── */
 
 /* ==========================================================================
    v5.1-game : 인게임 정리
@@ -70040,7 +70233,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 97 (원본 index.html 73309줄) ── */
+/* ── block 97 (muse-v5-9/index.html 73516줄) ── */
 
 /* ==========================================================================
    v5.1-codex : 📖 재우 도감 정리
@@ -70137,7 +70330,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 98 (원본 index.html 73403줄) ── */
+/* ── block 98 (muse-v5-9/index.html 73610줄) ── */
 
 /* ==========================================================================
    v5.1-font : ⚙️ 모달·방 설정 글씨/버튼 통일
@@ -70208,7 +70401,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 99 (원본 index.html 73471줄) ── */
+/* ── block 99 (muse-v5-9/index.html 73678줄) ── */
 
 /* ==========================================================================
    v5.1-balance : 맵 난이도 체감 맞추기 (✨ 2.0 오리지널 retro20 은 100% 보존)
@@ -70303,7 +70496,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 100 (원본 index.html 73563줄) ── */
+/* ── block 100 (muse-v5-9/index.html 73770줄) ── */
 
 /* ==========================================================================
    v5.1-friends : 🕒 친구창 '마지막 접속' 상대시간 복구
@@ -70434,7 +70627,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 101 (원본 index.html 73691줄) ── */
+/* ── block 101 (muse-v5-9/index.html 73898줄) ── */
 
 /* ==========================================================================
    v5.1-UI (99b) : 실기기 10건 제보 전면 개편
@@ -70479,7 +70672,7 @@ if (typeof module !== 'undefined' && module.exports) {
     /* ---------- ③ 순위 카드 ---------- */
     'html body #v51Rank, html body #mpRankLine{display:none !important;}',
     'html body #v97Rank{position:fixed;left:8px;top:240px;z-index:27;display:none;flex-direction:column;gap:3px;',
-    '  min-width:132px;max-width:52vw;padding:5px 6px;border-radius:12px;pointer-events:none;',
+    '  min-width:0;max-width:min(74vw,268px);padding:5px 6px;border-radius:12px;pointer-events:none;',
     '  background:rgba(8,13,24,.74);border:1.5px solid rgba(96,165,250,.30);box-shadow:0 4px 14px rgba(0,0,0,.45);',
     '  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}',
     'html body #v97Rank.on{display:flex;}',
@@ -70680,12 +70873,24 @@ if (typeof module !== 'undefined' && module.exports) {
       if (el.classList.contains('on')) el.classList.remove('on');
       return;
     }
+    /* v5.14: 탈락·완등 후 남을 관전하는 중에는 내 이름표를 숨긴다 */
+    try {
+      var St = V.st();
+      if (St && (St.specId || St.spectating)) { if (el.classList.contains('on')) el.classList.remove('on'); return; }
+    } catch (e) {}
     var p = j.player;
     var camY = j.game.camY || 0;
     var pr;
     try { pr = V.proj(p.x + 14, (p.y - camY) - 6); } catch (e) { el.classList.remove('on'); return; }
-    var r = cv.getBoundingClientRect();
-    if (!r.width) { el.classList.remove('on'); return; }
+    /* v5.14: 캔버스 사각형은 화면 크기가 바뀔 때만 변한다 — 매 프레임 측정하면 레이아웃이 밀려
+       이름표가 캐릭터를 한 박자 늦게 따라온다. */
+    var nowT = (window.performance && window.performance.now) ? window.performance.now() : Date.now();
+    if (!cv.__v97r || cv.__v97w !== window.innerWidth || cv.__v97h !== window.innerHeight || nowT - (cv.__v97t || 0) > 1500) {
+      try { cv.__v97r = cv.getBoundingClientRect(); } catch (e) { cv.__v97r = null; }
+      cv.__v97w = window.innerWidth; cv.__v97h = window.innerHeight; cv.__v97t = nowT;
+    }
+    var r = cv.__v97r;
+    if (!r || !r.width) { el.classList.remove('on'); return; }
     var sx = r.width / (cv.width || 1), sy = r.height / (cv.height || 1);
     var x = Math.round(r.left + pr.x * sx);
     var y = Math.round(r.top + pr.y * sy);
@@ -70693,8 +70898,18 @@ if (typeof module !== 'undefined' && module.exports) {
     var nick = myNick() || '나';
     var th = titleHtml();
     var html = '<div class="in"><span class="nm" id="v97TagNm">' + esc(nick) + '</span>' + th.html + '</div>';
-    if (el.__sig !== html) { el.__sig = html; el.innerHTML = html; }
-    var tf = 'translate3d(' + (x - 0) + 'px,' + ((y - 4) - 0) + 'px,0) translate(-50%,-100%)';
+    if (el.__sig !== html) {
+      el.__sig = html; el.innerHTML = html;
+      /* 폭·높이는 화면에 붙은 상태에서 재야 한다 (display:none 이면 0 → 기본값으로 어긋난다) */
+      if (!el.classList.contains('on')) el.classList.add('on');
+      el.__w = el.offsetWidth || 90; el.__h = el.offsetHeight || 22;
+    }
+    /* v5.14: 화면 좌우·하단 경계에서 이름표가 반쯤 잘리지 않게 안전 영역으로 클램핑 */
+    var tw = el.__w || 90, tht = el.__h || 22;
+    var vwid = window.innerWidth, vhei = window.innerHeight;
+    x = Math.max(Math.round(tw / 2) + 6, Math.min(vwid - Math.round(tw / 2) - 6, x));
+    y = Math.max(tht + 10, Math.min(vhei - 96, y));
+    var tf = 'translate3d(' + x + 'px,' + (y - 4) + 'px,0) translate(-50%,-100%)';
     if (el.__tf !== tf) { el.__tf = tf; el.style.transform = tf; }
     if (!el.classList.contains('on')) el.classList.add('on');
     /* 이름표(무지개 등) 연동 */
@@ -70790,7 +71005,7 @@ if (typeof module !== 'undefined' && module.exports) {
         return '<div class="r' + (r.me ? ' me' : '') + '">' +
           '<span class="no">' + idx + '</span>' +
           '<span class="dt" style="background:' + colHex(r.color) + '"></span>' +
-          '<span class="nm">' + esc(String(r.nick || '').slice(0, 8)) + '</span>' +
+          '<span class="nm">' + esc(String(r.nick || '').slice(0, 12)) + '</span>' +
           '<span class="vv">' + v + '</span>' +
           (r.me ? '<span class="who">나</span>' : '') + '</div>';
       }).join('');
@@ -71027,7 +71242,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 102 (원본 index.html 74281줄) ── */
+/* ── block 102 (muse-v5-9/index.html 74510줄) ── */
 
 /* ==========================================================================
    v5.1-final (99c) : v5.1 실기기 2차 제보 — 싱글/멀티 잔존 · 말풍선 · 일시정지 ·
@@ -71085,7 +71300,7 @@ if (typeof module !== 'undefined' && module.exports) {
     'html body #mpToasts .mp-toast .t2{font-size:10.5px !important;line-height:1.35 !important;color:#b9cbe6 !important;margin-top:1px !important;}',
 
     /* ---------- 순위 카드: 멀티에서만 · 겹치지 않게 ---------- */
-    'html body #v97Rank{display:none;left:8px;top:232px;gap:2px;min-width:0;max-width:min(58vw,230px);padding:5px 7px;border-radius:11px;}',
+    'html body #v97Rank{display:none;left:8px;top:232px;gap:2px;min-width:0;max-width:min(74vw,268px);padding:5px 7px;border-radius:11px;}',
     'html body #v97Rank.on{display:flex;}',
     'html body #v97Rank .r{font-size:11px;font-weight:700;line-height:1.25;}',
     'html body #v51Rank,html body #mpRankLine{display:none !important;}',
@@ -71363,8 +71578,10 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   function paintBadge(el) {
     if (!el) return;
-    if (el.querySelector && el.querySelector('.v51badge')) return;   /* 이미 배지 */
     var id = equippedId();
+    /* v5.15: 배지가 이미 현재 칭호면 그대로 둔다 (v58-ti 칩도 배지). id가 바뀌었을 때만 다시 칠한다 — 안 그러면
+       v51badge만 검사하던 가드가 v58-ti 칩을 못 알아보고 innerHTML을 계속 다시 써서 MutationObserver 마이크로태스크 루프로 화면이 먹통이 된다 */
+    if (el.querySelector && el.querySelector('.v51badge, .v58-ti') && el.getAttribute('data-v51b') === (id || '')) return;   /* 이미 현재 배지 */
     var txt = String(el.textContent || '').trim();
     if (!id && (!txt || txt === '🌱 도전자' || txt === '자동 선택')) return;
     var html = '';
@@ -71372,6 +71589,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (!html && txt) html = '<span class="v51badge g-legend">' + esc(txt) + '</span>';
     if (!html) return;
     el.innerHTML = html;
+    try { el.setAttribute('data-v51b', id || ''); } catch (e) {}
   }
   function watchBadges() {
     /* 타이틀 화면이 다시 그려질 때마다 그 '즉시'(페인트 전) 배지로 맞춘다 */
@@ -71381,14 +71599,14 @@ if (typeof module !== 'undefined' && module.exports) {
       try {
         new MutationObserver(function () {
           var el = $('v43TPTitle');
-          if (el && !el.querySelector('.v51badge')) paintBadge(el);
+          if (el && !el.querySelector('.v51badge, .v58-ti')) paintBadge(el); /* v5.15: v58-ti 칩도 배지 */
         }).observe(ts, { childList: true, subtree: true });
       } catch (e) {}
     }
     ['v43TPTitle', 'v485hTitle', 'mpMyTitleNow'].forEach(function (id) {
       var el = $(id);
       if (!el || el.__v51obs) return;
-      if (!el.querySelector('.v51badge')) paintBadge(el);
+      if (!el.querySelector('.v51badge, .v58-ti')) paintBadge(el); /* v5.15: v58-ti 칩도 배지 */
       el.__v51obs = 1;
       try {
         new MutationObserver(function () { paintBadge(el); }).observe(el, { childList: true, characterData: true, subtree: true });
@@ -71556,7 +71774,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 103 (원본 index.html 74808줄) ── */
+/* ── block 103 (muse-v5-9/index.html 75040줄) ── */
 
 /* ==========================================================================
    muse-v5-8 : 공용 헬퍼 — 타이틀 화면 판정 (보상 알림 연기용)
@@ -71585,7 +71803,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 104 (원본 index.html 74834줄) ── */
+/* ── block 104 (muse-v5-9/index.html 75066줄) ── */
 
 /* v5.10 설정 허브 — #settingsModal을 6섹션 허브로 승격. 저장 키는 그대로(jw51_cfg_v1 등 이동 없음).
    #v43QolBody·#sgRulesBox·#v51TutReBtn은 요소 자체를 허브 안으로 옮긴다(리스너·id 그대로).
@@ -71707,7 +71925,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 105 (원본 index.html 74953줄) ── */
+/* ── block 105 (muse-v5-9/index.html 75185줄) ── */
 
 /* v5.10 친구 허브 검색 — 닉네임으로 친구 행만 가린다. 목록이 다시 그려져도 필터를 유지한다. */
 (function () {
@@ -71727,7 +71945,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 106 (원본 index.html 74970줄) ── */
+/* ── block 106 (muse-v5-9/index.html 75202줄) ── */
 
 /* v5.11 카드·로비 수정 — 최후순위 오버라이드 (구체성 높은 셀렉터 + !important).
    (a) 모드 카드 설명 2줄 + 카테고리 라벨 별도 줄 — v52fixCss의 max-height:21px 캡(2줄 20.64px에 0.36px 여유)을 뚫음
@@ -71750,7 +71968,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
-/* ── block 107 (원본 index.html 74990줄) ── */
+/* ── block 107 (muse-v5-9/index.html 75222줄) ── */
 
 /* v5.11 컬렉션 허브 재구축 — 최후순위 오버라이드 (구체성 높은 셀렉터 + !important).
    탭 4개(도감/업적/트로피/칭호) + 랭킹 링크 행, 도감 필터, 업적 행, 트로피·칭호 — 글자 잘림·겹침 방지
@@ -71813,5 +72031,207 @@ if (typeof module !== 'undefined' && module.exports) {
   ].join('\n');
   document.head.appendChild(st);
 })();
+
+;
+
+/* ── block 108 (muse-v5-9/index.html 75285줄) ── */
+
+/* ==========================================================================
+   v5.14-spectate : 폰 실기기 제보 — 인게임 이름표·순위표·미니맵·관전 정돈
+     (1) 머리 위 이름표를 메인 render() 직후 같은 프레임에서 맞춘다 (별도 타이머 지연 제거)
+     (2) 좌우·상하 경계에서 이름표가 반쯤 잘리지 않게 안전 영역 클램핑
+     (3) 순위표 닉네임 8자 제한 → 12자 + 넓은 폭 (한국어 닉네임 잘림 제거)
+     (4) 멀티 관전: ◀ / ▶ 44px 전환 · 현재 주자 이름/층/순위 배너 · 순위표와 겹치지 않게
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW514) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+
+  function css() {
+    if ($('v514css')) return;
+    var s = doc.createElement('style');
+    s.id = 'v514css';
+    s.textContent = [
+      /* 이름표: 긴 닉네임 + 칭호가 화면 폭을 넘지 않게 */
+      'html body #v51SpRes.hide{display:none !important;}',
+      'html body #v97Tag .in{max-width:min(86vw,300px) !important;}',
+      'html body #v97Tag .nm{max-width:calc(86vw - 70px) !important;overflow:hidden !important;text-overflow:ellipsis !important;',
+      '  white-space:nowrap !important;}',
+      /* 멀티 관전 바: 44px 터치 · 배너 한 줄 */
+      'html body #mpSpectateBar{gap:5px !important;}',
+      'html body #mpSpectateBar #mpSpecName{display:none !important;}',
+      'html body #mpSpectateBar #mpSpecNext{display:none !important;}',
+      'html body #mpSpectateBar #v514SpecInfo{flex:1 1 auto;min-width:0;font-size:11px;font-weight:900;color:#dbeafe;',
+      '  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:2px;}',
+      'html body #mpSpectateBar .v514sb{flex:0 0 auto;min-width:44px;min-height:44px;padding:0;border-radius:10px;',
+      '  font-size:16px;font-weight:900;line-height:1;color:#eaf2ff;',
+      '  background:linear-gradient(180deg,#33456b,#1b2540);border:2px solid #0a1120;',
+      '  box-shadow:inset 0 2px 0 rgba(255,255,255,.12),0 2px 0 #060a14;display:flex;align-items:center;justify-content:center;}',
+      'html body #mpSpectateBar .v514sb:active{transform:translateY(1px);}',
+      'html body #mpSpectateBar .v514sb[disabled]{opacity:.4;}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+
+  /* ---------------------------------------------------------------- (1)(2) 이름표 */
+  var freed = 0;
+  function freeTag() {
+    /* v5.14: HUD 자동 배치(place)가 이름표를 left/top !important + transform:none 으로 붙잡은 적이 있으면 풀어 준다. */
+    var t = $('v97Tag');
+    if (!t) return;
+    if (t.__v485placed) { t.__v485placed = false; t.__v485sig = null; freed = 1; }
+    if (!freed) return;
+    if (t.style.position || t.style.top || t.style.left) {
+      ['position', 'transform', 'margin', 'left', 'right', 'top', 'bottom', 'max-width', 'max-height'].forEach(function (k) {
+        t.style.removeProperty(k);
+      });
+      t.__tf = '';
+      if (root.JW97UI && root.JW97UI.tag) root.JW97UI.tag();
+    }
+  }
+  function afterRender() {
+    try {
+      if (doc.hidden) return;
+      var j = root.__jwg;
+      if (!j || !j.game || !j.game.inPlay) return;
+      /* v5.14: 내가 탈락·완등해서 남을 관전하는 중이면 내 이름표는 숨긴다 (관전 화면 정리) */
+      var S = null;
+      try { S = V.st(); } catch (e) { S = null; }
+      if (S && (S.specId || S.spectating)) {
+        var tg = $('v97Tag');
+        if (tg && tg.classList.contains('on')) tg.classList.remove('on');
+        return;
+      }
+      if (root.JW97UI && root.JW97UI.tag) root.JW97UI.tag();
+      else if (root.JW56TAG && root.JW56TAG.frame) root.JW56TAG.frame();
+    } catch (e) {}
+  }
+  root.__jwgAfter = afterRender;
+
+  /* ---------------------------------------------------------------- (4) 멀티 관전 */
+  function racers() {
+    var out = [];
+    var S = null;
+    try { S = V.st(); } catch (e) { S = null; }
+    try {
+      if (S && S.peers && S.peers.forEach) S.peers.forEach(function (pr) {
+        if (!pr || pr.stale || pr.elim || pr.fin) return;
+        out.push({ pid: pr.pid, nick: pr.nick || '참가자', y: (pr.ry !== undefined ? pr.ry : pr.y) });
+      });
+    } catch (e) {}
+    try {
+      (V.R && V.R.bots || []).forEach(function (b, i) {
+        if (!b || b.fin || b.out || b.y < -9000) return;
+        out.push({ pid: b.id != null ? b.id : ('bot' + i), nick: b.name || b.nick || '봇', y: b.y });
+      });
+    } catch (e) {}
+    out.sort(function (a, b) { return a.y - b.y; });
+    return out;
+  }
+  function floorOf(y) {
+    try { return V.floorOf ? V.floorOf(y) : Math.max(1, Math.round(-y / 130) + 1); } catch (e) { return 1; }
+  }
+  function makeBtn(id, label, title) {
+    var b = doc.createElement('button');
+    b.id = id; b.type = 'button'; b.className = 'v514sb';
+    b.textContent = label; b.title = title;
+    return b;
+  }
+  function step(dir) {
+    var S = null;
+    try { S = V.st(); } catch (e) { return; }
+    if (!S) return;
+    var list = racers();
+    if (!list.length) return;
+    var i = -1;
+    for (var k = 0; k < list.length; k++) if (String(list[k].pid) === String(S.specId)) i = k;
+    var nx = list[(i + dir + list.length) % list.length];
+    S.specId = nx.pid;
+    try { V.beep(660, 0.05, 0.07, 'square', 880); } catch (e) {}
+    paint(true);
+  }
+  var prevOn = false;
+  function paint(force) {
+    var bar = $('mpSpectateBar');
+    var on = !!(bar && !bar.classList.contains('hidden'));
+    /* 관전 중이 아니면 숨겼던 옛 1등/꼴찌 버튼을 되살린다 */
+    var sb0 = $('v43SpecBtns');
+    if (!on) {
+      if (prevOn) {
+        if (sb0) sb0.style.removeProperty('display');
+        /* 관전이 끝나면 순위표를 원래 자리 계산으로 돌려준다 */
+        var rk0 = $('v97Rank');
+        if (rk0) { rk0.__t = null; rk0.style.removeProperty('top'); }
+      }
+      prevOn = false;
+      return;
+    }
+    /* v5.14: 옛 🥇 1등 / 🐢 꼴찌 버튼은 ◀ / ▶ 와 기능이 겹치고 순위표를 가린다 → 관전 중에는 숨김 */
+    if (sb0) sb0.style.setProperty('display', 'none', 'important');
+    if (!prevOn || force) {
+      prevOn = true;
+      if (!$('v514SpecPrev')) {
+        var pb = makeBtn('v514SpecPrev', '◀', '이전 주자 관전');
+        var nb = makeBtn('v514SpecNext2', '▶', '다음 주자 관전');
+        pb.addEventListener('click', function () { step(-1); });
+        nb.addEventListener('click', function () { step(1); });
+        bar.insertBefore(pb, bar.firstChild);
+        var anchor = $('mpSpecExit') || null;
+        if (anchor && anchor.parentElement === bar) bar.insertBefore(nb, anchor);
+        else bar.appendChild(nb);
+      }
+      if (!$('v514SpecInfo')) {
+        var info = doc.createElement('span');
+        info.id = 'v514SpecInfo';
+        info.textContent = '👀 관전 중';
+        var first = $('v514SpecPrev');
+        if (first && first.parentElement === bar) bar.insertBefore(info, first.nextSibling);
+        else bar.appendChild(info);
+      }
+    }
+    var S = null;
+    try { S = V.st(); } catch (e) { S = null; }
+    var list = racers();
+    var i = -1;
+    if (S) for (var k = 0; k < list.length; k++) if (String(list[k].pid) === String(S.specId)) i = k;
+    var info2 = $('v514SpecInfo');
+    if (info2) {
+      var txt = i >= 0 ? ('👀 ' + (i + 1) + '위 · ' + floorOf(list[i].y) + '층 · ' + list[i].nick)
+        : ('👀 관전 중' + (list.length ? ' · 생존 ' + list.length + '명' : ''));
+      if (info2.textContent !== txt) info2.textContent = txt;
+    }
+    var pb2 = $('v514SpecPrev'), nb2 = $('v514SpecNext2');
+    if (pb2) pb2.disabled = list.length < 2;
+    if (nb2) nb2.disabled = list.length < 2;
+    /* 순위표가 관전 바·조작 버튼과 겹치지 않게 자리를 잡는다 */
+    try {
+      var rk = $('v97Rank');
+      if (rk && rk.classList.contains('on')) {
+        var rb = bar.getBoundingClientRect();
+        var rkh = rk.getBoundingClientRect().height || 64;
+        var want = (rb.top > window.innerHeight / 2)
+          ? Math.max(8, Math.round(rb.top - rkh - 6))
+          : Math.round(rb.bottom + 6);
+        want = want + 'px';
+        if (rk.style.top !== want) rk.style.top = want;
+      }
+    } catch (e) {}
+  }
+
+  function boot() {
+    css();
+    setInterval(function () { try { freeTag(); } catch (e) {} }, 400);
+    setInterval(function () { try { paint(); } catch (e) {} }, 250);
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 1200); });
+  else setTimeout(boot, 1200);
+
+  root.JW514 = { paint: paint, step: step, racers: racers };
+  console.log('[v5.14] tag/rank/minimap/spectate patch ready');
+})(window);
 
 ;
