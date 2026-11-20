@@ -70,6 +70,7 @@
   .hint { font-size: 11px; color: #9ca3af; margin-top: 8px; text-align: center; word-break: break-all; }
   .bubble .mention { font-weight: 700; background: #fef08a; color: #713f12; padding: 0 3px; border-radius: 4px; }
   .msg .meta b { cursor: pointer; }
+  .hint button { border: 1px solid #d1d5db; background: #f9fafb; border-radius: 999px; font-size: 11px; padding: 2px 8px; color: #374151; cursor: pointer; margin-right: 4px; }
 </style>
 </head>
 <body>
@@ -90,7 +91,7 @@
     <input id="text" type="text" placeholder="메시지를 입력하세요…" autocomplete="off" enterkeyhint="send">
     <button id="send" type="button">전송</button>
   </div>
-  <div class="hint">@이름 으로 멘션 · 이름을 누르면 입력창에 들어가요 · 2초마다 자동 갱신</div>
+  <div class="hint"><button type="button" id="allBtn">@모두</button> 이름을 누르면 입력창에 들어가요 · 2초마다 자동 갱신</div>
 </footer>
 <script>
 (function () {
@@ -110,12 +111,17 @@
   var sender = localStorage.getItem("chat_sender") || "taegyeom";
   if (!SENDERS[sender]) sender = "taegyeom";
   var seen = {};
+  document.getElementById("allBtn").addEventListener("click", function () {
+    if (input.value && !/\s$/.test(input.value)) input.value += " ";
+    input.value += "@모두 ";
+    input.focus();
+  });
 
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
   function withMentions(s) {
-    return esc(s).replace(/@([가-힣A-Za-z0-9_]+)/g, '<span class="mention">@$1</span>');
+    return esc(s).replace(/@([가-힣A-Za-z0-9_]+|모두)/g, '<span class="mention">@$1</span>');
   }
   function fmtTime(ts) {
     if (!ts) return "";
