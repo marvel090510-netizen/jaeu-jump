@@ -42391,17 +42391,15 @@ extends CanvasLayer
   }
 
   /* ---------------------------------------------------------------- 훈수 받기 (플레이 화면) */
+  /* v5.16: 훈수 알림은 한 곳에서만 뜼다.
+     예전에는 (1) HUD 아래 왼쪽 노란 말풍선(#v485CoachBubble)과 (2) 우상단 카드 토스트가
+     같은 문구를 동시에 띄우고, 말풍선이 '👀 N명 관전 중' 배지와 정확히 같은 자리에 놓여
+     글씨가 뭉개졌다. 게임 화면을 가리지 않는 우상단 카드 하나만 남긴다. */
   function receiveBubble(m) {
-    let el = $('v485CoachBubble');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'v485CoachBubble';
-      (document.getElementById('gameHud') || document.body).appendChild(el);
-    }
-    el.innerHTML = '<b>' + esc(m.fromNick || '친구') + '</b><span>' + esc(m.text) + '</span>';
-    el.classList.add('show');
-    clearTimeout(receiveBubble._t);
-    receiveBubble._t = setTimeout(() => el.classList.remove('show'), 4200);
+    try { V.toast('💬 ' + (m.fromNick || '친구') + ' 훈수', 'chat', m.text, 2600); } catch (e) {}
+    /* 예전 말풍선이 이미 만들어진 페이지(캐시)라면 확실히 감춘다 */
+    const old = $('v485CoachBubble');
+    if (old) { old.classList.remove('show'); old.style.setProperty('display', 'none', 'important'); }
   }
   V.onPresence(function (m) {
     if (!m || m.t !== 'v43coach') return;
@@ -42410,7 +42408,6 @@ extends CanvasLayer
     if (m.from === my) return;
     if (V.isFriend && !V.isFriend(m.from)) return;
     receiveBubble(m);
-    try { V.toast('💬 ' + (m.fromNick || '친구') + ' 훈수', 'chat', m.text, 2600); } catch (e) {}
     beep(1240, 0.08, 0.09, 'square', 1600);
   });
 
