@@ -72,6 +72,8 @@
   .composer button:disabled { background: #9ca3af; cursor: default; }
   .hint { font-size: 11px; color: #9ca3af; margin-top: 8px; text-align: center; word-break: break-all; }
   .bubble .mention { font-weight: 700; background: #fef08a; color: #713f12; padding: 0 3px; border-radius: 4px; }
+  .msg .reads { font-size: 10px; color: #b0b4bb; margin: 3px 5px 0; letter-spacing: -0.2px; }
+  .msg .reads.some { color: #4b5563; }
   .msg .meta b { cursor: pointer; }
   .hint button { border: 1px solid #d1d5db; background: #f9fafb; border-radius: 999px; font-size: 11px; padding: 2px 8px; color: #374151; cursor: pointer; margin-right: 4px; }
 </style>
@@ -116,6 +118,11 @@
   var sender = localStorage.getItem("chat_sender") || "taegyeom";
   if (!SENDERS[sender]) sender = "taegyeom";
   var seen = {};
+  var reads = {};
+  var msgTs = {};
+  var msgSender = {};
+  var readEls = {};
+  var lastReadSent = 0;
   document.getElementById("allBtn").addEventListener("click", function () {
     if (input.value && !/\s$/.test(input.value)) input.value += " ";
     input.value += "@모두 ";
@@ -173,17 +180,64 @@
     var bubble = document.createElement("div");
     bubble.className = "bubble";
     bubble.innerHTML = withMentions(m.text || "");
+    var readEl = document.createElement("div");
+    readEl.className = "reads";
+    readEl.textContent = "안 읽음";
     wrap.appendChild(meta);
     wrap.appendChild(bubble);
+    wrap.appendChild(readEl);
     log.appendChild(wrap);
+    msgTs[key] = m.ts || 0;
+    msgSender[key] = m.sender;
+    readEls[key] = readEl;
+  }
+
+  function updateReads() {
+    var order = ["taegyeom", "muse", "maldomu", "friend", "gemini"];
+    Object.keys(readEls).forEach(function (k) {
+      var ts = msgTs[k] || 0;
+      var snd = msgSender[k];
+      var names = [];
+      order.forEach(function (p) {
+        if (p === snd) return;
+        var r = reads[p];
+        if (r && r.ts && ts && r.ts >= ts) names.push(SENDERS[p].name);
+      });
+      var el = readEls[k];
+      if (!el) return;
+      if (names.length) {
+        el.className = "reads some";
+        el.textContent = "읽음 " + names.join(" · ");
+      } else {
+        el.className = "reads";
+        el.textContent = "안 읽음";
+      }
+    });
+  }
+
+  function markRead(latest) {
+    if (!latest || latest <= lastReadSent) return;
+    lastReadSent = latest;
+    fetch(DB + "/reads/" + sender + ".json", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ts: latest, at: { ".sv": "timestamp" } })
+    }).catch(function () {});
   }
 
   function poll() {
-    fetch(DB + "/messages.json")
+    fetch(DB + "/messages.json", { cache: "no-store" })
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(function (data) {
         dot.className = "dot on";
         statusText.textContent = "연결됨";
+        fetch(DB + "/reads.json", { cache: "no-store" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (rd) {
+            reads = (rd && typeof rd === "object") ? rd : {};
+            updateReads();
+          })
+          .catch(function () {});
         if (!data) return;
         var keys = Object.keys(data);
         keys.sort(function (a, b) {
@@ -193,6 +247,9 @@
         });
         var stick = nearBottom();
         keys.forEach(function (k) { addMessage(k, data[k]); });
+        var latest = 0;
+        keys.forEach(function (k) { if ((data[k] && data[k].ts) > latest) latest = data[k].ts; });
+        markRead(latest);
         if (stick) log.scrollTop = log.scrollHeight;
       })
       .catch(function () {
