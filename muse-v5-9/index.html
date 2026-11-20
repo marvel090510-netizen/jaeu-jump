@@ -44184,7 +44184,7 @@ button, [role="button"]{touch-action:manipulation;}
   function layout() {
     var play = body.classList.contains('v47-play');
     var all = LEFT.concat(RIGHT, ALT, BOTTOM, ['v43QuickChat']);
-    if (!play) { all.forEach(function (id) { unplace($(id)); }); (layout.__strays || []).forEach(unplace); layoutIdle(); return; }
+    if (!play) { all.forEach(function (id) { if (id !== 'mpToasts') unplace($(id)); }); (layout.__strays || []).forEach(unplace); layoutIdle(); return; }
     var vw = innerWidth, vh = innerHeight;
     var card = $('v49Hud');
     var cr = card && shown(card) ? card.getBoundingClientRect() : { left: 10, bottom: 10, right: 10 };
