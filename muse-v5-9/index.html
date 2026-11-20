@@ -868,6 +868,13 @@ html body #titleScreen {
               this.ctx.resume();
             }
           } catch (e) {}
+          /* v5.9 SFX: 첫 제스처 때 mp3 9종 미리 로드 (첫 재생 지연 방지) */
+          try {
+            if (!this._mp3Pre) {
+              this._mp3Pre = true;
+              ['ice_slide', 'glass_break', 'jelly_bounce', 'spike_hit', 'boss_intro', 'boss_phase', 'boss_defeat', 'game_over', 'countdown'].forEach((n) => this._sfxEl(n));
+            }
+          } catch (e) {}
         }
         tone(freq, type, dur, vol = 0.1, endFreq = null) {
           if (!this.enabled) return;
@@ -907,6 +914,62 @@ html body #titleScreen {
         victory() {
           [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => setTimeout(() => this.tone(f, 'square', 0.2, 0.13), i * 85));
         }
+        /* v5.9 SFX: audio/sfx/*.mp3 (e8ca25e 정규화본) — 로드 실패 시 기존 beep 폴백.
+           게임 페이지는 muse-v5-9/이므로 ../audio/sfx/ 로 해결한다. */
+        _sfxUrl(name) { try { return new URL('../audio/sfx/' + name + '.mp3', document.baseURI).href; } catch (e) { return '../audio/sfx/' + name + '.mp3'; } }
+        _sfxEl(name) {
+          this._mp3 = this._mp3 || {};
+          if (this._mp3[name]) return this._mp3[name];
+          try {
+            const a = new Audio(this._sfxUrl(name));
+            a.preload = 'auto';
+            a.addEventListener('error', () => { this._mp3Fail = this._mp3Fail || {}; this._mp3Fail[name] = true; });
+            this._mp3[name] = a;
+            return a;
+          } catch (e) { return null; }
+        }
+        mp3(name, vol) {
+          if (!this.enabled) return false;
+          if (this._mp3Fail && this._mp3Fail[name]) return false;
+          const a = this._sfxEl(name);
+          if (!a) return false;
+          try {
+            a.volume = (vol == null ? 0.9 : vol);
+            a.currentTime = 0;
+            const pr = a.play();
+            if (pr && pr.catch) pr.catch(() => {});
+            return true;
+          } catch (e) { return false; }
+        }
+        mp3Loop(name, on, vol) {
+          if (!this.enabled) on = false;
+          try {
+            if (!on) {
+              if (this._iceEl) { try { this._iceEl.pause(); } catch (e) {} }
+              this._iceOn = false;
+              return;
+            }
+            if (this._mp3Fail && this._mp3Fail[name]) return;
+            if (this._iceOn && this._iceEl) return;
+            const a = this._sfxEl(name);
+            if (!a) return;
+            a.loop = true;
+            a.volume = (vol == null ? 0.45 : vol);
+            const pr = a.play();
+            if (pr && pr.catch) pr.catch(() => {});
+            this._iceEl = a;
+            this._iceOn = true;
+          } catch (e) {}
+        }
+        jelly() { if (!this.mp3('jelly_bounce')) { this.tone(420, 'sine', 0.10, 0.13, 980); setTimeout(() => this.tone(760, 'sine', 0.10, 0.10, 1320), 70); } }
+        glassBreak() { if (!this.mp3('glass_break')) { this.tone(760, 'sine', 0.16, 0.18, 220); this.tone(1800, 'triangle', 0.1, 0.12, 900); } }
+        spikeHit() { if (!this.mp3('spike_hit')) this.hurt(); }
+        bossIntro() { if (!this.mp3('boss_intro')) { this.tone(180, 'sawtooth', 0.35, 0.14, 60); this.danger(); } }
+        bossPhase() { if (!this.mp3('boss_phase')) { this.tone(140, 'sawtooth', 0.3, 0.15, 60); setTimeout(() => this.tone(200, 'sawtooth', 0.24, 0.14, 90), 180); } }
+        bossDefeat() { if (!this.mp3('boss_defeat')) { this.tone(1046, 'square', 0.2, 0.16, 1568); setTimeout(() => this.tone(1318, 'square', 0.24, 0.16, 1976), 160); } }
+        gameOver() { if (!this.mp3('game_over')) this.origin(); }
+        countdown() { if (!this.mp3('countdown')) this.tone(660, 'square', 0.1, 0.12); }
+        iceSliding(on) { this.mp3Loop('ice_slide', !!on); }
       }
       const sfx = new RetroSfx();
 
@@ -1886,7 +1949,7 @@ html body #titleScreen {
         player.invulnT = 1.0;
         game.shakeT = 0.32;
         game.shakeMag = 8;
-        sfx.hurt();
+        if (msg && msg.indexOf('가시') >= 0) sfx.spikeHit(); else sfx.hurt();
         setMood(Math.random() < 0.5 ? '아픔' : '분노', 2.2);
         addParticles(player.x + 14, player.y + 16, '#f43f5e', 22, 200);
         addText(player.x + 14, player.y - 14, msg, '#fda4af');
@@ -1952,7 +2015,7 @@ html body #titleScreen {
        *************************************************************************/
       function update(dt) {
         player.animT += dt;
-        if (!game.inPlay || game.paused || game.victory) return;
+        if (!game.inPlay || game.paused || game.victory) { try { sfx.iceSliding(false); } catch (e) {} return; }
 
         game.time += dt;
         if (game.shakeT > 0) game.shakeT = Math.max(0, game.shakeT - dt);
@@ -2388,6 +2451,8 @@ html body #titleScreen {
           if (ft.life <= 0) game.texts.splice(i, 1);
         }
 
+        /* v5.9 SFX: 얼음 발판 위에서 미끄러질 때만 ice_slide 루프 (멈추면·점프하면 정지) */
+        try { sfx.iceSliding(!!(player.onGround && player.plat && player.plat.type === 'ice' && Math.abs(player.vx) > 40)); } catch (e) {}
         if (window.JWG && JWG.tick) JWG.tick(dt);
         syncHud(curMeters);
       }
@@ -4971,7 +5036,7 @@ extends CanvasLayer
       if (!sfx) return;
       try {
         if (id === 'dessert') {
-          if (type === 'jelly') { sfx.tone(420, 'sine', 0.10, 0.13, 980); setTimeout(() => sfx.tone(760, 'sine', 0.10, 0.10, 1320), 70); }
+          if (type === 'jelly') { sfx.jelly(); }
           else if (type === 'syrup') sfx.tone(180, 'triangle', 0.14, 0.11, 90);
           else sfx.tone(520, 'square', 0.07, 0.09, 380);
         } else if (id === 'site') {
@@ -6051,6 +6116,8 @@ extends CanvasLayer
   function showSoloEnd(d) {
     const ov = $('soloEnd');
     if (!ov) { return; }
+    /* v5.9 SFX: 실패 결과창에서만 게임오버음 (클리어 결과창은 기존 victory 유지) */
+    if (!d.clear) { try { var _sx = window.__jwg && window.__jwg.sfx; if (_sx) _sx.gameOver(); } catch (e) {} }
     ov.classList.remove('hidden');
     $('soloEndTitle').textContent = soloEndTitle(d);
     $('soloEndSub').textContent = d.mode + ' · ' + d.map + ' · ' + Math.round(d.meters) + 'm · ' + fmt(d.time) + ' · 태초 ' + d.origin + '회';
@@ -13162,9 +13229,9 @@ extends CanvasLayer
     };
     const step = (txt, ms, f) => setTimeout(() => { if (done) return; lab.textContent = txt; try { f(); } catch (e) {} }, ms);
     [0, 120, 300, 520, 800, 1100].forEach((ms) => setTimeout(tryPause, ms));
-    step('3', 0, () => beep(560, 0.1, 0.13));
-    step('2', 720, () => beep(620, 0.1, 0.13));
-    step('1', 1440, () => beep(700, 0.1, 0.13));
+    step('3', 0, () => { try { var _sx = window.__jwg && window.__jwg.sfx; if (_sx) _sx.countdown(); else throw 0; } catch (e) { beep(560, 0.1, 0.13); } });
+    step('2', 720, () => { try { var _sx = window.__jwg && window.__jwg.sfx; if (_sx) _sx.countdown(); else throw 0; } catch (e) { beep(620, 0.1, 0.13); } });
+    step('1', 1440, () => { try { var _sx = window.__jwg && window.__jwg.sfx; if (_sx) _sx.countdown(); else throw 0; } catch (e) { beep(700, 0.1, 0.13); } });
     step('GO!', 2140, () => { beep(1046, 0.16, 0.15, 'square', 1568); onDone && onDone(); });
     setTimeout(finish, 2620);
     setTimeout(finish, 3600);   /* 안전장치: 어떤 경우에도 멈춘 채로 남지 않게 */
@@ -27002,6 +27069,8 @@ extends CanvasLayer
       baseY: anchor ? anchor.y - (raid ? 150 : 124) : -600,
       phase2: false, pat: 0, beam: null, weak: false, weakT: 0, dive: 0, flash: 0, breath: 0
     };
+    /* v5.9 SFX: 보스 등장 — mp3 실패 시 beep 폴백은 bossIntro() 내부 */
+    try { var _sx = window.__jwg && window.__jwg.sfx; if (_sx) _sx.bossIntro(); } catch (e) {}
   }
   G.spawnBoss = spawnBoss;
 
@@ -27021,7 +27090,7 @@ extends CanvasLayer
       b.dive += ((b.weak ? 46 : 0) - b.dive) * Math.min(1, dt * 4);
       b.y = b.baseY + Math.sin(b.t * 1.4) * 16 + b.dive;
       if (b.flash > 0) b.flash -= dt;
-      if (b.hp < b.max * 0.4) b.phase2 = true;
+      if (b.hp < b.max * 0.4 && !b.phase2) { b.phase2 = true; try { var _sx = window.__jwg && window.__jwg.sfx; if (_sx) _sx.bossPhase(); } catch (e) {} }
       /* 빔 예고 → 발사 */
       if (b.beam) {
         b.beam.t -= dt;
@@ -27106,7 +27175,7 @@ extends CanvasLayer
       V.parts(b.x + b.w / 2, b.y + b.h / 2, '#f472b6', 70, 340);
       V.parts(b.x + b.w / 2, b.y + b.h / 2, '#fde047', 40, 280);
       V.toast('🎉 보스 격파!', 'lucky', b.kind === 'raid' ? '레이드 성공!' : '수문장을 쓰러뜨렸습니다', 3000);
-      V.beep(1046, 0.2, 0.16, 'square', 1568);
+      try { var _sx = window.__jwg && window.__jwg.sfx; if (_sx) _sx.bossDefeat(); else throw 0; } catch (e) { try { V.beep(1046, 0.2, 0.16, 'square', 1568); } catch (e2) {} }
       /* v5.6 D5: 격파 승리는 호스트만 판정한다 — 승리자는 보스에 데미지를 준 살아있는 플레이어로 한정하고, 그 목록을 v44bossdown으로 전원에게 방송한다 */
       if (!multi() || (V.st() && V.st().isHost)) {
         let bossWins = null;
@@ -27391,7 +27460,7 @@ extends CanvasLayer
             V.parts(q.x + q.w / 2, q.y, '#bae6fd', 30, 240);
             V.text(q.x + q.w / 2, q.y - 22, '🧊 쩍!', '#bae6fd');
           } catch (e) {}
-          try { V.beep(760, 0.16, 0.18, 'sine', 220); V.beep(1800, 0.1, 0.12, 'triangle', 900); } catch (e) {}
+          try { var _sx = window.__jwg && window.__jwg.sfx; if (_sx) _sx.glassBreak(); else throw 0; } catch (e) { try { V.beep(760, 0.16, 0.18, 'sine', 220); V.beep(1800, 0.1, 0.12, 'triangle', 900); } catch (e2) {} }
         }
       }
     }
@@ -56609,7 +56678,7 @@ if (typeof module !== 'undefined' && module.exports) {
       intro: 2.6, cleared: false, weakN: 0
     };
     try { if (B.onIntro) B.onIntro(spec, id, kind); } catch (e) {}
-    beep(180, 0.35, 0.14, 'sawtooth', 60);
+    /* v5.9 SFX: 등장음은 spawnBoss에서 bossIntro()로 한 번만 (여기서 또 울리면 중복) */
     try { toast('👑 ' + spec.n + ' 등장!', 'danger', spec.t, 2800); } catch (e) {}
   }
   B.attach = attach;
@@ -56782,8 +56851,7 @@ if (typeof module !== 'undefined' && module.exports) {
         for (var i = 0; i < 18; i++) {
           parts(b.x + b.w / 2 + rnd(-60, 60), b.y + b.h / 2 + rnd(-50, 50), i % 2 ? b.spec.c[3] : b.spec.c[2], 3, 260);
         }
-        beep(1046, 0.2, 0.16, 'square', 1568);
-        setTimeout(function () { beep(1318, 0.24, 0.16, 'square', 1976); }, 160);
+        /* v5.9 SFX: 격파음은 엔진 격파 블록에서 bossDefeat()로 이미 1회 (여기서 또 울리면 중복) */
       }
       return;
     }
@@ -56793,8 +56861,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (!ai.p2 && b.hp <= b.max * 0.5) {
       ai.p2 = true; b.phase2 = true;
       toast('🔥 ' + specFor(b).n + ' 페이즈 2!', 'danger', '패턴이 빨라지고 강해집니다', 2400);
-      beep(140, 0.3, 0.15, 'sawtooth', 60);
-      setTimeout(function () { beep(200, 0.24, 0.14, 'sawtooth', 90); }, 180);
+      try { var _sx = window.__jwg && window.__jwg.sfx; if (_sx) _sx.bossPhase(); else throw 0; } catch (e) { beep(140, 0.3, 0.15, 'sawtooth', 60); setTimeout(function () { beep(200, 0.24, 0.14, 'sawtooth', 90); }, 180); }
       parts(b.x + b.w / 2, b.y + b.h / 2, specFor(b).c[3], 30, 300);
     }
     if (ai.act) actTick(b, dt);
