@@ -68,6 +68,8 @@
   }
   .composer button:disabled { background: #9ca3af; cursor: default; }
   .hint { font-size: 11px; color: #9ca3af; margin-top: 8px; text-align: center; word-break: break-all; }
+  .bubble .mention { font-weight: 700; background: #fef08a; color: #713f12; padding: 0 3px; border-radius: 4px; }
+  .msg .meta b { cursor: pointer; }
 </style>
 </head>
 <body>
@@ -88,7 +90,7 @@
     <input id="text" type="text" placeholder="메시지를 입력하세요…" autocomplete="off" enterkeyhint="send">
     <button id="send" type="button">전송</button>
   </div>
-  <div class="hint">저장 위치: muse-maldomu-chat Realtime Database · 2초마다 새로고침 없이 갱신</div>
+  <div class="hint">@이름 으로 멘션 · 이름을 누르면 입력창에 들어가요 · 2초마다 자동 갱신</div>
 </footer>
 <script>
 (function () {
@@ -111,6 +113,9 @@
 
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function withMentions(s) {
+    return esc(s).replace(/@([가-힣A-Za-z0-9_]+)/g, '<span class="mention">@$1</span>');
   }
   function fmtTime(ts) {
     if (!ts) return "";
@@ -149,9 +154,14 @@
     var meta = document.createElement("div");
     meta.className = "meta";
     meta.innerHTML = "<b>" + esc(s.name) + "</b><span>" + esc(fmtTime(m.ts)) + "</span>";
+    meta.querySelector("b").addEventListener("click", function () {
+      if (input.value && !/\s$/.test(input.value)) input.value += " ";
+      input.value += "@" + s.name + " ";
+      input.focus();
+    });
     var bubble = document.createElement("div");
     bubble.className = "bubble";
-    bubble.textContent = m.text || "";
+    bubble.innerHTML = withMentions(m.text || "");
     wrap.appendChild(meta);
     wrap.appendChild(bubble);
     log.appendChild(wrap);
