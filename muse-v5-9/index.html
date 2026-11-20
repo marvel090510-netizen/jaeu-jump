@@ -2486,6 +2486,15 @@ html body #titleScreen {
           6: ['#1e293b', '#090d16', '#38bdf8']
         };
         const [rMid, rDark, rTop] = rockCols[p.zoneId] || rockCols[1];
+        /* v5.12 H안: 종류 색은 맵(존) 팔레트 파생 — 폴백 렌더에서도 고정색을 쓰지 않는다 */
+        let kc = null, kHi = null, kLo = null;
+        try {
+          const H = window.JW51PLAT && JW51PLAT.H;
+          if (H) {
+            kc = H.kind(p.type, { b: rMid, d: rDark, t: rTop, a: rTop });
+            if (kc) { kHi = H.mix(kc, '#ffffff', 0.40); kLo = H.mix(kc, '#05070c', 0.30); }
+          }
+        } catch (e) {}
 
         // Dark 2px Pixel Outline
         rect(ctx, px - 2, py - 2, w + 4, h + 4, '#080510');
@@ -2517,22 +2526,22 @@ html body #titleScreen {
           }
           if (p.crackT > 0) rect(ctx, px + 2, py + 2, w - 4, h - 4, 'rgba(255,255,255,.35)');
         } else if (p.type === 'ice') {
-          rect(ctx, px, py, w, h, '#0284c7');
-          rect(ctx, px + 2, py + 2, w - 4, h - 4, '#38bdf8');
-          rect(ctx, px, py, w, 5, '#e0f2fe');
+          rect(ctx, px, py, w, h, kc ? kLo : rDark);
+          rect(ctx, px + 2, py + 2, w - 4, h - 4, kc ? kc : rMid);
+          rect(ctx, px, py, w, 5, kc ? kHi : rTop);
           for (let ix = 6; ix < w - 6; ix += 10) {
-            rect(ctx, px + ix, py + h, 3, 5, '#bae6fd');
+            rect(ctx, px + ix, py + h, 3, 5, kc ? kHi : rTop);
           }
         } else if (p.type === 'crumble') {
-          rect(ctx, px, py, w, h, '#78350f');
-          rect(ctx, px, py, w, 5, '#f59e0b');
+          rect(ctx, px, py, w, h, kc || rDark);
+          rect(ctx, px, py, w, 5, kc ? kHi : rTop);
           rect(ctx, px + (w >> 2), py + 2, 2, h - 4, '#080510');
           rect(ctx, px + ((w * 3) >> 2), py + 3, 2, h - 5, '#080510');
         } else if (p.type === 'moving') {
-          rect(ctx, px, py, w, h, '#1e1b4b');
-          rect(ctx, px, py, w, 5, '#38bdf8');
+          rect(ctx, px, py, w, h, kc ? kLo : rDark);
+          rect(ctx, px, py, w, 5, kc ? kHi : rTop);
           const fh = 4 + (((game.time * 15) | 0) % 3) * 2;
-          rect(ctx, px + (w >> 1) - 5, py + h, 10, fh, '#38bdf8');
+          rect(ctx, px + (w >> 1) - 5, py + h, 10, fh, kc ? kHi : rTop);
         } else if (p.type === 'summit') {
           rect(ctx, px, py, w, h, '#b45309');
           rect(ctx, px, py, w, 7, '#fef08a');
@@ -2560,8 +2569,8 @@ html body #titleScreen {
         if (p.type === 'spike') {
           const sx = px + p.spikeOffsetX;
           for (let k = 0; k < p.spikeW; k += 8) {
-            rect(ctx, sx + k + 1, py - 8, 6, 8, '#94a3b8');
-            rect(ctx, sx + k + 2, py - 12, 4, 4, '#f43f5e');
+            rect(ctx, sx + k + 1, py - 8, 6, 8, kc ? kHi : rTop);
+            rect(ctx, sx + k + 2, py - 12, 4, 4, kc ? H.mix(kc, '#ffffff', 0.62) : rMid);
           }
         }
 
@@ -44884,6 +44893,15 @@ button, [role="button"]{touch-action:manipulation;}
   function paintPlat(ctx, p, x, y) {
     const w = Math.max(6, p.w | 0), h = Math.max(6, p.h | 0);
     const c = ROCK[p.zoneId] || ROCK[1];
+    /* v5.12 H안: 관전·기본 맵 발판도 같은 종류 색을 쓴다 (존 색을 팔레트로 파생, 구조·판정 불변) */
+    let kc = null, kHi = null, kLo = null;
+    try {
+      const H = window.JW51PLAT && window.JW51PLAT.H;
+      if (H) {
+        kc = H.kind(p.type === 'normal' && p._glass ? 'glass' : (p.art === 'syrup' ? 'syrup' : p.type), { b: c[0], d: c[1], t: c[2], a: c[2] });
+        if (kc) { kHi = H.mix(kc, '#ffffff', 0.34); kLo = H.mix(kc, '#05070c', 0.24); }
+      }
+    } catch (e) {}
     if (p.crumbled) {
       for (let dx = 0; dx < w; dx += 10) { ctx.fillStyle = '#fbbf24'; ctx.fillRect(x + dx, y, 5, 2); }
       return;
@@ -44892,15 +44910,15 @@ button, [role="button"]{touch-action:manipulation;}
     ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
     ctx.fillRect(x + 6, y + h + 2, Math.max(0, w - 12), 3);
     if (p.type === 'ice') {
-      ctx.fillStyle = 'rgba(186,230,253,.92)'; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = kc ? kLo : c[1]; ctx.fillRect(x, y, w, h);
       ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(x + 3, y + 3, Math.max(6, w - 6), 2);
-      ctx.fillStyle = 'rgba(224,242,254,.5)'; ctx.fillRect(x + 6, y + 7, Math.max(6, w - 14), 1);
+      ctx.fillStyle = kc ? kHi : c[2]; ctx.fillRect(x + 6, y + 7, Math.max(6, w - 14), 1);
       /* v5.11: 고드름 */
-      ctx.fillStyle = '#bae6fd';
+      ctx.fillStyle = kc ? kHi : c[2];
       for (let ic2 = 10; ic2 < w - 8; ic2 += 18) { ctx.fillRect(x + ic2, y + h - 1, 3, 4); ctx.fillRect(x + ic2 + 1, y + h + 2, 1, 2); }
     } else if (p.type === 'jelly') {
-      ctx.fillStyle = '#f472b6'; ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = '#fbcfe8'; ctx.fillRect(x + 2, y + 2, w - 4, Math.max(3, h - 6));
+      ctx.fillStyle = kc || c[2]; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = kc ? kHi : c[0]; ctx.fillRect(x + 2, y + 2, w - 4, Math.max(3, h - 6));
       /* v5.11: 스프링 */
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(x + 10, y - 6, 3, 6); ctx.fillRect(x + w - 13, y - 6, 3, 6);
@@ -44912,31 +44930,32 @@ button, [role="button"]{touch-action:manipulation;}
       ctx.fillText('★', x + (w >> 1), y + (h >> 1) + 4);
     } else if (p.type === 'syrup' || p.art === 'syrup') {
       /* v5.11: 시럽 */
-      ctx.fillStyle = '#5b2a12'; ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = '#8a4a22'; ctx.fillRect(x, y, w, 6);
-      ctx.fillStyle = '#c98a52'; ctx.fillRect(x + 3, y + 2, w - 6, 3);
-      for (let sy3 = 12; sy3 < w - 10; sy3 += 22) { ctx.fillStyle = '#8a4a22'; ctx.fillRect(x + sy3, y + h, 4, 4); ctx.fillStyle = '#5b2a12'; ctx.fillRect(x + sy3 + 1, y + h + 3, 2, 2); }
+      ctx.fillStyle = kc || c[1]; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = kc ? kHi : c[0]; ctx.fillRect(x, y, w, 6);
+      const syGloss = kc ? H.mix(kc, '#ffffff', 0.55) : c[2];
+      ctx.fillStyle = syGloss; ctx.fillRect(x + 3, y + 2, w - 6, 3);
+      for (let sy3 = 12; sy3 < w - 10; sy3 += 22) { ctx.fillStyle = kc ? kLo : c[1]; ctx.fillRect(x + sy3, y + h, 4, 4); ctx.fillStyle = kc ? H.mix(kc, '#05070c', 0.45) : c[1]; ctx.fillRect(x + sy3 + 1, y + h + 3, 2, 2); }
     } else if (p.type === 'rotator') {
       /* v5.11: 회전 */
-      ctx.fillStyle = c[0]; ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = c[1]; ctx.fillRect(x, y + h - 4, w, 4);
-      ctx.fillStyle = c[2]; ctx.fillRect(x, y, w, 3);
+      ctx.fillStyle = kc || c[0]; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = kc ? kLo : c[1]; ctx.fillRect(x, y + h - 4, w, 4);
+      ctx.fillStyle = kc ? kHi : c[2]; ctx.fillRect(x, y, w, 3);
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(x + (w >> 1), y + (h >> 1), 5, 0, 6.2832); ctx.stroke();
       ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.moveTo(x + (w >> 1), y + (h >> 1) - 9); ctx.lineTo(x + (w >> 1) + 4, y + (h >> 1) - 4); ctx.lineTo(x + (w >> 1) - 4, y + (h >> 1) - 4); ctx.closePath(); ctx.fill();
     } else if (p.type === 'glass') {
       /* v5.11: 유리 */
-      ctx.fillStyle = c[0]; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = kc || c[0]; ctx.fillRect(x, y, w, h);
       ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(x + 3, y + 3, Math.max(6, w - 6), 2);
       ctx.fillStyle = 'rgba(255,255,255,.95)';
       ctx.fillRect(x + (w >> 1) - 2, y + 4, 4, 4);
       ctx.fillRect(x + (w >> 1) - 1, y + 2, 2, 8);
     } else if (p.type === 'abyss_floor') {
       /* v5.11: 심연 바닥 */
-      ctx.fillStyle = '#1e1b4b'; ctx.fillRect(x, y, w, h);
-      ctx.fillStyle = '#7c3aed'; ctx.fillRect(x, y, w, 5);
-      for (let ab3 = 6; ab3 < w - 6; ab3 += 14) { ctx.fillStyle = '#a78bfa'; ctx.fillRect(x + ab3, y + 2, 8, 2); }
+      ctx.fillStyle = kc || c[1]; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = kc ? kHi : c[2]; ctx.fillRect(x, y, w, 5);
+      for (let ab3 = 6; ab3 < w - 6; ab3 += 14) { ctx.fillStyle = kc ? H.mix(kc, '#ffffff', 0.4) : c[2]; ctx.fillRect(x + ab3, y + 2, 8, 2); }
     } else {
       ctx.fillStyle = c[0]; ctx.fillRect(x, y, w, h);
       ctx.fillStyle = c[1]; ctx.fillRect(x, y + h - 4, w, 4);
@@ -44946,13 +44965,13 @@ button, [role="button"]{touch-action:manipulation;}
       for (let k = 8; k < w - 8; k += 22) ctx.fillRect(x + k, y + 6, 6, 2);
     }
     if (p.type === 'spike') {
-      ctx.fillStyle = '#9aa5b1';
+      ctx.fillStyle = kc ? kHi : c[2];
       for (let k = 2; k < w - 4; k += 12) {
         ctx.beginPath(); ctx.moveTo(x + k, y); ctx.lineTo(x + k + 5, y - 8); ctx.lineTo(x + k + 10, y); ctx.closePath(); ctx.fill();
       }
     }
     if (p.type === 'moving') {
-      ctx.fillStyle = 'rgba(196,181,253,.95)';
+      ctx.fillStyle = kc ? kHi : c[2];
       const t = (Date.now() / 260) % 2;
       for (let k = 6; k < w - 8; k += 18) {
         const a = (k + Math.floor(t) * 8) % (w - 8);
@@ -65371,6 +65390,48 @@ if (typeof module !== 'undefined' && module.exports) {
     c.fillRect(x | 0, y | 0, Math.max(0, Math.ceil(w)), Math.max(0, Math.ceil(h)));
   }
 
+  /* ---------- v5.12 H안 : 발판 종류 색 = 맵 팔레트 파생 ----------
+     축은 둘 — 밝기, 따뜻함/차가움. 색은 '종류 + 맵 팔레트'로만 정하고 seed·시간과
+     무관하다(paint() 캐시 안전). 모양(실루엣·무늬)은 건드리지 않고 색만 교체한다. */
+  function chex(c) {
+    var o = (typeof c === 'string') ? hx(c) : { r: c.r, g: c.g, b: c.b };
+    var s = '#';
+    [o.r, o.g, o.b].forEach(function (v) {
+      var n = Math.max(0, Math.min(255, Math.round(v)));
+      s += (n < 16 ? '0' : '') + n.toString(16);
+    });
+    return s;
+  }
+  function clue(c, k) { c = chex(c); return chex(k > 0 ? mix(c, '#ffffff', k) : mix(c, '#05070c', -k)); }
+  function csat(c, k) {
+    var o = (typeof c === 'string') ? hx(c) : c, m = (o.r + o.g + o.b) / 3;
+    return chex({ r: m + (o.r - m) * (1 + k), g: m + (o.g - m) * (1 + k), b: m + (o.b - m) * (1 + k) });
+  }
+  function clum(c) {
+    var o = (typeof c === 'string') ? hx(c) : c;
+    return (0.299 * o.r + 0.587 * o.g + 0.114 * o.b) / 255;
+  }
+  /* 어두운 맵에서 발판이 배경에 묻히지 않게 밝기 하한을 둔다 */
+  function cfloor(c, min) {
+    var l = clum(c);
+    if (l >= min) return c;
+    return clue(c, (min - l) / (1 - l));
+  }
+  function kindColor(type, p) {
+    var a = p.a, t = p.t, d = p.d, c = null, min = 0.32;
+    if (type === 'ice') c = clue(mix(csat(t, 0.10), '#8fc2ff', 0.30), 0.50);
+    else if (type === 'moving') c = clue(csat(a, 0.60), 0.05);
+    else if (type === 'crumble') c = clue(mix(csat(a, 0.20), '#ffab6b', 0.30), -0.42);
+    else if (type === 'jelly') c = clue(mix(csat(mix(t, '#ffd6e6', 0.60), 0.25), '#ffab6b', 0.22), 0.33);
+    else if (type === 'spike') c = clue(mix(a, '#e05a4a', 0.60), -0.34);
+    else if (type === 'glass') c = clue(mix(t, '#8fc2ff', 0.25), 0.62);
+    else if (type === 'rotator') c = clue(csat(a, 0.45), 0.20);
+    else if (type === 'syrup') c = clue(mix(a, '#a85a1e', 0.70), -0.30);
+    else if (type === 'abyss_floor') { c = clue(mix(csat(d, 0.30), '#8fc2ff', 0.35), -0.10); min = 0.28; }
+    if (!c) return null;   /* normal·gold·summit : 지금 색 그대로 (금빛은 새로 만들지 않는다) */
+    return cfloor(c, min);
+  }
+
   /* ---------------------------------------------------------------- 발판 한 장 */
   var HANG = 2;                 /* IMG_1076처럼 아래 두께는 2px만 */
 
@@ -65386,6 +65447,10 @@ if (typeof module !== 'undefined' && module.exports) {
     var body = mix(p.b, '#dfe7f5', 0.34);        /* 프로스트 유리 몸통 */
     var top = p.t;                               /* 윗면 포인트 라인 */
     var bot = mix(p.d, '#05070c', 0.50);
+    /* v5.12 H안: 종류 색 레이어 (맵 팔레트 파생 · seed 무관) */
+    var kc = kindColor(type, p);
+    var kHi = kc ? mix(kc, '#ffffff', 0.45) : null;
+    var kLo = kc ? mix(kc, '#05070c', 0.30) : null;
 
     /* 1) 2px 픽셀 외곽선 (아래 2px 두께 포함) */
     R(c, 0, 0, w, hh + HANG, dark);
@@ -65400,19 +65465,25 @@ if (typeof module !== 'undefined' && module.exports) {
     c.fillStyle = g;
     c.fillRect(2, 2, w - 4, hh - 2);
     c.restore();
-    /* 2b) 맵 색기만 아주 은은하게 (톤온톤) */
-    c.save(); c.globalAlpha = 0.28;
-    c.fillStyle = rgb(p.b);
+    /* 2b) 맵 색기 위에 종류 색을 '교체'로 얹는다 (덧칠 아님) — 보통은 예전처럼 톤온톤 */
+    c.save(); c.globalAlpha = kc ? 0.78 : 0.28;
+    c.fillStyle = rgb(kc ? mix(kc, p.b, 0.30) : p.b);
     c.fillRect(2, 2, w - 4, hh - 2);
     c.restore();
+    if (kc) {
+      c.save(); c.globalAlpha = 0.12;
+      c.fillStyle = rgb(mix(kc, '#ffffff', 0.55));
+      c.fillRect(2, 2, w - 4, hh - 2);
+      c.restore();
+    }
 
     /* 3) 안쪽 위 1px 밝은 선 (유리 반사 — 노이즈 없음) */
     c.save(); c.globalAlpha = 0.26; R(c, 3, 5, w - 6, 1, '#ffffff'); c.restore();
 
-    /* 4) 윗면 포인트 라인 2px + 1px 하이라이트 */
-    R(c, 2, 2, w - 4, 2, mix(top, '#ffffff', 0.12));
+    /* 4) 윗면 포인트 라인 2px + 1px 하이라이트 (색은 종류 파생색) */
+    R(c, 2, 2, w - 4, 2, kc ? mix(kc, '#ffffff', 0.30) : mix(top, '#ffffff', 0.12));
     c.save(); c.globalAlpha = 0.55; R(c, 3, 2, w - 6, 1, '#ffffff'); c.restore();
-    c.save(); c.globalAlpha = 0.20; R(c, 2, 4, w - 4, 1, mix(top, '#000000', 0.4)); c.restore();
+    c.save(); c.globalAlpha = 0.20; R(c, 2, 4, w - 4, 1, mix(kc || top, '#000000', 0.4)); c.restore();
 
     /* 5) 아랫면 두께 */
     R(c, 2, hh - 1, w - 4, HANG + 1, bot);
@@ -65449,36 +65520,39 @@ if (typeof module !== 'undefined' && module.exports) {
     /* 7) 종류별 표시 — 한눈에 구분되게 (실루엣·두께는 그대로, 판정 불변).
        v5.11: '최소 표시'에서 '확실히 보이는 표시'로 강화. 가시는 맵별 테마 그대로 두지 않는다. */
     if (type === 'moving') {
-      /* 움직이는 발판: 좌우 화살표 + 점선 레일 (맵 보조색) */
+      /* 움직이는 발판: 좌우 화살표 + 점선 레일 (종류 파생색) */
       c.save(); c.globalAlpha = 0.95;
-      var my = (hh >> 1);
-      R(c, 6, my - 1, 2, 2, p.a); R(c, 8, my - 2, 2, 4, p.a); R(c, 10, my - 3, 2, 6, p.a);
-      R(c, w - 12, my - 3, 2, 6, p.a); R(c, w - 10, my - 2, 2, 4, p.a); R(c, w - 8, my - 1, 2, 2, p.a);
-      if (w > 64) { for (var mv = 16; mv < w - 18; mv += 12) R(c, mv, my - 1, 5, 2, p.a); }
+      var my = (hh >> 1), mk = kHi || p.a;
+      R(c, 6, my - 1, 2, 2, mk); R(c, 8, my - 2, 2, 4, mk); R(c, 10, my - 3, 2, 6, mk);
+      R(c, w - 12, my - 3, 2, 6, mk); R(c, w - 10, my - 2, 2, 4, mk); R(c, w - 8, my - 1, 2, 2, mk);
+      if (w > 64) { for (var mv = 16; mv < w - 18; mv += 12) R(c, mv, my - 1, 5, 2, mk); }
       c.restore();
     } else if (type === 'crumble') {
       /* 부서지는 발판: 굵은 금 + 부서진 모서리 (공사장=금 간 콘크리트) */
       c.save();
       c.globalAlpha = 0.85;
-      c.strokeStyle = rgb(mix(dark, '#000000', 0.1)); c.lineWidth = 1;
+      var ckCol = mix(kc ? mix(kc, '#05070c', 0.45) : dark, '#000000', 0.10);
+      c.strokeStyle = rgb(ckCol); c.lineWidth = 1;
       for (var ck = 8; ck < w - 8; ck += 16) {
         c.beginPath(); c.moveTo(ck, 5); c.lineTo(ck + 4, hh - 2); c.stroke();
         c.beginPath(); c.moveTo(ck + 8, 5); c.lineTo(ck + 5, hh - 3); c.stroke();
       }
       c.globalAlpha = 0.9;
-      R(c, w - 8, 2, 6, 3, mix(dark, '#000000', 0.3));
-      R(c, 2, hh - 3, 4, 2, mix(dark, '#000000', 0.3));
+      R(c, w - 8, 2, 6, 3, mix(ckCol, '#000000', 0.3));
+      R(c, 2, hh - 3, 4, 2, mix(ckCol, '#000000', 0.3));
       c.restore();
     } else if (type === 'ice') {
       /* 미끄러지는 발판: 얼음 결정 — 밝은 윗면 + 고드름 + 반짝임 */
       c.save();
       c.globalAlpha = 0.9;
-      R(c, 2, 2, w - 4, 2, '#e0f2fe');
+      var iceHi = mix(kc || top, '#ffffff', 0.60);
+      var iceMid = mix(kc || top, '#ffffff', 0.30);
+      R(c, 2, 2, w - 4, 2, iceHi);
       R(c, 3, 4, w - 6, 1, 'rgba(255,255,255,.8)');
       c.globalAlpha = 0.85;
       for (var ic = 10; ic < w - 8; ic += 18) {
-        R(c, ic, hh - 1, 3, 4, '#bae6fd');
-        R(c, ic + 1, hh + 2, 1, 2, '#e0f2fe');
+        R(c, ic, hh - 1, 3, 4, iceMid);
+        R(c, ic + 1, hh + 2, 1, 2, iceHi);
       }
       c.globalAlpha = 0.95;
       R(c, (w >> 1) - 1, 5, 2, 2, '#ffffff');
@@ -65495,12 +65569,13 @@ if (typeof module !== 'undefined' && module.exports) {
       c.restore();
     } else if (type === 'spike') {
       var sp = SPIKE[id] || { s: 'bar', b: mix(top, '#000000', 0.25), t: '#eef3fa' };
-      drawSpike(c, sp.s, sp.b, sp.t, w);
+      /* 모양(s)은 맵 테마 그대로, 색만 종류 파생색으로 */
+      drawSpike(c, sp.s, mix(kc || top, '#ffffff', 0.10), mix(kc || top, '#ffffff', 0.62), w);
     } else if (type === 'jelly') {
       /* 점프 패드: 스프링 + 밝은 패드 (dessert=분홍 젤리) */
       c.save(); c.globalAlpha = 0.95;
-      R(c, 5, 6, w - 10, 3, p.a);
-      R(c, 8, 10, w - 16, 1, top);
+      R(c, 5, 6, w - 10, 3, kHi || p.a);
+      R(c, 8, 10, w - 16, 1, kc ? mix(kc, '#ffffff', 0.55) : top);
       R(c, 10, -6, 3, 6, '#ffffff'); R(c, w - 13, -6, 3, 6, '#ffffff');
       R(c, 10, -7, 3, 2, '#ffffff'); R(c, w - 13, -7, 3, 2, '#ffffff');
       c.globalAlpha = 0.75;
@@ -65510,11 +65585,11 @@ if (typeof module !== 'undefined' && module.exports) {
       /* 시럽: 끈적한 방울 — 호박색 방울 + 광택 (디저트 시럽) */
       c.save();
       c.globalAlpha = 0.95;
-      R(c, 2, 2, w - 4, 2, '#c98a52');
-      R(c, 3, 4, w - 6, 1, '#e8b07a');
+      R(c, 2, 2, w - 4, 2, mix(kc || top, '#ffffff', 0.28));
+      R(c, 3, 4, w - 6, 1, mix(kc || top, '#ffffff', 0.50));
       for (var sy = 12; sy < w - 10; sy += 22) {
-        R(c, sy, hh - 1, 4, 4, '#8a4a22');
-        R(c, sy + 1, hh + 2, 2, 2, '#5b2a12');
+        R(c, sy, hh - 1, 4, 4, mix(kc || top, '#000000', 0.25));
+        R(c, sy + 1, hh + 2, 2, 2, mix(kc || top, '#000000', 0.45));
       }
       c.restore();
     } else if (type === 'summit') {
@@ -65529,19 +65604,20 @@ if (typeof module !== 'undefined' && module.exports) {
     } else if (type === 'rotator') {
       /* 회전: 원형 화살표 */
       c.save();
-      c.strokeStyle = rgb(mix(top, '#ffffff', 0.3)); c.lineWidth = 2;
+      var rk = mix(kc || top, '#ffffff', kc ? 0.45 : 0.30);
+      c.strokeStyle = rgb(rk); c.lineWidth = 2;
       c.beginPath(); c.arc(w / 2, hh / 2, 4, 0, 6.2832); c.stroke();
-      c.fillStyle = rgb(mix(top, '#ffffff', 0.3));
+      c.fillStyle = rgb(rk);
       c.beginPath(); c.moveTo(w / 2, hh / 2 - 8); c.lineTo(w / 2 + 3, hh / 2 - 4); c.lineTo(w / 2 - 3, hh / 2 - 4); c.closePath(); c.fill();
       c.restore();
     } else if (type === 'abyss_floor') {
       /* 심연 바닥: 물결 + 보라 빛 */
       c.save(); c.globalAlpha = 0.9;
       for (var ab = 4; ab < w - 4; ab += 12) {
-        R(c, ab, 3, 7, 1, '#a78bfa');
-        R(c, ab + 7, 4, 3, 1, '#7c3aed');
+        R(c, ab, 3, 7, 1, mix(kc || p.d, '#ffffff', 0.45));
+        R(c, ab + 7, 4, 3, 1, kc || p.d);
       }
-      R(c, 2, hh - 2, w - 4, 2, '#4c1d95');
+      R(c, 2, hh - 2, w - 4, 2, mix(kc || p.d, '#000000', 0.35));
       c.restore();
     }
 
@@ -65588,21 +65664,28 @@ if (typeof module !== 'undefined' && module.exports) {
   function paintV20(ctx, p, px, py) {
     var w = p.w | 0, h = p.h | 0;
     var z = V20ROCK[p.zoneId] || V20ROCK[1];
+    /* v5.12 H안: v2.0 맵도 존 색을 팔레트로 보고 종류 색을 파생 (모양·판정 불변) */
+    var kind = p.type || 'normal';
+    if (kind === 'normal' && p._glass) kind = 'glass';
+    if (p.art === 'syrup') kind = 'syrup';
+    var kc = kindColor(kind, { b: z[0], d: z[1], t: z[2], a: z[2] });
+    var kT = kc ? mix(kc, '#ffffff', 0.28) : null;
+    var kD = kc ? mix(kc, '#05070c', 0.35) : null;
     R(ctx, px - 2, py - 2, w + 4, h + 4, '#080510');
     R(ctx, px + 6, py + h + 2, w - 12, 3, '#080510');
-    if (p.type === 'ice') {
-      R(ctx, px, py, w, h, '#0284c7'); R(ctx, px + 2, py + 2, w - 4, h - 4, '#38bdf8');
-      R(ctx, px, py, w, 5, '#e0f2fe');
-      for (var ix = 6; ix < w - 6; ix += 10) R(ctx, px + ix, py + h, 3, 5, '#bae6fd');
-    } else if (p.type === 'crumble') {
-      R(ctx, px, py, w, h, '#78350f'); R(ctx, px, py, w, 5, '#f59e0b');
+    if (kind === 'ice') {
+      R(ctx, px, py, w, h, kc || z[0]); R(ctx, px + 2, py + 2, w - 4, h - 4, kT || mix(z[2], '#ffffff', 0.45));
+      R(ctx, px, py, w, 5, mix(kc || z[2], '#ffffff', 0.62));
+      for (var ix = 6; ix < w - 6; ix += 10) R(ctx, px + ix, py + h, 3, 5, mix(kc || z[2], '#ffffff', 0.36));
+    } else if (kind === 'crumble') {
+      R(ctx, px, py, w, h, kc || mix(z[1], '#ffab6b', 0.25)); R(ctx, px, py, w, 5, kT || mix(z[2], '#ffffff', 0.15));
       R(ctx, px + (w >> 2), py + 2, 2, h - 4, '#080510');
       R(ctx, px + ((w * 3) >> 2), py + 3, 2, h - 5, '#080510');
-    } else if (p.type === 'moving') {
-      R(ctx, px, py, w, h, '#1e1b4b'); R(ctx, px, py, w, 5, '#38bdf8');
+    } else if (kind === 'moving') {
+      R(ctx, px, py, w, h, kc ? mix(kc, '#05070c', 0.45) : z[1]); R(ctx, px, py, w, 5, kT || mix(z[2], '#ffffff', 0.45));
       var fh = 4 + ((Math.floor(Date.now() / 150) % 3) * 2);
-      R(ctx, px + (w >> 1) - 5, py + h, 10, fh, '#38bdf8');
-    } else if (p.type === 'summit') {
+      R(ctx, px + (w >> 1) - 5, py + h, 10, fh, kT || mix(z[2], '#ffffff', 0.45));
+    } else if (kind === 'summit') {
       R(ctx, px, py, w, h, '#b45309'); R(ctx, px, py, w, 7, '#fef08a');
       R(ctx, px + 24, py - 44, 10, 44, '#fde047');
       R(ctx, px + w - 34, py - 44, 10, 44, '#fde047');
@@ -65611,37 +65694,37 @@ if (typeof module !== 'undefined' && module.exports) {
       ctx.textAlign = 'center';
       ctx.fillStyle = '#fef08a';
       ctx.fillText('★ 별빛 최종 정상 (88F) ★', px + w / 2, py - 62);
-    } else if (p.type === 'jelly') {
+    } else if (kind === 'jelly') {
       /* v5.11: 점프 패드 — 분홍 패드 + 스프링 */
-      R(ctx, px, py, w, h, '#f472b6'); R(ctx, px + 2, py + 2, w - 4, h - 6, '#fbcfe8');
-      R(ctx, px, py, w, 5, '#ffe3f0');
+      R(ctx, px, py, w, h, kc || mix(z[2], '#ffffff', 0.20)); R(ctx, px + 2, py + 2, w - 4, h - 6, kT || z[0]);
+      R(ctx, px, py, w, 5, mix(kc || z[2], '#ffffff', 0.62));
       R(ctx, px + 10, py - 6, 3, 6, '#ffffff'); R(ctx, px + w - 13, py - 6, 3, 6, '#ffffff');
-    } else if (p.type === 'syrup' || p.art === 'syrup') {
+    } else if (kind === 'syrup') {
       /* v5.11: 시럽 — 호박색 + 방울 */
-      R(ctx, px, py, w, h, '#5b2a12'); R(ctx, px, py, w, 6, '#8a4a22');
-      R(ctx, px + 3, py + 2, w - 6, 3, '#c98a52');
-      for (var sy2 = 12; sy2 < w - 10; sy2 += 22) { R(ctx, px + sy2, py + h, 4, 4, '#8a4a22'); R(ctx, px + sy2 + 1, py + h + 3, 2, 2, '#5b2a12'); }
-    } else if (p.type === 'rotator') {
+      R(ctx, px, py, w, h, kc || z[1]); R(ctx, px, py, w, 6, kT || mix(z[2], '#000000', 0.45));
+      R(ctx, px + 3, py + 2, w - 6, 3, mix(kc || z[2], '#ffffff', 0.45));
+      for (var sy2 = 12; sy2 < w - 10; sy2 += 22) { R(ctx, px + sy2, py + h, 4, 4, kD || mix(kc || z[2], '#000000', 0.25)); R(ctx, px + sy2 + 1, py + h + 3, 2, 2, mix(kc || z[1], '#05070c', 0.55)); }
+    } else if (kind === 'rotator') {
       /* v5.11: 회전 — 원형 화살표 */
-      R(ctx, px, py, w, h, z[0]);
-      R(ctx, px + (w >> 1), py + 4, (w >> 1) - 2, h - 6, z[1]);
-      R(ctx, px, py, w, 6, z[2]);
+      R(ctx, px, py, w, h, kc ? mix(kc, '#05070c', 0.30) : z[0]);
+      R(ctx, px + (w >> 1), py + 4, (w >> 1) - 2, h - 6, kc ? mix(kc, '#05070c', 0.12) : z[1]);
+      R(ctx, px, py, w, 6, kT || z[2]);
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(px + (w >> 1), py + (h >> 1), 5, 0, 6.2832); ctx.stroke();
       ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.moveTo(px + (w >> 1), py + (h >> 1) - 9); ctx.lineTo(px + (w >> 1) + 4, py + (h >> 1) - 4); ctx.lineTo(px + (w >> 1) - 4, py + (h >> 1) - 4); ctx.closePath(); ctx.fill();
-    } else if (p.type === 'glass') {
+    } else if (kind === 'glass') {
       /* v5.11: 유리 — 다이아몬드 반짝임 */
-      R(ctx, px, py, w, h, z[0]);
-      R(ctx, px + (w >> 1), py + 4, (w >> 1) - 2, h - 6, z[1]);
-      R(ctx, px, py, w, 6, '#e0f2fe');
+      R(ctx, px, py, w, h, kc ? mix(kc, '#05070c', 0.25) : z[0]);
+      R(ctx, px + (w >> 1), py + 4, (w >> 1) - 2, h - 6, kc ? mix(kc, '#05070c', 0.10) : z[1]);
+      R(ctx, px, py, w, 6, mix(kc || z[2], '#ffffff', 0.30));
       ctx.fillStyle = 'rgba(255,255,255,.95)';
       ctx.fillRect(px + (w >> 1) - 2, py + 4, 4, 4);
       ctx.fillRect(px + (w >> 1) - 1, py + 2, 2, 8);
-    } else if (p.type === 'abyss_floor') {
+    } else if (kind === 'abyss_floor') {
       /* v5.11: 심연 바닥 — 물결 */
-      R(ctx, px, py, w, h, '#1e1b4b'); R(ctx, px, py, w, 5, '#7c3aed');
-      for (var ab2 = 6; ab2 < w - 6; ab2 += 14) { R(ctx, px + ab2, py + 2, 8, 2, '#a78bfa'); R(ctx, px + ab2 + 8, py + 3, 4, 1, '#7c3aed'); }
+      R(ctx, px, py, w, h, kc || z[1]); R(ctx, px, py, w, 5, mix(kc || z[2], '#ffffff', 0.30));
+      for (var ab2 = 6; ab2 < w - 6; ab2 += 14) { R(ctx, px + ab2, py + 2, 8, 2, mix(kc || z[2], '#ffffff', 0.45)); R(ctx, px + ab2 + 8, py + 3, 4, 1, mix(kc || z[2], '#000000', 0.25)); }
     } else {
       R(ctx, px, py, w, h, z[0]);
       R(ctx, px + (w >> 1), py + 4, (w >> 1) - 2, h - 6, z[1]);
@@ -65650,8 +65733,8 @@ if (typeof module !== 'undefined' && module.exports) {
     if (p.type === 'spike') {
       var sx = px + (p.spikeOffsetX || 0);
       for (var k = 0; k < (p.spikeW || 0); k += 8) {
-        R(ctx, sx + k + 1, py - 8, 6, 8, '#94a3b8');
-        R(ctx, sx + k + 2, py - 12, 4, 4, '#f43f5e');
+        R(ctx, sx + k + 1, py - 8, 6, 8, mix(kc || z[2], '#ffffff', 0.25));
+        R(ctx, sx + k + 2, py - 12, 4, 4, mix(kc || z[2], '#ffffff', 0.62));
       }
     }
     return true;
@@ -65759,6 +65842,8 @@ if (typeof module !== 'undefined' && module.exports) {
 
   root.JW51PLAT = {
     P: P, paint: paint, patch: patch,
+    /* v5.12: 다른 발판 렌더 경로(폴백·v2.0)도 같은 종류 색을 쓰도록 노출 */
+    H: { kind: kindColor, mix: function (a, b, t) { return chex(mix(a, b, t)); }, lum: clum },
     stats: function () { return { drawn: drawn, last: lastId, cache: Object.keys(CACHE).length }; },
     probe: function (id, type, w, h) {
       var cv = doc.createElement('canvas');
