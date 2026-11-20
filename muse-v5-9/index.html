@@ -26012,7 +26012,7 @@ extends CanvasLayer
     } catch (e) {}
     var a = $('v43TPNick'), b = $('v43TPTitle'), c = $('v43TPStatus');
     if (a) a.textContent = nick;
-    if (b && !b.querySelector('.v51badge')) b.textContent = titleName;   /* __v51badge */
+    if (b && !b.querySelector('.v51badge, .v58-ti')) b.textContent = titleName;   /* __v51badge — v5.15: v58-ti 칩도 배지라 건드리지 않는다 (안 그러면 900ms마다 배지가 텍스트로 지워졌다 다시 그려져 깜빡인다) */
     if (c) c.textContent = (prof.status || '').trim() || '프로필을 눌러 꾸며 보세요';
   }
   function openProfile() {
@@ -26151,18 +26151,35 @@ extends CanvasLayer
     } catch (e) {}
     try { if (V.QOL && V.QOL.bgm && root.__jwBgmResume) root.__jwBgmResume(); } catch (e) {}
   }
+  /* v5.15: 페이지가 안 보일 때 오디오 정지 — BGM(HTML audio) 일시정지 + 효과음 AudioContext 중단.
+     __pageGone 플래그: pagehide/숨김 때 켜고 pageshow/보임 때 끈다. bgmSync가 900ms마다 돌면서
+     doc.hidden만 보고 다시 틀어버리는 걸 막는다 (인스타 인앱 브라우저에서 doc.hidden이 안 바뀌어도 BGM이 계속 나는 문제). */
+  var __pageGone = false;
+  function audioPauseOnHide() {
+    __pageGone = true;
+    try { bgmPauseAll(); } catch (e) {}
+    try {
+      var sfx = J() && J().sfx;
+      if (sfx && sfx.ctx && sfx.ctx.state === 'running') sfx.ctx.suspend();
+    } catch (e) {}
+  }
   function wireAudio() {
     ['visibilitychange', 'pageshow', 'focus'].forEach(function (ev) {
       root.addEventListener(ev, function () {
-        if (doc.visibilityState === 'hidden' && ev === 'visibilitychange') { try { bgmPauseAll(); } catch (e) {} return; }
+        if (doc.visibilityState === 'hidden' && ev === 'visibilitychange') { try { audioPauseOnHide(); } catch (e) {} return; }
+        __pageGone = false;
         resumeAudio();
         bgmUnlock();
         setTimeout(resumeAudio, 120);
         setTimeout(resumeAudio, 600);
       });
     });
+    /* v5.15: 페이지 닫힐 때(pagehide) BGM 정지 — 인스타 인앱 브라우저에서 visibilitychange만으로는 안 멈추고
+       페이지를 닫아도 BGM이 계속 나는 문제. pageshow 때 위 핸들러가 다시 재개한다. */
+    root.addEventListener('pagehide', function () { try { audioPauseOnHide(); } catch (e) {} });
     ['pointerdown', 'touchstart', 'keydown'].forEach(function (ev) {
-      doc.addEventListener(ev, function () { resumeAudio(); bgmUnlock(); fsAuto(); }, { passive: true });
+      /* v5.15: 강제 전체화면 제거 — fsAuto() 호출 삭제, 전체화면은 ⛶ 버튼으로만 */
+      doc.addEventListener(ev, function () { resumeAudio(); bgmUnlock(); }, { passive: true });
     });
   }
 
@@ -26719,8 +26736,9 @@ extends CanvasLayer
   function bgmSync() {
     bgmInit();
     if (!BGM.main) return;
-    /* 화면이 숨겨져 있으면 전부 멈추고, 다시 보이면 visibilitychange 에서 알맞은 곡을 재개 */
-    if (doc.hidden) { bgmPauseAll(); return; }
+    /* 화면이 숨겨져 있으면 전부 멈추고, 다시 보이면 visibilitychange 에서 알맞은 곡을 재개
+       v5.15: __pageGone(pagehide/숨김)도 같은 처리 — 900ms 타이머가 doc.hidden=false만 보고 다시 틀어버리는 걸 막는다 */
+    if (doc.hidden || __pageGone) { bgmPauseAll(); return; }
     var q = V.QOL || {};
     var want = q.bgm === false ? 0 : Math.max(0, Math.min(1, Number(q.bgmVol == null ? 0.32 : q.bgmVol)));
     var g = J() && J().game;
@@ -26820,8 +26838,7 @@ extends CanvasLayer
     });
   }
 
-  /* ================================================================ 15. 전체화면 */
-  var FS = { tried: false };
+  /* ================================================================ 15. 전체화면 (v5.15: 강제 진입 제거 — ⛶ 버튼으로만) */
   function fsToggle() {
     try {
       if (document.fullscreenElement || document.webkitFullscreenElement) {
@@ -26861,16 +26878,6 @@ extends CanvasLayer
     var icon = doc.querySelector('link[rel=apple-touch-icon]');
     if (icon && (icon.getAttribute('href') || '').indexOf('./') === 0) icon.setAttribute('href', sp + icon.getAttribute('href').slice(2));
   }
-  function fsAuto() {
-    if (FS.tried) return;
-    FS.tried = true;
-    if (!doc.documentElement.requestFullscreen) return;
-    try {
-      var pr = doc.documentElement.requestFullscreen();
-      if (pr && pr.then) pr.then(function () { doc.body.classList.add('v43-fs'); }).catch(function () {});
-    } catch (e) {}
-  }
-
   /* ================================================================ 주기 작업 */
   function tick() {
     try { wireRulesEntry(); } catch (e) {}
@@ -31617,6 +31624,7 @@ extends CanvasLayer
       const i = Number(b.getAttribute('data-pslot'));
       if (!presets()[i]) { if (V.savePresetSlot) V.savePresetSlot(i); injectTitlePresets(); return; }
       if (V.loadPresetSlot) V.loadPresetSlot(i);
+      const w = $('v43Wiz'); if (w) w.classList.add('hidden'); /* v5.15: 원터치 출발 시 모드창 닫기 */
       const st = $('btnStartGame');
       if (st) { st.__v43skip = true; st.click(); setTimeout(() => { st.__v43skip = false; }, 500); }
     }));
@@ -43421,7 +43429,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v5.14 · 45 MAPS';
+      sp[1].textContent = '★ v5.15 · 45 MAPS';
     }
   }
 
@@ -69250,7 +69258,8 @@ if (typeof module !== 'undefined' && module.exports) {
     return false;
   }
   function isAndroid() { return /Android/i.test(ua()); }
-  var AUTO = isAndroid() && !isIOS();
+  /* v5.15: 강제 전체화면 제거 — Android 자동 진입도 끔, 전체화면은 버튼으로만 */
+  var AUTO = false;
   function autoEnter() {
     if (!AUTO) return;
     if (fsEl()) return;
@@ -70809,10 +70818,10 @@ if (typeof module !== 'undefined' && module.exports) {
       try { ti = T5() ? T5().tiOf(nick) : ''; } catch (e) {}
       if (!ti) { try { ti = (root.JW485HUB && JW485HUB.actOf && (JW485HUB.actOf(tag) || {}).ti) || ''; } catch (e) {} }
       var h = badge(ti, true);
-      var old = top.querySelector('.v51badge');
-      if (!h) { if (old) old.remove(); continue; }
+      var old = top.querySelector('.v51badge, .v58-ti'); /* v5.15: v58-ti 칩도 배지 — 안 찾으면 예전 배지가 남아 중복으로 쌓인다 */
+      if (!h) { if (old) { var ow = old.closest ? old.closest('[data-ti]') : null; (ow || old).remove(); } continue; }
       if (old && old.getAttribute('data-ti') === ti) continue;
-      if (old) old.remove();
+      if (old) { var ow2 = old.closest ? old.closest('[data-ti]') : null; (ow2 || old).remove(); }
       var wrap = doc.createElement('span');
       wrap.setAttribute('data-ti', ti);
       wrap.style.cssText = 'display:inline-flex;vertical-align:middle';
@@ -73138,13 +73147,16 @@ if (typeof module !== 'undefined' && module.exports) {
   function paintTitleBadge() {
     var el = $('v43TPTitle');
     if (!el) return;
-    if (el.querySelector('.v51badge')) return;      /* 이미 배지 */
     var id = equippedId();
+    /* v5.15: 배지가 이미 현재 칭호면 그대로 둔다 (v58-ti 칩도 배지). id가 바뀌었을 때만 다시 칠한다 — 안 그러면
+       v51badge만 검사하던 가드가 v58-ti 칩을 못 알아보고 innerHTML을 계속 다시 써서 MutationObserver 마이크로태스크 루프로 화면이 먹통이 된다 */
+    if (el.querySelector('.v51badge, .v58-ti') && el.getAttribute('data-v51b') === (id || '')) return; /* 이미 현재 배지 */
     var txt = String(el.textContent || '').trim();
     if (!id && (!txt || txt === '🌱 도전자' || txt === '자동 선택')) return;
     var html = badgeFor(id, id ? '' : txt);
     if (!html) return;
     el.innerHTML = html;
+    try { el.setAttribute('data-v51b', id || ''); } catch (e) {}
   }
 
   /* ---------- 3. 프로필 테두리 ---------- */
@@ -74791,8 +74803,10 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   function paintBadge(el) {
     if (!el) return;
-    if (el.querySelector && el.querySelector('.v51badge')) return;   /* 이미 배지 */
     var id = equippedId();
+    /* v5.15: 배지가 이미 현재 칭호면 그대로 둔다 (v58-ti 칩도 배지). id가 바뀌었을 때만 다시 칠한다 — 안 그러면
+       v51badge만 검사하던 가드가 v58-ti 칩을 못 알아보고 innerHTML을 계속 다시 써서 MutationObserver 마이크로태스크 루프로 화면이 먹통이 된다 */
+    if (el.querySelector && el.querySelector('.v51badge, .v58-ti') && el.getAttribute('data-v51b') === (id || '')) return;   /* 이미 현재 배지 */
     var txt = String(el.textContent || '').trim();
     if (!id && (!txt || txt === '🌱 도전자' || txt === '자동 선택')) return;
     var html = '';
@@ -74800,6 +74814,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (!html && txt) html = '<span class="v51badge g-legend">' + esc(txt) + '</span>';
     if (!html) return;
     el.innerHTML = html;
+    try { el.setAttribute('data-v51b', id || ''); } catch (e) {}
   }
   function watchBadges() {
     /* 타이틀 화면이 다시 그려질 때마다 그 '즉시'(페인트 전) 배지로 맞춘다 */
@@ -74809,14 +74824,14 @@ if (typeof module !== 'undefined' && module.exports) {
       try {
         new MutationObserver(function () {
           var el = $('v43TPTitle');
-          if (el && !el.querySelector('.v51badge')) paintBadge(el);
+          if (el && !el.querySelector('.v51badge, .v58-ti')) paintBadge(el); /* v5.15: v58-ti 칩도 배지 */
         }).observe(ts, { childList: true, subtree: true });
       } catch (e) {}
     }
     ['v43TPTitle', 'v485hTitle', 'mpMyTitleNow'].forEach(function (id) {
       var el = $(id);
       if (!el || el.__v51obs) return;
-      if (!el.querySelector('.v51badge')) paintBadge(el);
+      if (!el.querySelector('.v51badge, .v58-ti')) paintBadge(el); /* v5.15: v58-ti 칩도 배지 */
       el.__v51obs = 1;
       try {
         new MutationObserver(function () { paintBadge(el); }).observe(el, { childList: true, characterData: true, subtree: true });
