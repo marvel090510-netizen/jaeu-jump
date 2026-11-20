@@ -60,7 +60,7 @@
         + '</div>'
         + '<div id="__ptBig" style="margin-top:2px;font-size:19px;font-weight:900;line-height:1.22;color:#fde68a;word-break:break-word;">A. HTML 파싱 시작</div>'
         + '<div id="__ptEl" style="margin-top:1px;font-size:15px;font-weight:800;color:#ffffff;">경과 0ms</div>'
-        + '<div id="__ptNet" style="margin-top:5px;font-size:12.5px;color:#cbd5e1;"></div>'
+        + '<div id="__ptNet" style="margin-top:5px;font-size:12.5px;color:#cbd5e1;white-space:pre-line;"></div>'
         + '<div id="__ptStage" style="margin-top:2px;font-size:13px;color:#cbd5e1;"></div>'
         + '<div id="__ptErr" style="margin-top:3px;font-size:12.5px;color:#fca5a5;white-space:pre-wrap;word-break:break-word;"></div>'
         + '<div id="__ptList" style="margin-top:4px;font-size:11.5px;color:#94a3b8;white-space:pre-wrap;word-break:break-word;"></div>';
@@ -103,7 +103,8 @@
       var gl = P.net.gl === 'ok' ? '완료' : (P.net.gl === 'fail' ? '실패' : (P.net.gl === 'timeout' ? '실패(8초 초과)' : '대기 중'));
       d.net.textContent = 'tailwind ' + tw + (P.net.twt ? ' (' + ms(P.net.twt) + ')' : '')
         + ' · galmuri ' + gl + (P.net.glt ? ' (' + ms(P.net.glt) + ')' : '')
-        + ' · 프레임 ' + P.frames + ' · 마크 ' + P.marks.length + '개';
+        + ' · 프레임 ' + P.frames + ' · 마크 ' + P.marks.length + '개'
+        + (P.devText ? '\n' + P.devText : '');
     }
     if (d.stage) {
       var cs = P.marks.map(function (m) { return m.code; });
@@ -219,10 +220,11 @@
     if (seenVeil && !veil && P.veil !== 'gone') { P.veil = 'gone'; P.mark('veiloff', '베일(#v59Veil) 제거됨'); }
     if (!P.collapsed) paint();
     if (ticks === 10) {
-      /* 2초쯤 뒤 기기 정보 한 번 */
+      /* 2초쯤 뒤 기기 정보 (단계 목록을 가리지 않도록 별도 줄에만 적는다) */
       try {
-        P.mark('dev', '기기: ' + (navigator.userAgent.match(/\(([^)]+)\)/) || [, '?'])[1].slice(0, 60)
-          + ' · DPR' + (W.devicePixelRatio || 1) + ' · core' + (navigator.hardwareConcurrency || '?'));
+        P.devText = '기기: ' + (navigator.userAgent.match(/\(([^)]+)\)/) || [, '?'])[1].slice(0, 60)
+          + ' · DPR' + (W.devicePixelRatio || 1) + ' · core' + (navigator.hardwareConcurrency || '?')
+          + ' · ' + screen.width + 'x' + screen.height;
       } catch (x) {}
     }
   }, 200);
