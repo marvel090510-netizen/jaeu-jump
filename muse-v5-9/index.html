@@ -44134,6 +44134,10 @@ button, [role="button"]{touch-action:manipulation;}
     return r.width > 2 && r.height > 2;
   }
   function place(el, o) {
+    /* v5.13-perf: 같은 자리·같은 크기면 다시 쓰지 않는다 (200ms 레이아웃마다 속성 8개를 재기록했다) */
+    var sig = [o.left, o.right, o.top, o.bottom, o.maxW, o.maxH].join(',');
+    if (el.__v485sig === sig && el.__v485placed) return;
+    el.__v485sig = sig;
     var s = el.style;
     s.setProperty('position', 'fixed', 'important');
     s.setProperty('transform', 'none', 'important');
@@ -44145,6 +44149,7 @@ button, [role="button"]{touch-action:manipulation;}
   }
   function unplace(el) {
     if (!el || !el.__v485placed) return;
+    el.__v485sig = null;
     ['position', 'transform', 'margin', 'left', 'right', 'top', 'bottom', 'max-width', 'max-height'].forEach(function (k) { el.style.removeProperty(k); });
     el.__v485placed = false;
   }
@@ -44255,7 +44260,7 @@ button, [role="button"]{touch-action:manipulation;}
   /* 플레이 밖: 알림은 화면 위 가운데 (로비 버튼·타이틀 버튼을 가리지 않게) */
   function layoutIdle() {
     var t = $('mpToasts');
-    if (t && shown(t)) place(t, { left: Math.max(8, (innerWidth - Math.min(360, innerWidth - 16)) / 2), top: 8, maxW: Math.min(360, innerWidth - 16) });
+    if (t && t.children.length && shown(t)) place(t, { left: Math.max(8, (innerWidth - Math.min(360, innerWidth - 16)) / 2), top: 8, maxW: Math.min(360, innerWidth - 16) });
   }
   setInterval(function () { try { layout(); } catch (e) {} }, 200);
   window.addEventListener('resize', function () { setTimeout(layout, 50); });
