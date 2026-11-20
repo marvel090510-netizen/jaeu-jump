@@ -42183,7 +42183,7 @@ extends CanvasLayer
     try {
       if (id && id !== 'default') {
         const z = MP() && MP().zoneName ? MP().zoneName(id, y) : null;
-        if (z) return z;
+        return z || '';   /* 커스텀 등 구간 정보가 없는 맵은 빈 문자열(기본 맵 구간명을 잘못 붙이지 않는다) */
       }
       const j = J();
       const zz = j && j.getZoneByY ? j.getZoneByY(y) : null;
