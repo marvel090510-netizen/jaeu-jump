@@ -8726,8 +8726,14 @@ extends CanvasLayer
       const tRank = pl && pl.ti ? (titleById(pl.ti).rank || 0) : 0; /* muse-v5-8: 칭호 등급별 이름표 테두리 */
       ctx.font = 'bold 10px "Galmuri11", monospace';
       ctx.textAlign = 'center';
-      const label = pr.nick + (ti ? ' ' + ti : '');
-      const nameW = Math.min(180, ctx.measureText(label).width + 10);
+      let label = pr.nick + (ti ? ' ' + ti : '');
+      /* v5.14: 긴 닉네임+칭호는 상자 폭(200) 안으로 말줄임해 잘리지 않게 한다 */
+      let nameW = ctx.measureText(label).width + 10;
+      if (nameW > 200) {
+        while (label.length > 2 && ctx.measureText(label + '…').width + 10 > 200) label = label.slice(0, -1);
+        label = label + '…';
+        nameW = ctx.measureText(label).width + 10;
+      }
       /* v5.14: 상대 이름표가 화면 좌우·하단 경계에서 반쯤 잘리지 않게 안으로 당긴다 */
       const lcx = Math.max(nameW / 2 + 3, Math.min(537 - nameW / 2, rx + 14));
       const lcy = Math.max(16, Math.min(logicalH - 15, ry - 22));
