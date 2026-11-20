@@ -21,7 +21,7 @@
   <title>성공하고싶은 재우 - 한 번 더, 정상까지!</title>
   
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
-  <script src="game.js?v=515tw3" defer></script>
+  <script src="game.js?v=515tw4" defer></script>
   <style>
     * {
       box-sizing: border-box;
@@ -341,7 +341,7 @@ html body #titleScreen {
 </style>
 <script id="v515cam">/* v5.15 폰 시야: 화면이 세로로 길수록 카메라를 캐릭터 아래로 내려
    위쪽(올라갈 곳)을 더 보여 준다. 기준 740(패드 높이)에서는 기존 240 그대로. */
-window.v515CamOff=function(){
+window.__v515CamOffRaw=function(){
   try{
     var vw=window.innerWidth||0, vh=window.innerHeight||0;
     var H=window.__jwCamH||0;
@@ -351,6 +351,16 @@ window.v515CamOff=function(){
     var off=Math.round(H*0.60);
     if(off>H-240) off=H-240;
     return off<240?240:off;
+  }catch(e){ return 240; }
+};
+/* v5.15-r3: 카메라 오프셋은 창 크기가 바뀔 때만 다시 계산한다 (프레임마다 호출됨). */
+window.v515CamOff=function(){
+  try{
+    var k=(window.innerWidth||0)+"x"+(window.innerHeight||0)+"|"+(window.__jwCamH||0);
+    if(window.__jwCamK===k && typeof window.__jwCamV==="number") return window.__jwCamV;
+    var v=window.__v515CamOffRaw();
+    window.__jwCamK=k; window.__jwCamV=v;
+    return v;
   }catch(e){ return 240; }
 };
 </script>

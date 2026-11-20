@@ -1,7 +1,7 @@
 /* 성공하고싶은 재우 — 게임 본체 (v5.15 정식 루트)
    muse-v5-9/index.html(v5.15) <body> 안의 인라인 <script> 108개를 순서 그대로 이어 붙인 파일이다.
    iPad Safari 가 3.4MB 통짜 인라인을 파싱하며 메인 스레드가 멈추던 문제(베일이 안 걷힘)를
-   없애기 위해 분리했고, index.html 은 <script src="game.js?v=515tw3" defer></script> 로 불러온다.
+   없애기 위해 분리했고, index.html 은 <script src="game.js?v=515tw4" defer></script> 로 불러온다.
    각 블록은 원래 그대로(대부분 IIFE)라 한 블록의 예외가 다음 블록을 막지 않는다. */
 
 /* ── block 1 (muse-v5-9/index.html 979줄) ── */
@@ -32,7 +32,16 @@
           try {
             if (!this._mp3Pre) {
               this._mp3Pre = true;
-              ['ice_slide', 'glass_break', 'jelly_bounce', 'spike_hit', 'boss_intro', 'boss_phase', 'boss_defeat', 'game_over', 'countdown'].forEach((n) => this._sfxEl(n));
+              /* v5.15-r3: 9종을 한 번에 만들면 첫 제스처 순간에 mp3 디코딩이 몰려 한 프레임이 끊겼다.
+                 120ms 간격으로 나눠 만들어 첫 점프·착지가 끊기지 않게 한다. */
+              const _q = ['ice_slide', 'glass_break', 'jelly_bounce', 'spike_hit', 'boss_intro', 'boss_phase', 'boss_defeat', 'game_over', 'countdown'];
+              let _i = 0;
+              const _step = () => {
+                if (_i >= _q.length) return;
+                try { this._sfxEl(_q[_i++]); } catch (e) {}
+                try { setTimeout(_step, 120); } catch (e) {}
+              };
+              try { setTimeout(_step, 260); } catch (e) {}
             }
           } catch (e) {}
         }
@@ -1320,7 +1329,9 @@
               const rate = ((game.activeEv && game.activeEv.id === 'cloudboost') ? 1.45 : 1.18) * ((window.JWG && JWG.chargeRate) ? JWG.chargeRate() : 1);
               const prevDec = (player.charge * 10) | 0;
               player.charge = Math.min(1.0, player.charge + dt * rate);
-              if (((player.charge * 10) | 0) > prevDec) sfx.chargeTick(player.charge);
+              /* v5.15-r3: 충전 틱 소리는 10회/초 → 5회/초 (오실레이터 노드 생성이 절반, 느낌은 그대로) */
+              const _stepNow = (player.charge * 10) | 0;
+              if (_stepNow > prevDec && (_stepNow % 2 === 0)) sfx.chargeTick(player.charge);
             }
             const isIce = player.plat.type === 'ice';
             player.vx *= Math.pow(isIce ? 0.94 : 0.55, dt * 60);
@@ -4935,11 +4946,19 @@ extends CanvasLayer
     const fresh = !el;
     if (!el) { el = document.createElement('div'); wrap.appendChild(el); }
     el.className = 'mp-toast ' + (cat || '');
-    el.innerHTML = '<span class="t1">' + String(title).replace(/[<>&]/g, '') + '</span>' +
+    const html = '<span class="t1">' + String(title).replace(/[<>&]/g, '') + '</span>' +
       (desc ? '<span class="t2">' + String(desc).replace(/[<>&]/g, '') + '</span>' : '');
-    void el.offsetWidth;
+    /* v5.15-r3: 같은 문구를 다시 쓸 때 innerHTML 과 강제 리플로우(void offsetWidth)를 반복하면
+       인게임에서 그 프레임이 끊긴다. 문구가 바뀔 때만 다시 그리고, 인게임에서는 리플로우를 생략한다. */
+    let _play = false;
+    try { _play = document.body.classList.contains('v47-play'); } catch (e) {}
+    if (el.__sig !== html) {
+      el.__sig = html;
+      el.innerHTML = html;
+      if (!_play) void el.offsetWidth;
+      if (!fresh && !_play) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+    }
     el.classList.add('show');
-    if (!fresh) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
     clearTimeout(S.toastT);
     S.toastT = setTimeout(() => { el.classList.remove('show'); }, ms || 2200);
   }
@@ -20237,8 +20256,17 @@ extends CanvasLayer
 
   const RC = { key: '', cur: null, saveT: 0, ghostT: 0, lastPlat: 1, lastClear: 0 };
 
-  function all() { const d = V.lsGet(KEY, {}); return (d && typeof d === 'object') ? d : {}; }
-  function save(d) { V.lsSet(KEY, d); }
+  /* v5.15-r3: recOf·BEST선·HUD 가 프레임마다 부른다 → 0.4초 캐시 (캐시된 객체를 그대로 쓴다) */
+  const ALLC = { at: 0, d: null };
+  function all() {
+    const nowT = Date.now();
+    if (ALLC.d && nowT - ALLC.at < 400) return ALLC.d;
+    let d = V.lsGet(KEY, {});
+    if (!d || typeof d !== 'object') d = {};
+    ALLC.at = nowT; ALLC.d = d;
+    return d;
+  }
+  function save(d) { ALLC.at = 0; ALLC.d = null; V.lsSet(KEY, d); }
 
   function combo() {
     const S = J() && V.st();
@@ -20352,7 +20380,9 @@ extends CanvasLayer
         dirty = true;
       }
     }
-    if (dirty && performance.now() - RC.saveT > 400) {
+    /* v5.15-r3: 착지·층 돌파마다 돌던 저장을 1500ms 디바운스로 묶는다.
+       (판 종료·일시정지·화면 숨김에서는 기존 경로가 즉시 저장한다) */
+    if (dirty && performance.now() - RC.saveT > 1500) {
       /* 클리어 정보는 덮어쓰지 않는다 */
       try {
         const cur = all()[c.key];
@@ -21575,7 +21605,7 @@ extends CanvasLayer
       const rec = V.recNow ? V.recNow() : (V.recOf ? V.recOf() : null);
       if (!rec || !g.inPlay) { if (!chip.classList.contains('hidden')) chip.classList.add('hidden'); }
       else {
-        chip.classList.remove('hidden');
+        if (chip.classList.contains('hidden')) chip.classList.remove('hidden');
         let s = '';
         if (Q.bestLine && rec.m) s += 'BEST ' + rec.m.toFixed(1) + 'm';
         if (Q.pace && rec.t) {
@@ -25293,15 +25323,19 @@ extends CanvasLayer
     const el = $('v44HudLine');
     if (!el) return;
     const g = game(), p = pl();
-    if (!g || !g.inPlay || !p) { el.classList.add('hidden'); return; }
-    el.classList.remove('hidden');
+    /* v5.15-r3: 값이 그대로인데 매 프레임 classList·textContent 를 쓰면 리페인트가 계속 걸린다. */
+    if (!g || !g.inPlay || !p) { if (!el.classList.contains('hidden')) el.classList.add('hidden'); return; }
+    if (el.classList.contains('hidden')) el.classList.remove('hidden');
     const total = V.goalNow ? V.goalNow() : 88;
     const cur = V.floorOf ? V.floorOf(p.y) : 1;
     const rec = V.recOf ? V.recOf() : null;
     const rt = (G.curMode && G.curMode() === 'randomtgt' && G.rtgt);
     let s = '남은 ' + Math.max(0, total - cur) + '층 · 목표 ' + total + '층';
     if ((G.curMode && G.curMode() === 'descend')) s = '1층까지 ' + Math.max(0, cur - 1) + '층 · 목표 1층';
-    el.textContent = (rt ? '🎯 랜덤 목표 ' + total + '층 · ' : '🧭 ') + s;
+    {
+      const line = (rt ? '🎯 랜덤 목표 ' + total + '층 · ' : '🧭 ') + s;
+      if (el.textContent !== line) el.textContent = line;
+    }
   }
   G.paintHudLine = paintHudLine;
 
@@ -36207,9 +36241,14 @@ extends CanvasLayer
           var col = comboColor(ST.combo);
           ctx.save();
           if (col === 'rainbow') {
-            var gr = ctx.createLinearGradient(q.x, 0, q.x + q.w, 0);
-            gr.addColorStop(0, '#f87171'); gr.addColorStop(0.25, '#fbbf24');
-            gr.addColorStop(0.5, '#34d399'); gr.addColorStop(0.75, '#60a5fa'); gr.addColorStop(1, '#c084fc');
+            /* v5.15-r3: 콤보 발판 테두리는 매 프레임 그려진다 — 그라데이션을 좌표별로 캐시 */
+            var gr = (V.gc ? V.gc(ctx, q.x, 0, q.x + q.w, 0,
+              [[0, '#f87171'], [0.25, '#fbbf24'], [0.5, '#34d399'], [0.75, '#60a5fa'], [1, '#c084fc']]) : null);
+            if (!gr) {
+              gr = ctx.createLinearGradient(q.x, 0, q.x + q.w, 0);
+              gr.addColorStop(0, '#f87171'); gr.addColorStop(0.25, '#fbbf24');
+              gr.addColorStop(0.5, '#34d399'); gr.addColorStop(0.75, '#60a5fa'); gr.addColorStop(1, '#c084fc');
+            }
             ctx.strokeStyle = gr;
           } else ctx.strokeStyle = col;
           /* muse-v5-8: 글로우가 발판 너비에 비례 (고정 9px라 좁은 발판엔 과하고 넓은 발판엔 부족했음) */
@@ -38551,6 +38590,11 @@ extends CanvasLayer
       if (!b) return;
       if (!edited) {
         CPROPS.forEach(function (pr) { try { b.style.removeProperty(pr); } catch (e) {} });
+        /* v5.15-r3: 위치·크기는 예전처럼 건드리지 않되, 투명도는 저장값대로 적용한다.
+           (예전엔 edited 전까지 opacity 도 지워져 슬라이더가 아무 일도 하지 않았다) */
+        if (c.alpha !== undefined) {
+          try { b.style.setProperty('opacity', String(c.alpha), 'important'); } catch (e) {}
+        }
         return;
       }
       var p = c[k] || DEF.rh[k];
@@ -38587,7 +38631,9 @@ extends CanvasLayer
       '  </div>' +
       '</div>' +
       '<div class="sl">크기 <input type="range" min="75" max="145" step="5" id="v49Size"><b id="v49SizeV">100%</b></div>' +
-      '<div class="sl">투명도 <input type="range" min="35" max="100" step="5" id="v49Alpha"><b id="v49AlphaV">100%</b></div>' +
+      '<div class="sl">투명도 <input type="range" min="0" max="100" step="5" id="v49Alpha"><b id="v49AlphaV">100%</b>' +
+      '<button type="button" id="v515Alpha0" title="완전 투명" style="margin-left:6px;padding:2px 8px;font-size:10.5px;font-weight:900;' +
+      'border:1px solid #3b5290;background:#0f172a;color:#cbd5e1;border-radius:4px;cursor:pointer;">완전투명</button></div>' +
       '<div class="foot"><button type="button" id="v49EdReset">초기화</button><button type="button" class="go" id="v49EdDone">완료</button></div>';
     box.insertBefore(ed, row);
     /* 기존 숫자 슬라이더 줄은 숨긴다 */
@@ -38609,6 +38655,16 @@ extends CanvasLayer
     });
     $('v49Alpha').addEventListener('input', function () {
       var c = ctrlLoad(); c.alpha = Number(this.value) / 100; ctrlSave(c); ctrlApply(); paint();
+      /* v5.15-r3: 슬라이더 값(0~100%)을 인게임 조작 버튼에 바로 반영 */
+      try { if (root.__jw515Op) root.__jw515Op(c.alpha); } catch (e) {}
+    });
+    /* v5.15-r3: 원터치 '0%'(완전 투명) — 터치·조작은 그대로 */
+    var _b0 = $('v515Alpha0');
+    if (_b0) _b0.addEventListener('click', function () {
+      var c = ctrlLoad(); c.alpha = 0; ctrlSave(c); ctrlApply(); paint();
+      try { if ($('v49Alpha')) $('v49Alpha').value = '0'; } catch (e) {}
+      try { if ($('v49AlphaV')) $('v49AlphaV').textContent = '0%'; } catch (e) {}
+      try { if (root.__jw515Op) root.__jw515Op(0); } catch (e) {}
     });
     $('v49EdReset').addEventListener('click', function () {
       var c = JSON.parse(JSON.stringify(DEF.rh));
@@ -68302,12 +68358,23 @@ if (typeof module !== 'undefined' && module.exports) {
   function prof() { try { var i = V.api().internals ? V.api().internals() : null; return (i && i.prof) || {}; } catch (e) { return {}; } }
   function ach() { var a = ls('jw43_ach_v1', {}); return a && typeof a === 'object' ? a : {}; }
   function climb() { try { return (V.STAT43 && V.STAT43.climbM) || 0; } catch (e) { return 0; } }
+  /* v5.15-r3: 이 함수는 인게임 이름표(tagFrame)·칭호 계산에서 초당 수십 번 불린다.
+     localStorage 읽기 + JSON.parse 가 프레임 스파이크의 한 축(실측 25초에 159회)이라
+     0.3초 캐시를 두고, 랭킹이 저장되면 바로 비운다. */
+  var RANKC = { at: 0, out: null };
   function rankAll() {
+    var nowT = Date.now();
+    if (RANKC.out && nowT - RANKC.at < 300) return RANKC.out.slice();
     var out = [];
     try { out = (V.lsGet('jw43_rank_v1', []) || []).slice(); } catch (e) {}
     try { (V.rank && V.rank.live || []).forEach(function (r) { out.push(r); }); } catch (e) {}
-    return out;
+    RANKC.at = nowT; RANKC.out = out;
+    return out.slice();
   }
+  (V.__rankClearers = V.__rankClearers || []).push(function () { RANKC.at = 0; RANKC.out = null; });
+  V.__rankCacheClear = function () {
+    try { (V.__rankClearers || []).forEach(function (f) { try { f(); } catch (e) {} }); } catch (e) {}
+  };
   function myNick() { try { var s = V.st(); return (s && s.me && s.me.nick) || ''; } catch (e) { return ''; } }
   function isChampAny() {
     var me = String(myNick()).trim();
@@ -70141,12 +70208,23 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   /* ---------------------------------------------------------------- ④ 1위 보상 */
+  /* v5.15-r3: 이 함수는 인게임 이름표(tagFrame)·칭호 계산에서 초당 수십 번 불린다.
+     localStorage 읽기 + JSON.parse 가 프레임 스파이크의 한 축(실측 25초에 159회)이라
+     0.3초 캐시를 두고, 랭킹이 저장되면 바로 비운다. */
+  var RANKC = { at: 0, out: null };
   function rankAll() {
+    var nowT = Date.now();
+    if (RANKC.out && nowT - RANKC.at < 300) return RANKC.out.slice();
     var out = [];
     try { out = (V.lsGet('jw43_rank_v1', []) || []).slice(); } catch (e) {}
     try { (V.rank && V.rank.live || []).forEach(function (r) { out.push(r); }); } catch (e) {}
-    return out;
+    RANKC.at = nowT; RANKC.out = out;
+    return out.slice();
   }
+  (V.__rankClearers = V.__rankClearers || []).push(function () { RANKC.at = 0; RANKC.out = null; });
+  V.__rankCacheClear = function () {
+    try { (V.__rankClearers || []).forEach(function (f) { try { f(); } catch (e) {} }); } catch (e) {}
+  };
   function champBest(map) {
     var me = String(myNick()).trim();
     if (!me) return null;
@@ -70859,7 +70937,17 @@ if (typeof module !== 'undefined' && module.exports) {
   /* ================================================================ ② 머리 위 태그 */
   function myNick() { try { var s = V.st(); return (s && s.me && s.me.nick) || ''; } catch (e) { return ''; } }
   function tagOn() { try { return root.JW56TAG ? !!root.JW56TAG.on() : true; } catch (e) { return true; } }
+  /* v5.15-r3: 이름표는 매 프레임 다시 그려지고 이 계산은 랭킹 localStorage(JSON.parse)를 훑는다.
+     0.6초 캐시 — 칭호를 바꾸면 0.6초 안에 반영된다. */
+  var TH_C = { at: 0, out: null };
   function titleHtml() {
+    var nowT = Date.now();
+    if (TH_C.out && nowT - TH_C.at < 600) return TH_C.out;
+    var out = titleHtmlNow();
+    TH_C.at = nowT; TH_C.out = out;
+    return out;
+  }
+  function titleHtmlNow() {
     try {
       var id = (root.JW56T5 && root.JW56T5.myTitleId) ? root.JW56T5.myTitleId() : 'auto';
       if (id && id !== 'auto' && root.JW51TITLES && root.JW51TITLES.badge) {
@@ -72254,3 +72342,133 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 ;
+
+/* ── block 109 (v5.15-r3: 순간렉 마무리 + 조작 버튼 투명도) ── */
+/* ==========================================================================
+   v5.15-r3
+   ① 그라데이션 캐시 V.gc ② 모바일 인게임 shadowBlur=0
+  ③ 조작 버튼(◀ ▶ 점프) 투명도 0~100% — 값은 기존 조작 에디터(jw49_ctrl_v1.alpha)와 같다
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+
+  /* ---------------------------------------------------------------- ① 그라데이션 캐시 */
+  V.gc = function (ctx, x0, y0, x1, y1, stops) {
+    try {
+      var key = [x0, y0, x1, y1].join(',') + '|' + (stops || []).join(';') + '|' + (ctx.canvas ? (ctx.canvas.width + 'x' + ctx.canvas.height) : '');
+      var C = V._gc;
+      if (!C) { C = V._gc = {}; }
+      if (C[key]) return C[key];
+      var g = ctx.createLinearGradient(x0, y0, x1, y1);
+      for (var i = 0; i < (stops || []).length; i++) g.addColorStop(stops[i][0], stops[i][1]);
+      /* 캐시가 무한히 자라지 않게 (좌표가 계속 바뀌는 연출 대비) */
+      var n = 0; for (var k in C) n++;
+      if (n > 160) { V._gc = C = {}; }
+      C[key] = g;
+      return g;
+    } catch (e) { return null; }
+  };
+
+  /* ---------------------------------------------------------------- ② 모바일 shadowBlur */
+  /* iOS Safari 는 캔버스 그림자 블러가 프레임마다 GPU 를 크게 잡아먹는다.
+     모바일(<=560px 또는 DPR>=2) 인게임 렌더 중에는 shadowBlur 를 0 으로 낸다. */
+  (function () {
+    try {
+      var C2 = root.CanvasRenderingContext2D;
+      if (!C2 || !C2.prototype) return;
+      var d = Object.getOwnPropertyDescriptor(C2.prototype, 'shadowBlur');
+      if (!d || !d.set || d.set.__jw515) return;
+      var mob = -1, mobAt = 0;
+      function isMob() {
+        var t = Date.now();
+        if (mob >= 0 && t - mobAt < 1500) return mob === 1;
+        try { mob = ((root.innerWidth || 0) <= 560 || (root.devicePixelRatio || 1) >= 2) ? 1 : 0; } catch (e) { mob = 0; }
+        mobAt = t;
+        return mob === 1;
+      }
+      function inPlay() {
+        try { var j = root.__jwg; return !!(j && j.game && j.game.inPlay && !j.game.paused); } catch (e) { return false; }
+      }
+      var setter = function (v) {
+        if (v) { try { if (isMob() && inPlay()) v = 0; } catch (e) {} }
+        return d.set.call(this, v);
+      };
+      setter.__jw515 = 1;
+      Object.defineProperty(C2.prototype, 'shadowBlur', {
+        get: d.get, set: setter, enumerable: d.enumerable, configurable: true
+      });
+    } catch (e) {}
+  })();
+
+  /* ---------------------------------------------------------------- ③ 조작 버튼 투명도 */
+  /* 값은 기존 조작 에디터와 같은 저장소(jw49_ctrl_v1.alpha)를 쓴다 — 슬라이더·0% 버튼·
+     재접속 후 상태가 모두 한 곳에서 맞는다. 1 = 100%, 0 = 완전 투명. */
+  var IDS = ['touchBtnLeft', 'touchBtnRight', 'touchBtnJump'];
+  function readCtrl() {
+    try {
+      var c = JSON.parse(localStorage.getItem('jw49_ctrl_v1') || 'null');
+      if (c && c.alpha !== undefined && isFinite(Number(c.alpha))) return Math.max(0, Math.min(1, Number(c.alpha)));
+    } catch (e) {}
+    return 1;
+  }
+  function paintCtrl(alpha) {
+    var a = Math.max(0, Math.min(1, Number(alpha)));
+    if (!isFinite(a)) a = 1;
+    var doc = root.document;
+    for (var i = 0; i < IDS.length; i++) {
+      var el = doc.getElementById(IDS[i]);
+      if (!el) continue;
+      /* opacity 만 바꾼다 — pointer-events·display·visibility·히트영역은 그대로.
+         0%에서도 터치·조작이 그대로 먹어야 한다. */
+      el.style.setProperty('opacity', String(a), 'important');
+    }
+    var rng = doc.getElementById('v49Alpha');
+    if (rng) { var pv = String(Math.round(a * 100)); if (rng.value !== pv) rng.value = pv; }
+    var lbl = doc.getElementById('v49AlphaV');
+    if (lbl) { var t = Math.round(a * 100) + '%'; if (lbl.textContent !== t) lbl.textContent = t; }
+    var b0 = doc.getElementById('v515Alpha0');
+    if (b0) {
+      var z = Math.round(a * 100) === 0;
+      if (b0.classList.contains('on') !== z) b0.classList.toggle('on', z);
+    }
+    return a;
+  }
+  root.__jw515Op = paintCtrl;
+  V.ctrlOpacity = { get: readCtrl, set: function (v) { paintCtrl(v); } };
+
+  /* 랭킹이 저장되면(어느 모듈이 쓰든) 랭킹 캐시를 즉시 비운다 — 1등 칭호 판정이
+     캐시된 옛 랭킹을 보고 잠깐 틀리지 않도록. */
+  (function () {
+    try {
+      var SP = root.Storage && root.Storage.prototype;
+      if (!SP || !SP.setItem || SP.setItem.__jw515) return;
+      var oSet = SP.setItem;
+      var w = function (k, v) {
+        var r = oSet.apply(this, arguments);
+        try { if (k === 'jw43_rank_v1' && V.__rankCacheClear) V.__rankCacheClear(); } catch (e) {}
+        return r;
+      };
+      w.__jw515 = 1;
+      SP.setItem = w;
+    } catch (e) {}
+  })();
+
+  /* 부팅 때 저장값 반영 + 다른 모듈이 버튼을 다시 만졌을 때를 대비해 몇 번 더 확인 */
+  function bootOp() {
+    try { paintCtrl(readCtrl()); } catch (e) {}
+  }
+  var doc0 = root.document;
+  if (doc0.readyState === 'loading') doc0.addEventListener('DOMContentLoaded', bootOp);
+  else bootOp();
+  try {
+    var n = 0;
+    var timer = setInterval(function () {
+      n++;
+      try { paintCtrl(readCtrl()); } catch (e) {}
+      if (n >= 8) clearInterval(timer);
+    }, 700);
+  } catch (e) {}
+  root.addEventListener('pageshow', bootOp);
+})(window);
