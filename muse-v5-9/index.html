@@ -630,13 +630,21 @@ html body #titleScreen {
     <div class="pixel-panel w-full max-w-lg p-5 sm:p-6 space-y-4 my-auto">
       <div class="flex items-center justify-between border-b-2 border-slate-700 pb-3">
         <div>
-          <h2 class="text-xl sm:text-2xl font-black text-white pixel-shadow">조작 설정</h2>
-          <p class="text-xs text-sky-300">모바일 터치 버튼의 배치, 위치 X/Y, 크기를 조절하고 저장합니다.</p>
+          <h2 class="text-xl sm:text-2xl font-black text-white pixel-shadow">⚙️ 설정</h2>
+          <p class="text-xs text-sky-300">조작 · 소리 · 채팅 · 편리성 · 도움말 · 혼자 하기 — 한곳에서 다 바꿔요.</p>
         </div>
         <button id="btnCloseSettings" type="button" class="px-3 py-1.5 bg-slate-800 text-slate-200 font-bold text-xs border border-slate-500 cursor-pointer">닫기 ✕</button>
       </div>
 
-      <div>
+      <div id="v51HubTabs" class="flex flex-wrap gap-1.5">
+        <button type="button" data-hubsec="ctrl" class="v51-hubtab on">🎮 조작</button>
+        <button type="button" data-hubsec="bgm" class="v51-hubtab">🎵 소리·BGM</button>
+        <button type="button" data-hubsec="chat" class="v51-hubtab">💬 채팅·알림</button>
+        <button type="button" data-hubsec="qol" class="v51-hubtab">✨ 편리성</button>
+        <button type="button" data-hubsec="help" class="v51-hubtab">❓ 도움말</button>
+        <button type="button" data-hubsec="solo" class="v51-hubtab">🏠 혼자 하기 규칙</button>
+      </div>
+      <div class="v51-sec" data-hubsec="ctrl">
         <label class="block text-xs sm:text-sm font-bold text-amber-300 mb-2">1. 조작 배치 선택</label>
         <div class="grid grid-cols-3 gap-2">
           <button type="button" data-preset="split" class="preset-btn py-2.5 px-2 font-bold text-xs sm:text-sm border-2 border-sky-400 bg-sky-900/60 text-white cursor-pointer">
@@ -651,7 +659,7 @@ html body #titleScreen {
         </div>
       </div>
 
-      <div class="space-y-3 bg-[#070a14] p-4 border-2 border-slate-800">
+      <div class="v51-sec space-y-3 bg-[#070a14] p-4 border-2 border-slate-800" data-hubsec="ctrl">
         <div>
           <div class="flex justify-between text-xs font-bold mb-1">
             <span>가로 위치 이동 (X)</span>
@@ -713,6 +721,37 @@ html body #titleScreen {
         </div>
       </div>
 
+      <div class="v51-sec hidden" data-hubsec="bgm">
+        <div class="text-xs font-black text-amber-300 mb-2">🎵 소리·BGM</div>
+        <div id="v51HubJuke"></div>
+        <div class="text-[11px] text-slate-400 font-bold leading-snug mt-2">BGM·효과음 볼륨은 ✨ 편리성 섹션에서 바꿀 수 있어요.</div>
+      </div>
+      <div class="v51-sec hidden" data-hubsec="chat">
+        <div class="text-xs font-black text-amber-300 mb-2">💬 채팅·알림</div>
+        <div class="flex items-center justify-between bg-[#070a14] p-3 border-2 border-slate-800">
+          <span class="text-xs font-bold">🔕 집중 모드 (채팅·알림 숨김)</span>
+          <button id="v51HubDnd" type="button" class="mp-chip" style="min-width:52px">OFF</button>
+        </div>
+        <div class="text-[11px] text-slate-400 font-bold leading-snug mt-2">켜면 채팅·토스트 알림이 안 떠요 · 위험 알림만 표시돼요 · 친구에게는 오프라인으로 보여요.</div>
+        <button id="v51HubToQol" type="button" class="mp-chip gold w-full mt-2" style="padding:8px">✨ 채팅 말풍선·볼륨 등 더 많은 설정 보기 →</button>
+      </div>
+      <div class="v51-sec hidden" data-hubsec="qol">
+        <div class="text-xs font-black text-amber-300 mb-2">✨ 편리성</div>
+        <div id="v51HubQolHost"></div>
+      </div>
+      <div class="v51-sec hidden" data-hubsec="help">
+        <div class="text-xs font-black text-amber-300 mb-2">❓ 도움말</div>
+        <div class="space-y-2 text-xs font-bold text-slate-200 leading-relaxed bg-[#070a14] p-3 border-2 border-slate-800">
+          <div>🎮 <b>조작</b> — 왼쪽 버튼으로 이동 · 오른쪽 버튼을 꾹 눌렀다 떼면 충전 점프</div>
+          <div>🌀 <b>태초 귀환</b> — 점프할 때마다 3% 확률로 1층으로 돌아가요</div>
+          <div>🏆 <b>정상</b> — 88층에 오르면 성공! 떨어져도 기록은 남아요</div>
+        </div>
+        <div id="v51HubTutHost" class="mt-2"></div>
+      </div>
+      <div class="v51-sec hidden" data-hubsec="solo">
+        <div class="text-xs font-black text-amber-300 mb-2">🏠 혼자 하기 규칙</div>
+        <div id="v51HubSoloHost"></div>
+      </div>
       <div class="flex gap-2">
         <button id="btnResetSettings" type="button" class="flex-1 py-2.5 font-bold text-xs sm:text-sm bg-slate-800 text-slate-300 border-2 border-slate-600 cursor-pointer">
           기본값 초기화
@@ -723,6 +762,15 @@ html body #titleScreen {
       </div>
     </div>
   </div>
+
+  <style id="v51hubcss">
+    .v51-hubtab { flex:1 1 auto; padding:8px 6px; font-size:11.5px; font-weight:900; border:2px solid #334155; background:#0f172a; color:#cbd5e1; cursor:pointer; white-space:nowrap; }
+    .v51-hubtab.on { background:#78350f; border-color:#fbbf24; color:#fde68a; }
+    #v48ju.v51-embedded { position:static; display:block; background:transparent; z-index:auto; }
+    #v48ju.v51-embedded.hidden { display:block; }
+    #v48ju.v51-embedded .card { width:100%; max-height:420px; }
+    #v48ju.v51-embedded #v48juX { display:none; }
+  </style>
 
   <!-- ==================== 5. VICTORY SCREEN (88번째 정상 도착) ==================== -->
   <div id="victoryModal" class="hidden absolute inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
@@ -2923,9 +2971,11 @@ extends CanvasLayer
           const openSettings = () => {
             applyTouchLayout();
             document.getElementById('settingsModal').classList.remove('hidden');
+            try { if (window.__v51HubShow) window.__v51HubShow(window.__v51HubSec || 'ctrl'); } catch (e) {}
           };
           const closeSettings = () => {
             saveCtrl();
+            try { if (window.__v51HubClose) window.__v51HubClose(); } catch (e) {}
             document.getElementById('settingsModal').classList.add('hidden');
           };
           document.getElementById('btnOpenSettingsTitle').addEventListener('click', openSettings);
@@ -3157,6 +3207,8 @@ extends CanvasLayer
   .mps-code { font-size:12px; font-weight:900; color:#fde68a; background:#0b1222; border:2px solid #fbbf24; padding:5px 8px; box-shadow:0 3px 0 #05030a; }
   .mps-slot { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; padding:7px; font-size:11px; font-weight:900;
     background:#0b1b36; border:2px dashed #3b82f6; color:#bfdbfe; cursor:pointer; }
+  .mps-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
+  .mps-slot.mini { min-height:30px; padding:4px 6px; font-size:10.5px; }
   .mpb-summary { background:#0d1326; border:3px solid #fbbf24; box-shadow:inset 0 0 0 2px #0b1020,0 4px 0 #05030a; padding:10px; display:flex; flex-direction:column; gap:7px; }
   .mpb-sum-t { font-size:12.5px; font-weight:900; color:#fde68a; letter-spacing:-.01em; }
   .mpb-sum-body { display:flex; gap:8px; align-items:center; background:#0a1020; border:2px solid #334155; padding:7px; }
@@ -3312,6 +3364,7 @@ extends CanvasLayer
       <div>
         <div class="mp-lbl">방 코드</div>
         <div id="mpRoomCode" class="text-3xl font-black text-amber-300 tracking-[0.25em]">ABCDE</div>
+        <div id="mpLobbyHeadSum" class="text-[11px] font-bold text-slate-300 leading-snug"></div>
       </div>
       <div class="flex flex-col gap-1 items-end">
         <button id="mpCopyCode" class="mp-btn dark" style="padding:6px 10px;font-size:11px">📋 코드 복사</button>
@@ -3343,7 +3396,7 @@ extends CanvasLayer
     <!-- 채팅 -->
     <div class="mp-card p-2.5">
       <div class="flex items-center justify-between mb-1.5"><span class="mp-lbl">방 채팅</span><span class="text-[10px] text-slate-500">Enter 전송</span></div>
-      <div id="mpLobbyChatLog" class="overflow-y-auto flex flex-col gap-1" style="height:78px;max-height:78px"></div>
+      <div id="mpLobbyChatLog" class="overflow-y-auto flex flex-col gap-1" style="min-height:56px;max-height:140px"></div>
       <div class="flex gap-1.5 mt-1.5">
         <input id="mpLobbyChat" class="mp-in flex-1" maxlength="80" placeholder="메시지 입력" />
         <button id="mpLobbyChatSend" class="mp-btn blue" style="padding:8px 12px;font-size:12px">전송</button>
@@ -6522,6 +6575,12 @@ extends CanvasLayer
     const readyCnt = [...S.players.values()].filter((p) => p.ready).length + botN;
     $('mpRoomCount').textContent = (n + botN) + ' / ' + S.room.max + '명 · ' + readyCnt + '/' + (n + botN) + ' 준비';
     $('mpRoomCount').className = 'text-xs font-black ' + ((n + botN) >= S.room.max ? 'text-rose-300' : 'text-sky-300');
+    var headSum = $('mpLobbyHeadSum');
+    if (headSum) { /* v5.10: 방 코드·맵·모드·인원 한 줄 헤더 */
+      var hm = (MP() ? MP().byId(S.room.map) : null) || { emoji: '🗺️', name: S.room.map };
+      var hd = (MD() ? MD().modeById(S.room.mode) : null) || { emoji: '🏁', name: S.room.mode };
+      headSum.textContent = S.room.code + ' · ' + (hm.emoji || '') + ' ' + (hm.name || '') + ' · ' + (hd.emoji || '') + ' ' + (hd.name || '') + ' · ' + (n + botN) + '/' + S.room.max + '명';
+    }
     const hostOnly = S.isHost;
 
     const list = $('mpRoomPlayers');
@@ -6542,14 +6601,21 @@ extends CanvasLayer
       c.clearRect(0, 0, 32, 36);
       try { c.drawImage(sp, 0, 0); } catch (e) {}
     });
-    /* 빈 자리에 친구 초대 */
+    /* 빈 자리에 친구 초대 — v5.10: 절반 높이 점선 타일을 한 줄에 3개씩 (참가자 행 크기로 만들지 않는다) */
     const maxN = S.room.max || 4;
-    for (let i = n + botN; i < maxN; i++) {
-      const d = document.createElement('div');
-      d.className = 'mps-slot';
-      d.innerHTML = '<span>➕ 빈 자리 ' + (i + 1) + '</span><span style="opacity:.75">📩 초대</span>';
-      d.addEventListener('click', () => frOpen());
-      list.appendChild(d);
+    const empties = [];
+    for (let i = n + botN; i < maxN; i++) empties.push(i);
+    if (empties.length) {
+      const row = document.createElement('div');
+      row.className = 'mps-row';
+      empties.forEach((i) => {
+        const d = document.createElement('div');
+        d.className = 'mps-slot mini';
+        d.innerHTML = '<span>➕ ' + (i + 1) + '번 자리</span><span style="opacity:.75">📩 초대</span>';
+        d.addEventListener('click', () => frOpen());
+        row.appendChild(d);
+      });
+      list.appendChild(row);
     }
     list.querySelectorAll('[data-addfr]').forEach((b) => {
       b.addEventListener('click', () => { const [t, nk] = b.getAttribute('data-addfr').split('|'); addFriend(nk, t); b.textContent = '추가됨'; });
@@ -6613,10 +6679,12 @@ extends CanvasLayer
     tags.push(S.room.buffs !== false ? '🎁 버프' : '🚫 버프');
     tags.push(S.room.traps !== false ? '😈 함정' : '🚫 함정');
     tags.push(S.room.collide ? '💥 충돌' : '👻 통과');
+    var shownTags = tags.slice(0, 5); /* v5.10: 규칙 요약은 5개까지만, 나머지는 +n (전부는 방 규칙에서) */
+    var extraTags = tags.length - shownTags.length;
     box.innerHTML = '<canvas class="mpb-thumb" width="62" height="44"></canvas>' +
       '<div class="flex-1 min-w-0">' +
       '<div class="mpb-nm">' + mapDef.emoji + ' ' + esc(mapDef.name) + '</div>' +
-      '<div class="mpb-tags">' + tags.join(' · ') + '</div>' +
+      '<div class="mpb-tags">' + shownTags.join(' · ') + (extraTags > 0 ? ' · <b style="color:#fde047">+' + extraTags + '</b>' : '') + '</div>' +
       '</div>';
     const th = box.querySelector('canvas');
     try {
@@ -8797,6 +8865,7 @@ extends CanvasLayer
   function renderLobbyChat() {
     const log = $('mpLobbyChatLog');
     if (!log) return;
+    if (!S.chat.length) { log.innerHTML = '<div style="color:#64748b;font-size:11px;font-weight:800;padding:4px 2px">아직 메시지가 없어요 · 응원 한마디 어때요?</div>'; return; }
     log.innerHTML = S.chat.slice(-30).map((c) => c.sys
       ? '<div class="mp-msg sys">' + esc(c.msg) + '</div>'
       : '<div class="mp-msg ' + (c.mine ? 'mine' : '') + '"><b style="color:' + colorHex(c.color) + '">' + esc(c.nick) + '</b> ' + esc(c.msg) + '</div>').join('');
@@ -8833,24 +8902,32 @@ extends CanvasLayer
     beep(880, 0.08, 0.11);
   }
 
-  function renderFriends() {
-    const list = $('mpFriendList');
+  /* v5.10 친구 허브: renderFriends/renderFriendModal 두 렌더러를 하나로 통일.
+     opts: { rowClass, emptyHtml, invite (로비에서만 초대 버튼), join (합류 버튼), closeOnJoin } */
+  function renderFriendList(container, opts) {
+    const list = container;
     if (!list) return;
-    if (!friends.length) { list.innerHTML = '<div class="text-[11px] text-slate-500">아직 친구가 없어요. 친구 코드(닉네임#0000)를 입력해 추가해 보세요.</div>'; }
-    else {
+    opts = opts || {};
+    const inLobby = S.phase === 'lobby' && !!S.room;
+    if (!friends.length) {
+      list.innerHTML = opts.emptyHtml || '<div class="text-[11px] text-slate-500">아직 친구가 없어요. 친구 코드(닉네임#0000)를 입력해 추가해 보세요.</div>';
+    } else {
       list.innerHTML = friends.map((f, i) => {
         const pr = S.presence[f.ftag];
         const online = pr && (Date.now() - pr.ts < 70000);
         const rec = records[f.ftag] || { w: 0, l: 0 };
+        const inRoom = online && pr.room;
         const fnick = (online && pr.nick) ? pr.nick : f.nick;
-        return '<div class="mp-lrow" style="flex-wrap:wrap">' +
+        const stTxt = (pr && pr.sm) ? '💬 ' + esc(pr.sm) : (online ? (inRoom ? '방 대기 중 · ' + esc(inRoom) : '온라인') : '오프라인');
+        return '<div class="' + (opts.rowClass || 'mp-lrow') + '" style="flex-wrap:wrap">' +
           '<span class="mp-dot" style="background:' + (online ? '#34d399' : '#475569') + '"></span>' +
           '<canvas class="v46fr-ava" data-frface="' + esc(f.ftag) + '" width="28" height="32" style="width:22px;height:26px;image-rendering:pixelated;flex:0 0 auto"></canvas>' +
-          '<span class="text-sm font-black text-white flex-1 truncate">' + esc(fnick) + '<span class="text-[10px] text-slate-400">#' + esc(f.ftag) + '</span></span>' +
-          '<span class="text-[10px] font-black ' + (rec.w || rec.l ? 'text-amber-300' : 'text-slate-500') + '">' + (rec.w || rec.l ? rec.w + '승 ' + rec.l + '패' : '전적 없음') + '</span>' +
-          (online && pr.room ? '<button class="mp-chip on" data-joinfriend="' + esc(pr.room) + '" style="padding:3px 7px;font-size:10px">합류</button>' : '') +
-          '<span class="text-[10px] font-bold ' + (online ? 'text-emerald-300' : 'text-slate-500') + '">' + (online ? (pr.room ? '방 대기 중' : '온라인') : '오프라인') + '</span>' +
-          '<button class="mp-chip" data-delfriend="' + i + '" style="padding:2px 6px;font-size:10px">✕</button></div>';
+          '<div class="nm" style="flex:1;min-width:0"><div class="text-[11.5px] font-black text-white truncate">' + esc(fnick) +
+            '<span class="text-[9.5px] text-slate-400">#' + esc(f.ftag) + '</span></div>' +
+            '<div style="font-size:10px;font-weight:800;color:#94a3b8;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + stTxt + ' · ' + (rec.w || rec.l ? rec.w + '승 ' + rec.l + '패' : '전적 없음') + '</div></div>' +
+          (opts.invite && inLobby && online ? '<button class="mp-chip on" data-finvite="' + esc(f.ftag) + '" style="padding:3px 7px;font-size:10px">초대</button>' : '') +
+          (opts.join !== false && online && inRoom ? '<button class="mp-chip on" data-fjoin="' + esc(inRoom) + '" style="padding:3px 7px;font-size:10px">합류</button>' : '') +
+          '<button class="mp-chip" data-fdel="' + i + '" style="padding:2px 6px;font-size:10px">✕</button></div>';
       }).join('');
       list.querySelectorAll('[data-frface]').forEach((cv) => {
         const ft = cv.getAttribute('data-frface');
@@ -8861,13 +8938,22 @@ extends CanvasLayer
         const sp3 = spriteFor(col3, 'idle1', sk3);
         if (sp3) { const c3 = cv.getContext('2d'); c3.imageSmoothingEnabled = false; c3.clearRect(0, 0, 28, 32); try { c3.drawImage(sp3, 0, 0, 28, 32); } catch (e) {} }
       });
-      list.querySelectorAll('[data-joinfriend]').forEach((b) => b.addEventListener('click', () => joinRoom(b.getAttribute('data-joinfriend'))));
-      list.querySelectorAll('[data-delfriend]').forEach((b) => b.addEventListener('click', () => {
-        friends.splice(Number(b.getAttribute('data-delfriend')), 1); lsSet(LSF, friends); renderFriends();
+      list.querySelectorAll('[data-finvite]').forEach((b) => b.addEventListener('click', () => sendInvite(b.getAttribute('data-finvite'))));
+      list.querySelectorAll('[data-fjoin]').forEach((b) => b.addEventListener('click', () => { if (opts.closeOnJoin) frClose(); joinRoom(b.getAttribute('data-fjoin')); }));
+      list.querySelectorAll('[data-fdel]').forEach((b) => b.addEventListener('click', () => {
+        friends.splice(Number(b.getAttribute('data-fdel')), 1); lsSet(LSF, friends); renderFriends(); renderFriendModal();
       }));
     }
     const on = friends.filter((f) => S.presence[f.ftag] && Date.now() - S.presence[f.ftag].ts < 70000).length;
-    $('mpPresState').textContent = friends.length ? on + '/' + friends.length + ' 온라인' : '친구 없음';
+    const ps = $('mpPresState');
+    if (ps) ps.textContent = friends.length ? on + '/' + friends.length + ' 온라인' : '친구 없음';
+    const st = $('frOnlineState');
+    if (st) st.textContent = on + '/' + friends.length;
+    const cnt = $('frOpenCnt');
+    if (cnt) cnt.textContent = String(on);
+  }
+  function renderFriends() {
+    renderFriendList($('mpFriendList'), { rowClass: 'mp-lrow', join: true, invite: false, closeOnJoin: false });
   }
 
   /* ---------- 화면 전환 ---------- */
@@ -9045,42 +9131,9 @@ extends CanvasLayer
   function frClose() { const m = $('frModal'); if (m) m.classList.add('hidden'); }
 
   function renderFriendModal() {
-    const list = $('frList');
-    if (!list) return;
-    const inLobby = S.phase === 'lobby' && !!S.room;
-    if (!friends.length) {
-      list.innerHTML = '<div class="m41-note">아직 친구가 없어요. 친구 코드(닉네임#0000)를 추가해 보세요.</div>';
-    } else {
-      list.innerHTML = friends.map((f, i) => {
-        const pr = S.presence[f.ftag];
-        const online = pr && (Date.now() - pr.ts < 70000);
-        const rec = records[f.ftag] || { w: 0, l: 0 };
-        const inRoom = online && pr.room;
-        const fnick2 = (online && pr.nick) ? pr.nick : f.nick;
-        return '<div class="m41-row">' +
-          '<span class="mp-dot" style="background:' + (online ? '#34d399' : '#475569') + '"></span>' +
-          '<canvas class="v46fr-ava" data-frface="' + esc(f.ftag) + '" width="28" height="32" style="width:22px;height:26px;image-rendering:pixelated;flex:0 0 auto"></canvas>' +
-          '<div class="nm"><div class="text-[11.5px] font-black text-white truncate">' + esc(fnick2) +
-            '<span class="text-[9.5px] text-slate-400">#' + esc(f.ftag) + '</span></div>' +
-            '<div class="m41-note">' + (pr && pr.sm ? '💬 ' + esc(pr.sm) : (online ? (inRoom ? '방 대기 중 · ' + esc(inRoom) : '온라인') : '오프라인')) +
-            ' · ' + (rec.w || rec.l ? rec.w + '승 ' + rec.l + '패' : '전적 없음') + '</div></div>' +
-          (inLobby && online ? '<button class="mp-chip on" data-invite="' + esc(f.ftag) + '" style="padding:3px 7px;font-size:10px">초대</button>' : '') +
-          (online && inRoom ? '<button class="mp-chip on" data-joinc="' + esc(inRoom) + '" style="padding:3px 7px;font-size:10px">합류</button>' : '') +
-          '<button class="mp-chip" data-delfr="' + i + '" style="padding:2px 6px;font-size:10px">✕</button>' +
-          '</div>';
-      }).join('');
-      list.querySelectorAll('[data-invite]').forEach((b) => b.addEventListener('click', () => sendInvite(b.getAttribute('data-invite'))));
-      list.querySelectorAll('[data-joinc]').forEach((b) => b.addEventListener('click', () => { frClose(); joinRoom(b.getAttribute('data-joinc')); }));
-      list.querySelectorAll('[data-delfr]').forEach((b) => b.addEventListener('click', () => {
-        friends.splice(Number(b.getAttribute('data-delfr')), 1); lsSet(LSF, friends); renderFriendModal(); renderFriends();
-      }));
-    }
-    const on = friends.filter((f) => S.presence[f.ftag] && Date.now() - S.presence[f.ftag].ts < 70000).length;
-    const st = $('frOnlineState');
-    if (st) st.textContent = on + '/' + friends.length;
-    const cnt = $('frOpenCnt');
-    if (cnt) cnt.textContent = String(on);
+    renderFriendList($('frList'), { rowClass: 'm41-row', emptyHtml: '<div class="m41-note">아직 친구가 없어요. 친구 코드(닉네임#0000)를 추가해 보세요.</div>', join: true, invite: true, closeOnJoin: true });
   }
+
 
   function sendInvite(ftag) {
     if (!S.room) { toast('초대할 방이 없어요', 'danger', '먼저 방을 만들어 주세요', 1800); return; }
@@ -13224,6 +13277,9 @@ extends CanvasLayer
     </div>
     <div id="v43WizStep1">
       <button type="button" id="v43WizQuick" class="mp-btn gold" style="padding:7px;font-size:12px">⚡ 직전 설정으로 바로 시작</button>
+      <div style="display:flex;gap:5px;margin-top:6px"><input id="v43WizQ" type="text" placeholder="모드 검색 (예: 좀비, 보스, 타임)" style="flex:1;min-width:0;height:38px;border-radius:10px;border:2px solid #33456a;background:#0f172a;color:#fff;padding:0 10px;font-size:12px;font-weight:700" /></div>
+      <div id="v43WizCats" style="display:flex;gap:5px;overflow-x:auto;margin-top:6px;padding-bottom:2px"></div>
+      <div id="v43WizFav" style="margin-top:4px"></div>
       <div id="v43WizModes" class="v43-grid2" style="margin-top:6px"></div>
     </div>
     <div id="v43WizStep2" class="hidden">
@@ -13330,6 +13386,7 @@ extends CanvasLayer
     </div>
     <div id="v43MyCode" class="mp-chip gold" style="padding:5px 7px;font-size:11px;color:#fde68a">닉네임#0000</div>
     <div id="v43MyState" class="v43-sub" style="color:#a7f3d0">🟢 온라인 · 친구에게 이렇게 보입니다</div>
+    <input id="v51FrSearch" class="mp-in" maxlength="20" placeholder="🔍 친구 검색 (닉네임)" style="margin-top:6px" />
     <div id="v43Week" class="hidden"></div>
 <div id="v43FrDetail" class="hidden"></div>
     <div class="v43-sub">친구를 탭하면 <b>지금 뭐 하는지</b> 상세로 보여요 · 초록불 = 온라인 · 노랑 = 방 대기 중</div>
@@ -13600,6 +13657,10 @@ extends CanvasLayer
     min-width:0; overflow:hidden; padding:6px 8px; min-height:44px; }
   #v43WizModes .v43-mm b { display:block; font-size:11px; font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
   #v43WizModes .v43-mm span { display:block; font-size:9px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+  #v43WizCats button{flex:0 0 auto;min-height:36px;padding:6px 10px;border-radius:10px;border:2px solid #33456a;background:#16213a;color:#cbd5e1;font-size:11px;font-weight:900;}
+  #v43WizCats button.on{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);border-color:#5a3204;color:#3a2205;}
+  #v43WizModes .v43-mfav{color:#fbbf24;text-shadow:0 1px 2px rgba(0,0,0,.6);}
+  #v43WizFav .v43-sec{font-size:11px;font-weight:900;color:#fde047;margin:2px 0 0;}
   #v44SoloNote { grid-column:1/-1; }
   #v44WizRules { width:100%; padding:8px; font-size:11.5px; border-color:#fbbf24; color:#fef3c7; }
   /* ---------- ② 맵 고르기 : 이름 · 거리 · 기록 3줄 고정 ---------- */
@@ -13704,12 +13765,11 @@ extends CanvasLayer
 <div id="v44Codex" class="v44-modal hidden">
   <div class="v44-card" style="border-color:#22d3ee">
     <div class="v44-h">
-      <div><div class="v44-t">📖 재우 도감</div><div class="v44-sub">함정 · 아이템 · 이벤트 · 맵 수집률</div></div>
+      <div><div class="v44-t">📖 컬렉션</div><div class="v44-sub">도감 · 업적 · 트로피 · 칭호 · 테두리</div></div>
       <button type="button" class="mp-chip" data-v44close="v44Codex">닫기 ✕</button>
     </div>
     <div id="v44CodexTabs" class="v44-codextabs"></div>
     <div id="v44CodexBody" style="display:flex;flex-direction:column;gap:6px"></div>
-    <div id="v44CodexAch" class="hidden" style="display:none;flex-direction:column;gap:4px"></div>
   </div>
 </div>
 
@@ -23181,6 +23241,7 @@ extends CanvasLayer
     if (live && (a && (a.act === 'race' || a.act === 'spectate'))) h += '<button type="button" class="mp-btn blue" data-djoin="' + (a.room || st.room || '') + '">👀 관전하기</button>';
     else if (live && st.room) h += '<button type="button" class="mp-btn green" data-djoin="' + st.room + '">🚪 합류하기</button>';
     if (S && S.room && S.isHost && live) h += '<button type="button" class="mp-btn" data-dinv="' + ftag + '">📩 방 초대</button>';
+    h += '<button type="button" class="mp-btn blue" data-dchat="' + ftag + '">💬 채팅</button>';
     h += '<button type="button" class="mp-btn dark" data-rdel="' + ftag + '" style="border-color:#f87171;color:#fecaca">❌ 친구 삭제</button>';
     h += '<button type="button" class="mp-chip" data-dclose="1">닫기</button>';
     h += '</div>';
@@ -23207,6 +23268,9 @@ extends CanvasLayer
       if (!S2 || !S2.room) return;
       V.sendPresence({ t: 'invite', to: b.getAttribute('data-dinv'), code: S2.room.code, nick: S2.me.nick });
       V.toast('📩 초대 보냄', 'lucky', '친구에게 방 코드를 보냈습니다', 1800);
+    }));
+    el.querySelectorAll('[data-dchat]').forEach((b) => b.addEventListener('click', () => {
+      try { if (root.JW51DM && root.JW51DM.open) root.JW51DM.open(b.getAttribute('data-dchat')); } catch (e) {}
     }));
     el.querySelectorAll('[data-rdel]').forEach((b) => b.addEventListener('click', () => {
       const t = b.getAttribute('data-rdel');
@@ -23305,8 +23369,9 @@ extends CanvasLayer
       V.sendPresence({ t: 'invite', to: ftag, code: S2.room.code, nick: S2.me.nick });
       V.toast('📩 초대 보냄', 'lucky', '친구에게 방 코드를 보냈습니다', 2000);
     }));
+    /* v5.10: 1:1 전적은 별도 팝업(#v43Rival)이 아니라 상세 시트 안에 — 전적 버튼은 상세 시트를 연다 */
     box.querySelectorAll('[data-frival]').forEach((b) => b.addEventListener('click', () => {
-      showRival(b.getAttribute('data-frival'));
+      detail(b.getAttribute('data-frival'));
     }));
   }
   function esc(s) { return String(s == null ? '' : s).replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c])); }
@@ -24889,16 +24954,57 @@ extends CanvasLayer
     if ($('v43WizSub')) $('v43WizSub').textContent = n === 1 ? '고르면 다음 단계(맵)로 넘어갑니다' : '맵을 누르면 바로 출발! (전적·목표 층수 표시)';
     if (n === 1) renderModes(); else renderMaps();
   }
+  var wizCat = 'all', wizQ = '';
+  function wizModeFav() { try { var f = V.lsGet('jw43_modefav_v1', []); return Array.isArray(f) ? f : []; } catch (e) { return []; } }
+  function wizToggleFav(id) {
+    var f = wizModeFav(); var i = f.indexOf(id);
+    if (i >= 0) f.splice(i, 1); else f.push(id);
+    try { V.lsSet('jw43_modefav_v1', f); } catch (e) {}
+    renderModes();
+  }
   function renderModes() {
     const box = $('v43WizModes');
     if (!box) return;
     /* v5.6: 단일 출처 G.soloModes() — 멀티 전용 7종 제외. v44 미로드 시에만 전체 MODES로 폴백한다. */
+    /* v5.10: 카테고리·검색·즐겨찾기는 표시 필터일 뿐, 목록 내용은 바꾸지 않는다. */
     const list = (root.JW43 && JW43.G && JW43.G.soloModes) ? JW43.G.soloModes() : (MD().MODES || []);
-    box.innerHTML = list.map((m) => '<button type="button" class="v43-mm' + (m.id === pickedMode ? ' on' : '') + '" data-wmode="' + m.id + '">' +
-      '<b>' + m.emoji + ' ' + m.name + '</b><span>' + modDesc(m) + '</span></button>').join('');
+    const CATS = (root.JW53 && root.JW53.MODE_CATS) || [['all', '🌐 전체']];
+    const CAT = (root.JW53 && root.JW53.MODE_CAT) || {};
+    const catOf = function (id) { return CAT[id] || 'sense'; };
+    const bar = $('v43WizCats');
+    if (bar) {
+      bar.innerHTML = CATS.filter(function (c) { return c[0] !== 'versus'; }).map(function (c) {
+        return '<button type="button" data-wcat="' + c[0] + '"' + (wizCat === c[0] ? ' class="on"' : '') + '>' + c[1] + '</button>';
+      }).join('');
+      bar.querySelectorAll('[data-wcat]').forEach(function (b) { b.addEventListener('click', function () { wizCat = b.getAttribute('data-wcat'); renderModes(); }); });
+    }
+    const q = (wizQ || '').trim().toLowerCase();
+    const match = function (m) {
+      if (wizCat !== 'all' && catOf(m.id) !== wizCat) return false;
+      if (!q) return true;
+      var hay = (m.name || '') + ' ' + modDesc(m) + ' ' + m.id;
+      return hay.toLowerCase().indexOf(q) >= 0;
+    };
+    const fav = wizModeFav();
+    const favList = list.filter(function (m) { return fav.indexOf(m.id) >= 0 && match(m); });
+    const rest = list.filter(function (m) { return fav.indexOf(m.id) < 0 && match(m); });
+    const favBox = $('v43WizFav');
+    if (favBox) favBox.innerHTML = favList.length ? '<div class="v43-sec">⭐ 즐겨찾는 모드</div>' : '';
+    const card = function (m) {
+      var isFav = fav.indexOf(m.id) >= 0;
+      return '<button type="button" class="v43-mm' + (m.id === pickedMode ? ' on' : '') + '" data-wmode="' + m.id + '" style="position:relative">' +
+        '<span class="v43-mfav" data-wfav="' + m.id + '">' + (isFav ? '★' : '☆') + '</span>' +
+        '<b>' + m.emoji + ' ' + m.name + '</b><span>' + modDesc(m) + '</span></button>';
+    };
+    box.innerHTML = favList.map(card).join('') + rest.map(card).join('');
+    if (!favList.length && !rest.length) box.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;font-size:11px;padding:16px">조건에 맞는 모드가 없어요</div>';
     box.querySelectorAll('[data-wmode]').forEach((b) => b.addEventListener('click', () => {
       pickedMode = b.getAttribute('data-wmode');
       step(2);
+    }));
+    box.querySelectorAll('[data-wfav]').forEach((sp) => sp.addEventListener('click', function (ev) {
+      ev.preventDefault(); ev.stopPropagation();
+      wizToggleFav(sp.getAttribute('data-wfav'));
     }));
   }
   function renderMaps() {
@@ -24960,6 +25066,8 @@ extends CanvasLayer
     }
     const q = $('v43WizQuick');
     if (q) q.addEventListener('click', quickStart);
+    const wq = $('v43WizQ');
+    if (wq && !wq.__v510) { wq.__v510 = true; wq.addEventListener('input', function () { wizQ = wq.value; renderModes(); }); }
     const bk = $('v43WizBack');
     if (bk) bk.addEventListener('click', () => step(1));
     const rl = $('v43WizRules');
@@ -24979,6 +25087,8 @@ extends CanvasLayer
   if (!V) return;
   const $ = V.$;
   function openQol() {
+    /* v5.10: 편리성 모달은 설정 허브로 통합 — 허브의 편리성 섹션을 연다 */
+    if (window.__v51HubOpen) { window.__v51HubOpen('qol'); return; }
     const m = $('v43Qol');
     if (m) { m.classList.remove('hidden'); try { V.renderQol(); } catch (e) {} }
   }
@@ -30697,8 +30807,8 @@ extends CanvasLayer
     st[k] = (st[k] || 0) + (n || 1);
     V.lsSet(V.LS.stats, st);
   };
-  function renderTrophy() {
-    const box = $('v44TrophyBody');
+  function renderTrophy(box) {
+    box = box || $('v44TrophyBody');
     if (!box) return;
     const got = TROPHIES.filter((t) => TRO[t.id]).length;
     box.innerHTML =
@@ -30742,8 +30852,8 @@ extends CanvasLayer
     if (wrap) wrap.classList.add(f.css);
   }
   G.applyFrame = applyFrame;
-  function renderFrames() {
-    const box = $('v44FrameBody');
+  function renderFrames(box) {
+    box = box || $('v44FrameBody');
     if (!box) return;
     box.innerHTML = '<div class="v44-frames">' + FRAMES.map((f) =>
       '<button type="button" class="v44-fr ' + (G.frame === f.id ? 'on' : '') + '" data-frame="' + f.id + '">' +
@@ -32144,70 +32254,147 @@ extends CanvasLayer
   }
 
   /* ---------- 도감 · 업적 · 트로피 · 랭킹 · 테두리 상단 탭 바 ---------- */
+  /* ---------- 컬렉션 허브 (v5.10): 도감·업적·트로피·칭호·테두리 한 모달·한 컨테이너 ---------- */
   const CODEX_TABS = [
-    ['codex', '📖 도감'], ['ach', '🏅 업적'], ['trophy', '🏆 트로피'], ['rank', '📊 랭킹'], ['frames', '🖼️ 테두리']
+    ['codex', '📖 도감'], ['ach', '🏅 업적'], ['trophy', '🏆 트로피'], ['titles', '👑 칭호'], ['frames', '🖼️ 테두리'], ['rank', '📊 랭킹']
   ];
   let codexTab = 'codex';
+  /* 진행률 공통 컴포넌트: 바 + "x/y · n%" + 남은 개수 (v5.10) */
+  function hubProg(icon, done, total, remainTxt) {
+    var tot = total || 1, pct = Math.round(done * 100 / tot);
+    return '<div class="v44-prog"><b>' + icon + ' ' + done + ' / ' + total + '</b><span>' + pct + '% · ' + remainTxt + '</span></div>' +
+      '<div class="bar"><i style="width:' + pct + '%"></i></div>';
+  }
+  function hubProgOf(tab) {
+    try {
+      if (tab === 'codex') { var t = G.codexTotal(); return [t.got, t.all]; }
+      if (tab === 'ach') { var A = V.ACH || [], S = (V.achState && V.achState()) || {}, n = 0; A.forEach(function (a) { if (S[a.id]) n++; }); return [n, A.length]; }
+      if (tab === 'trophy') { return [(G.TROPHIES || []).filter(function (x) { return (G.trophy || {})[x.id]; }).length, (G.TROPHIES || []).length]; }
+      if (tab === 'titles') { var l = (root.JW51TITLES && root.JW51TITLES.list()) || []; var u = (V.api && V.api().unlockedTitles) ? (V.api().unlockedTitles() || []) : []; return [u.length, l.length]; }
+    } catch (e) {}
+    return null;
+  }
   function renderCodexAch() {
-    const box = $('v44CodexAch');
+    const box = $('v44CodexBody');
     if (!box) return;
     try {
       if (V.renderAch) { V.renderAch(box); return; }
     } catch (e) {}
     box.innerHTML = '<div class="v44-sub">업적 정보를 불러오는 중…</div>';
   }
+  var hubTitleTab = 'all', hubTitleQ = '';
+  function paintTitlesList(box) {
+    var list = box ? box.querySelector('#v44HubTlList') : null;
+    if (!list) return;
+    var T = (root.JW51TITLES && root.JW51TITLES.list()) || [];
+    var un = [];
+    try { un = ((V.api && V.api().unlockedTitles) ? (V.api().unlockedTitles() || []) : []).map(function (t) { return t.id; }); } catch (e) { un = []; }
+    var cur = '';
+    try { cur = (root.JW51TITLES && root.JW51TITLES.equipped()) || ''; } catch (e) {}
+    var meta = function (id) { try { return (root.JW51TITLES && root.JW51TITLES.meta(id)) || {}; } catch (e) { return {}; } };
+    var escT = function (s) { return String(s == null ? '' : s).replace(/[<>&"']/g, function (c) { return ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+    var GRADE_L = { common: '일반', rare: '희귀', epic: '영웅', legend: '전설', champion: '1위 한정' };
+    var rows = T.filter(function (t) {
+      var mm = meta(t.id);
+      if (hubTitleTab === 'clear' && mm.kind !== 'clear') return false;
+      if (hubTitleTab === 'champ' && mm.kind !== 'champ') return false;
+      if (hubTitleTab === 'special' && mm.kind !== 'special') return false;
+      if (hubTitleTab === 'basic' && mm.kind !== 'basic') return false;
+      if (hubTitleQ) { var hay = (t.name || '') + ' ' + (t.short || '') + ' ' + (mm.why || '') + ' ' + (mm.name || ''); if (hay.toLowerCase().indexOf(hubTitleQ.toLowerCase()) < 0) return false; }
+      return true;
+    });
+    if (!rows.length) { list.innerHTML = '<div class="v51empty">조건에 맞는 칭호가 없어요</div>'; return; }
+    list.innerHTML = rows.map(function (t) {
+      var mm = meta(t.id);
+      var has = un.indexOf(t.id) >= 0;
+      var isCur = cur === t.id;
+      var g = mm.grade || 'common';
+      var icon = mm.icon ? '<img class="badgeimg" src="' + escT(mm.icon) + '" alt="">' : '<span style="width:26px;text-align:center;font-size:18px">🏅</span>';
+      var crown = g === 'champion' ? '👑 ' : '';
+      return '<div class="v51tc ' + g + '" style="' + (has ? '' : 'opacity:.86') + '">' + icon +
+        '<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;min-width:0">' +
+        '<b class="v51tg g-' + g + '" style="font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + crown + escT(t.short || t.name) + '</b>' +
+        '<span class="gr">' + (GRADE_L[g] || '') + '</span></div>' +
+        '<div style="font-size:9.5px;color:#93a4c4;font-weight:800;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escT(mm.why || '') + '</div></div>' +
+        (has ? '<button type="button" class="v51btn sm ' + (isCur ? 'green' : 'dark') + '" data-v51eq="' + t.id + '" style="white-space:nowrap;padding:6px 9px">' + (isCur ? '착용중' : '장착') + '</button>' : '<span class="v51sub" style="white-space:nowrap;font-size:9.5px">🔒 잠김</span>') +
+        '</div>';
+    }).join('');
+    Array.prototype.forEach.call(list.querySelectorAll('[data-v51eq]'), function (b) {
+      b.addEventListener('click', function () {
+        try { if (root.JW51TITLES) root.JW51TITLES.equip(b.getAttribute('data-v51eq')); } catch (e) {}
+        renderTitlesHub(box);
+      });
+    });
+  }
+  function renderTitlesHub(box) {
+    if (!box) return;
+    var T = (root.JW51TITLES && root.JW51TITLES.list()) || [];
+    var un = [];
+    try { un = ((V.api && V.api().unlockedTitles) ? (V.api().unlockedTitles() || []) : []); } catch (e) { un = []; }
+    var tabs = [['all', '전체'], ['clear', '맵 클리어'], ['champ', '👑 1위'], ['special', '일러스트'], ['basic', '기본']];
+    var h = hubProg('👑 칭호', un.length, T.length, Math.max(0, T.length - un.length) + '개 남음');
+    h += '<div class="v51search"><span class="ic">🔎</span><input id="v44HubTlQ" class="v51in" placeholder="칭호 검색 (예: 구름, 1위, 보스)" /></div>';
+    h += '<div class="v51row" style="flex-wrap:wrap;gap:4px">' + tabs.map(function (t) { return '<button type="button" class="v51chip' + (hubTitleTab === t[0] ? ' on' : '') + '" data-hubttab="' + t[0] + '" style="font-size:10.5px;padding:5px 8px">' + t[1] + '</button>'; }).join('') + '</div>';
+    h += '<div id="v44HubTlList" style="display:flex;flex-direction:column;gap:5px"></div>';
+    box.innerHTML = h;
+    var q = box.querySelector('#v44HubTlQ');
+    if (q) { q.value = hubTitleQ; q.addEventListener('input', function () { hubTitleQ = q.value; paintTitlesList(box); }); }
+    Array.prototype.forEach.call(box.querySelectorAll('[data-hubttab]'), function (b) {
+      b.addEventListener('click', function () { hubTitleTab = b.getAttribute('data-hubttab'); renderTitlesHub(box); });
+    });
+    paintTitlesList(box);
+  }
   function codexShow(tab) {
+    /* 랭킹은 내용 탭이 아니라 명예의 전당으로 가는 길 (v5.10) */
+    if (tab === 'rank') {
+      try { closeAll(); } catch (e) {}
+      try { if (root.JW48RK && root.JW48RK.open) { root.JW48RK.open(); return; } } catch (e) {}
+      var r = $('v42OpenRank') || $('v43OpenRank');
+      if (r) r.click();
+      return;
+    }
     codexTab = tab;
-    const body = $('v44CodexBody'), ach = $('v44CodexAch');
+    const body = $('v44CodexBody');
     const tabs = $('v44CodexTabs');
     if (tabs) Array.prototype.forEach.call(tabs.querySelectorAll('[data-ctab]'), (b) => {
       b.classList.toggle('on', b.getAttribute('data-ctab') === tab);
     });
-    /* muse-v5-9: 탭 전환은 !important로 확정 — v47 CSS의 display:block이 인라인 display:none을 이겨서 업적 탭이 도감 탭 아래에 보이던 누수 수정 */
-    if (body) { body.classList.toggle('hidden', tab !== 'codex'); body.style.setProperty('display', tab === 'codex' ? 'flex' : 'none', 'important'); }
-    if (ach) { ach.classList.toggle('hidden', tab !== 'ach'); ach.style.setProperty('display', tab === 'ach' ? 'flex' : 'none', 'important'); }
-    if (tab === 'ach') renderCodexAch();
+    /* muse-v5-10: 내용 컨테이너는 #v44CodexBody 하나 — 탭 누수는 구조적으로 사라진다 */
+    if (body) { body.classList.remove('hidden'); body.style.setProperty('display', 'flex', 'important'); }
+    if (tab === 'codex') { try { renderCodex(); } catch (e) {} }
+    else if (tab === 'ach') renderCodexAch();
+    else if (tab === 'trophy') { try { G.renderTrophy && G.renderTrophy(body); } catch (e) {} }
+    else if (tab === 'frames') { try { G.renderFrames && G.renderFrames(body); } catch (e) {} }
+    else if (tab === 'titles') renderTitlesHub(body);
+    try { paintHubTabProgress(); } catch (e) {}
   }
-  function paintCodexTabs() {
-    const mods = { v44Codex: 'codex', v44Trophy: 'trophy', v44Frames: 'frames' };
-    Object.keys(mods).forEach((mid) => {
-      const card = $(mid) && $(mid).querySelector('.v44-card');
-      if (!card) return;
-      const host = card.querySelector('.v44-h');
-      if (!host) return;
-      let bar = card.querySelector('.v44-codextabs');
-      if (!bar) {
-        bar = document.createElement('div');
-        bar.className = 'v44-codextabs';
-        bar.id = mid === 'v44Codex' ? 'v44CodexTabs' : ('v44Tabs_' + mid);
-        host.parentNode.insertBefore(bar, host.nextSibling);
-      }
-      if (bar.__done) {
-        Array.prototype.forEach.call(bar.querySelectorAll('[data-ctab]'), (b) => b.classList.toggle('on', b.getAttribute('data-ctab') === mods[mid]));
-        return;
-      }
-      bar.__done = true;
-      bar.innerHTML = CODEX_TABS.map((t) => '<button type="button" data-ctab="' + t[0] + '" class="' + (t[0] === mods[mid] ? 'on' : '') + '">' + t[1] + '</button>').join('');
-      bar.querySelectorAll('[data-ctab]').forEach((b) => b.addEventListener('click', () => {
-        const tab = b.getAttribute('data-ctab');
-        try { V.beep && V.beep(660, 0.05, 0.07, 'square', 880); } catch (e) {}
-        if (tab === 'codex' || tab === 'ach') {
-          closeAll(); openPanel('v44Codex', () => { try { G.renderCodex && G.renderCodex(); } catch (e) {} });
-          codexShow(tab);
-          return;
-        }
-        if (tab === 'trophy') { closeAll(); openPanel('v44Trophy', () => { try { G.renderTrophy && G.renderTrophy(); } catch (e) {} }); return; }
-        if (tab === 'frames') { closeAll(); openPanel('v44Frames', () => { try { G.renderFrames && G.renderFrames(); } catch (e) {} }); return; }
-        if (tab === 'rank') {
-          closeAll();
-          const r = $('v42OpenRank') || $('v43OpenRank');
-          if (r) r.click();
-          return;
-        }
-      }));
+  function paintHubTabProgress() {
+    /* 탭 버튼에 작은 진행률을 넣는다 (v5.10) */
+    const bar = $('v44CodexTabs');
+    if (!bar) return;
+    Array.prototype.forEach.call(bar.querySelectorAll('[data-ctab]'), (b) => {
+      const t = b.getAttribute('data-ctab');
+      const p = hubProgOf(t);
+      const base = (CODEX_TABS.filter(function (x) { return x[0] === t; })[0] || ['', ''])[1];
+      if (p) b.textContent = base + ' ' + Math.round(p[0] * 100 / (p[1] || 1)) + '%';
     });
   }
+  function paintCodexTabs() {
+    /* muse-v5-10: 탭 바는 허브(#v44Codex)에 하나만 — 다른 모달에 주입하지 않는다 */
+    const bar = $('v44CodexTabs');
+    if (!bar) return;
+    if (bar.__done) { paintHubTabProgress(); return; }
+    bar.__done = true;
+    bar.innerHTML = CODEX_TABS.map((t) => '<button type="button" data-ctab="' + t[0] + '" class="' + (t[0] === codexTab ? 'on' : '') + '">' + t[1] + '</button>').join('');
+    bar.querySelectorAll('[data-ctab]').forEach((b) => b.addEventListener('click', () => {
+      const tab = b.getAttribute('data-ctab');
+      try { V.beep && V.beep(660, 0.05, 0.07, 'square', 880); } catch (e) {}
+      codexShow(tab);
+    }));
+    paintHubTabProgress();
+  }
   G.codexShow = codexShow;
+  G.hubShow = codexShow;
   G.paintCodexTabs = paintCodexTabs;
 
   /* ---------- 하트가 필요 없는 모드에서는 하트 줄 숨김 ---------- */
@@ -32295,28 +32482,6 @@ extends CanvasLayer
   }
 
   /* ---------- 규칙 패널 ---------- */
-  function injectCodexLinks() {
-    const body = $('v44CodexBody');
-    if (!body || $('v44CodexLinks')) return;
-    const d = document.createElement('div');
-    d.id = 'v44CodexLinks';
-    d.className = 'v44-copyrow';
-    d.innerHTML = '<button type="button" class="v44-btn" data-v44nav="v44Trophy">🏆 트로피</button>' +
-      '<button type="button" class="v44-btn" data-v44nav="v44Frames">🖼️ 테두리</button>' +
-      '<button type="button" class="v44-btn" data-v44nav="v44Deco">🎭 꾸미기</button>' +
-      '<button type="button" class="v44-btn" data-v44nav="v42Rank">📊 랭킹</button>';
-    body.appendChild(d);
-    d.querySelectorAll('[data-v44nav]').forEach((b) => b.addEventListener('click', () => {
-      const id = b.getAttribute('data-v44nav');
-      if (id === 'v42Rank') { closeAll(); const r = $('v42OpenRank') || $('v43OpenRank'); if (r) r.click(); return; }
-      closeAll();
-      openPanel(id, () => {
-        if (id === 'v44Trophy') G.renderTrophy();
-        if (id === 'v44Frames') G.renderFrames();
-        if (id === 'v44Deco' && G.renderStudio) G.renderStudio();
-      });
-    }));
-  }
 
   function renderRules() {
     const box = $('v44RulesBody');
@@ -32515,7 +32680,7 @@ extends CanvasLayer
       try { if (G.injectRivalSection) G.injectRivalSection(); } catch (e) {}
       try { G.paintStreak && G.paintStreak(); } catch (e) {}
       try { multiSetupCheck(); } catch (e) {}
-      try { if ($('v44Codex') && !$('v44Codex').classList.contains('hidden')) G.renderCodex(); } catch (e) {}
+      try { if ($('v44Codex') && !$('v44Codex').classList.contains('hidden') && codexTab !== 'titles') G.renderCodex(); } catch (e) {}
     }, 1000);
     /* 동작 확인용 전역 */
     root.JW44 = {
@@ -37686,7 +37851,8 @@ extends CanvasLayer
     ach: ['🏅 업적', ''],
     trophy: ['🏆 트로피', '업적을 달성하면 트로피가 함께 올라갑니다'],
     rank: ['📊 랭킹', '맵·모드별 최고 기록'],
-    frames: ['🖼️ 프로필 테두리', 'HUD 초상화 · 프로필 카드에 적용']
+    frames: ['🖼️ 프로필 테두리', 'HUD 초상화 · 프로필 카드에 적용'],
+    titles: ['👑 칭호', '보유 칭호 · 장착']
   };
   function achDone() {
     try {
@@ -37707,6 +37873,7 @@ extends CanvasLayer
     if (sub) {
       var txt = meta[1];
       if (key === 'ach') { var d = achDone(); txt = d[0] + ' / ' + d[1] + ' 달성 · ' + Math.round(d[1] ? d[0] * 100 / d[1] : 0) + '%'; }
+      if (key === 'titles') { try { var tl = (root.JW51TITLES && root.JW51TITLES.list()) || []; var tu = (V.api && V.api().unlockedTitles) ? (V.api().unlockedTitles() || []) : []; txt = '보유 ' + tu.length + ' / ' + tl.length + ' · ' + Math.round(tl.length ? tu.length * 100 / tl.length : 0) + '%'; } catch (e2) {} }
       if (sub.textContent !== txt) sub.textContent = txt;
     }
   }
@@ -37738,7 +37905,6 @@ extends CanvasLayer
       try {
         if (q.getAttribute('data-sq') === 'ach') {
           var m = $('v44Codex'); if (m) m.classList.remove('hidden');
-          V.renderAch && V.renderAch($('v44CodexAch'));
           var b = document.querySelector('#v44Codex [data-ctab="ach"]'); if (b) b.click();
         }
       } catch (er) {}
@@ -45588,7 +45754,7 @@ button, [role="button"]{touch-action:manipulation;}
     timeattack: 'speed', randomtgt: 'speed', minjump: 'speed', coins: 'speed', endless: 'speed', descend: 'speed',
     lava: 'survive', zombie: 'survive', dive: 'survive', burning: 'survive', oneheart: 'survive', glass: 'survive',
     boss: 'survive', bossrush: 'survive', raid: 'survive',
-    sense: 'sense', memory: 'sense', rhythm: 'sense', blackout: 'sense', walljump: 'sense', lift: 'sense', custom: 'sense',
+    sense: 'sense', memory: 'sense', rhythm: 'sense', blackout: 'sense', walljump: 'sense', lift: 'sense', custom: 'sense', special: 'sense',
     relay: 'versus', chain: 'versus', bomb: 'versus', tag: 'versus', paint: 'versus', flag: 'versus'
   };
   var MODE_CATS = [
@@ -46468,6 +46634,8 @@ button, [role="button"]{touch-action:manipulation;}
   function unlocked(id) { try { var un = V.api().unlockedTitles() || []; return un.some(function (t) { return t.id === id; }); } catch (e) { return false; } }
 
   function ensureTab() {
+    /* muse-v5-10: 칭호 탭은 컬렉션 허브가 담당한다 — v53의 '칭호' 버튼 주입을 중단한다 */
+    return;
     var tabs = $('v44CodexTabs');
     if (!tabs) return;
     if (tabs.querySelector('[data-ctab="title"]')) return;
@@ -46512,19 +46680,11 @@ button, [role="button"]{touch-action:manipulation;}
     return pane;
   }
   function openTitle() {
-    var pane = buildPane();
+    /* muse-v5-10: 칭호는 컬렉션 허브의 '칭호' 탭으로 연다 (v53 전용 패널은 쓰지 않는다) */
     var codex = $('v44Codex');
-    if (!pane || !codex) return;
-    codex.classList.remove('hidden');
-    var body = $('v44CodexBody'), ach = $('v44CodexAch');
-    if (body) { body.classList.add('hidden'); body.style.display = 'none'; }
-    if (ach) { ach.classList.add('hidden'); ach.style.display = 'none'; }
-    pane.classList.add('on');
-    codex.classList.add('v53-title');
-    var tabs = $('v44CodexTabs');
-    if (tabs) tabs.setAttribute('data-v53on', 'title');
-    if (tabs) Array.prototype.forEach.call(tabs.querySelectorAll('[data-ctab]'), function (b) { b.classList.toggle('on', b.getAttribute('data-ctab') === 'title'); });
-    paintTitle(true);
+    if (codex) { codex.classList.remove('hidden'); codex.classList.remove('v53-title'); }
+    try { if (root.JW44 && root.JW44.codexShow) { root.JW44.codexShow('titles'); return; } } catch (e) {}
+    try { if (root.JW51TITLES && root.JW51TITLES.open) root.JW51TITLES.open(); } catch (e) {}
   }
   root.JW53TITLE = { open: openTitle };
 
@@ -58912,6 +59072,7 @@ if (typeof module !== 'undefined' && module.exports) {
   var SORT = 'm';
   var MAP = 'default', MODE = 'normal', TAB = 'climb';
   var OPEN = false;
+  var SCOPE = 'all', MG_REST = false; /* v5.10: 전체/친구만 범위, 미니게임 '기록 없음' 접힘 여부 */
   var sig = '';
 
   function st() { try { return V.st() || null; } catch (e) { return null; } }
@@ -59015,6 +59176,8 @@ if (typeof module !== 'undefined' && module.exports) {
       '  box-shadow:0 2px 0 #6b4405,inset 0 1px 0 rgba(255,255,255,.45);}',
       /* 포디움 */
       '#v48rk .pod{display:grid;grid-template-columns:1fr 1.16fr 1fr;gap:7px;align-items:end;margin-top:2px;}',
+      '#v48rk .pod.solo{grid-template-columns:minmax(0,340px);justify-content:center;}',
+      '#v48rk .me .scope{font-size:10.5px;font-weight:800;color:#9fb2d0;line-height:1.4;margin-top:2px;}',
       '#v48rk .pc{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 5px 10px;',
       '  border-radius:15px;border:2px solid #2a3a56;background:linear-gradient(180deg,#18253d,#0d1424);min-width:0;overflow:hidden;}',
       '#v48rk .pc .md{font-size:19px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));}',
@@ -59155,6 +59318,12 @@ if (typeof module !== 'undefined' && module.exports) {
       if (sd) { SORT = sd.getAttribute('data-rksort'); paint(true); return; }
       var tb = t.closest('[data-rktab]');
       if (tb) { TAB = tb.getAttribute('data-rktab'); paint(true); return; }
+      var sc = t.closest('[data-rkscope]');
+      if (sc) { SCOPE = sc.getAttribute('data-rkscope'); paint(true); try { V.beep(880, 0.04, 0.06, 'square', 1180); } catch (er) {} return; }
+      var mr = t.closest('[data-mgrest]');
+      if (mr) { MG_REST = !MG_REST; paint(true); return; }
+      var af = t.closest('[data-rkaddfriend]');
+      if (af) { try { close(); if (V.openFriends) V.openFriends(); } catch (e) {} return; }
     });
     return d;
   }
@@ -59169,10 +59338,22 @@ if (typeof module !== 'undefined' && module.exports) {
     return '';
   }
 
+  function friendNicks() {
+    var set = {};
+    try { (V.lsGet('jw_friends_v1', []) || []).forEach(function (f) { if (f && f.nick) set[String(f.nick)] = 1; }); } catch (e) {}
+    try { var stt = V.st(); var pr = (stt && stt.presence) || {}; Object.keys(pr).forEach(function (k) { if (pr[k] && pr[k].nick) set[String(pr[k].nick)] = 1; }); } catch (e) {}
+    return set;
+  }
+  function scopeRows(all) {
+    if (SCOPE !== 'friends') return all;
+    var f = friendNicks(), me = myNick();
+    return all.filter(function (e) { return String(e.n) === me || f[String(e.n)]; });
+  }
+
   function paint(force) {
     var box = $('v48rkScroll');
     if (!box) return;
-    var rows = entries();
+    var rows = scopeRows(entries()); /* v5.10: 친구만 범위면 여기서 거른다 (entries() 원본은 그대로) */
     var meIdx = -1, myName = myNick();
     for (var i = 0; i < rows.length; i++) { if (String(rows[i].n) === myName) { meIdx = i; break; } }
     var my = meIdx >= 0 ? rows[meIdx] : null;
@@ -59185,7 +59366,7 @@ if (typeof module !== 'undefined' && module.exports) {
       order.forEach(function (id) { mgs.push({ id: id, g: root.JW48MG.games[id], b: best[id] }); });
       mgSig = mgs.map(function (x) { return x.id + ':' + (x.b && x.b.value) + ':' + (x.b && x.b.at); }).join(',');
     }
-    var s = [TAB, MAP, MODE, SORT, myName, rows.length, rows.map(function (r) { return r.n + r.m + r.t + (r.ti || '') + (r.ts || ''); }).join('|'),
+    var s = [TAB, MAP, MODE, SORT, SCOPE, MG_REST, myName, rows.length, rows.map(function (r) { return r.n + r.m + r.t + (r.ti || '') + (r.ts || ''); }).join('|'),
       V.rank && V.rank.status, mgSig].join('#');
     if (!force && s === sig) { paintAvas(box); return; }
     sig = s;
@@ -59203,7 +59384,8 @@ if (typeof module !== 'undefined' && module.exports) {
         '<div class="none">25종 중 <b style="color:#fde047">' + withRec + '종</b> 기록 보유</div></div>' +
         '<div class="val">' + withRec + '<small>/ 25</small></div></div>';
     } else {
-      h += '<div class="me"><div style="flex:1;min-width:0"><div class="lbl">내 순위 · ' + esc(mp.name || MAP) + '</div>' +
+      h += '<div class="me"><div style="flex:1;min-width:0"><div class="lbl">내 순위 · ' + esc(mp.name || MAP) + ' · ' + esc(md.name || MODE) + '</div>' +
+        '<div class="scope">접속자 ' + rows.length + '명 중 · 로컬 기록 + 릴레이 접속자 기록 합산 (서버 랭킹 아님)</div>' +
         (my ? '<div class="rk">' + (meIdx + 1) + '<i>위</i> <em>/ ' + rows.length + '명</em></div>'
             : '<div class="none">아직 기록이 없어요 · 한 번 도전하면 바로 올라갑니다</div>') +
         '<div class="bt">' + myTitleBadge() + '</div></div>' +
@@ -59230,17 +59412,37 @@ if (typeof module !== 'undefined' && module.exports) {
         '<div class="frow"><div class="flb">↕️</div><div class="chips">' +
           '<button type="button" class="chip' + (SORT === 'm' ? ' on' : '') + '" data-rksort="m">📏 최고 도달</button>' +
           '<button type="button" class="chip' + (SORT === 'time' ? ' on' : '') + '" data-rksort="time">⏱ 최단 클리어</button>' +
+        '</div></div>' +
+        '<div class="frow"><div class="flb">👥</div><div class="chips">' +
+          '<button type="button" class="chip' + (SCOPE === 'all' ? ' on' : '') + '" data-rkscope="all">🌐 전체(접속자)</button>' +
+          '<button type="button" class="chip' + (SCOPE === 'friends' ? ' on' : '') + '" data-rkscope="friends">🧑‍🤝‍🧑 친구만</button>' +
         '</div></div></div>';
 
       if (!rows.length) {
         h += '<div class="empty">' + (SORT === 'time' ? '아직 클리어 기록이 없어요.<br>정상에 골인하면 최단 기록이 올라갑니다.' : '아직 기록이 없어요.<br>한 번 도전하면 최고 도달이 올라갑니다.') + '</div>';
+        if (SCOPE === 'friends') {
+          var fn = friendNicks();
+          var hasFr = Object.keys(fn).length > 0;
+          h += '<div class="empty" style="margin-top:6px">' + (hasFr ? '친구 기록이 아직 없어요 · 친구가 이 맵·모드를 뛰면 여기에 뜹니다' : '친구를 추가하면 여기서 겨룰 수 있어요') + '</div>';
+          if (!hasFr) h += '<div style="text-align:center;margin-top:8px"><button type="button" class="chip" data-rkaddfriend style="min-height:44px;padding:8px 14px">👥 친구 추가하러 가기</button></div>';
+        }
+      } else if (rows.length === 1) {
+        var e0 = rows[0];
+        var bd0 = badgeOf(e0);
+        h += '<div class="pod solo"><div class="pc p1' + (String(e0.n) === myName ? ' me' : '') + '">' +
+          '<div class="md">🥇</div>' +
+          '<div class="ava"><canvas width="48" height="56" data-rkava="' + esc(e0.n) + '" data-rksk="' + esc(e0.sk || 'jaeu') + '"></canvas></div>' +
+          '<div class="nm">' + esc(e0.n) + '</div>' +
+          (bd0 ? '<div class="bd">' + bd0 + '</div>' : '') +
+          '<div class="vv">' + valText(e0) + '<small>' + esc(valSub(e0)) + '</small></div>' +
+          '<div class="dt">' + esc(rel(e0.ts)) + '</div></div></div>';
       } else {
         var top = rows.slice(0, 3);
         var order = [1, 0, 2];
         h += '<div class="pod">';
         order.forEach(function (idx) {
           var e = top[idx];
-          if (!e) { h += '<div class="pc" style="opacity:.35"><div class="md">—</div><div class="ava"></div><div class="nm">빈 자리</div></div>'; return; }
+          if (!e) return; /* v5.10: 없는 사람은 흐릿한 '빈 자리' 카드로 채우지 않는다 */
           var cls = 'pc p' + (idx + 1) + (String(e.n) === myName ? ' me' : '');
           var bd = badgeOf(e);
           h += '<div class="' + cls + '">' +
@@ -59265,10 +59467,26 @@ if (typeof module !== 'undefined' && module.exports) {
               '<div class="vv">' + valText(e) + '</div>' +
               '<div class="dt">' + esc(rel(e.ts)) + '</div></div>';
           });
+          if (meIdx >= 40 && my) { /* v5.10: 내 순위가 40위 밖이면 리스트 하단에 내 행을 고정으로 한 줄 더 */
+            var bdM = badgeOf(my);
+            h += '<div class="row me" style="border-color:#fbbf24">' +
+              '<div class="n">' + (meIdx + 1) + '</div>' +
+              '<div class="av"><canvas width="24" height="28" data-rkava="' + esc(my.n) + '" data-rksk="' + esc(my.sk || 'jaeu') + '"></canvas></div>' +
+              '<div class="mid"><div class="nm">' + esc(my.n) + '<i>나</i>' + (my.live ? '<i>📡</i>' : '') + '</div>' +
+              (bdM ? '<div class="bd on">' + bdM + '</div>' : '') + '</div>' +
+              '<div class="vv">' + valText(my) + '</div>' +
+              '<div class="dt">' + esc(rel(my.ts)) + '</div></div>';
+          }
           h += '</div>';
         }
       }
-      h += '<div class="net">' + esc((V.rank && V.rank.status) || '📡 접속자 기록과 합치는 중…') + '</div>';
+      var netTxt = (V.rank && V.rank.status) || '';
+      if (!netTxt) { /* v5.10: 상태가 아직 정해지지 않았으면 '합치는 중'으로 보이지 않게 실제 기준으로 */
+        var liveN = 0;
+        try { liveN = (V.rank && V.rank.live ? V.rank.live : []).filter(function (e) { return e && e.live; }).length; } catch (e) {}
+        netTxt = liveN ? '📡 접속자 ' + liveN + '명 기록 합침' : '📴 오프라인 · 내 기록만 표시';
+      }
+      h += '<div class="net">' + esc(netTxt) + '</div>';
     } else {
       var has = mgs.filter(function (x) { return x.b && x.b.value != null; });
       var rest = mgs.filter(function (x) { return !(x.b && x.b.value != null); });
@@ -59285,7 +59503,9 @@ if (typeof module !== 'undefined' && module.exports) {
       });
       h += '</div>';
       if (rest.length) {
-        h += '<div class="sec">아직 기록 없음<small>' + rest.length + '종</small></div><div class="lst">';
+        h += '<div class="sec" data-mgrest style="cursor:pointer">아직 기록 없음<small>' + rest.length + '종 · ' + (MG_REST ? '접기 ▲' : '펼치기 ▼') + '</small></div>';
+        if (MG_REST) {
+        h += '<div class="lst">';
         rest.forEach(function (x) {
           var g = x.g || {};
           h += '<div class="row" style="opacity:.6"><div class="n">' + (g.emoji || '🎮') + '</div>' +
@@ -59293,6 +59513,7 @@ if (typeof module !== 'undefined' && module.exports) {
             '<div class="vv" style="color:#93a8c8">기록 없음</div><div class="dt"></div></div>';
         });
         h += '</div>';
+        }
       }
     }
     var mb = $('v48rkMine');
@@ -59368,7 +59589,7 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   RK.open = open;
   RK.close = close;
-  RK.state = function () { return { open: OPEN, tab: TAB, map: MAP, mode: MODE, sort: SORT, sig: sig }; };
+  RK.state = function () { return { open: OPEN, tab: TAB, map: MAP, mode: MODE, sort: SORT, scope: SCOPE, sig: sig }; };
 
   doc.addEventListener('click', function (e) {
     var t = e.target;
@@ -72845,101 +73066,8 @@ if (typeof module !== 'undefined' && module.exports) {
     rankEl.style.removeProperty('display');   /* 표시는 .on 클래스로만 */
   }
 
-  /* ================================================================ ④ 도감 탭 강제 */
-  var wantTab = '';
-  function codexForce() {
-    var m = $('v44Codex');
-    if (!m) return;
-    var tabs = $('v44CodexTabs') || m.querySelector('.v44-codextabs');
-    var on = tabs ? tabs.querySelector('[data-ctab].on') : null;
-    var tab = wantTab || (on ? on.getAttribute('data-ctab') : '') || 'codex';
-    var closed = m.classList.contains('hidden') || getComputedStyle(m).display === 'none';
-    var body = $('v44CodexBody'), ach = $('v44CodexAch');
-    if (body) body.style.setProperty('display', (tab === 'codex' || closed) ? 'flex' : 'none', 'important');
-    if (ach) ach.style.setProperty('display', (tab === 'ach' && !closed) ? 'block' : 'none', 'important');
-    if (tabs && tab && tab !== 'rank' && !closed) {
-      Array.prototype.forEach.call(tabs.querySelectorAll('[data-ctab]'), function (b) {
-        var v = b.getAttribute('data-ctab');
-        if (v === 'title' || v === 'titles' || v === 'frames') return;
-        b.classList.toggle('on', v === tab);
-      });
-    }
-    /* 랭킹 탭은 되살린다 (명예의 전당 진입) */
-    var rk = tabs ? tabs.querySelector('[data-ctab="rank"]') : null;
-    if (rk) {
-      rk.style.setProperty('display', 'block', 'important');
-      rk.style.setProperty('flex', '1 1 0', 'important');
-      rk.style.setProperty('min-width', '0', 'important');
-    }
-    if (tabs && !closed) {
-      tabs.style.setProperty('display', 'grid', 'important');
-      tabs.style.setProperty('grid-template-columns', 'repeat(4,minmax(0,1fr))', 'important');
-      tabs.style.setProperty('gap', '6px', 'important');
-      Array.prototype.forEach.call(tabs.querySelectorAll('[data-ctab]'), function (b) {
-        if (b.style.display === 'none') return;
-        b.style.setProperty('width', '100%', 'important');
-        b.style.setProperty('min-width', '0', 'important');
-        b.style.setProperty('flex', 'none', 'important');
-      });
-    }
-  }
-  function hookTabs() {
-    if (document.__v97tabs) return;
-    document.__v97tabs = true;
-    doc.addEventListener('click', function (e) {
-      var t = e.target && e.target.closest ? e.target.closest('[data-ctab]') : null;
-      if (!t) return;
-      /* 다른 모듈이 프로그램으로 누르는 클릭은 무시하고, 실제 사용자 탭만 기억한다 */
-      if (e.isTrusted === false) return;
-      wantTab = t.getAttribute('data-ctab') || '';
-      setTimeout(function () { try { codexForce(); } catch (er) {} }, 30);
-      setTimeout(function () { try { codexForce(); } catch (er) {} }, 220);
-    }, true);
-  }
-
   /* ================================================================ ⑤ 랭킹/도감 시트 */
-  function pickSheet() {
-    var m = $('v97Pick');
-    if (!m) {
-      m = doc.createElement('div');
-      m.id = 'v97Pick';
-      m.innerHTML = '<div class="card"><h3>🏆 랭킹 · 도감</h3><p>어디로 갈까요?</p>' +
-        '<button type="button" id="v97PickRank" style="min-height:54px;font-size:15px;background:linear-gradient(180deg,#ffe08a,#f7b91f 58%,#d9930b) !important;border-color:#7a4a06 !important;color:#3a2205 !important;">🏆 명예의 전당 · 랭킹</button>' +
-        '<button type="button" id="v97PickCodex" style="min-height:54px;font-size:15px;">📖 재우 도감 · 업적</button>' +
-        '<button type="button" id="v97PickX" style="min-height:42px;font-size:13px;">닫기</button></div>';
-      doc.body.appendChild(m);
-      m.addEventListener('click', function (e) { if (e.target === m) m.classList.remove('on'); });
-      $('v97PickX').addEventListener('click', function () { m.classList.remove('on'); });
-      $('v97PickRank').addEventListener('click', function () {
-        m.classList.remove('on');
-        try {
-          var r = $('v42OpenRank') || $('v43OpenRank');
-          if (r) { r.click(); return; }
-        } catch (e) {}
-        try { V.toast('🏆 랭킹', 'chat', '랭킹보드를 여는 중…', 1200); } catch (e) {}
-      });
-      $('v97PickCodex').addEventListener('click', function () {
-        m.classList.remove('on');
-        try {
-          var vn = doc.querySelector('[data-v44nav="v44Codex"]');
-          if (vn) { vn.click(); return; }
-        } catch (e) {}
-        var mm = $('v44Codex');
-        if (mm) mm.classList.remove('hidden');
-      });
-    }
-    m.classList.add('on');
-  }
-  function hookTitleRank() {
-    var rk = $('v43OpenRank');
-    if (!rk || rk.__v97) return;
-    rk.__v97 = true;
-    rk.addEventListener('click', function (e) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      pickSheet();
-    }, true);
-  }
+
 
   /* ================================================================ ⑥ 타이틀 프로필 */
   function onlyOne(id) {
@@ -73105,14 +73233,11 @@ if (typeof module !== 'undefined' && module.exports) {
   function tick() {
     try { tagFrame(); } catch (e) {}
     try { rankFrame(); } catch (e) {}
-    try { codexForce(); } catch (e) {}
-    try { hookTitleRank(); } catch (e) {}
     try { pauseBuild(); } catch (e) {}
     try { friendsFix(); } catch (e) {}
   }
   function boot() {
     css();
-    hookTabs();
     profileBanner();
     tick();
     /* v5.1-final 성능: 매 프레임 DOM 재계산(tagFrame/rankFrame/pauseBuild)을 멈추고
@@ -73141,8 +73266,7 @@ if (typeof module !== 'undefined' && module.exports) {
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 1000); });
   else setTimeout(boot, 1000);
 
-  root.JW97UI = { tick: tick, pick: pickSheet, tag: tagFrame, rank: rankFrame, profile: profileBanner,
-    state: function () { return { want: wantTab, has: document.__v97tabs === true }; } };
+  root.JW97UI = { tick: tick, tag: tagFrame, rank: rankFrame, profile: profileBanner };
 })(window);
 
 </script>
@@ -73698,6 +73822,142 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   root.JW58 = { inPlay: inPlay, atTitle: atTitle, platSeed: platSeed };
 })(window);
+</script>
+<script>
+/* v5.10 설정 허브 — #settingsModal을 6섹션 허브로 승격. 저장 키는 그대로(jw51_cfg_v1 등 이동 없음).
+   #v43QolBody·#sgRulesBox·#v51TutReBtn은 요소 자체를 허브 안으로 옮긴다(리스너·id 그대로).
+   주크박스는 #v48ju 통째로 허브 안에 내장하고, 허브를 닫으면 body로 되돌린다. */
+(function (root) {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var SECS = ['ctrl', 'bgm', 'chat', 'qol', 'help', 'solo'];
+
+  function paintDnd() {
+    var b = $('v51HubDnd'); if (!b) return;
+    var on = !!(root.V && root.V.QOL && root.V.QOL.dnd);
+    b.textContent = on ? 'ON' : 'OFF';
+    b.classList.toggle('on', on);
+  }
+  function embedJuke() {
+    try {
+      var ju = $('v48ju');
+      if (!ju) { if (root.JW48JUKE && JW48JUKE.open) JW48JUKE.open(); ju = $('v48ju'); }
+      if (!ju) return;
+      var host = $('v51HubJuke');
+      if (host && ju.parentElement !== host) {
+        host.appendChild(ju); /* #v48ju 통째로 이동 — .card 스타일(#v48ju .card)이 그대로 먹는다 */
+        ju.classList.add('v51-embedded');
+        ju.classList.remove('hidden');
+      }
+      if (root.JW48JUKE && JW48JUKE.open) JW48JUKE.open(); /* paint() 새로고침 */
+    } catch (e) {}
+  }
+  function unembedJuke() {
+    try {
+      var ju = $('v48ju'); if (!ju) return;
+      if (ju.classList.contains('v51-embedded')) {
+        ju.classList.remove('v51-embedded');
+        document.body.appendChild(ju);
+        /* 되돌린 뒤에는 오버레이가 그대로 떠 있지 않게 닫는다(미리듣기 정지 + BGM 복귀 포함) */
+        if (root.JW48JUKE && JW48JUKE.close) JW48JUKE.close();
+      }
+    } catch (e) {}
+  }
+  function moveBodies() {
+    try {
+      var qb = $('v43QolBody'), qh = $('v51HubQolHost');
+      if (qb && qh && qb.parentElement !== qh) qh.appendChild(qb);
+      var sg = $('sgRulesBox'), sh = $('v51HubSoloHost');
+      if (sg && sh && sg.parentElement !== sh) sh.appendChild(sg);
+      var tb = $('v51TutReBtn'), th = $('v51HubTutHost');
+      if (tb && th && tb.parentElement !== th) th.appendChild(tb);
+    } catch (e) {}
+  }
+  function show(sec) {
+    if (SECS.indexOf(sec) < 0) sec = 'ctrl';
+    moveBodies();
+    var modal = $('settingsModal'); if (!modal) return;
+    modal.querySelectorAll('.v51-sec').forEach(function (el) {
+      el.classList.toggle('hidden', el.getAttribute('data-hubsec') !== sec);
+    });
+    var tabs = $('v51HubTabs');
+    if (tabs) tabs.querySelectorAll('[data-hubsec]').forEach(function (b) {
+      b.classList.toggle('on', b.getAttribute('data-hubsec') === sec);
+    });
+    if (sec === 'qol') { try { root.V && V.renderQol && V.renderQol(); } catch (e) {} moveBodies(); }
+    if (sec === 'bgm') embedJuke();
+    if (sec === 'chat') paintDnd();
+    if (sec === 'help') moveBodies();
+  }
+  function open(sec) {
+    root.__v51HubSec = sec || 'ctrl';
+    var btn = $('btnOpenSettingsTitle');
+    if (btn) btn.click();
+    else { var m = $('settingsModal'); if (m) { m.classList.remove('hidden'); show(root.__v51HubSec); } }
+  }
+  root.__v51HubShow = show;
+  root.__v51HubOpen = open;
+  root.__v51HubClose = function () { unembedJuke(); };
+
+  var tabs = $('v51HubTabs');
+  if (tabs) tabs.querySelectorAll('[data-hubsec]').forEach(function (b) {
+    b.addEventListener('click', function () { show(b.getAttribute('data-hubsec')); });
+  });
+  var dnd = $('v51HubDnd');
+  if (dnd) dnd.addEventListener('click', function () {
+    try {
+      if (!root.V || !root.V.QOL) return;
+      root.V.QOL.dnd = !root.V.QOL.dnd;
+      try { root.V.saveQol && root.V.saveQol(); } catch (e) {}
+      if (root.V.toast) root.V.toast(root.V.QOL.dnd ? '🔕 집중 모드' : '🔔 알림 켜짐', 'chat', root.V.QOL.dnd ? '채팅·토스트를 숨깁니다' : '다시 알려드립니다', 1600);
+    } catch (e) {}
+    paintDnd();
+  });
+  var toQol = $('v51HubToQol');
+  if (toQol) toQol.addEventListener('click', function () { show('qol'); });
+
+  /* BGM 진입점들을 허브로: 타이틀 주크박스 버튼 + 일시정지 주크박스 버튼 (복제 교체 — 기존 리스너 제거) */
+  function rewireBgm() {
+    ['v48mgJuke', 'v48juOpen'].forEach(function (id) {
+      var b = $(id);
+      if (!b || b.__v51hub) return;
+      var c = b.cloneNode(true);
+      c.__v51hub = true;
+      b.replaceWith(c);
+      c.addEventListener('click', function () { open('bgm'); });
+    });
+  }
+  /* 튜토리얼 버튼이 생기면 도움말 섹션으로 이동 (+ 누르면 설정 닫고 튜토리얼 열기) */
+  function moveTut() {
+    moveBodies();
+    var tb = $('v51TutReBtn');
+    if (tb && !tb.__v51hub2) {
+      tb.__v51hub2 = true;
+      tb.addEventListener('click', function () {
+        var m = $('settingsModal'); if (m) m.classList.add('hidden');
+        unembedJuke();
+      });
+    }
+  }
+  setInterval(function () { rewireBgm(); moveTut(); }, 700);
+})(window);
+</script>
+<script>
+/* v5.10 친구 허브 검색 — 닉네임으로 친구 행만 가린다. 목록이 다시 그려져도 필터를 유지한다. */
+(function () {
+  var inp = document.getElementById('v51FrSearch');
+  var box = document.getElementById('v43FriendList');
+  if (!inp || !box) return;
+  function apply() {
+    var q = (inp.value || '').trim().toLowerCase();
+    box.querySelectorAll('.v43-frow[data-fdet]').forEach(function (row) {
+      var t = (row.textContent || '').toLowerCase();
+      row.style.display = (!q || t.indexOf(q) >= 0) ? '' : 'none';
+    });
+  }
+  inp.addEventListener('input', apply);
+  new MutationObserver(apply).observe(box, { childList: true, subtree: true });
+})();
 </script>
 </body>
 </html>
