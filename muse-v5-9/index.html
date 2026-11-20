@@ -65009,7 +65009,7 @@ if (typeof module !== 'undefined' && module.exports) {
   function patchBuild() {
     var M = root.JWMap;
     if (!M || typeof M.build !== 'function') return false;
-    if (M.build.__v51retro) return true;
+    if (root.__v51retroInstalled) return true;   /* 핑퐁 방지: 루트 플래그로 한 번만 설치 */
     var o = M.build;
     var w = function (id, plats, ab) {
       if (id === 'retro20') {
@@ -65022,6 +65022,7 @@ if (typeof module !== 'undefined' && module.exports) {
     };
     w.__v51retro = true;
     M.build = w;
+    root.__v51retroInstalled = true;
     return true;
   }
   function patchCampfire() {
@@ -72299,6 +72300,7 @@ if (typeof module !== 'undefined' && module.exports) {
     plats.forEach(function (p, i) {
       if (!p || i === 0) return;                /* 1층은 그대로 */
       if (p.type === 'summit' || p.type === 'abyss_floor') return;
+      if (p.__balTuned) return;                /* 핑퐁 안전망: 이미 튜닝한 발판은 건너뜀 */
       var ow = p.w || 120;
       var cx = p.x + ow / 2;
       var nw = Math.round(ow * k.w);
@@ -72315,6 +72317,7 @@ if (typeof module !== 'undefined' && module.exports) {
       }
       if (k.sp !== 1 && typeof p.moveSpeed === 'number') p.moveSpeed *= k.sp;
       if (k.sp !== 1 && typeof p.rotSpeed === 'number') p.rotSpeed *= k.sp;
+      p.__balTuned = true;
     });
     /* 이동 발판 범위가 화면 밖으로 나가지 않게 */
     plats.forEach(function (p) {
@@ -72329,7 +72332,7 @@ if (typeof module !== 'undefined' && module.exports) {
   function install() {
     var M = root.JWMap;
     if (!M || typeof M.build !== 'function') return false;
-    if (M.build.__v51bal) return true;
+    if (root.__v51balInstalled) return true;   /* 핑퐁 방지: 루트 플래그로 한 번만 설치 */
     var ob = M.build;
     var w = function (id, plats, ab) {
       var r = ob.apply(this, arguments);
@@ -72338,6 +72341,7 @@ if (typeof module !== 'undefined' && module.exports) {
     };
     w.__v51bal = true;
     M.build = w;
+    root.__v51balInstalled = true;
     return true;
   }
   setInterval(function () { try { install(); } catch (e) {} }, 300);
@@ -73571,7 +73575,7 @@ if (typeof module !== 'undefined' && module.exports) {
       — 240~280px 수준의 어려운 점프는 손대지 않는다(난이도 보존). */
   function summitFix() {
     var M = root.JWMap;
-    if (!M || typeof M.build !== 'function' || M.build.__v51summit) return;
+    if (!M || typeof M.build !== 'function' || root.__v51summitInstalled) return;   /* 핑퐁 방지: 루트 플래그로 한 번만 설치 */
     var ob = M.build;
     var w = function (id, P, A) {
       var ok = ob.apply(this, arguments);
@@ -73594,6 +73598,7 @@ if (typeof module !== 'undefined' && module.exports) {
     };
     w.__v51summit = 1;
     M.build = w;
+    root.__v51summitInstalled = true;
   }
 
   /* ================================================================ 부트 */
