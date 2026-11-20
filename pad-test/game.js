@@ -71815,7 +71815,7 @@ try{window.__pt&&window.__pt.mark("S107","S107 · 줄 74990 · 8KB 실행 완료
 
 
 try{window.__pt&&window.__pt.mark("F","F. 본문 스크립트 전부 실행 완료");}catch(e){}
-try{window.__pt&&window.__pt.netDone("gj","ok","F","F. game.js 실행 완료");}catch(e){}
+try{window.__pt&&window.__pt.netDone("gj","ok");}catch(e){}
 (function(){var n=0;function ok(){try{var P=window.__pt||{},ts=document.getElementById('titleScreen'),cv=document.getElementById('gameCanvas'),b=document.getElementById('btnStartGame');
 if(!ts||!cv||!b)return false;var s=getComputedStyle(ts);if(s.display==='none'||s.visibility==='hidden'||!ts.offsetHeight)return false;if(!(cv.width>0))return false;return ((P.frames||0)>=10)||n>30;}catch(e){return false}}
 function chk(){n++;var P=window.__pt;if(!P)return;if(ok()){P.mark('G','G. 게임 부트 완료 (타이틀 화면 표시 · 프레임 '+P.frames+')');setTimeout(function(){P.collapse()},1500);return}

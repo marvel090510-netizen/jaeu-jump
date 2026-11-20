@@ -190,12 +190,20 @@
   W.addEventListener('load', function () { P.mark('load', 'load 이벤트 발생 (모든 자원 로드)'); });
   D.addEventListener('DOMContentLoaded', function () { P.mark('DCL', 'DOMContentLoaded'); });
 
-  var ticks = 0;
+  var ticks = 0, seenVeil = false, lastLagAt = -99999, lastTickAt = now();
   var timer = setInterval(function () {
     ticks++;
     build();
+    /* 메인 스레드가 멈춘 흔적: 200ms 간격이 얼마나 밀렸는지 */
+    var t = now(), drift = t - lastTickAt - 200;
+    lastTickAt = t;
+    if (drift > 700 && t - lastLagAt > 3000) {
+      lastLagAt = t;
+      P.err('메인 스레드 ' + Math.round(drift) + 'ms 정지 (이 사이 화면이 멈춰 있었음)');
+    }
     var veil = el('v59Veil');
-    if (!veil && P.veil !== 'gone') { P.veil = 'gone'; P.mark('veiloff', '베일(#v59Veil) 제거됨'); }
+    if (veil) seenVeil = true;
+    if (seenVeil && !veil && P.veil !== 'gone') { P.veil = 'gone'; P.mark('veiloff', '베일(#v59Veil) 제거됨'); }
     if (!P.collapsed) paint();
     if (ticks === 10) {
       /* 2초쯤 뒤 기기 정보 한 번 */
