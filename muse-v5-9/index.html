@@ -2487,9 +2487,9 @@ html body #titleScreen {
         };
         const [rMid, rDark, rTop] = rockCols[p.zoneId] || rockCols[1];
         /* v5.12 H안: 종류 색은 맵(존) 팔레트 파생 — 폴백 렌더에서도 고정색을 쓰지 않는다 */
-        let kc = null, kHi = null, kLo = null;
+        let kc = null, kHi = null, kLo = null, H = null;
         try {
-          const H = window.JW51PLAT && JW51PLAT.H;
+          H = window.JW51PLAT && JW51PLAT.H;
           if (H) {
             kc = H.kind(p.type, { b: rMid, d: rDark, t: rTop, a: rTop });
             if (kc) { kHi = H.mix(kc, '#ffffff', 0.40); kLo = H.mix(kc, '#05070c', 0.30); }
@@ -44894,9 +44894,9 @@ button, [role="button"]{touch-action:manipulation;}
     const w = Math.max(6, p.w | 0), h = Math.max(6, p.h | 0);
     const c = ROCK[p.zoneId] || ROCK[1];
     /* v5.12 H안: 관전·기본 맵 발판도 같은 종류 색을 쓴다 (존 색을 팔레트로 파생, 구조·판정 불변) */
-    let kc = null, kHi = null, kLo = null;
+    let kc = null, kHi = null, kLo = null, H = null;
     try {
-      const H = window.JW51PLAT && window.JW51PLAT.H;
+      H = window.JW51PLAT && window.JW51PLAT.H;
       if (H) {
         kc = H.kind(p.type === 'normal' && p._glass ? 'glass' : (p.art === 'syrup' ? 'syrup' : p.type), { b: c[0], d: c[1], t: c[2], a: c[2] });
         if (kc) { kHi = H.mix(kc, '#ffffff', 0.34); kLo = H.mix(kc, '#05070c', 0.24); }
@@ -65417,7 +65417,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (l >= min) return c;
     return clue(c, (min - l) / (1 - l));
   }
-  function kindColor(type, p) {
+  function kindBase(type, p) {
     var a = p.a, t = p.t, d = p.d, c = null, min = 0.32;
     if (type === 'ice') c = clue(mix(csat(t, 0.10), '#8fc2ff', 0.30), 0.50);
     else if (type === 'moving') c = clue(csat(a, 0.60), 0.05);
@@ -65430,6 +65430,46 @@ if (typeof module !== 'undefined' && module.exports) {
     else if (type === 'abyss_floor') { c = clue(mix(csat(d, 0.30), '#8fc2ff', 0.35), -0.10); min = 0.28; }
     if (!c) return null;   /* normal·gold·summit : 지금 색 그대로 (금빛은 새로 만들지 않는다) */
     return cfloor(c, min);
+  }
+  /* 목표 휘도까지 정확히 올리고/내리기 */
+  function cdark(c, d) { var l = clum(c); return (d <= 0 || l <= 0.03) ? c : clue(c, -(d / (l - 0.028))); }
+  function cbright(c, d) { var l = clum(c); return (d <= 0 || l >= 1) ? c : clue(c, d / (1 - l)); }
+  /* 약한 짝: 색 Δ가 작은 종류 쌍은 같은 맵 안에서 휘도를 최소 0.10까지 벌린다.
+     어두운 쪽을 내리고 밝은 쪽을 올리며, 밝기 하한이 우선이다. */
+  var KMIN = 0.10;
+  var KPAIRS = [['ice', 'glass'], ['moving', 'syrup'], ['moving', 'rotator']];
+  var KDARK = { abyss_floor: 0.28 };
+  var KCM = {};
+  function kindTable(p) {
+    var key = p.a + '|' + p.b + '|' + p.d + '|' + p.t;
+    if (KCM[key]) return KCM[key];
+    var t = {};
+    ['ice', 'moving', 'crumble', 'jelly', 'spike', 'glass', 'rotator', 'syrup', 'abyss_floor'].forEach(function (id) {
+      t[id] = kindBase(id, p);
+    });
+    /* 쌍이 겹쳐서(moving이 두 쌍에 들어감) 한 번에 다 안 벌어질 수 있어 두세 번 돌린다. */
+    for (var pass = 0; pass < 3; pass++) KPAIRS.forEach(function (pr) {
+      var A = pr[0], B = pr[1], ca = t[A], cb = t[B];
+      if (!ca || !cb) return;
+      var la = clum(ca), lb = clum(cb);
+      if (Math.abs(la - lb) >= KMIN) return;
+      var loK = (la <= lb) ? A : B, hiK = (la <= lb) ? B : A;
+      var loL = Math.min(la, lb), hiL = Math.max(la, lb);
+      var need = KMIN - (hiL - loL);
+      var fl = KDARK[loK] || 0.32;
+      var loTarget = Math.max(fl, loL - need / 2);
+      var got = loL - loTarget;
+      if (got > 0) t[loK] = cdark(t[loK], got);
+      var rest = need - got;
+      if (rest > 0) t[hiK] = cbright(t[hiK], rest);
+    });
+    KCM[key] = t;
+    return t;
+  }
+  /* 발판 종류 색(최종값) — 약한 짝 벌리기까지 끝난 표에서 고른다 */
+  function kindColor(type, p) {
+    var t = kindTable(p);
+    return t[type] || null;
   }
 
   /* ---------------------------------------------------------------- 발판 한 장 */
