@@ -54157,7 +54157,11 @@ button, [role="button"]{touch-action:manipulation;}
     ui();
     var u = $('v48c2ui');
     if (!u) return;
-    if (!C2.on || !live()) { u.style.display = 'none'; return; }
+    /* 보스전 중엔 보스 바(JW48B paintHp)가 C2 바를 숨긴다 — 여기서 flex로 되돌리면
+       !important가 풀려 보스전에도 바가 깜빡인다. 보스전엔 숨긴 채로 둔다 */
+    var bossLive = false;
+    try { var _b = V.G && V.G.boss; bossLive = !!(_b && _b.spec && !_b.dead && _b.ai); } catch (e) {}
+    if (!C2.on || !live() || bossLive) { u.style.display = 'none'; return; }
     u.style.display = 'flex';
     u.style.top = Math.round(hudBottom() + 54) + 'px';
     var rw = $('v48c2rwN'); if (rw) rw.textContent = String(C2.rewindLeft);
@@ -57920,11 +57924,20 @@ if (typeof module !== 'undefined' && module.exports) {
     if (chip) {
       try { chip.style.setProperty('display', (live || party) ? 'none' : '', (live || party) ? 'important' : ''); } catch (e) {}
     }
-    /* 보스전에선 등반 보조 버튼·중계 자막은 필요 없다 — 보스 가리지 않게 숨김 */
+    /* 보스전에선 등반 보조 버튼·중계 자막은 필요 없다 — 보스 가리지 않게 숨김
+       v5.9: 보스가 없을 때도 90ms마다 display를 지우면 C2 paint()가 켠 바를
+       계속 꺼서 깜빡임 — 보스 상태가 바뀔 때(전투 시작/종료)만 건드린다 */
     ['v48c2ui', 'v48c2sub'].forEach(function (id) {
       var c2 = $(id);
-      if (c2) {
-        try { c2.style.setProperty('display', live ? 'none' : '', live ? 'important' : ''); } catch (e) {}
+      if (!c2) return;
+      if (live) {
+        if (!B.__c2Hidden) {
+          B.__c2Hidden = true;
+          try { c2.style.setProperty('display', 'none', 'important'); } catch (e) {}
+        }
+      } else if (B.__c2Hidden) {
+        B.__c2Hidden = false;
+        try { c2.style.setProperty('display', '', ''); } catch (e) {}
       }
     });
     if (!live) { B.barTop = null; return; }
@@ -63958,9 +63971,14 @@ if (typeof module !== 'undefined' && module.exports) {
   function patch() {
     var M = root.JWMap;
     if (!M || typeof M.drawBg !== 'function') return false;
-    /* v5.10 B1: 한 번만 설치 — 250ms 재패치가 v47 래퍼와 ping-pong 하며 깜빡이던 문제 수정 */
-    if (root.__v51artInstalled) return true;
+    /* 맨 위 래퍼가 이미 JW51ART면 그대로 둔다 (겹겹이 쌓이는 ping-pong 방지) */
     if (M.drawBg.__v51art) return true;
+    /* v5.11: v43 boot(hookMaps)이 DOMContentLoaded 뒤 M.drawBg를 통째로 교체해서
+       JW51ART 래퍼가 맨 위에서 떨어져 나간다. 그러면 hookMaps의 화살표 함수가
+       20개 맵(후지산·디저트 등 JW43PANO 20종)을 파노로 먼저 그려 버려서,
+       jpg가 로딩돼 있어도 JW51ART가 아예 호출되지 않는다. 맨 위에 없을 때만
+       다시 감싼다 — 교체는 부팅 때 한 번만 일어나고, 다른 래퍼들은 모두
+       한 번만 설치하므로 겹겹이 쌓이지 않는다 (JW51PLAT와 같은 방식). */
     var o = M.drawBg;
     var w = function (id, ctx, camY, lh) {
       try { if (draw(id, ctx, camY, lh)) return true; } catch (e) {
