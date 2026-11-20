@@ -3980,14 +3980,14 @@ extends CanvasLayer
         const safe = (i % 8 === 0);
         const w = safe ? 160 : Math.round(118 + hash(i * 13) * 30);
         const dir = (i % 2 === 0) ? 1 : -1;
-        const stepX = 92 + Math.floor(hash(i * 31 + 5) * 54);
+        const stepX = 88 + Math.floor(hash(i * 31 + 5) * 46);
         let nx = cx + dir * stepX;
         const minX = WALLW + 12, maxX = W - WALLW - w - 12;
         if (nx < minX) nx = minX + 26 + (i % 3) * 16;
         if (nx > maxX) nx = maxX - 26 - (i % 3) * 16;
         cx = nx;
         let type = 'wafer';
-        const r = i % 9;
+        const r = i % 10;
         if (!safe) {
           if (r === 2 || r === 7) type = 'jelly';
           else if (r === 4 || r === 8) type = 'syrup';
@@ -4265,7 +4265,7 @@ extends CanvasLayer
         const dy = Math.round(168 + prog * 62 + (i % 3) * 6);
         cy -= dy;
         const safe = (i % 8 === 0);
-        const w = safe ? 168 : Math.round(96 + hash(i * 19) * 34);
+        const w = safe ? 168 : Math.round(90 + hash(i * 19) * 34);
         const dir = (i % 2 === 0) ? 1 : -1;
         const stepX = 104 + Math.floor(hash(i * 37 + 3) * 70);
         let nx = cx + dir * stepX;
@@ -4930,8 +4930,11 @@ extends CanvasLayer
   /* core 의 triggerRandomEvent 대신 쓸 이벤트 추첨 (개별 필터 반영) */
   function pickEvent() {
     if (!rules.events) return '';
-    const dangers = EVENT_KEYS.filter((k) => ['wind', 'rock', 'lightning', 'quake', 'fog', 'mirror', 'iceankle', 'magnet'].indexOf(k) >= 0 && evOn(k));
-    const luckies = EVENT_KEYS.filter((k) => ['lowgrav', 'shield', 'cloudboost', 'celestial', 'hyper', 'originshield'].indexOf(k) >= 0 && evOn(k));
+    /* muse-v5.9 R4: 클래식 모드에서는 v2.0의 10종 이벤트만 (신규 5종 제외) */
+    var classic59 = (rules.mode === 'classic' || rules.mode === 'pureclassic');
+    var NEW5_59 = ['mirror', 'magnet', 'hyper', 'iceankle', 'originshield'];
+    const dangers = EVENT_KEYS.filter((k) => ['wind', 'rock', 'lightning', 'quake', 'fog', 'mirror', 'iceankle', 'magnet'].indexOf(k) >= 0 && (!classic59 || NEW5_59.indexOf(k) < 0) && evOn(k));
+    const luckies = EVENT_KEYS.filter((k) => ['lowgrav', 'shield', 'cloudboost', 'celestial', 'hyper', 'originshield'].indexOf(k) >= 0 && (!classic59 || NEW5_59.indexOf(k) < 0) && evOn(k));
     if (!dangers.length && !luckies.length) return '';
     if (luckies.length && (!dangers.length || Math.random() < 0.48)) return luckies[(Math.random() * luckies.length) | 0];
     return dangers[(Math.random() * dangers.length) | 0];
@@ -10979,6 +10982,11 @@ extends CanvasLayer
     /* 그림자 */
     ctx.fillStyle = 'rgba(5,3,10,.45)';
     ctx.fillRect((sx - 32) | 0, (sy + 18) | 0, 64, 6);
+    /* muse-v5.9: 수문장 몸통을 v2 픽셀 스프라이트로 (없으면 기존 도형으로 폴백) */
+    var __gkMood = (B.phase === 'warn') ? 'angry' : 'idle';
+    var __gkDrawn = false;
+    try { __gkDrawn = (typeof drawBossSprite === 'function') && !!drawBossSprite(ctx, 'gatekeeper', sx - 48, sy - 48, 6, { mood: __gkMood }); } catch (e) { __gkDrawn = false; }
+    if (!__gkDrawn) {
     /* 몸통 · 갑옷 */
     R(sx - 30, sy - 34, 60, 52, '#3b4a63');
     R(sx - 34, sy - 20, 68, 10, '#93a4bd');
@@ -11008,6 +11016,7 @@ extends CanvasLayer
     R(sx - 14, sy - 22, 28, 5, '#05030a');
     R(sx - 9, sy - 21, 4, 4, '#fef08a');
     R(sx + 5, sy - 21, 4, 4, '#fef08a');
+    }
     /* 왕관 표시 */
     ctx.font = 'bold 9px "Galmuri11", monospace';
     ctx.textAlign = 'center';
@@ -15192,7 +15201,7 @@ extends CanvasLayer
     id: 'atlantis', name: '심해 아틀란티스', emoji: '🌊', diff: '보통', diffColor: '#7dd3fc', total: 88,
     desc: '물기포 발판이 위로 떠받침 · 주기적으로 바뀌는 해류 · 산호/해초',
     zones: ['6. 심연 해구', '1. 산호 정원', '2. 해초 숲', '3. 고대 유적', '4. 해류 협곡', '5. 🌊 아틀란티스 신전'],
-    phys: { grav: 1180, jump: 1.0, horiz: 1.0 },
+    phys: { grav: 1280, jump: 1.0, horiz: 1.0 },
     build(P, A) {
       gen(P, A, {
         id: 'atlantis', total: 88, seed: 11, dy0: 96, dyK: 30, dyJ: 3, stepMin: 84, stepSpan: 46,
@@ -15307,13 +15316,13 @@ extends CanvasLayer
     phys: { grav: 1400, jump: 1.0, horiz: 1.0 },
     build(P, A) {
       gen(P, A, {
-        id: 'arcade', total: 80, seed: 23, dy0: 104, dyK: 28, dyJ: 4, stepMin: 88, stepSpan: 50,
+        id: 'arcade', total: 80, seed: 23, dy0: 98, dyK: 28, dyJ: 4, stepMin: 84, stepSpan: 50,
         wMin: 92, wSpan: 30, wShrink: 0.14, safeW: 152,
         art(i, prog, safe) {
           if (safe) return { art: 'neon', type: 'normal' };
           const r = i % 8;
           if (r === 3) return { art: 'portal', type: 'normal' };
-          if (r === 5 || r === 6) return { art: 'belt', type: 'moving' };
+          if (r === 5) return { art: 'belt', type: 'moving' };
           return { art: 'neon', type: 'normal' };
         },
         extra(i, p, prog) {
@@ -15495,8 +15504,8 @@ extends CanvasLayer
     phys: { grav: 1400, jump: 1.0, horiz: 1.0 },
     build(P, A) {
       gen(P, A, {
-        id: 'mansion', total: 80, seed: 53, dy0: 102, dyK: 32, dyJ: 4, stepMin: 84, stepSpan: 52,
-        wMin: 86, wSpan: 32, wShrink: 0.16, safeW: 148,
+        id: 'mansion', total: 80, seed: 53, dy0: 102, dyK: 32, dyJ: 4, stepMin: 88, stepSpan: 52,
+        wMin: 84, wSpan: 32, wShrink: 0.16, safeW: 148,
         art(i, prog, safe) {
           if (safe) return { art: 'wood', type: 'normal' };
           const r = i % 8;
@@ -15587,16 +15596,17 @@ extends CanvasLayer
     phys: { grav: 1380, jump: 1.0, horiz: 1.0 },
     build(P, A) {
       gen(P, A, {
-        id: 'volcano', total: 84, seed: 67, dy0: 100, dyK: 30, dyJ: 4, stepMin: 86, stepSpan: 50,
+        id: 'volcano', total: 84, seed: 67, dy0: 102, dyK: 30, dyJ: 4, stepMin: 86, stepSpan: 50,
         wMin: 90, wSpan: 34, wShrink: 0.16, safeW: 152,
         art(i, prog, safe) {
           if (safe) return { art: 'rock', type: 'normal' };
           const r = i % 8;
-          if (r === 2 || r === 5) return { art: 'vine', type: 'normal' };
+          if (r === 2) return { art: 'vine', type: 'moving' };
+          if (r === 5) return { art: 'vine', type: 'normal' };
           if (r === 7) return { art: 'bone', type: 'normal' };
           return { art: 'rock', type: 'normal' };
         },
-        extra(i, p) { if (p.art === 'vine') p.springT = 0; }
+        extra(i, p) { if (p.art === 'vine') { p.springT = 0; if (p.type === 'moving') { p.moveRange = 34 + (i % 3) * 14; p.moveSpeed = 0.55 + (i % 4) * 0.1; p.movePhase = i * 1.1; } } }
       });
     },
     sky: ['#1a0704', '#3a1408', '#5c2208'],
@@ -15792,7 +15802,7 @@ extends CanvasLayer
           return { art: 'plank', type: 'normal' };
         },
         extra(i, p, prog) {
-          if (p.art === 'gear' && p.type === 'moving') { p.moveRange = 30 + (i % 3) * 14; p.moveSpeed = 0.6 + prog * 0.5; p.movePhase = i * 1.2; }
+          if (p.art === 'gear' && p.type === 'moving') { p.moveRange = 30 + (i % 3) * 14; p.moveSpeed = 0.7 + prog * 0.6; p.movePhase = i * 1.2; }
           if (p.art === 'gear') p.spin = (i % 2 ? 1 : -1) * (0.6 + prog);
         }
       });
@@ -15982,8 +15992,8 @@ extends CanvasLayer
     phys: { grav: 1400, jump: 1.0, horiz: 1.0 },
     build(P, A) {
       gen(P, A, {
-        id: 'train', total: 58, seed: 113, dy0: 102, dyK: 30, dyJ: 4, stepMin: 86, stepSpan: 48,
-        wMin: 90, wSpan: 34, wShrink: 0.16, safeW: 152,
+        id: 'train', total: 58, seed: 113, dy0: 106, dyK: 30, dyJ: 4, stepMin: 86, stepSpan: 48,
+        wMin: 86, wSpan: 34, wShrink: 0.16, safeW: 152,
         art(i, prog, safe) {
           if (safe) return { art: 'car', type: 'normal' };
           const r = i % 8;
@@ -16075,9 +16085,10 @@ extends CanvasLayer
           if (safe) return { art: 'stone', type: 'normal' };
           const r = i % 6;
           if (r === 2 || r === 5) return { art: 'tile', type: 'crumble' };
-          if (r === 3) return { art: 'branch', type: 'normal' };
+          if (r === 3) return { art: 'branch', type: (i % 12 === 3) ? 'moving' : 'normal' };
           return { art: 'tile', type: 'normal' };
-        }
+        },
+        extra(i, p) { if (p.art === 'branch' && p.type === 'moving') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + (i % 4) * 0.1; p.movePhase = i * 1.1; } }
       });
     },
     sky: ['#2a0a18', '#451428', '#6a1a38'],
@@ -16149,7 +16160,7 @@ extends CanvasLayer
     phys: { grav: 1320, jump: 1.0, horiz: 1.0 },
     build(P, A) {
       gen(P, A, {
-        id: 'rainbow', total: 100, seed: 149, dy0: 100, dyK: 28, dyJ: 4, stepMin: 86, stepSpan: 48,
+        id: 'rainbow', total: 100, seed: 149, dy0: 96, dyK: 28, dyJ: 4, stepMin: 86, stepSpan: 48,
         wMin: 92, wSpan: 32, wShrink: 0.14, safeW: 154,
         art(i, prog, safe) {
           if (safe) return { art: 'gold', type: 'normal' };
@@ -16250,7 +16261,7 @@ extends CanvasLayer
     build(P, A) {
       gen(P, A, {
         id: 'newyork', total: 88, seed: 211, dy0: 104, dyK: 30, dyJ: 4, stepMin: 92, stepSpan: 46,
-        wMin: 80, wSpan: 28, wShrink: 0.16, safeW: 150,
+        wMin: 78, wSpan: 28, wShrink: 0.16, safeW: 150,
         art(i, prog, safe) {
           if (safe) return { art: 'roof', type: 'normal' };
           const r = i % 7;
@@ -16260,7 +16271,7 @@ extends CanvasLayer
           return { art: 'roof', type: 'normal' };
         },
         extra(i, p) {
-          if (p.type === 'move') { p.moveRange = 42; p.moveSpeed = 0.5; p.movePhase = i * 0.7; }
+          if (p.type === 'move') { p.type = 'moving'; p.moveRange = 42; p.moveSpeed = 0.5; p.movePhase = i * 0.7; }
         }
       });
     },
@@ -16321,16 +16332,16 @@ extends CanvasLayer
     phys: { grav: 1400, jump: 1.0, horiz: 1.0 },
     build(P, A) {
       gen(P, A, {
-        id: 'seoul', total: 80, seed: 233, dy0: 102, dyK: 26, dyJ: 4, stepMin: 94, stepSpan: 44,
+        id: 'seoul', total: 80, seed: 233, dy0: 102, dyK: 26, dyJ: 4, stepMin: 86, stepSpan: 44,
         wMin: 84, wSpan: 26, wShrink: 0.14, safeW: 156,
         art(i, prog, safe) {
           if (safe) return { art: 'stone', type: 'normal' };
-          const r = i % 6;
+          const r = i % 8;
           if (r === 2) return { art: 'tile', type: 'normal' };
           if (r === 5) return { art: 'bridge', type: 'move', range: 38, speed: 0.42 };
           return { art: r === 3 ? 'tile' : 'stone', type: 'normal' };
         },
-        extra(i, p) { if (p.type === 'move') { p.moveRange = 38; p.moveSpeed = 0.42; p.movePhase = i; } }
+        extra(i, p) { if (p.type === 'move') { p.type = 'moving'; p.moveRange = 38; p.moveSpeed = 0.42; p.movePhase = i; } }
       });
     },
     sky: ['#08132a', '#132a4a', '#2b4a6b'],
@@ -16376,7 +16387,7 @@ extends CanvasLayer
   };
 
   const PARIS = {
-    id: 'paris', name: '파리 에펠탑 야경', emoji: '🗼', diff: '어려움', diffColor: '#fbbf24', total: 84,
+    id: 'paris', name: '파리 에펠탑 야경', emoji: '🗼', diff: '극악', diffColor: '#fbbf24', total: 84,
     desc: '반짝이는 에펠탑 철골 · 조명 발판 · 좁아지는 전망대',
     zones: ['5. 🗼 꼭대기 전망대', '1. 센강 둔치', '2. 철골 아래', '3. 철골 단', '4. ✨ 조명 단'],
     phys: { grav: 1400, jump: 1.0, horiz: 0.98 },
@@ -16391,7 +16402,7 @@ extends CanvasLayer
           if (r === 4) return { art: 'girder', type: 'move', range: 46, speed: 0.55 };
           return { art: 'girder', type: 'normal' };
         },
-        extra(i, p) { if (p.type === 'move') { p.moveRange = 46; p.moveSpeed = 0.55; p.movePhase = i * 1.3; } }
+        extra(i, p) { if (p.type === 'move') { p.type = 'moving'; p.moveRange = 46; p.moveSpeed = 0.55; p.movePhase = i * 1.3; } }
       });
     },
     sky: ['#0b0a1f', '#1b1338', '#35204d'],
@@ -16450,7 +16461,7 @@ extends CanvasLayer
     phys: { grav: 1400, jump: 1.0, horiz: 1.02 },
     build(P, A) {
       gen(P, A, {
-        id: 'egypt', total: 78, seed: 281, dy0: 100, dyK: 28, dyJ: 4, stepMin: 96, stepSpan: 42,
+        id: 'egypt', total: 78, seed: 281, dy0: 100, dyK: 28, dyJ: 4, stepMin: 86, stepSpan: 42,
         wMin: 86, wSpan: 26, wShrink: 0.12, safeW: 158,
         art(i, prog, safe) {
           if (safe) return { art: 'block', type: 'normal' };
@@ -42613,7 +42624,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v5.1 · 45 MAPS';
+      sp[1].textContent = '★ v5.9 · 45 MAPS';
     }
   }
 
@@ -44393,7 +44404,7 @@ button, [role="button"]{touch-action:manipulation;}
       for (let k = 8; k < w - 8; k += 22) ctx.fillRect(x + k, y + 6, 6, 2);
     }
     if (p.type === 'spike') {
-      ctx.fillStyle = '#e2e8f0';
+      ctx.fillStyle = '#9aa5b1';
       for (let k = 2; k < w - 4; k += 12) {
         ctx.beginPath(); ctx.moveTo(x + k, y); ctx.lineTo(x + k + 5, y - 8); ctx.lineTo(x + k + 10, y); ctx.closePath(); ctx.fill();
       }
@@ -53936,6 +53947,1589 @@ button, [role="button"]{touch-action:manipulation;}
 </script>
 <script>
 /* ==========================================================================
+   muse-v5.9: 보스 v2 픽셀 스프라이트 데이터 (boss-sprites-v2.js, 입체감 패스)
+   - drawBossSprite(ctx, form, x, y, px, {mood}) / drawFx(ctx, key, x, y, s, c0, c1)
+   - 전역으로 두어 drawBoss/bossDraw/drawHz에서 씀. 게임의 IIFE 지역 BOSSES/drawFx와는
+     이름이 같아도 스코프가 달라 충돌 없음. B.art 정의는 그대로 둠 (폴백용).
+   ========================================================================== */
+/* ============================================================================
+   jaeu-jump v5.9 보스 픽셀아트 스프라이트 데이터 v2 (디자인 + 데이터만)
+   v2 (2차 개선): 입체감 패스 적용 — 몸통 외곽선(K) 강화, 상단 하이라이트(L),
+   하단/우측 그림자(S) 추가. 격자/팔레트 구조/eyes/mood API는 v1과 동일.
+   (v1 파일 boss-sprites.js는 그대로 둠. v5.9 적용 시 기본은 v2 사용.)
+   ----------------------------------------------------------------------------
+   - 게임 파일을 수정하지 않고, 나중에 v5.9 작업에서 B.art[form]을 교체할 때
+     갖다 붙이는 용도의 데이터 파일이다.
+   - 그리기 계약 (기존 코드와 동일): 보스 1체는 96x96 박스, u = b.w / 96.
+     보스 크기: 일반 126x126, 레이드 140x140 (attach, muse-v5-7 54241줄).
+     스프라이트 격자는 16x16, 1칸 = 6px 이므로 u=1일 때 정확히 96px이다.
+   - 사용법: drawBossSprite(ctx, form, bx, by, u*6, {mood:'idle'|'angry'|'hurt'|'blink'})
+     를 기존 art[form](ctx, bx, by, u, spec, b) 자리에서 호출하면 된다.
+     (자세한 교체 방법은 audit-jaeu-v59-boss-redesign.md 참고)
+   - 직접 실행은 못 해봤어: 이 파일은 캔버스에 직접 띄워보지 않았고,
+     node 검증(행 길이/팔레트)과 PIL 렌더링으로 눈으로만 확인했다.
+   ============================================================================ */
+
+/* ---- 공용 범례 (모든 보스 스프라이트가 같은 문자 뜻을 쓴다) ----
+   . 투명   K 외곽선(어두운색)  W 흰색      E 눈(어두운색)
+   G 눈 빛  H 눈 하이라이트    A 메인색    B 보조색
+   C 강조색1 D 강조색2          F 얼굴/배(밝은색)  M 입
+   R 볼터치  Y 금색
+   L 하이라이트(메인색 A를 흰색 쪽으로)  S 그림자(메인색 A를 검은색 쪽으로)
+   각 보스의 pal이 이 문자들을 실제 색으로 바꾼다. */
+var BOSS_PALETTE_KEYS = ['.', 'K', 'W', 'E', 'G', 'H', 'A', 'B', 'C', 'D', 'F', 'M', 'R', 'Y', 'L', 'S'];
+
+/* ---- 그리기 함수 ----
+   ctx: 캔버스 2d 컨텍스트, form: BOSSES의 키, x/y: 박스 왼쪽 위(px),
+   px: 1칸 크기(px). u=1이면 px=6. opts.mood:
+     idle  기본, angry  눈썹을 치켜올리고 눈빛을 붉게(페이즈2/예고용),
+     hurt  눈에 X자(피격용), blink  눈을 감음.
+   flip: true면 좌우 반전. */
+function drawBossSprite(ctx, form, x, y, px, opts) {
+  var s = BOSSES[form];
+  if (!s) return false;
+  opts = opts || {};
+  var mood = opts.mood || 'idle';
+  var pal = s.pal, rows = s.rows;
+  var i, j, ch, col;
+  ctx.save();
+  if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
+  for (i = 0; i < 16; i++) {
+    for (j = 0; j < 16; j++) {
+      ch = rows[i][j];
+      if (ch === '.') continue;
+      /* 눈 감기: 눈 문자(E/G/H)는 얼굴색으로 */
+      if (mood === 'blink' && (ch === 'E' || ch === 'G' || ch === 'H')) ch = pal.F ? 'F' : 'A';
+      /* 피격: 눈 문자(E/G/H)는 외곽선색으로 (X자는 아래에서 덧그림) */
+      if (mood === 'hurt' && (ch === 'E' || ch === 'G' || ch === 'H')) ch = 'K';
+      col = pal[ch];
+      if (!col) continue;
+      ctx.fillStyle = col;
+      var dx = opts.flip ? (15 - j) : j;
+      ctx.fillRect(Math.round(x + dx * px), Math.round(y + i * px), Math.ceil(px), Math.ceil(px));
+    }
+  }
+  /* 분노 눈썹: 눈 박스 위에 외곽선색으로 삐딱한 눈썹 3칸 */
+  if (mood === 'angry' && s.eyes) {
+    ctx.fillStyle = pal.K;
+    s.eyes.forEach(function (e, idx) {
+      var ex = e[0], ey = e[1], ew = e[2];
+      var dir = idx === 0 ? 1 : -1; /* 왼쪽 눈은 오른쪽으로 치켜, 오른쪽 눈은 왼쪽으로 치켜 */
+      for (var k = 0; k < ew + 1; k++) {
+        var bx = ex + (dir > 0 ? k : (ew - k));
+        var by = ey - 1 - (dir > 0 ? 0 : 0);
+        var fx = opts.flip ? (15 - bx) : bx;
+        ctx.fillRect(Math.round(x + fx * px), Math.round(y + (by - (k === ew ? 1 : 0)) * px), Math.ceil(px), Math.ceil(px));
+      }
+    });
+  }
+  /* 피격 X자: 눈 박스 안에 대각선 2줄 */
+  if (mood === 'hurt' && s.eyes) {
+    ctx.fillStyle = pal.K;
+    s.eyes.forEach(function (e) {
+      var ex = e[0], ey = e[1], ew = e[2], eh = e[3];
+      for (var k = 0; k < Math.max(ew, eh); k++) {
+        [[ex + k, ey + k], [ex + ew - 1 - k, ey + k]].forEach(function (p) {
+          var fx = opts.flip ? (15 - p[0]) : p[0];
+          ctx.fillRect(Math.round(x + fx * px), Math.round(y + p[1] * px), Math.ceil(px), Math.ceil(px));
+        });
+      }
+    });
+  }
+  ctx.restore();
+  return true;
+}
+
+/* ============================================================================
+   이펙트/투사체 픽셀 스프라이트 (8x8)
+   범례: . 투명  a 메인색  b 빛나는색  w 하이라이트  k 외곽선  d 그림자(v2)
+   색은 그릴 때 보스 spec.c에서 가져온다 (drawFx의 c0=메인, c1=빛).
+   ============================================================================ */
+var FX = {
+  /* 기본 탄환: 빛나는 구슬 (기존 'b' 원형 탄환 대체) */
+  orb: [
+    '..aaaw..',
+    '.abbbaw.',
+    'wbwwwwa.',
+    'abwwbbd.',
+    'dbbbaa..',
+    '.abbaa..',
+    '..aadd..',
+    '........'
+  ],
+  /* 반짝이 별 (링/레이지 파동 파편용) */
+  spark: [
+    '...w....',
+    '...aa...',
+    '..wwww..',
+    '.wawwaw.',
+    'aawwwaaa',
+    '.dawwad.',
+    '..dwwd..',
+    '...aa...'
+  ],
+  /* 물방울 (비/파도/물기둥 파편용) */
+  drop: [
+    '...aa...',
+    '..wbbw..',
+    '..abwa..',
+    '.wbbwa..',
+    '.abwwa..',
+    '.dbbba..',
+    '..abbd..',
+    '...aa...'
+  ],
+  /* 얼음 파편/고드름 */
+  shard: [
+    '...aa...',
+    '..wwww..',
+    '..awwa..',
+    '.wawwaw.',
+    '.dawwad.',
+    '..dwwd..',
+    '...aa...',
+    '....d...'
+  ],
+  /* 불꽃 (화염/용암/폭발용) */
+  ember: [
+    '...a....',
+    '..wba...',
+    '..abbw..',
+    '.wbbba..',
+    '.abwba..',
+    'wbbwwba.',
+    'dbbbba..',
+    '.aaaad..'
+  ],
+  /* 비눗방울/거품 */
+  bubble: [
+    '..aaaw..',
+    '.awwwaw.',
+    'www..wa.',
+    'aw....a.',
+    'dw....a.',
+    '.a...wd.',
+    '..aaad..',
+    '........'
+  ],
+  /* 씨앗/포자 */
+  seed: [
+    '...aa...',
+    '..abbw..',
+    '.wbbba..',
+    '.dbwba..',
+    '..abbd..',
+    '...aa...',
+    '....d...',
+    '........'
+  ],
+  /* 음표 (록스타/카니발용) */
+  note: [
+    '...wa...',
+    '...a.w..',
+    '...a.a..',
+    '...a.a..',
+    '...a.a..',
+    '..wa.d..',
+    '..dda...',
+    '........'
+  ],
+  /* 톱니바퀴 */
+  gear: [
+    '..w..w..',
+    '.waaaaw.',
+    'wawwwaaw',
+    'awawawaa',
+    'dawwwaad',
+    '.daaaad.',
+    '..d..d..',
+    '........'
+  ],
+  /* 금화 */
+  coin: [
+    '..aaaw..',
+    '.awwwaw.',
+    'wwaaawaw',
+    'awawawaa',
+    'dwaaawad',
+    '.awwwad.',
+    '..aaad..',
+    '........'
+  ],
+  /* 뼈다귀 */
+  bone: [
+    'ww....ww',
+    'dab..bad',
+    '.dbbbad.',
+    '..abba..',
+    '.wbbbaw.',
+    'wab..baw',
+    'dd....dd',
+    '........'
+  ],
+  /* 별 (별빛/프리즘용) */
+  star: [
+    '...w....',
+    '...aa...',
+    '.wawwww.',
+    'aawwwaaa',
+    '.dawwad.',
+    '..awwa..',
+    '.ad..da.',
+    '........'
+  ],
+  /* 번개 (번개/천둥용) */
+  bolt: [
+    '....aa..',
+    '...abb..',
+    '..abb...',
+    '.abbb...',
+    '...abb..',
+    '..wbb...',
+    '..db....',
+    '........'
+  ],
+  /* 꽃잎 (벚꽃/요정용) */
+  petal: [
+    '...aa...',
+    '..abbw..',
+    '.wbbba..',
+    '.dbwba..',
+    '..abbd..',
+    '...aa...',
+    '....d...',
+    '........'
+  ],
+  /* 하트 (큐피드/여왕용) */
+  heart: [
+    '.wa..wa.',
+    'wawwaaww',
+    'awwwwwaa',
+    'dwwwwwad',
+    '.awwwad.',
+    '..awwd..',
+    '...aa...',
+    '........'
+  ],
+  /* 폭탄 (검은 동그라미 + 도화선 불꽃) */
+  bomb: [
+    '.....a..',
+    '....ab..',
+    '...w....',
+    '..aaaw..',
+    '.wbbba..',
+    '.abwba..',
+    '.dbbba..',
+    '..aaad..'
+  ]
+};
+
+/* 패턴 키 -> 이펙트 종류. 판정/속도/데미지는 건드리지 않고 그리는 것만 바꾼다.
+   bullet=탄환, drop=낙하물, zone=바닥 장판, beam=레이저, wave=파도,
+   gust=돌풍, grav=중력, pillar=기둥, ring=파동, orbiter=공전 구체,
+   homing=유도탄, cage=조이기, clone=분신(보스 스프라이트 재사용), dash=돌진 잔상 */
+var PATTERN_FX = {
+  spread: 'bullet', ring: 'ring', rain: 'drop', laserV: 'beam', laserH: 'beam',
+  dash: 'dash', wave: 'wave', gust: 'gust', grav: 'grav', snipe: 'bullet',
+  shuriken: 'bullet', clone: 'clone', pillar: 'pillar', patch: 'zone', bomb: 'drop',
+  spin: 'ring', sweep: 'beam', rage: 'ring',
+  orbit: 'orbiter', homing: 'homing', tide: 'wave', cage: 'cage'
+};
+
+/* 이펙트 그리기: fxKey는 FX의 키, x/y는 중심(px), s는 크기(px), c0/c1은 색.
+   beam/ring/wave/gust/grav/pillar/cage/dash는 판정 모양을 유지해야 해서
+   기존 drawHz의 도형(직사각형/원/줄)을 그대로 쓰고 색/질감만 바꾸는 방식이므로
+   여기서는 탄환형(fx 스프라이트)만 그린다. */
+function drawFx(ctx, fxKey, x, y, s, c0, c1) {
+  var rows = FX[fxKey];
+  if (!rows) return false;
+  var pal = { a: c0, b: c1 || c0, w: '#ffffff', k: '#1c1526',
+    d: (function (h) { var n = parseInt(h.slice(1), 16);
+      var r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+      return '#' + [r, g, b].map(function (v) {
+        return ('0' + Math.round(v * 0.5).toString(16)).slice(-2);
+      }).join(''); })(c0) };
+  var cell = s / 8;
+  for (var i = 0; i < 8; i++) {
+    for (var j = 0; j < 8; j++) {
+      var ch = rows[i][j];
+      if (ch === '.') continue;
+      ctx.fillStyle = pal[ch] || c0;
+      ctx.fillRect(Math.round(x - s / 2 + j * cell), Math.round(y - s / 2 + i * cell), Math.ceil(cell), Math.ceil(cell));
+    }
+  }
+  return true;
+}
+
+
+/* ============================================================================
+   보스 스프라이트 본체 (16x16 격자, 범례: . K W E G H A B C D F M R Y L S)
+   eyes: [ [x,y,w,h], [x,y,w,h] ] — 두 눈 박스 (분노/피격/깜빡임 연출용)
+   ============================================================================ */
+var BOSSES = {
+
+  /* 1. 구름 대왕 (기본 맵) — 통통한 구름 왕, 금관 + 번개 */
+  cloud: {
+    map: 'default', name: '구름 대왕', emoji: '☁️', hp: 130,
+    concept: '통통한 구름 몸통에 금관을 쓴 왕. 번개 한 줄기가 귀여운 포인트.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#38bdf8', H: '#ffffff', A: '#f1f5f9', B: '#cbd5e1', C: '#fde047', D: '#38bdf8', F: '#f1f5f9', M: '#334155', R: '#7dd3fc', Y: '#fde047', L: '#f7fafc', S: '#95989a' },
+    eyes: [[4, 7, 2, 2], [10, 7, 2, 2]],
+    rows: [
+      '................',
+      '.....C....C.....',
+      '.....CC..CC.....',
+      '....CCCCCCCC....',
+      '....CCCCCCCC....',
+      '...KLAAAAAAAK...',
+      '..KLAAAAAAAALK..',
+      '..LAEEAAAAEEAL..',
+      '..AAEGAAAAEGAS..',
+      '..AARAAAAAARAS..',
+      '.KABAAAAMMAABAC.',
+      '.KSBBBBBBBBBBSC.',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 2. 슈가 마카롱 킹 (디저트 맵) — 분홍 마카롱 + 크림 + 초콜릿 왕관 */
+  macaron: {
+    map: 'dessert', name: '슈가 마카롱 킹', emoji: '🍬', hp: 140,
+    concept: '분홍 마카롱 샌드위치. 크림 사이로 웃는 입, 위에 초콜릿 왕관.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#7c3aed', H: '#ffffff', A: '#f9a8d4', B: '#e88ab8', C: '#7c3aed', D: '#fde047', F: '#fff1e6', M: '#7c3aed', R: '#f472b6', Y: '#fde047', L: '#fccfe7', S: '#9a6883' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '......Y.Y.......',
+      '.....YYYYY......',
+      '.....YYYYY......',
+      '...KLAAAAAALK...',
+      '..KLCAAAAADALK..',
+      '..LAEEAAAAEEAL..',
+      '..SAEGAAAAEGAS..',
+      '..KFFFMMFFFFFK..',
+      '..KAAFFAAFFASK..',
+      '..KAAAAAAAAASK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 3. 타워크레인 메카 (공사장 맵) — 노란 크레인 로봇, 운전석 얼굴 + 후크 */
+  crane: {
+    map: 'site', name: '타워크레인 메카', emoji: '🏗️', hp: 150,
+    concept: '노란 타워크레인. 운전석 창문이 얼굴, 오른쪽에 후크가 달림.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#f87171', G: '#f87171', H: '#ffffff', A: '#fbbf24', B: '#fde68a', C: '#334155', D: '#f87171', F: '#fde68a', M: '#334155', R: '#fbbf24', Y: '#f87171', L: '#fddc87', S: '#9c7616' },
+    eyes: [[7, 10, 2, 1], [10, 10, 2, 1]],
+    rows: [
+      '................',
+      '.......D........',
+      '......DDD.......',
+      '..KLLLAAAKKKLK..',
+      '..KLSSSAALLASAD.',
+      '......KLAASK...D',
+      '......KLAASK...D',
+      '......KAAASK...D',
+      '.....KLAAAALK.DD',
+      '....KASAASAAAK..',
+      '....LKKEEKEEKL..',
+      '....SKKMMMMKKS..',
+      '....KLAAAAALAK..',
+      '...ADSDSDSDSD...',
+      '....KKAKAKAKAK..',
+      '................'
+    ]
+  },
+
+  /* 4. 코스믹 UFO 커맨더 (우주 맵) — 접시 + 돔 안의 외계인 조종사 */
+  ufo: {
+    map: 'space', name: '코스믹 UFO 커맨더', emoji: '🛸', hp: 150,
+    concept: '은색 접시 위 유리 돔 안에 작은 외계인 조종사. 아래로 빔이 내려옴.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#22d3ee', H: '#ffffff', A: '#94a3b8', B: '#e0e7ff', C: '#22d3ee', D: '#a5f3fc', F: '#e0e7ff', M: '#334155', R: '#22d3ee', Y: '#fde047', L: '#c4ccd8', S: '#5c6572' },
+    eyes: [[6, 5, 2, 1], [9, 5, 2, 1]],
+    rows: [
+      '................',
+      '.......CC.......',
+      '.......C........',
+      '.....KLBLLK.....',
+      '....KLBBSBBK....',
+      '....BKEEKEEB....',
+      '....KLBBLBBK....',
+      '..KKLAAAAAALLK..',
+      '.KALAAAAAAAAALK.',
+      '.ACSCACACACACS..',
+      '..KKAAAAAAAAAK..',
+      '....CCCCCCCC....',
+      '.....CCCCCC.....',
+      '......CCCC......',
+      '.......CC.......',
+      '................'
+    ]
+  },
+
+  /* 5. 대나무 닌자 쇼군 (대나무 맵) — 삿갓 + 빨간 띠 + 청록 눈빛 */
+  ninja: {
+    map: 'bamboo', name: '대나무 닌자 쇼군', emoji: '🎋', hp: 160,
+    concept: '넓은 삿갓을 쓴 어두운 닌자. 청록 눈빛만 반짝이고 허리에 빨간 띠.',
+    pal: { K: '#0b1024', W: '#ffffff', E: '#0b1024', G: '#22d3ee', H: '#ffffff', A: '#334155', B: '#475569', C: '#ef4444', D: '#22d3ee', F: '#334155', M: '#0b1024', R: '#ef4444', Y: '#fde047', L: '#adb3bb', S: '#2b3748' },
+    eyes: [[5, 7, 2, 2], [9, 7, 2, 2]],
+    rows: [
+      '................',
+      '.......CC.......',
+      '.....KKLBKK.....',
+      '...KKLLBBLLKK...',
+      '.KLBLBBBBBBLBBK.',
+      '...KLAAAAAASK...',
+      '...KLAAAAAASK...',
+      '...LAEEAAEEAL...',
+      '...SAEGAAEGAS...',
+      '...KAAAAAAASK...',
+      '....AAMMMMAS....',
+      '..KKAAAAAAASKK..',
+      '..KLAAAAAAAALK..',
+      '..ASCCCCCCCCSA..',
+      '..KKAAAAAAAAKK..',
+      '................'
+    ]
+  },
+
+  /* 6. 심해 트라이던트 왕 (아틀란티스 맵) — 금관 + 흰 수염 + 삼지창 */
+  trident: {
+    map: 'atlantis', name: '심해 트라이던트 왕', emoji: '🔱', hp: 150,
+    concept: '청록 인어 왕. 금관, 흰 수염, 오른쪽에 삼지창을 든 모습.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#fde047', H: '#ffffff', A: '#0e7490', B: '#67e8f9', C: '#fde047', D: '#a5f3fc', F: '#f0f9ff', M: '#0b1024', R: '#67e8f9', Y: '#fde047', L: '#93c0cd', S: '#0b5a70' },
+    eyes: [[5, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '.....C....C.C.C.',
+      '.....CC..CC.CCC.',
+      '....CCCCCCCCCCC.',
+      '....KLAAAAAK..C.',
+      '....KLAAAASK..C.',
+      '....LAEEAAEE..C.',
+      '....AAEGAAEG..C.',
+      '....SARAAARA..C.',
+      '....KAFFFFAK..C.',
+      '...KLAFFFFALKC..',
+      '...KAAFFFFAALC..',
+      '..KLAAFFFFAAAAC.',
+      '..KSSSSSSSSSSK..',
+      '..KKKKKKKKKKKK..',
+      '................'
+    ]
+  },
+
+  /* 7. 글리치 마스터 (아케이드 맵) — 보라 픽셀 괴물, 안테나 + 글리치 픽셀 */
+  arcade: {
+    map: 'arcade', name: '글리치 마스터', emoji: '👾', hp: 150,
+    concept: '보라색 네모 괴물. 안테나 하나, 입은 지그재그, 몸에 글리치 픽셀.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#22d3ee', H: '#ffffff', A: '#7c3aed', B: '#e879f9', C: '#22d3ee', D: '#fde047', F: '#e879f9', M: '#0b1024', R: '#f472b6', Y: '#fde047', L: '#c4a6f7', S: '#612db9' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '.......C........',
+      '.......C........',
+      '......CCC.......',
+      '...KLLAAAKLLK...',
+      '..KLAAAAALAALK..',
+      '..LAEEAAAAEEAL..',
+      '..SAEGAAAAEGAS..',
+      '..KAAAAAAAAASK..',
+      '..KABBBBBBBBSK..',
+      '..KABMABMABMAA..',
+      '..KAAAAAAAAASK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 8. 프로스트 자이언트 (북극 맵) — 얼음 왕관 + 긴 수염의 거인 */
+  frost: {
+    map: 'arctic', name: '프로스트 자이언트', emoji: '❄️', hp: 160,
+    concept: '하늘색 얼음 거인. 얼음 왕관 세 개, 하얀 수염이 가슴까지.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#38bdf8', H: '#ffffff', A: '#93c5fd', B: '#e0f2fe', C: '#38bdf8', D: '#c7f9ff', F: '#e0f2fe', M: '#1e3a5f', R: '#7dd3fc', Y: '#fde047', L: '#c4dffe', S: '#5b7a9d' },
+    eyes: [[5, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '....C..C..C.....',
+      '....CC.CC.CC....',
+      '....CCCCCCCC....',
+      '....KLAAAAAK....',
+      '...KLAAAAAALK...',
+      '...LAEEAAEEAL...',
+      '...SAEGAAEGAS...',
+      '...KAAAAAAASK...',
+      '...KAAFFFFASK...',
+      '..KLAAFFFFAALK..',
+      '..KAAAFFFFAASK..',
+      '..KABFFFFFFBSK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................'
+    ]
+  },
+
+  /* 9. 팬텀 카운트 (저택 맵) — 보라 유령 + 실크햇 + 나비넥타이 */
+  ghost: {
+    map: 'mansion', name: '팬텀 카운트', emoji: '🕯️', hp: 150,
+    concept: '보라 유령 백작. 금색 실크햇, 분홍 나비넥타이, 아래는 물결 자락.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#f472b6', H: '#ffffff', A: '#c4b5fd', B: '#7c3aed', C: '#f472b6', D: '#fde047', F: '#e2d9ff', M: '#1c1526', R: '#f472b6', Y: '#fde047', L: '#dfd6fe', S: '#7a709d' },
+    eyes: [[5, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '......DDDD......',
+      '.....DDDDDD.....',
+      '.....DDDDDD.....',
+      '....KLAAAAAK....',
+      '...KLAAAAAALK...',
+      '...LAEEAAEEAL...',
+      '...SAEGAAEGAS...',
+      '...KAAAAAAASK...',
+      '...KAAMMMMASK...',
+      '....AACCCCCAA...',
+      '...KAAAAAAASK...',
+      '..KASSSSSSSSAK..',
+      '..KKKKKKKKKKKK..',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 10. 마그마 렉스 (화산 맵) — 아기 티라노, 화산 뿔 + 이빨 미소 */
+  dino: {
+    map: 'volcano', name: '마그마 렉스', emoji: '🌋', hp: 170,
+    concept: '주황 아기 티라노. 머리 위 화산 뿔, 배는 밝고 이빨 미소가 귀여움.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#fde047', H: '#ffffff', A: '#fb923c', B: '#7f1d1d', C: '#fde047', D: '#ef4444', F: '#fed7aa', M: '#7f1d1d', R: '#ef4444', Y: '#fde047', L: '#fdc394', S: '#9c5b25' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '......DD........',
+      '.....DDDD.......',
+      '....DDDDDD......',
+      '...KLAAAAALLK...',
+      '..KLAAAAAAAALK..',
+      '..LAEEAAAAEEAL..',
+      '..SAEGAAAAEGAS..',
+      '..KAAAAAAAAASK..',
+      '..AAWWWWWWWWAA..',
+      '..KAFFFFFFFFFK..',
+      '..KAFFFFFFFFFK..',
+      '..KAKKSAASKKAK..',
+      '..AS..KSSK..SA..',
+      '..KKK.KKKK.KKK..',
+      '................'
+    ]
+  },
+
+  /* 11. 숙제 괴물 빨간펜 (학교 맵) — 초록 칠판 괴물, 빨간펜 + 분필 눈 */
+  school: {
+    map: 'school', name: '숙제 괴물 빨간펜', emoji: '📕', hp: 140,
+    concept: '초록 칠판 괴물. 머리 위 빨간펜, 분필 가루, 빨간 동그라미 채점.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#a7f3d0', H: '#ffffff', A: '#1f3a2e', B: '#a7f3d0', C: '#ef4444', D: '#fde047', F: '#a7f3d0', M: '#0b1024', R: '#ef4444', Y: '#fde047', L: '#a5b0ab', S: '#1a3127' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '.......C........',
+      '......CCC.......',
+      '......CCC.......',
+      '...KLLAAAKLLK...',
+      '..KLAAAAALAALK..',
+      '..LAEHAAAAEHAL..',
+      '..SAEGAAAAEGAS..',
+      '..KAAAAAAAAASK..',
+      '..AAMMMMMMMMAA..',
+      '..KABBBBBBBBSK..',
+      '..AACCACCAACAA..',
+      '..KSAASAASSASK..',
+      '...KSSKSSKKSK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 12. 크로노 기어 (시계 맵) — 황동 시계, 시침 + 진자 */
+  clock: {
+    map: 'clock', name: '크로노 기어', emoji: '⏰', hp: 160,
+    concept: '황동 회중시계. 금색 다이얼에 시침, 아래로 진자가 흔들림.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#fbbf24', H: '#ffffff', A: '#a16207', B: '#fcd34d', C: '#fbbf24', D: '#fde047', F: '#fcd34d', M: '#1c1526', R: '#fbbf24', Y: '#fde047', L: '#d5b88f', S: '#7e4c05' },
+    eyes: [[5, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '.......C........',
+      '......CCC.......',
+      '....KKLAAKKK....',
+      '..KKLLBBBLLLKK..',
+      '..KLBBBBBBBBLK..',
+      '..KLBEEAAEEBSK..',
+      '..KBBEGSAEGBSK..',
+      '..KBBBBKSBBSK...',
+      '..KBBBSKKBBSK...',
+      '..KSSSBLLBSSAK..',
+      '...KKKAAASKKK...',
+      '......CCCC......',
+      '.....CCCCCC.....',
+      '......CCCC......',
+      '................'
+    ]
+  },
+
+  /* 13. 토스터 타이탄 (부엌 맵) — 은색 토스터, 튀어나온 토스트 + 레버 */
+  toaster: {
+    map: 'kitchen', name: '토스터 타이탄', emoji: '🍞', hp: 150,
+    concept: '은색 토스터. 위로 토스트 두 장이 튀어나오고 옆에 레버가 있음.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#fb923c', H: '#ffffff', A: '#94a3b8', B: '#e2e8f0', C: '#fb923c', D: '#fde047', F: '#e2e8f0', M: '#334155', R: '#fb923c', Y: '#fde047', L: '#c4ccd8', S: '#5c6572' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '....KK....KK....',
+      '...KLLK..KLLK...',
+      '...CFFC..CFFC...',
+      '...KLAAKKLASK...',
+      '..KLAAALLAAALK..',
+      '..LAEEAAAAEEALC.',
+      '..SAEGAAAAEGASC.',
+      '..KAAAAAAAAASK..',
+      '..AAMMMMMMMMAA..',
+      '..KABBBBBBBBSK..',
+      '..KAAAAAAAAASK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 14. 아이언 휘슬 (기차 맵) — 검은 기관차, 연기 + 빨간 줄무늬 + 전조등 */
+  train: {
+    map: 'train', name: '아이언 휘슬', emoji: '🚂', hp: 160,
+    concept: '검은 증기 기관차. 굴뚝 연기, 빨간 줄무늬, 금색 전조등.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#f87171', H: '#ffffff', A: '#334155', B: '#0f172a', C: '#f87171', D: '#fde047', F: '#94a3b8', M: '#0b1024', R: '#f87171', Y: '#fde047', L: '#adb3bb', S: '#2b3748' },
+    eyes: [[4, 7, 2, 2], [10, 7, 2, 2]],
+    rows: [
+      '................',
+      '.....KK.........',
+      '....KLLK........',
+      '.....LS.........',
+      '....KLSKKK......',
+      '...KLAALLLLLK...',
+      '..KLAAAAAAAALK..',
+      '..LAEEAAAAEEAL..',
+      '..AAEGAAAAEGAS..',
+      '..SACCCCCCCCAS..',
+      '..KAAAAAAAAASK..',
+      '..KAADDDDDDDAA..',
+      '..KSAAAAAAAASK..',
+      '...KSCC..CCSK...',
+      '....KAAAAAAK....',
+      '................'
+    ]
+  },
+
+  /* 15. 벚꽃 검신 화접도 (무협 맵) — 분홍 검객, 벚꽃잎 + 카타나 */
+  sword: {
+    map: 'wuxia', name: '벚꽃 검신 화접도', emoji: '🌸', hp: 170,
+    concept: '분홍 머리 검객. 옆에 카타나가 비스듬히, 허리에 빨간 띠, 벚꽃잎.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#be123c', H: '#ffffff', A: '#f9a8d4', B: '#fff1f2', C: '#be123c', D: '#fde047', F: '#fff1f2', M: '#be123c', R: '#f9a8d4', Y: '#fde047', L: '#fccfe7', S: '#9a6883' },
+    eyes: [[4, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '.....C....C..D..',
+      '....KAKKKKAK..D.',
+      '...KLALLLLALK.D.',
+      '..KLAAAAAAAALK..',
+      '..KLBBBBBBBBSK..',
+      '..LBEEAAAEEBSK..',
+      '..SBEGAAAEGBSK..',
+      '..KBBBBBBBBBSK..',
+      '..KABBBBBBBBSK..',
+      '..KAAACCCCCASK..',
+      '..KAAAAAAAAASK..',
+      '..KSCCSSSSCCSK..',
+      '...KAAKKKKAAK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 16. 프리즘 여왕 (무지개 맵) — 무지개 머리의 여왕, 프리즘 왕관 */
+  rainbow: {
+    map: 'rainbow', name: '프리즘 여왕', emoji: '🌈', hp: 170,
+    concept: '무지개 머리 여왕. 프리즘 왕관, 하얀 얼굴, 무지개 줄무늬 드레스.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#f472b6', H: '#ffffff', A: '#f0abfc', B: '#ffffff', C: '#f472b6', D: '#7dd3fc', F: '#ffffff', M: '#be123c', R: '#f472b6', Y: '#fde047', L: '#f7d1fd', S: '#956a9c' },
+    eyes: [[5, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '......D.D.......',
+      '.....DDDDD......',
+      '....DDDDDDD.....',
+      '...KLAAAAAAKK...',
+      '..CLBBBBBBBLLC..',
+      '..DABEEAAEEBAD..',
+      '..CABEGAAEGBAC..',
+      '..DABBBBBBBBAD..',
+      '..CABBBBBBBBAC..',
+      '..AACCDDCCDDAA..',
+      '..SDCCDDCCDAS...',
+      '..KACCDDCCDDSA..',
+      '...KAAAAAAAAK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 17. 리버티 골렘 (뉴욕 맵) — 자유의 여신 골렘, 횃불을 든 모습 */
+  liberty: {
+    map: 'newyork', name: '리버티 골렘', emoji: '🗽', hp: 170,
+    concept: '초록 자유의 여신 골렘. 왕관 가시, 오른쪽 손에 금색 횃불.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#fbbf24', H: '#ffffff', A: '#4d7c6f', B: '#a7f3d0', C: '#fbbf24', D: '#fde047', F: '#a7f3d0', M: '#1c1526', R: '#fbbf24', Y: '#fde047', L: '#afc4be', S: '#3c6157' },
+    eyes: [[5, 5, 2, 2], [9, 5, 2, 2]],
+    rows: [
+      '................',
+      '..C...C...C..C..',
+      '..CC.CCC.CC..C..',
+      '...KKLAAKLAKK.C.',
+      '...KLAAALAALK.C.',
+      '...LAEEAAEEAL.C.',
+      '...LAEGAAEGAS.C.',
+      '...KAAAAAAASK.C.',
+      '...KAAMMMMASK.C.',
+      '..KLAAAAAAAALK.C',
+      '..KAAAAAAAAASK..',
+      '..KABBBBBBBBSK..',
+      '..KAAAAAAAAASK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................'
+    ]
+  },
+
+  /* 18. 한강 백호 수호신 (서울 맵) — 흰 호랑이, 파란 줄무늬 + 빨간 코 */
+  tiger: {
+    map: 'seoul', name: '한강 백호 수호신', emoji: '🐯', hp: 170,
+    concept: '흰 호랑이 수호신. 파란 줄무늬, 빨간 코, 수염, 귀여운 앞발.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#38bdf8', H: '#ffffff', A: '#e2e8f0', B: '#94a3b8', C: '#ef4444', D: '#38bdf8', F: '#e2e8f0', M: '#1c1526', R: '#fca5a5', Y: '#fde047', L: '#eff2f7', S: '#8c9095' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '...KK......KK...',
+      '...KLK....KLK...',
+      '...KLLKKKKLSK...',
+      '..KLAALLLLAALK..',
+      '..LADDAAAADDAL..',
+      '..LAEEAAAAEEAS..',
+      '..AAEGAAAAEGAS..',
+      '..SARAAAAAARAS..',
+      '..KAAACCCAAASK..',
+      '..KAAAMMMMAASK..',
+      '..KAAAAAAAAASK..',
+      '..AADDAAAADDAA..',
+      '..KSAASSSSAASK..',
+      '...KSSKKKKSSK...',
+      '................'
+    ]
+  },
+
+  /* 19. 에펠 강철 골렘 라투르 (파리 맵) — 철탑 골렘, 금색 창문 + 넓은 다리 */
+  eiffel: {
+    map: 'paris', name: '에펠 강철 골렘 라투르', emoji: '🗼', hp: 170,
+    concept: '검은 철탑 골렘. 뾰족한 꼭대기, 금색 창문 띠, 다리 벌린 실루엣.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#fde047', H: '#ffffff', A: '#3b2f22', B: '#fbbf24', C: '#fde047', D: '#f87171', F: '#fbbf24', M: '#1c1526', R: '#fbbf24', Y: '#fde047', L: '#b1aca7', S: '#32281d' },
+    eyes: [[6, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '.......D........',
+      '......DDD.......',
+      '......KAK.......',
+      '.....KLALK......',
+      '....KLAAALK.....',
+      '....LAEEAAEE....',
+      '....AAEGAAEG....',
+      '...KAAAAAAAAK...',
+      '...KABBBBBBSK...',
+      '..KLAAAAAAAALK..',
+      '..KASSBBBBSSSK..',
+      '..KAKKSAASKKAK..',
+      '..AS..KSSK..SA..',
+      '.KKKK.KKKK.KKKK.',
+      '................'
+    ]
+  },
+
+  /* 20. 스핑크스 파라오 (이집트 맵) — 금빛 스핑크스, 파란 네메스 + 사자 발 */
+  sphinx: {
+    map: 'egypt', name: '스핑크스 파라오', emoji: '🏜️', hp: 170,
+    concept: '금빛 스핑크스. 파란 줄무늬 네메스, 인간 얼굴, 앞발이 큼.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#1d4ed8', H: '#ffffff', A: '#c8a55e', B: '#efd79c', C: '#1d4ed8', D: '#fde047', F: '#efd79c', M: '#1c1526', R: '#c8a55e', Y: '#fde047', L: '#e1cea6', S: '#7c663a' },
+    eyes: [[5, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '....CCCCCCCC....',
+      '....CCCCCCCC....',
+      '...CCCBBBBCCC...',
+      '...CCBBBBBBCC...',
+      '...KLBBBBBBAK...',
+      '...LBEEAAEEBL...',
+      '...SBEGAAEGBS...',
+      '...KABBBBBBSK...',
+      '...KAAMMMMASK...',
+      '..KLAAAAAAAALK..',
+      '..KAAAAAAAAASK..',
+      '..KABBBBBBBBSK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................'
+    ]
+  },
+
+  /* 21. 후지 오니 쇼군 (후지 맵) — 빨간 오니, 뿔 + 송곳니 + 눈 모자 */
+  yokai: {
+    map: 'fuji', name: '후지 오니 쇼군', emoji: '🗻', hp: 180,
+    concept: '빨간 오니 쇼군. 하얀 뿔 두 개, 송곳니 미소, 머리 위 눈.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#fde047', H: '#ffffff', A: '#f87171', B: '#fecaca', C: '#e2e8f0', D: '#fde047', F: '#fecaca', M: '#7f1d1d', R: '#fca5a5', Y: '#fde047', L: '#fbb1b1', S: '#9a4646' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '..C........C....',
+      '..CC......CC....',
+      '..CCC....CCC....',
+      '...KLLKKKLAAK...',
+      '..KLAALLLAAALK..',
+      '..LAEEAAAAEEAL..',
+      '..SAEGAAAAEGAS..',
+      '..KAAAAAAAAASK..',
+      '..AAWWWWWWWWAA..',
+      '..KABBBBBBBBSK..',
+      '..KAAAAAAAAASK..',
+      '..KSDDSSSSDDSK..',
+      '...KAAKKKKAAK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 22. 빅벤 크로노 워든 (런던 맵) — 시계탑, 다이얼 얼굴 + 진자 */
+  bigben: {
+    map: 'london', name: '빅벤 크로노 워든', emoji: '🕰️', hp: 145,
+    concept: '갈색 시계탑. 크림 다이얼이 얼굴, 시침이 코, 아래에 금색 문.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#d9a441', H: '#ffffff', A: '#8b6a52', B: '#e6d6b8', C: '#d9a441', D: '#fde68a', F: '#e6d6b8', M: '#1c1526', R: '#d9a441', Y: '#fde047', L: '#bfada0', S: '#564233' },
+    eyes: [[6, 7, 1, 1], [8, 7, 1, 1]],
+    rows: [
+      '................',
+      '.......C........',
+      '......CCC.......',
+      '.....KLAAK......',
+      '....KLAAALK.....',
+      '...KLBBBBBLK....',
+      '...KLBBBBBSK....',
+      '...KBBESEBSK....',
+      '...KBBBKBBSK....',
+      '...KABBLBBSK....',
+      '...KAAAAAAALK...',
+      '...KABBBBBBSK...',
+      '...KABBBBBBSK...',
+      '...KSSDDDDSSK...',
+      '...KKKAAAAKKK...',
+      '................'
+    ]
+  },
+
+  /* 23. 황금 천공룡 (하늘성 맵) — 금룡, 뿔 + 날개 + 수염 */
+  skydragon: {
+    map: 'skycastle', name: '황금 천공룡', emoji: '🐉', hp: 190,
+    concept: '금빛 용. 하늘색 날개, 뿔 두 개, 입가에 수염.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#7dd3fc', H: '#ffffff', A: '#e8c66a', B: '#fff3c4', C: '#7dd3fc', D: '#fde047', F: '#fff3c4', M: '#7c2d12', R: '#fca5a5', Y: '#fde047', L: '#f2e0ad', S: '#907b42' },
+    eyes: [[4, 5, 2, 2], [10, 5, 2, 2]],
+    rows: [
+      '................',
+      '..C........C....',
+      '..CC......CC....',
+      '...KLLKKKKLAK...',
+      '..KLAALLLLAALK..',
+      '..LAEEAAAAEEAL..',
+      '..LAEGAAAAEGAS..',
+      '..KAAAAAAAAASK..',
+      '..AAMMMMMMMMAA..',
+      '.CCAAAAAAAAAACC.',
+      '.CCAAFFFFFFAACC.',
+      '..KAAAAAAAAASK..',
+      '..ASCCSSSSCCSA..',
+      '...KAAKKKKAAK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 24. 심해 크라켄 선장 (해적 맵) — 보라 문어 선장, 선장모 + 촉수 */
+  kraken: {
+    map: 'pirate', name: '심해 크라켄 선장', emoji: '🐙', hp: 165,
+    concept: '보라 문어 선장. 청록 선장모, 청록 눈, 아래로 촉수가 물결침.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#67e8f9', H: '#ffffff', A: '#4b2f5e', B: '#a78bfa', C: '#0e7490', D: '#67e8f9', F: '#a78bfa', M: '#1c1526', R: '#67e8f9', Y: '#fde047', L: '#b7acbf', S: '#402850' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '....CCCCCC......',
+      '...CCCCCCCC.....',
+      '...CCBBBBBBCC...',
+      '...KLAAAAAAAK...',
+      '..KLAAAAAAAALK..',
+      '..LAEEAAAAEEAL..',
+      '..SAEGAAAAEGAS..',
+      '..KAAAAAAAAASK..',
+      '..AAMMMMMMMMAA..',
+      '..KAAAAAAAAASK..',
+      '..KABBAAABBAALK.',
+      '..KSSSSSSSSSSSK.',
+      '..KKKKKKKKKKKK..',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 25. 네온 카니발 링마스터 (카니발 맵) — 분홍 사회자, 높은 실크햇 + 콧수염 */
+  ringmaster: {
+    map: 'carnival', name: '네온 카니발 링마스터', emoji: '🤡', hp: 150,
+    concept: '분홍 카니발 사회자. 높은 금색 실크햇, 콧수염, 주름 칼라.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#fbbf24', H: '#ffffff', A: '#d946a6', B: '#f9a8d4', C: '#fbbf24', D: '#a3e635', F: '#f9a8d4', M: '#1c1526', R: '#f9a8d4', Y: '#fde047', L: '#ea99ce', S: '#872b67' },
+    eyes: [[5, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '.....CCCCCC.....',
+      '.....CCCCCC.....',
+      '.....CCCCCC.....',
+      '....CCCCCCCC....',
+      '...KLAAAAAAAK...',
+      '...LAEEAAEEAL...',
+      '...SAEGAAEGAS...',
+      '...KAAAAAAASK...',
+      '...LAMMMMMMAA...',
+      '...AACCCCCASK...',
+      '..KAAAAAAAAALK..',
+      '..KBBABBABBASK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................'
+    ]
+  },
+
+  /* 26. 요정 포자 여왕 (버섯 맵) — 빨간 버섯 여왕, 점박이 갓 + 초록 포자 */
+  sporequeen: {
+    map: 'mushroom', name: '요정 포자 여왕', emoji: '🍄', hp: 120,
+    concept: '빨간 버섯 여왕. 점박이 갓, 창백한 얼굴, 초록 포자가 반짝임.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#a3e635', H: '#ffffff', A: '#d1786a', B: '#ffd9cf', C: '#a3e635', D: '#fde68a', F: '#ffd9cf', M: '#7c2d12', R: '#f9a8d4', Y: '#fde047', L: '#e6b5ad', S: '#824a42' },
+    eyes: [[4, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '.....KKKKKK.....',
+      '...KKLLLLLLKK...',
+      '..KLLBABBABLLK..',
+      '..KLAAAAAAAASK..',
+      '..KLAAAAAAAASK..',
+      '..LBEEAAAEEBSK..',
+      '..SBEGAAAEGBSK..',
+      '..KBBBBBBBBBSK..',
+      '..KBBBMMMMBBSK..',
+      '..AACCAAAACCAA..',
+      '..KAAAAAAAAASK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 27. 사이버 오버로드 (사이버펑크 맵) — 어두운 로봇, 네온 바이저 + 안테나 */
+  cyberlord: {
+    map: 'cyberpunk', name: '사이버 오버로드', emoji: '🤖', hp: 185,
+    concept: '어두운 보라 로봇. 청록 네온 바이저가 눈, 안테나와 회로 무늬.',
+    pal: { K: '#0b1024', W: '#ffffff', E: '#0b1024', G: '#22d3ee', H: '#ffffff', A: '#3d3358', B: '#a78bfa', C: '#22d3ee', D: '#ff4fd8', F: '#a78bfa', M: '#0b1024', R: '#ff4fd8', Y: '#fde047', L: '#b1adbc', S: '#342b4b' },
+    eyes: [[4, 6, 3, 2], [9, 6, 3, 2]],
+    rows: [
+      '................',
+      '.......D........',
+      '......DDD.......',
+      '....KKLAAKKK....',
+      '...KLLAAALLLK...',
+      '..KLAAAAAAAALK..',
+      '..LACCCCCCCCAL..',
+      '..SACWCCCCWCAS..',
+      '..KAAAAAAAAASK..',
+      '..AADDADDADDDA..',
+      '..KAAAAAAAAAAK..',
+      '..KBBBBBBBBBSK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 28. 제우스 번개 화신 (올림푸스 맵) — 흰 수염 제우스, 금 월계관 + 번개 */
+  zeus: {
+    map: 'olympus', name: '제우스 번개 화신', emoji: '⚡', hp: 170,
+    concept: '흰 수염 제우스. 금 월계관, 오른쪽 손에 번개를 든 모습.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#fcd34d', H: '#ffffff', A: '#dcdce6', B: '#fff7d6', C: '#fcd34d', D: '#fde047', F: '#fff7d6', M: '#1c1526', R: '#fcd34d', Y: '#fde047', L: '#ececf1', S: '#88888f' },
+    eyes: [[4, 5, 2, 2], [10, 5, 2, 2]],
+    rows: [
+      '................',
+      '....CCCCCCCC....',
+      '....CCCCCCCC....',
+      '...KLAAAAAAAK.D.',
+      '..KLAAAAAAAALK.D',
+      '..LAEEAAAAEEALD.',
+      '..LAEGAAAAEGAAD.',
+      '..KAAAAAAAAAASD.',
+      '..KABBBBBBBBSK..',
+      '..KABBBBBBBBSK..',
+      '.KLBBBBBBBBBBLK.',
+      '.KSBBBBBBBBBBSK.',
+      '..KABBBBBBBBSK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................'
+    ]
+  },
+
+  /* 29. 매드 닥터 슬라임 (연구소 맵) — 청록 슬라임 박사, 고글 + 플라스크 */
+  madslime: {
+    map: 'lab', name: '매드 닥터 슬라임', emoji: '🧪', hp: 160,
+    concept: '청록 슬라임 박사. 초록 고글, 안테나, 옆에 플라스크.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#22c55e', H: '#ffffff', A: '#7df3ff', B: '#cfd8e0', C: '#22c55e', D: '#a3e635', F: '#cfd8e0', M: '#0b1024', R: '#22c55e', Y: '#fde047', L: '#b8f8ff', S: '#4e979e' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '.......C........',
+      '......CCC.......',
+      '.....KLAAK......',
+      '...KLLAAALLK....',
+      '..KLSSAASSAAKK..',
+      '..LSKKCCKKCCLL..',
+      '..SSKKCCKKCCAS..',
+      '..KAAAAAAAAASK..',
+      '..AAMMMMMMMMALDC',
+      '..KAAAAAAAAAAADC',
+      '..KASSBBBBSSASDC',
+      '..KAKKSAASKKAK..',
+      '..AS..KSSK..SA..',
+      '..KKK.KKKK.KKK..',
+      '................'
+    ]
+  },
+
+  /* 30. 캐니언 독수리 킹 (협곡 맵) — 갈색 독수리, 볏 + 금색 부리 + 날개 */
+  eagleking: {
+    map: 'canyon', name: '캐니언 독수리 킹', emoji: '🦅', hp: 165,
+    concept: '갈색 독수리 왕. 머리 볏, 금색 부리, 양쪽에 날개.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#fde047', H: '#ffffff', A: '#b06f47', B: '#e8c58c', C: '#8d5b34', D: '#fde047', F: '#e8c58c', M: '#7c2d12', R: '#fde047', Y: '#fde047', L: '#d4b09a', S: '#6d452c' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '......CC........',
+      '.....CCCC.......',
+      '....CCCCCC......',
+      '...KLAAAAALLK...',
+      '..KLAAAAAAAALK..',
+      '..LAEEAAAAEEAA..',
+      '..SAEGAAAAEGSK..',
+      '..KAAADDDDAAK...',
+      '..KAAADDDDASK...',
+      '..KAAAAAAAAALK..',
+      '.KLAAAAAAAAAALK.',
+      '.KSAAAAAAAAAASK.',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................'
+    ]
+  },
+
+  /* 31. 메카 산타 클로스 (산타 맵) — 로봇 산타, 빨간 모자 + 흰 수염 + 초록 불빛 */
+  mecasanta: {
+    map: 'santa', name: '메카 산타 클로스', emoji: '🎅', hp: 125,
+    concept: '빨간 로봇 산타. 흰 모자 테두리, 하얀 수염에 초록 불빛.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#22c55e', H: '#ffffff', A: '#b23b3b', B: '#f8fafc', C: '#22c55e', D: '#fbbf24', F: '#f8fafc', M: '#7f1d1d', R: '#fca5a5', Y: '#fde047', L: '#dca7a7', S: '#8b2e2e' },
+    eyes: [[5, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '.....KKKKKK.....',
+      '.....KLLLLK.....',
+      '....KLAAAALK....',
+      '...KLBBBBBBLK...',
+      '...KLAAAAAASK...',
+      '...LAEEAAEEAL...',
+      '...SAEGAAEGAS...',
+      '...KAAAAAAASK...',
+      '...KABBBBBBSK...',
+      '..KLBBBBBBBBLK..',
+      '..KABBBBBBBBSK..',
+      '..KABBCBBBCBSK..',
+      '..KSSSASSSASSK..',
+      '...KKKSKKKSKK...',
+      '................'
+    ]
+  },
+
+  /* 32. 골키퍼 타이탄 (경기장 맵) — 초록 골키퍼, 장갑 + 호루라기 */
+  gk: {
+    map: 'stadium', name: '골키퍼 타이탄', emoji: '⚽', hp: 140,
+    concept: '초록 골키퍼. 흰 캡, 금색 호루라기, 양쪽에 커다란 장갑.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#fde047', H: '#ffffff', A: '#4f8449', B: '#d9f99d', C: '#f8fafc', D: '#fde047', F: '#d9f99d', M: '#1c1526', R: '#fde047', Y: '#fde047', L: '#b0c8ad', S: '#3e6739' },
+    eyes: [[4, 5, 2, 2], [10, 5, 2, 2]],
+    rows: [
+      '................',
+      '....CCCCCCCC....',
+      '....CCCCCCCC....',
+      '...KLAAAAAAAK...',
+      '..KLAAAAAAAALK..',
+      '..LAEEAAAAEEAL..',
+      '..LAEGAAAAEGAS..',
+      '..KAAAAAAAAASK..',
+      '..KAADDDDAASK...',
+      '..KAAAAAAAAALK..',
+      '..CCAAAAAAAAACC.',
+      '..CCAAAAAAAAACC.',
+      '..KAAAAAAAAASK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................'
+    ]
+  },
+
+  /* 33. 메탈 록 스타 (록페스티벌 맵) — 다크 로커, 분홍 모히칸 + 스타 안경 */
+  metalstar: {
+    map: 'rockfest', name: '메탈 록 스타', emoji: '🎸', hp: 160,
+    concept: '다크 로커. 분홍 모히칸, 별 모양 안경, 기타 줄무늬.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#ec4899', H: '#ffffff', A: '#332e40', B: '#a3a3b8', C: '#ec4899', D: '#fbbf24', F: '#a3a3b8', M: '#0b1024', R: '#ec4899', Y: '#fde047', L: '#adabb3', S: '#2b2736' },
+    eyes: [[5, 6, 2, 1], [9, 6, 2, 1]],
+    rows: [
+      '................',
+      '.......C........',
+      '......CCC.......',
+      '.....CCCCC......',
+      '....KLAAAAK.....',
+      '...KLAAAAAAKK...',
+      '...LACCCCCCL....',
+      '...SACWCWCAS....',
+      '...KAAAAAAASK...',
+      '...LAMMMMMMAL...',
+      '..KAAAAAAAAASK..',
+      '..AADDADDADDDA..',
+      '..KSAASAASAAAK..',
+      '...KSSKSSKSSK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 34. 온천 너구리 대장 (온천 맵) — 회색 너구리, 잎사귀 모자 + 수건 */
+  tanuki: {
+    map: 'onsen', name: '온천 너구리 대장', emoji: '♨️', hp: 150,
+    concept: '회색 너구리 대장. 잎사귀 모자, 분홍 볼, 목에 수건.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#a5d8de', H: '#ffffff', A: '#8b8b8e', B: '#ecdcc8', C: '#a5d8de', D: '#fbcfe8', F: '#ecdcc8', M: '#1c1526', R: '#fbcfe8', Y: '#fde047', L: '#bfbfc1', S: '#565658' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '......CC........',
+      '..AK..CCCC..KA..',
+      '...KKKLAAAKKK...',
+      '...KLLAAAALLK...',
+      '..KLAAAAAAAALK..',
+      '..LAEEAAAAEEAL..',
+      '..AAEGAAAAEGAS..',
+      '..SADDAAAADDAS..',
+      '..KAAAMMMMAASK..',
+      '..KABBBBBBBBSK..',
+      '..KAAAAAAAAASK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 35. 퀸 비 여왕벌 (꿀 맵) — 황금 벌 여왕, 왕관 + 날개 + 줄무늬 */
+  queenbee: {
+    map: 'honey', name: '퀸 비 여왕벌', emoji: '🐝', hp: 130,
+    concept: '황금 벌 여왕. 작은 왕관, 옆에 반투명 날개, 줄무늬 배, 침.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#3f2a06', H: '#ffffff', A: '#cf9c33', B: '#f0d98f', C: '#3f2a06', D: '#4b2e05', F: '#f0d98f', M: '#3f2a06', R: '#f0d98f', Y: '#fde047', L: '#e5c98f', S: '#806120' },
+    eyes: [[5, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '.....D....D.....',
+      '.....DD..DD.....',
+      '....DDDDDDDD....',
+      '....KLAAAAAK....',
+      '.KKKLAAAAAAAAKK.',
+      '.KLLAEEAAAAEELB.',
+      '.KSAAEGAAAAEGSK.',
+      '..KAAAAAAAAAAK..',
+      '..AACCCCCCCCAA..',
+      '..KAAAAAAAAASK..',
+      '..AACCCCCCCCAA..',
+      '..KSAAAAAAAASK..',
+      '...KSSSAASSSK...',
+      '.......CC.......',
+      '................'
+    ]
+  },
+
+  /* 36. 금서의 대현자 (도서관 맵) — 갈색 마법사, 보라 모자 + 긴 수염 + 책 */
+  sage: {
+    map: 'library', name: '금서의 대현자', emoji: '📖', hp: 165,
+    concept: '갈색 마법사. 뾰족한 보라 모자, 하얀 수염, 펼쳐진 책.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#7c3aed', H: '#ffffff', A: '#8d6538', B: '#e3c88a', C: '#7c3aed', D: '#c4b5fd', F: '#e3c88a', M: '#1c1526', R: '#c4b5fd', Y: '#fde047', L: '#ccbaa5', S: '#6e4f2c' },
+    eyes: [[5, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '.......C........',
+      '......CCC.......',
+      '.....CCCCC......',
+      '...CCCCCCCCCC...',
+      '...KLAAAAAAAK...',
+      '...LAEEAAEEAL...',
+      '...SAEGAAEGAS...',
+      '...KAAAAAAASK...',
+      '...KABBBBBBSK...',
+      '..KLBBBBBBBBLK..',
+      '..KABBBBBBBBSK..',
+      '..KAABBBBBBASK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................'
+    ]
+  },
+
+  /* 37. 치즈 킹 마우스 (치즈 맵) — 노란 쥐, 치즈 귀 + 큰 이빨 + 꼬리 */
+  cheesemouse: {
+    map: 'cheese', name: '치즈 킹 마우스', emoji: '🧀', hp: 125,
+    concept: '노란 치즈 쥐. 동그란 치즈 귀, 큰 이빨, 오른쪽으로 꼬리.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#8a6410', H: '#ffffff', A: '#dcb24a', B: '#f6e3a2', C: '#8a6410', D: '#fde68a', F: '#f6e3a2', M: '#7c2d12', R: '#f6e3a2', Y: '#fde047', L: '#ecd59b', S: '#886e2e' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '...KK......KK...',
+      '..KLLK....KLLK..',
+      '..KLSK....KLSK..',
+      '...KLLKKKKLSK...',
+      '..KLAALLLLAALK..',
+      '..LAEEAAAAEEAL..',
+      '..SAEGAAAAEGAS..',
+      '..KAAAAAAAAASK..',
+      '..KAAAACCCAASK..',
+      '..KAAWWWWWWASK..',
+      '..KAAAAAAAAAAAC.',
+      '..KSSSSSSSSSSKC.',
+      '...KKKKKKKKKK.C.',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 38. 화석 티라노 킹 (공룡 맵) — 뼈 티라노, 호박 눈 + 갈색 안장 */
+  fossilrex: {
+    map: 'dino', name: '화석 티라노 킹', emoji: '🦕', hp: 155,
+    concept: '뼈 색 티라노 화석. 이끼 낀 머리, 호박 눈, 갈색 안장.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#fde047', H: '#ffffff', A: '#62704f', B: '#c2b280', C: '#8d5b34', D: '#fde047', F: '#c2b280', M: '#7c2d12', R: '#fde047', Y: '#fde047', L: '#b8bfb0', S: '#4c573e' },
+    eyes: [[4, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '......CC........',
+      '.....CCCC.......',
+      '....CCCCCC......',
+      '...KLBBBBBLKK...',
+      '..KLBBBBBBBLLK..',
+      '..LBEEAAAEEBSK..',
+      '..SBEGAAAEGBSK..',
+      '..KBBBBBBBBBSK..',
+      '..BBWWWWWWWWBB..',
+      '..KBBBBBBBBBSK..',
+      '..BBCCCCCCCCBB..',
+      '..KBBBBBBBBBSK..',
+      '..BS..KSSK..SB..',
+      '..KKK.KKKK.KKK..',
+      '................'
+    ]
+  },
+
+  /* 39. 크리스탈 에일리언 (외계 맵) — 보라 수정 외계인, 머리 수정 + 청록 눈 */
+  crystalien: {
+    map: 'alien', name: '크리스탈 에일리언', emoji: '💎', hp: 185,
+    concept: '보라 수정 외계인. 머리 위 수정 세 개, 큰 청록 눈.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#6fd8c8', H: '#ffffff', A: '#6b529b', B: '#b9aef0', C: '#6fd8c8', D: '#a5f3fc', F: '#b9aef0', M: '#1c1526', R: '#6fd8c8', Y: '#fde047', L: '#bcb1d2', S: '#534079' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '.....C....C.....',
+      '....CCC..CCC....',
+      '....CCCCCCCC....',
+      '...KLAAAAAAAK...',
+      '..KLAAAAAAAALK..',
+      '..LAEEAAAAEEAL..',
+      '..SAEGAAAAEGAS..',
+      '..KAAAAAAAAASK..',
+      '..AAMMMMMMMMAA..',
+      '..KABBBBBBBBSK..',
+      '..AACCAAAACCAA..',
+      '..KSAASSSSAASK..',
+      '...KSSKKKKSSK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 40. 첨성대 달토끼 선인 (경주 맵) — 흰 달토끼, 긴 귀 + 금종 */
+  moonrabbit: {
+    map: 'gyeongju', name: '첨성대 달토끼 선인', emoji: '🏮', hp: 145,
+    concept: '흰 달토끼 선인. 긴 귀 두 개, 분홍 볼, 가슴에 금종.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#8b5f4e', H: '#ffffff', A: '#cbbba0', B: '#f6efd8', C: '#8b5f4e', D: '#fde68a', F: '#f6efd8', M: '#8b5f4e', R: '#fbcfe8', Y: '#fde047', L: '#e2dacb', S: '#7e7463' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '...KK......KK...',
+      '...LL......LL...',
+      '...LS......LS...',
+      '...KLLKKKKLSK...',
+      '..KLAALLLLAALK..',
+      '..LAEEAAAAEEAL..',
+      '..AAEGAAAAEGAS..',
+      '..SARAAAAAARAS..',
+      '..KAAAMMMMAASK..',
+      '..KABBBBBBBBSK..',
+      '..KAAAAAAAAASK..',
+      '..KSSSDDDDSSSK..',
+      '...KKKAAAAKKK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 41. 가면 카니발 백작 (베니스 맵) — 가면 백작, 분홍 가면 + 깃털 */
+  maskcount: {
+    map: 'venice', name: '가면 카니발 백작', emoji: '🎭', hp: 150,
+    concept: '가면 쓴 백작. 분홍 가면, 청록 깃털, 하얀 케이프 칼라.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#8fd0c8', H: '#ffffff', A: '#b0624c', B: '#e8c58c', C: '#8fd0c8', D: '#f9a8d4', F: '#e8c58c', M: '#1c1526', R: '#f9a8d4', Y: '#fde047', L: '#d4a99d', S: '#6d3d2f' },
+    eyes: [[6, 7, 2, 1], [10, 7, 2, 1]],
+    rows: [
+      '................',
+      '......C.C.......',
+      '.....CCCC.......',
+      '....CCCCCC......',
+      '...KLAAAAALLK...',
+      '..KLAAAAAAAALK..',
+      '..LADDDDDDDDAL..',
+      '..AADDEEDDEEAS..',
+      '..SADDDDDDDDAS..',
+      '..KAAAAAAAAASK..',
+      '..AAMMMMMMMMAA..',
+      '..KBBBBBBBBBSK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 42. 블리자드 종지기 (눈시계 맵) — 눈 종지기, 흰 두건 + 금종 + 눈꽃 */
+  blizzard: {
+    map: 'snowclock', name: '블리자드 종지기', emoji: '❄️', hp: 180,
+    concept: '흰 눈 종지기. 두건, 금색 종, 옆에 눈꽃이 날림.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#d9b45a', H: '#ffffff', A: '#9db5c9', B: '#f4fbff', C: '#d9b45a', D: '#bfe9ff', F: '#f4fbff', M: '#1c1526', R: '#bfe9ff', Y: '#fde047', L: '#c9d6e1', S: '#61707d' },
+    eyes: [[4, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '......CC........',
+      '.....CCCC.......',
+      '....CCCCCC......',
+      '...KLBBBBBLKK...',
+      '..DLBBBBBBBLLD..',
+      '..LBEEAAAEEBSK..',
+      '..SBEGAAAEGBSK..',
+      '..KBBBBBBBBBSK..',
+      '..KBBBMMMMBBSK..',
+      '..DBBBBBBBBBBD..',
+      '..KABBBBBBBBSK..',
+      '..KSSSCCCCSSSK..',
+      '...KKKAAAAKKK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 43. 파이어웍스 드래곤 (불꽃 맵) — 어두운 불꽃 용, 분홍/파랑 뿔 + 날개 */
+  fwddragon: {
+    map: 'fireworks', name: '파이어웍스 드래곤', emoji: '🎆', hp: 170,
+    concept: '어두운 불꽃 용. 분홍·파랑 뿔, 날개, 몸에 불꽃 반점.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#fbbf24', H: '#ffffff', A: '#3c3648', B: '#fbbf24', C: '#ec4899', D: '#60a5fa', F: '#fbbf24', M: '#0b1024', R: '#ec4899', Y: '#fde047', L: '#b1afb6', S: '#332e3d' },
+    eyes: [[4, 5, 2, 2], [10, 5, 2, 2]],
+    rows: [
+      '................',
+      '..C........D....',
+      '..CC......DD....',
+      '...KLLKKKKLAK...',
+      '..KLAALLLLAALK..',
+      '..LAEEAAAAEEAL..',
+      '..LAEGAAAAEGAS..',
+      '..KAAAAAAAAASK..',
+      '..AAMMMMMMMMAA..',
+      '.CCAAAAAAAAAADD.',
+      '.CCAAFFFFFFAADD.',
+      '..KAAAAAAAAASK..',
+      '..ASCCSSSSDDSA..',
+      '...KAAKKKKAAK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 44. 홈런 슬러거 킹 (야구 맵) — 야구 타자, 파란 캡 + 방망이 */
+  slugger: {
+    map: 'baseball', name: '홈런 슬러거 킹', emoji: '⚾', hp: 145,
+    concept: '갈색 야구 타자. 파란 캡, 오른쪽에 방망이를 든 모습.',
+    pal: { K: '#1c1526', W: '#ffffff', E: '#0b1024', G: '#1d4ed8', H: '#ffffff', A: '#a3764c', B: '#e9e0cf', C: '#1d4ed8', D: '#f8fafc', F: '#e9e0cf', M: '#1c1526', R: '#e9e0cf', Y: '#fde047', L: '#ccb49d', S: '#65492f' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '....CCCCCCCC....',
+      '....CCCCCCCC....',
+      '...CCCCCCCCCC.D.',
+      '...KLAAAAAAAK.D.',
+      '..KLAAAAAAAALK.D',
+      '..LAEEAAAAEEAL.D',
+      '..SAEGAAAAEGAS.D',
+      '..KAAAAAAAAASK.D',
+      '..AAMMMMMMMMAA.D',
+      '..KABBBBBBBBSK..',
+      '..KAAAAAAAAASK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 45. 태초의 픽셀 가디언 (레트로 맵) — 초록 픽셀 로봇, 보라 코어 + 안테나 */
+  pixelguard: {
+    map: 'retro20', name: '태초의 픽셀 가디언', emoji: '👾', hp: 130,
+    concept: '초록 픽셀 로봇. 보라 코어가 가슴에서 빛나고 금색 안테나.',
+    pal: { K: '#0b1024', W: '#ffffff', E: '#0b1024', G: '#7c3aed', H: '#ffffff', A: '#7ee07e', B: '#ffd166', C: '#7c3aed', D: '#fde047', F: '#ffd166', M: '#0b1024', R: '#7c3aed', Y: '#fde047', L: '#b8eeb8', S: '#4e8b4e' },
+    eyes: [[4, 6, 2, 2], [10, 6, 2, 2]],
+    rows: [
+      '................',
+      '.......D........',
+      '......DDD.......',
+      '....KKLAAKKK....',
+      '...KLLAAALLLK...',
+      '..KLAAAAAAAALK..',
+      '..LAEEAAAAEEAL..',
+      '..SAEGAAAAEGAS..',
+      '..KAAAAAAAAASK..',
+      '..LACCCCCCCCAL..',
+      '..SACWCCCCWCAS..',
+      '..KAAAAAAAAASK..',
+      '..KSSSSSSSSSSK..',
+      '...KKKKKKKKKK...',
+      '................',
+      '................'
+    ]
+  },
+
+  /* 46. 88층 수문장 (레거시 보스, bossDraw) — 회색 기사, 빨간 뿔 + 투구 + 갑옷 */
+  gatekeeper: {
+    map: 'legacy88', name: '88층 수문장', emoji: '👑', hp: 120,
+    concept: '회색 강철 기사. 빨간 뿔 두 개, 투구, 갑옷 띠, 다리 벌린 실루엣. (기존 bossDraw의 네모 갑옷을 픽셀 기사로 교체)',
+    pal: { K: '#0b1024', W: '#ffffff', E: '#0b1024', G: '#f43f5e', H: '#ffffff', A: '#3b4a63', B: '#93a4bd', C: '#f43f5e', D: '#fde047', F: '#cbd5e1', M: '#0b1024', R: '#f43f5e', Y: '#fde047', L: '#a7aeb9', S: '#2e3a4d' },
+    eyes: [[4, 6, 2, 2], [9, 6, 2, 2]],
+    rows: [
+      '................',
+      '..C........C....',
+      '..CC......CC....',
+      '..CCC....CCC....',
+      '...KLLKKKLBBK...',
+      '..KLBBLLLBBBLK..',
+      '..LBEEAAAEEBSK..',
+      '..SBEGAAAEGBSK..',
+      '..KBBBBBBBBBSK..',
+      '..BBMMMMMMMMBB..',
+      '..KAAAAAAAAASK..',
+      '..KASSBBBBSSSK..',
+      '..KAKKSAASKKAK..',
+      '..AS..KSSK..SA..',
+      '..KKK.KKKK.KKK..',
+      '................'
+    ]
+  }
+};
+
+/* ============================================================================
+   보스별 패턴/이펙트 매핑 (BOSS_FX)
+   - b: 탄환형 FX (spread/snipe/shuriken/rage의 'b' 탄환) — FX 키
+   - d: 낙하물 FX (rain/bomb의 낙하물) — FX 키
+   - z: 바닥 장판 FX (patch의 'z' 장판 위에 찍는 엠블럼) — FX 키
+   - beam: 레이저 색 (laserV/laserH/sweep/spin의 빔/원 색. 기존 drawHz의
+     직사각형/원 판정 모양은 그대로 두고 색만 바꾼다)
+   - note: 그 외 패턴(wave/gust/grav/pillar/ring/orbit/homing/tide/cage/
+     dash/clone)의 컨셉에 맞는 연출을 한 줄로 적음. 판정/속도/데미지 변경 없음.
+   ============================================================================ */
+var BOSS_FX = {
+  cloud:      { b: 'spark', d: 'bolt',  z: 'spark', beam: '#38bdf8', note: '돌풍=번개 줄기 바람, 파동=구름 링, 레이저=별빛' },
+  macaron:    { b: 'orb',   d: 'drop',  z: 'drop',  beam: '#7c3aed', note: '탄막=초코볼, 웨이브=크림 파도, 장판=끈적 시럽' },
+  crane:      { b: 'gear',  d: 'gear',  z: 'gear',  beam: '#f87171', note: '낙하물=철근, 회전=스패너, 폭탄=용접 불꽃' },
+  ufo:        { b: 'orb',   d: 'shard', z: 'orb',   beam: '#22d3ee', note: '레이저=사이언 빔, 중력=끌어당기는 빛, 링=소행성' },
+  ninja:      { b: 'shard', d: 'shard', z: 'shard', beam: '#ef4444', note: '표창=날카로운 별, 분신=그림자 닌자, 참격=빨간 검기' },
+  trident:    { b: 'bubble',d: 'drop',  z: 'bubble',beam: '#67e8f9', note: '탄막=거품, 파도=해일, 기둥=물기둥' },
+  arcade:     { b: 'spark', d: 'gear',  z: 'spark', beam: '#22d3ee', note: '탄막=픽셀 조각, 돌진=글리치 잔상, 저격=버그 조준선' },
+  frost:      { b: 'shard', d: 'shard', z: 'shard', beam: '#38bdf8', note: '탄막=고드름, 장판=빙판, 기둥=얼음 기둥' },
+  ghost:      { b: 'ember', d: 'ember', z: 'ember', beam: '#f472b6', note: '탄막=촛불, 분신=반투명 유령, 파동=저주 링' },
+  dino:       { b: 'ember', d: 'ember', z: 'ember', beam: '#ef4444', note: '기둥=용암, 낙석=화산암, 돌진=불타는 발자국' },
+  school:     { b: 'orb',   d: 'shard', z: 'orb',   beam: '#ef4444', note: '탄막=빨간 동그라미, 낙하물=분필, 저격=채점 펜' },
+  clock:      { b: 'gear',  d: 'gear',  z: 'gear',  beam: '#fbbf24', note: '회전=톱니, 스윕=시침 레이저, 폭탄=태엽' },
+  toaster:    { b: 'ember', d: 'ember', z: 'ember', beam: '#fb923c', note: '탄막=토스트 조각, 웨이브=열기 파도, 돌진=칼날' },
+  train:      { b: 'ember', d: 'bomb',  z: 'ember', beam: '#f87171', note: '돌진=증기 기관차, 돌풍=증기, 폭탄=석탄' },
+  sword:      { b: 'petal', d: 'petal', z: 'petal', beam: '#be123c', note: '탄막=벚꽃잎, 검기=분홍 베기, 분신=검영' },
+  rainbow:    { b: 'star',  d: 'star',  z: 'star',  beam: '#f472b6', note: '광선=일곱 빛, 스윕=무지개, 기둥=빛기둥' },
+  liberty:    { b: 'ember', d: 'ember', z: 'ember', beam: '#fbbf24', note: '탄막=횃불 불꽃, 광선=왕관 빛, 파동=횃불 파편' },
+  tiger:      { b: 'orb',   d: 'drop',  z: 'orb',   beam: '#38bdf8', note: '돌진=호랑이 발자국, 파도=한강 물살, 돌풍=남산 바람' },
+  eiffel:     { b: 'shard', d: 'shard', z: 'bolt',  beam: '#fde047', note: '낙하물=강철 빔, 스윕=야경 스포트라이트, 회전=강철' },
+  sphinx:     { b: 'bolt',  d: 'seed',  z: 'seed',  beam: '#1d4ed8', note: '낙하물=모래 폭풍, 기둥=태양 광선, 저격=저주 눈빛' },
+  yokai:      { b: 'ember', d: 'shard', z: 'shard', beam: '#f87171', note: '장판=혹한, 기둥=온천 분출, 탄막=눈싸락' },
+  bigben:     { b: 'gear',  d: 'gear',  z: 'gear',  beam: '#d9a441', note: '스윕=시계추, 파동=종소리 링, 낙하물=톱니' },
+  skydragon:  { b: 'ember', d: 'bolt',  z: 'ember', beam: '#7dd3fc', note: '유도탄=황금 화염, 기둥=천공 번개, 돌풍=성층권 바람' },
+  kraken:     { b: 'bubble',d: 'bomb',  z: 'bubble',beam: '#67e8f9', note: '파도=촉수 3연, 낙하물=닻, 조이기=촉수 벽' },
+  ringmaster: { b: 'star',  d: 'bomb',  z: 'star',  beam: '#fbbf24', note: '폭탄=폭죽 케이크, 링=네온 버스트, 분신=광대' },
+  sporequeen: { b: 'seed',  d: 'seed',  z: 'seed',  beam: '#a3e635', note: '탄막=포자, 장판=버섯 포자, 낙하물=버섯 갓' },
+  cyberlord:  { b: 'gear',  d: 'gear',  z: 'orb',   beam: '#22d3ee', note: '레이저=네온, 유도탄=추적 드론, 돌진=광속 잔상' },
+  zeus:       { b: 'bolt',  d: 'bolt',  z: 'bolt',  beam: '#fcd34d', note: '낙뢰=천벌, 파동=뇌전 링, 기둥=번개 기둥' },
+  madslime:   { b: 'bubble',d: 'bomb',  z: 'bubble',beam: '#22c55e', note: '장판=산성 웅덩이, 탄막=시험관, 폭탄=폭발 비커' },
+  eagleking:  { b: 'petal', d: 'bone',  z: 'shard', beam: '#fde047', note: '돌풍=협곡 바람, 돌진=급강하, 낙하물=바위' },
+  mecasanta:  { b: 'bomb',  d: 'bomb',  z: 'bomb',  beam: '#22c55e', note: '낙하물=선물 폭탄, 폭발=굴뚝, 회전=썰매' },
+  gk:         { b: 'orb',   d: 'orb',   z: 'orb',   beam: '#fde047', note: '저격=강슛, 조이기=골대 압박, 파도=관중 파도' },
+  metalstar:  { b: 'note',  d: 'note',  z: 'note',  beam: '#ec4899', note: '파동=스피커 음파, 돌진=스테이지 다이브, 낙하물=앰프' },
+  tanuki:     { b: 'drop',  d: 'drop',  z: 'drop',  beam: '#a5d8de', note: '기둥=온천 분출, 장판=끓는 물, 회전=수건 회오리' },
+  queenbee:   { b: 'orb',   d: 'drop',  z: 'seed',  beam: '#cf9c33', note: '유도탄=벌 떼, 파동=꿀방울, 조이기=벌집' },
+  sage:       { b: 'star',  d: 'star',  z: 'star',  beam: '#7c3aed', note: '낙하물=책, 광선=룬, 분신=서책 유령' },
+  cheesemouse:{ b: 'orb',   d: 'orb',   z: 'orb',   beam: '#dcb24a', note: '낙하물=치즈 바퀴, 장판=끈적 치즈, 돌진=구멍 파기' },
+  fossilrex:  { b: 'bone',  d: 'bone',  z: 'bone',  beam: '#fde047', note: '돌진=화석 발자국, 낙하물=뼈, 파도=지진' },
+  crystalien: { b: 'shard', d: 'shard', z: 'shard', beam: '#6fd8c8', note: '광선=수정 굴절, 파동=크리스탈 파편, 중력=왜곡' },
+  moonrabbit: { b: 'star',  d: 'star',  z: 'star',  beam: '#fde68a', note: '탄막=달빛, 장판=한옥 그림자, 파동=첨성대 링' },
+  maskcount:  { b: 'shard', d: 'shard', z: 'petal', beam: '#8fd0c8', note: '분신=가면, 탄막=곤돌라 노, 스윕=운하 물결' },
+  blizzard:   { b: 'shard', d: 'shard', z: 'shard', beam: '#bfe9ff', note: '광선=고드름, 돌풍=눈보라, 낙하물=종' },
+  fwddragon:  { b: 'spark', d: 'bomb',  z: 'spark', beam: '#ec4899', note: '폭탄=폭죽 연쇄, 파동=불꽃 링, 공전=회전 불꽃' },
+  slugger:    { b: 'orb',   d: 'orb',   z: 'orb',   beam: '#1d4ed8', note: '저격=강타, 낙하물=야구공, 돌진=홈런' },
+  pixelguard: { b: 'spark', d: 'spark', z: 'spark', beam: '#7c3aed', note: '탄막=픽셀, 분신=태초 분신, 스윕=스캔라인' },
+  gatekeeper: { b: 'orb',   d: 'shard', z: 'orb',   beam: '#f43f5e', note: '탄막=빨간 탄환(기존 bossDraw와 동일), 예고=노란 돌풍/빨간 탄막' }
+};
+
+/* ---- 내보내기 (브라우저 전역 / Node 공용) ---- */
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { BOSSES: BOSSES, BOSS_FX: BOSS_FX, FX: FX, PATTERN_FX: PATTERN_FX, drawBossSprite: drawBossSprite, drawFx: drawFx };
+}
+
+/* ==========================================================================
    v4.8-boss : 40 보스 러시 — 21맵 전용 보스 · 전용 패턴 엔진
    - 엔진(G.spawnBoss / G.tick / G.draw)은 그대로 두고 훅만 덧댄다.
    - 스폰된 보스에 맵별 spec(이름·대사·색·패턴)을 붙이고, 엔진의 똑같은
@@ -54647,16 +56241,24 @@ button, [role="button"]{touch-action:manipulation;}
       if (h.k === 'b') {
         var sy = h.y - camY;
         if (sy < -30 || sy > lh + 30) return;
-        ctx.save();
-        ctx.shadowColor = h.glow || c[2]; ctx.shadowBlur = 8;
-        ctx.fillStyle = h.col || c[3];
-        ctx.beginPath(); ctx.arc(h.x, sy, h.r, 0, 6.2832); ctx.fill();
-        ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,255,255,.85)';
-        ctx.beginPath(); ctx.arc(h.x, sy, Math.max(1, h.r * 0.42), 0, 6.2832); ctx.fill();
-        ctx.restore();
+        /* muse-v5.9: 탄환을 보스별 FX 스프라이트로 (판정 h.r은 그대로) */
+        var __fxb = (typeof BOSS_FX !== 'undefined' && BOSS_FX[b.spec.form]) ? BOSS_FX[b.spec.form].b : null;
+        var __c0b = (h.col && h.col.charAt(0) === '#') ? h.col : (c[3] || '#ffffff');
+        var __c1b = (h.glow && h.glow.charAt(0) === '#') ? h.glow : (c[2] || __c0b);
+        if (!(__fxb && typeof drawFx === 'function' && drawFx(ctx, __fxb, h.x, sy, Math.max(10, h.r * 2.4), __c0b, __c1b))) {
+          ctx.save();
+          ctx.shadowColor = h.glow || c[2]; ctx.shadowBlur = 8;
+          ctx.fillStyle = h.col || c[3];
+          ctx.beginPath(); ctx.arc(h.x, sy, h.r, 0, 6.2832); ctx.fill();
+          ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(255,255,255,.85)';
+          ctx.beginPath(); ctx.arc(h.x, sy, Math.max(1, h.r * 0.42), 0, 6.2832); ctx.fill();
+          ctx.restore();
+        }
       } else if (h.k === 'bv') {
         ctx.save();
-        ctx.fillStyle = h.col; ctx.globalAlpha = 0.9;
+        /* muse-v5.9: 빔 색을 보스별 색으로 (판정 그대로) */
+        var __beamV = (typeof BOSS_FX !== 'undefined' && BOSS_FX[b.spec.form]) ? BOSS_FX[b.spec.form].beam : h.col;
+        ctx.fillStyle = __beamV; ctx.globalAlpha = 0.9;
         ctx.fillRect(h.x - h.w / 2, 0, h.w, lh);
         ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.95;
         ctx.fillRect(h.x - h.w / 6, 0, h.w / 3, lh);
@@ -54664,7 +56266,9 @@ button, [role="button"]{touch-action:manipulation;}
       } else if (h.k === 'bh') {
         var y = h.y - camY;
         ctx.save();
-        ctx.fillStyle = h.col; ctx.globalAlpha = 0.92;
+        /* muse-v5.9: 빔 색을 보스별 색으로 (판정 그대로) */
+        var __beamH = (typeof BOSS_FX !== 'undefined' && BOSS_FX[b.spec.form]) ? BOSS_FX[b.spec.form].beam : h.col;
+        ctx.fillStyle = __beamH; ctx.globalAlpha = 0.92;
         var gx1 = h.gapX - h.gapW / 2, gx2 = h.gapX + h.gapW / 2;
         ctx.fillRect(0, y, Math.max(0, gx1), h.h);
         ctx.fillRect(gx2, y, 540 - gx2, h.h);
@@ -54692,6 +56296,8 @@ button, [role="button"]{touch-action:manipulation;}
         ctx.fillRect(h.x, zy, h.w, h.h);
         ctx.globalAlpha = 0.85; ctx.fillStyle = h.glow;
         for (var k = 0; k < 4; k++) ctx.fillRect(h.x + 8 + k * 28, zy + 3, 12, 3);
+        /* muse-v5.9: 장판 위에 보스별 FX 엠블럼 */
+        try { var __fxz = (typeof BOSS_FX !== 'undefined' && BOSS_FX[b.spec.form]) ? BOSS_FX[b.spec.form].z : null; var __c0z = (h.col && h.col.charAt(0) === '#') ? h.col : (c[3] || '#ffffff'); var __c1z = (h.glow && h.glow.charAt(0) === '#') ? h.glow : (c[2] || __c0z); if (__fxz && typeof drawFx === 'function') drawFx(ctx, __fxz, h.x + h.w / 2, zy + h.h / 2, Math.min(24, h.h), __c0z, __c1z); } catch (e) {}
         ctx.restore();
       } else if (h.k === 'w') {
         var wy = h.y - camY;
@@ -54711,12 +56317,20 @@ button, [role="button"]{touch-action:manipulation;}
         ctx.fillRect(h.x - h.w / 2, py, h.w, Math.min(h.height, h.yBase - (h.yTop || h.yBase)) + 20);
         ctx.fillStyle = 'rgba(255,255,255,.7)';
         ctx.fillRect(h.x - h.w / 6, py, h.w / 3, Math.min(h.height, h.yBase - (h.yTop || h.yBase)) + 20);
+        /* muse-v5.9: 기둥 꼭대기에 보스별 FX */
+        try { var __fxp = (typeof BOSS_FX !== 'undefined' && BOSS_FX[b.spec.form]) ? BOSS_FX[b.spec.form].z : null; var __c0p = (h.col && h.col.charAt(0) === '#') ? h.col : (c[3] || '#ffffff'); var __c1p = (h.glow && h.glow.charAt(0) === '#') ? h.glow : (c[2] || __c0p); if (__fxp && typeof drawFx === 'function') drawFx(ctx, __fxp, h.x, py + 12, 20, __c0p, __c1p); } catch (e) {}
         ctx.restore();
       } else if (h.k === 'bm') {
         var by = h.y - camY;
-        ctx.save();
-        ctx.fillStyle = h.col;
-        ctx.beginPath(); ctx.arc(h.x, by, 10, 0, 6.2832); ctx.fill();
+        /* muse-v5.9: 폭탄 몸통을 FX 스프라이트로 (판정·도화선 그대로) */
+        var __c0m = (h.col && h.col.charAt(0) === '#') ? h.col : (c[3] || '#ffffff');
+        var __c1m = (h.glow && h.glow.charAt(0) === '#') ? h.glow : (c[2] || __c0m);
+        if (!(typeof drawFx === 'function' && drawFx(ctx, 'bomb', h.x, by, 20, __c0m, __c1m))) {
+          ctx.save();
+          ctx.fillStyle = h.col;
+          ctx.beginPath(); ctx.arc(h.x, by, 10, 0, 6.2832); ctx.fill();
+          ctx.restore();
+        }
         ctx.fillStyle = h.glow; ctx.globalAlpha = 0.6 + 0.4 * Math.abs(Math.sin(h.t * 14));
         ctx.beginPath(); ctx.arc(h.x, by - 8, 3, 0, 6.2832); ctx.fill();
         ctx.restore();
@@ -54733,7 +56347,10 @@ button, [role="button"]{touch-action:manipulation;}
         var cy2 = h.y - camY;
         ctx.save();
         ctx.globalAlpha = 0.55;
-        try { if (B.art && B.art[h.spec.form]) B.art[h.spec.form](ctx, h.x, cy2, h.w / 96, h.spec, 0.5); } catch (e) {}
+        try {
+          if (typeof drawBossSprite === 'function' && drawBossSprite(ctx, h.spec.form, h.x, cy2, (h.w / 96) * 6, { mood: 'idle' })) { /* muse-v5.9: 분신도 v2 스프라이트 */ }
+          else if (B.art && B.art[h.spec.form]) B.art[h.spec.form](ctx, h.x, cy2, h.w / 96, h.spec, 0.5);
+        } catch (e) {}
         ctx.restore();
       } else if (h.k === 'g') {
         ctx.save();
@@ -54838,7 +56455,12 @@ button, [role="button"]{touch-action:manipulation;}
     ctx.save();
     if (b.flash > 0) ctx.globalAlpha = 0.92;
     try {
-      if (B.art && B.art[b.spec.form]) B.art[b.spec.form](ctx, b.x, sy + bob, u, b.spec, b);
+      /* muse-v5.9: 보스 v2 픽셀 스프라이트 (없으면 기존 도형 아트로 폴백) */
+      var __bt = (b.ai ? b.ai.t : 0);
+      var __mood = (b.ai && b.ai.act && !b.ai.act.fired1) ? 'angry' : (b.flash > 0 ? 'hurt' : ((__bt % 3.7) < 0.12 ? 'blink' : 'idle'));
+      if (typeof drawBossSprite === 'function' && drawBossSprite(ctx, b.spec.form, b.x, sy + bob, u * 6, { mood: __mood })) {
+        /* v2 스프라이트로 그림 */
+      } else if (B.art && B.art[b.spec.form]) B.art[b.spec.form](ctx, b.x, sy + bob, u, b.spec, b);
       else {
         ctx.fillStyle = c[0]; ctx.fillRect(b.x, sy + bob, b.w, b.h);
       }
@@ -59776,7 +61398,6 @@ button, [role="button"]{touch-action:manipulation;}
         if (safe) return { art: 'neon' };
         var r = i % 7;
         if (r === 3) return { art: 'neon', type: 'moving' };
-        if (r === 5) return { art: 'metal', type: 'ice' };
         return { art: 'neon' };
       },
       extra: function (i, p) { if (p.type === 'moving') { p.moveRange = 28; p.moveSpeed = 0.72; p.movePhase = i; } },
@@ -59882,7 +61503,7 @@ button, [role="button"]{touch-action:manipulation;}
       pal: { top: '#fffaf0', body: '#d8cfbb', deep: '#7b7263', line: '#57503f', accent: '#e8c46a' },
       art: function (i, prog, safe) {
         if (safe) return { art: 'stone' };
-        var r = i % 8;
+        var r = i % 7;
         if (r === 3) return { art: 'brick', type: 'crumble' };
         if (r === 6) return { art: 'cloud' };
         return { art: 'stone' };
@@ -60123,7 +61744,7 @@ button, [role="button"]{touch-action:manipulation;}
       pal: { top: '#ffe28a', body: '#e8a821', deep: '#7c4a06', line: '#5b3404', accent: '#fff3b8' },
       art: function (i, prog, safe) {
         if (safe) return { art: 'wax' };
-        var r = i % 8;
+        var r = i % 12;
         if (r === 3) return { art: 'wax', type: 'ice' };
         if (r === 5) return { art: 'drip' };
         return { art: 'wax' };
@@ -60199,7 +61820,7 @@ button, [role="button"]{touch-action:manipulation;}
       pal: { top: '#ffe89a', body: '#e8a821', deep: '#8a5a06', line: '#5e3c04', accent: '#fff6c8' },
       art: function (i, prog, safe) {
         if (safe) return { art: 'cheese' };
-        var r = i % 8;
+        var r = i % 12;
         if (r === 3) return { art: 'cheese', type: 'ice' };
         if (r === 6) return { art: 'snow' };
         return { art: 'cheese' };
@@ -60230,7 +61851,6 @@ button, [role="button"]{touch-action:manipulation;}
       art: function (i, prog, safe) {
         if (safe) return { art: 'bone' };
         var r = i % 8;
-        if (r === 3) return { art: 'bone', type: 'ice' };
         if (r === 6) return { art: 'bone', type: 'crumble' };
         return { art: 'bone' };
       },
@@ -60296,8 +61916,8 @@ button, [role="button"]{touch-action:manipulation;}
       pal: { top: '#cfd8e6', body: '#5b6172', deep: '#232833', line: '#151a22', accent: '#f2e2b0' },
       art: function (i, prog, safe) {
         if (safe) return { art: 'stone' };
-        var r = i % 8;
-        if (r === 3) return { art: 'drip' };
+        var r = i % 12;
+        if (r === 3) return { art: 'stone', type: 'ice' };
         if (r === 6) return { art: 'wood' };
         return { art: 'stone' };
       },
@@ -60474,8 +62094,8 @@ button, [role="button"]{touch-action:manipulation;}
     /* 24 */ {
       id: 'retro20', name: '2.0 오리지널', emoji: '✨', diff: '쉬움', diffColor: '#86efac',
       desc: '예전 v2.0 그대로의 레트로 픽셀 · 단순한 발판 · 순수 감성',
-      zones: ['6. 아래 하늘', '1. 첫 발판', '2. 구름 길', '3. 별 구간', '4. 하늘 계단', '5. ✨ 오리지널 정상'],
-      phys: { grav: 1340, jump: 1, horiz: 1 },
+      zones: ['6. 깊은 구름 계곡', '1. 초록 초원과 부유섬', '2. 붉은 협곡과 낙석 지대', '3. 얼음 산맥과 빙벽', '4. 보라색 폭풍의 밤', '5. 별빛이 비치는 최종 정상'],
+      phys: { grav: 1380, jump: 1, horiz: 1 },
       sky: ['#1a2444', '#2a3a66', '#3e5490'],
       pal: { top: '#f4f8ff', body: '#4b6bb0', deep: '#1e2c50', line: '#121c34', accent: '#ffd166' },
       art: function (i, prog, safe) {
@@ -62993,6 +64613,92 @@ button, [role="button"]{touch-action:manipulation;}
     moving: '↔', crumble: '⌛', ice: '❄', jelly: '◎', spike: '▲', glass: '◇',
     summit: '★', rotator: '⟳', abyss_floor: '≈', gold: '★'
   };
+
+  /* ---------- 맵별 가시 테마 (s=모양, b=몸통, t=끝) : 그림만, 판정은 그대로 ---------- */
+  /* 모양: bar(기존 막대) tri(삼각) icicle(고드름) crystal(마름모) flame(불꽃) */
+  /*       candy(줄무늬) neon(교대 네온) coral(산호 가지) bone(뼈) */
+  /* paint()는 (id,type,w,h) 순수 함수여야 한다(캐시) — 시간·난수 사용 금지 */
+  var SPIKE = {
+    default:   { s: 'tri',     b: '#9aa5b1', t: '#eef3fa' },
+    dessert:   { s: 'candy',   b: '#ff8fc0', t: '#fff6fb' },
+    site:      { s: 'bar',     b: '#b9c8e6', t: '#ff8a5c' },
+    space:     { s: 'neon',    b: '#8fb4ff', t: '#63e6ff' },
+    bamboo:    { s: 'tri',     b: '#7a9a5a', t: '#eef3fa' },
+    atlantis:  { s: 'coral',   b: '#f472b6', t: '#8ff0e8' },
+    arcade:    { s: 'neon',    b: '#e879f9', t: '#22d3ee' },
+    arctic:    { s: 'icicle',  b: '#bfe9ff', t: '#ffffff' },
+    mansion:   { s: 'tri',     b: '#c4b5fd', t: '#fcd34d' },
+    volcano:   { s: 'flame',   b: '#fb923c', t: '#fde047' },
+    school:    { s: 'tri',     b: '#c9a06a', t: '#facc15' },
+    clock:     { s: 'tri',     b: '#f0cf7a', t: '#fef3c7' },
+    kitchen:   { s: 'tri',     b: '#e0a0a0', t: '#f3d2ae' },
+    train:     { s: 'bar',     b: '#d9a3a3', t: '#cbd5e1' },
+    wuxia:     { s: 'tri',     b: '#f4c3d6', t: '#fff6fb' },
+    rainbow:   { s: 'candy',   b: '#f0abfc', t: '#7dd3fc' },
+    newyork:   { s: 'tri',     b: '#a7c9b4', t: '#c9a25f' },
+    seoul:     { s: 'tri',     b: '#e7b4bf', t: '#7fb8d8' },
+    paris:     { s: 'crystal', b: '#eccf9c', t: '#fde047' },
+    egypt:     { s: 'tri',     b: '#e8cf8e', t: '#fff3b8' },
+    fuji:      { s: 'icicle',  b: '#eaf3fb', t: '#ffffff' },
+    london:    { s: 'tri',     b: '#c2ab8c', t: '#f2d08a' },
+    skycastle: { s: 'crystal', b: '#fbf2d4', t: '#ffd166' },
+    pirate:    { s: 'tri',     b: '#cdaa78', t: '#e8e8e8' },
+    carnival:  { s: 'candy',   b: '#ffe1eb', t: '#f2c07a' },
+    mushroom:  { s: 'tri',     b: '#f3d3c8', t: '#fff3b0' },
+    cyberpunk: { s: 'neon',    b: '#e26ac4', t: '#5fd8e0' },
+    olympus:   { s: 'crystal', b: '#f7e8ba', t: '#ffffff' },
+    lab:       { s: 'crystal', b: '#a9e8ee', t: '#7fc3da' },
+    canyon:    { s: 'tri',     b: '#e0a377', t: '#ffd9a0' },
+    santa:     { s: 'icicle',  b: '#f7fbff', t: '#d08a86' },
+    stadium:   { s: 'tri',     b: '#9fd46a', t: '#ffffff' },
+    rockfest:  { s: 'neon',    b: '#e0b45f', t: '#d86aa0' },
+    onsen:     { s: 'tri',     b: '#ecdcc8', t: '#a5d8de' },
+    honey:     { s: 'crystal', b: '#f0d98f', t: '#fff3b8' },
+    library:   { s: 'tri',     b: '#c9a15c', t: '#e3c88a' },
+    cheese:    { s: 'tri',     b: '#f6e3a2', t: '#fff6c8' },
+    dino:      { s: 'bone',    b: '#96c469', t: '#e8e8e8' },
+    alien:     { s: 'crystal', b: '#b9aef0', t: '#6fd8c8' },
+    gyeongju:  { s: 'tri',     b: '#cdbb9d', t: '#fff6fb' },
+    venice:    { s: 'tri',     b: '#8fd0c8', t: '#e8c58c' },
+    snowclock: { s: 'icicle',  b: '#f4fbff', t: '#ffd166' },
+    fireworks: { s: 'neon',    b: '#e8cf6a', t: '#7aa6d8' },
+    baseball:  { s: 'tri',     b: '#e9e0cf', t: '#ffffff' },
+    custom:    { s: 'bar',     b: '#dbe2ec', t: '#ffffff' }
+  };
+  function drawSpike(c, s, b, t, w) {
+    var sx;
+    if (s === 'tri' || s === 'icicle') {
+      var wdt = (s === 'icicle') ? 4 : 6;
+      for (sx = 6; sx < w - 6; sx += 11) {
+        var x0 = sx + (6 - wdt) / 2;
+        c.fillStyle = rgb(b);
+        c.beginPath(); c.moveTo(x0, 0); c.lineTo(x0 + wdt / 2, -8); c.lineTo(x0 + wdt, 0); c.closePath(); c.fill();
+        R(c, x0 + wdt / 2 - 1, -8, 2, 2, t);
+      }
+    } else if (s === 'crystal') {
+      for (sx = 6; sx < w - 6; sx += 11) {
+        c.fillStyle = rgb(b);
+        c.beginPath(); c.moveTo(sx + 3, -8); c.lineTo(sx + 6, -3); c.lineTo(sx + 3, 0); c.lineTo(sx, -3); c.closePath(); c.fill();
+        R(c, sx + 2, -7, 2, 2, t);
+      }
+    } else if (s === 'flame') {
+      for (sx = 6; sx < w - 6; sx += 11) { R(c, sx, -6, 3, 6, b); R(c, sx + 1, -8, 2, 3, t); }
+    } else if (s === 'candy') {
+      for (sx = 6; sx < w - 6; sx += 11) { R(c, sx, -6, 2, 6, b); R(c, sx, -6, 2, 2, t); R(c, sx, -2, 2, 2, t); }
+    } else if (s === 'neon') {
+      var n = 0;
+      for (sx = 6; sx < w - 6; sx += 11, n++) {
+        var col = (n % 2 === 0) ? b : t;
+        R(c, sx, -6, 2, 6, col); R(c, sx + 1, -8, 1, 2, (n % 2 === 0) ? t : b);
+      }
+    } else if (s === 'coral') {
+      for (sx = 6; sx < w - 6; sx += 11) { R(c, sx, -6, 2, 6, b); R(c, sx + 2, -4, 2, 2, t); R(c, sx + 1, -8, 1, 2, t); }
+    } else if (s === 'bone') {
+      for (sx = 6; sx < w - 6; sx += 11) { R(c, sx, -6, 2, 6, b); R(c, sx - 1, -8, 4, 2, t); }
+    } else { /* bar: 기존 모양 유지, 색만 맵별 */
+      for (sx = 6; sx < w - 6; sx += 11) { R(c, sx, -6, 2, 6, b); R(c, sx + 1, -8, 1, 2, t); }
+    }
+  }
   function pal(id) { return P[id] || P.custom; }
   function hx(h) {
     var m = /^#([0-9a-f]{6})$/i.exec(h || '');
@@ -63095,7 +64801,7 @@ button, [role="button"]{touch-action:manipulation;}
     /* 7) 종류별 최소 표시 (실루엣·두께는 그대로) */
     if (type === 'moving') {
       c.save(); c.globalAlpha = 0.9;
-      R(c, 5, 5, 3, 1, top); R(c, w - 8, 5, 3, 1, top);
+      R(c, 5, 5, 3, 1, p.a); R(c, w - 8, 5, 3, 1, p.a);
       c.restore();
     } else if (type === 'crumble') {
       c.save(); c.globalAlpha = 0.55;
@@ -63106,14 +64812,18 @@ button, [role="button"]{touch-action:manipulation;}
       c.restore();
     } else if (type === 'ice' || type === 'glass') {
       c.save(); c.globalAlpha = 0.5;
-      R(c, 6, 6, Math.max(6, w - 12), 1, '#ffffff');
+      R(c, 6, 6, Math.max(6, w - 12), 1, mix(top, '#ffffff', 0.5));
       c.restore();
     } else if (type === 'spike') {
-      for (var sx = 6; sx < w - 6; sx += 11) {
-        R(c, sx, -6, 2, 6, '#c9d1dd'); R(c, sx + 1, -9, 1, 3, '#eef3fa');
-      }
+      var sp = SPIKE[id] || { s: 'bar', b: mix(top, '#000000', 0.25), t: '#eef3fa' };
+      drawSpike(c, sp.s, sp.b, sp.t, w);
     } else if (type === 'jelly') {
-      c.save(); c.globalAlpha = 0.35; R(c, 5, 6, w - 10, 2, '#ffffff'); c.restore();
+      /* 점프 패드: 맵 보조색 밴드 + 윗면색 보조선 + 스프링 틱 2개 (dessert=분홍 패드) */
+      c.save(); c.globalAlpha = 0.9;
+      R(c, 5, 6, w - 10, 2, p.a);
+      R(c, 8, 9, w - 16, 1, top);
+      R(c, 10, -4, 2, 4, '#ffffff'); R(c, w - 12, -4, 2, 4, '#ffffff');
+      c.restore();
     } else if (type === 'summit') {
       R(c, 2, 2, w - 4, 3, mix(top, '#ffe9a8', 0.5));
       c.save(); c.globalAlpha = 0.9; R(c, 8, -4, w - 16, 2, '#fbbf24'); c.restore();
@@ -63177,11 +64887,17 @@ button, [role="button"]{touch-action:manipulation;}
       R(ctx, px + ((w * 3) >> 2), py + 3, 2, h - 5, '#080510');
     } else if (p.type === 'moving') {
       R(ctx, px, py, w, h, '#1e1b4b'); R(ctx, px, py, w, 5, '#38bdf8');
+      var fh = 4 + ((Math.floor(Date.now() / 150) % 3) * 2);
+      R(ctx, px + (w >> 1) - 5, py + h, 10, fh, '#38bdf8');
     } else if (p.type === 'summit') {
       R(ctx, px, py, w, h, '#b45309'); R(ctx, px, py, w, 7, '#fef08a');
       R(ctx, px + 24, py - 44, 10, 44, '#fde047');
       R(ctx, px + w - 34, py - 44, 10, 44, '#fde047');
       R(ctx, px + 16, py - 54, w - 32, 10, '#fbbf24');
+      ctx.font = 'bold 13px "Galmuri11", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fef08a';
+      ctx.fillText('★ 별빛 최종 정상 (88F) ★', px + w / 2, py - 62);
     } else {
       R(ctx, px, py, w, h, z[0]);
       R(ctx, px + (w >> 1), py + 4, (w >> 1) - 2, h - 6, z[1]);
