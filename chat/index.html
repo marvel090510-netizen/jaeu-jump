@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>셋이 쓰는 채팅 — 태겸 · 뮤즈 · 말동무</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Noto Sans KR", sans-serif;
+    background: #f4f6fb; color: #1a1a1a;
+    display: flex; flex-direction: column; height: 100dvh;
+  }
+  header {
+    padding: 14px 16px 10px; background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  header .sub { font-size: 12px; color: #6b7280; }
+  header .status { margin-left: auto; font-size: 12px; color: #6b7280; display: flex; align-items: center; gap: 6px; }
+  header .dot { width: 9px; height: 9px; border-radius: 50%; background: #9ca3af; display: inline-block; }
+  header .dot.on { background: #22c55e; }
+  header .dot.err { background: #ef4444; }
+  #log {
+    flex: 1; overflow-y: auto; padding: 16px 12px 8px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  #empty { text-align: center; color: #9ca3af; font-size: 14px; padding: 32px 16px; }
+  .msg { display: flex; flex-direction: column; max-width: 78%; }
+  .msg .meta { font-size: 11px; color: #6b7280; margin: 0 4px 3px; display: flex; gap: 6px; align-items: baseline; }
+  .msg .bubble {
+    padding: 9px 12px; border-radius: 16px; font-size: 15px; line-height: 1.5;
+    word-break: break-word; white-space: pre-wrap;
+  }
+  .msg.taegyeom { align-self: flex-end; align-items: flex-end; }
+  .msg.taegyeom .bubble { background: #2563eb; color: #fff; border-bottom-right-radius: 4px; }
+  .msg.muse { align-self: flex-start; align-items: flex-start; }
+  .msg.muse .bubble { background: #ede9fe; color: #4c1d95; border-bottom-left-radius: 4px; }
+  .msg.maldomu { align-self: flex-start; align-items: flex-start; }
+  .msg.maldomu .bubble { background: #d1fae5; color: #065f46; border-bottom-left-radius: 4px; }
+  footer {
+    background: #fff; border-top: 1px solid #e5e7eb;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  }
+  .senders { display: flex; gap: 8px; margin-bottom: 8px; }
+  .senders button {
+    flex: 1; padding: 8px 0; border-radius: 999px; border: 1px solid #d1d5db;
+    background: #fff; font-size: 14px; cursor: pointer; color: #374151;
+  }
+  .senders button.active[data-s="taegyeom"] { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .senders button.active[data-s="muse"] { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+  .senders button.active[data-s="maldomu"] { background: #059669; border-color: #059669; color: #fff; }
+  .composer { display: flex; gap: 8px; }
+  .composer input {
+    flex: 1; padding: 11px 14px; border-radius: 999px; border: 1px solid #d1d5db;
+    font-size: 15px; outline: none; min-width: 0;
+  }
+  .composer input:focus { border-color: #2563eb; }
+  .composer button {
+    padding: 0 18px; border-radius: 999px; border: none; background: #2563eb;
+    color: #fff; font-size: 15px; cursor: pointer; white-space: nowrap;
+  }
+  .composer button:disabled { background: #9ca3af; cursor: default; }
+  .hint { font-size: 11px; color: #9ca3af; margin-top: 8px; text-align: center; word-break: break-all; }
+</style>
+</head>
+<body>
+<header>
+  <h1>셋이 쓰는 채팅</h1>
+  <span class="sub">태겸 · 뮤즈 · 말동무</span>
+  <span class="status"><span class="dot" id="dot"></span><span id="statusText">연결 중…</span></span>
+</header>
+<main id="log"><div id="empty">아직 메시지가 없어요. 첫 메시지를 보내보세요.</div></main>
+<footer>
+  <div class="senders" id="senders">
+    <button type="button" data-s="taegyeom">태겸 (나)</button>
+    <button type="button" data-s="muse">뮤즈</button>
+    <button type="button" data-s="maldomu">말동무</button>
+  </div>
+  <div class="composer">
+    <input id="text" type="text" placeholder="메시지를 입력하세요…" autocomplete="off" enterkeyhint="send">
+    <button id="send" type="button">전송</button>
+  </div>
+  <div class="hint">저장 위치: muse-maldomu-chat Realtime Database · 2초마다 새로고침 없이 갱신</div>
+</footer>
+<script>
+(function () {
+  var DB = "https://muse-maldomu-chat-default-rtdb.firebaseio.com";
+  var SENDERS = {
+    taegyeom: { name: "태겸", cls: "taegyeom" },
+    muse:     { name: "뮤즈", cls: "muse" },
+    maldomu:  { name: "말동무", cls: "maldomu" }
+  };
+  var log = document.getElementById("log");
+  var emptyEl = document.getElementById("empty");
+  var dot = document.getElementById("dot");
+  var statusText = document.getElementById("statusText");
+  var input = document.getElementById("text");
+  var sendBtn = document.getElementById("send");
+  var sender = localStorage.getItem("chat_sender") || "taegyeom";
+  if (!SENDERS[sender]) sender = "taegyeom";
+  var seen = {};
+
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function fmtTime(ts) {
+    if (!ts) return "";
+    var d = new Date(ts);
+    var hh = String(d.getHours()).padStart(2, "0");
+    var mm = String(d.getMinutes()).padStart(2, "0");
+    return hh + ":" + mm;
+  }
+  function nearBottom() {
+    return log.scrollHeight - log.scrollTop - log.clientHeight < 120;
+  }
+  function markSender() {
+    var btns = document.querySelectorAll("#senders button");
+    btns.forEach(function (b) {
+      b.classList.toggle("active", b.getAttribute("data-s") === sender);
+    });
+  }
+  document.getElementById("senders").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-s]");
+    if (!b) return;
+    sender = b.getAttribute("data-s");
+    localStorage.setItem("chat_sender", sender);
+    markSender();
+    input.focus();
+  });
+  markSender();
+
+  function addMessage(key, m) {
+    if (seen[key]) return;
+    seen[key] = true;
+    if (emptyEl) { emptyEl.remove(); emptyEl = null; }
+    var s = SENDERS[m.sender] || { name: m.name || m.sender || "?", cls: "muse" };
+    var wrap = document.createElement("div");
+    wrap.className = "msg " + s.cls;
+    wrap.dataset.key = key;
+    var meta = document.createElement("div");
+    meta.className = "meta";
+    meta.innerHTML = "<b>" + esc(s.name) + "</b><span>" + esc(fmtTime(m.ts)) + "</span>";
+    var bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.textContent = m.text || "";
+    wrap.appendChild(meta);
+    wrap.appendChild(bubble);
+    log.appendChild(wrap);
+  }
+
+  function poll() {
+    fetch(DB + "/messages.json")
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (data) {
+        dot.className = "dot on";
+        statusText.textContent = "연결됨";
+        if (!data) return;
+        var keys = Object.keys(data);
+        keys.sort(function (a, b) {
+          var ta = (data[a] && data[a].ts) || 0, tb = (data[b] && data[b].ts) || 0;
+          if (ta !== tb) return ta - tb;
+          return a < b ? -1 : 1;
+        });
+        var stick = nearBottom();
+        keys.forEach(function (k) { addMessage(k, data[k]); });
+        if (stick) log.scrollTop = log.scrollHeight;
+      })
+      .catch(function () {
+        dot.className = "dot err";
+        statusText.textContent = "연결 안 됨 — 다시 시도 중";
+      });
+  }
+  poll();
+  setInterval(poll, 2000);
+
+  function send() {
+    var text = input.value.trim();
+    if (!text) return;
+    sendBtn.disabled = true;
+    fetch(DB + "/messages.json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sender: sender,
+        name: SENDERS[sender].name,
+        text: text,
+        ts: { ".sv": "timestamp" }
+      })
+    })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function () {
+        input.value = "";
+        input.focus();
+        poll();
+      })
+      .catch(function () {
+        alert("전송에 실패했어요. 연결을 확인하고 다시 보내주세요.");
+      })
+      .finally(function () { sendBtn.disabled = false; });
+  }
+  sendBtn.addEventListener("click", send);
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") send();
+  });
+})();
+</script>
+</body>
+</html>
