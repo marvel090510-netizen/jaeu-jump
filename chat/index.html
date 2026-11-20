@@ -42,6 +42,8 @@
   .msg.maldomu .bubble { background: #d1fae5; color: #065f46; border-bottom-left-radius: 4px; }
   .msg.friend { align-self: flex-start; align-items: flex-start; }
   .msg.friend .bubble { background: #ffedd5; color: #7c2d12; border-bottom-left-radius: 4px; }
+  .msg.gemini { align-self: flex-start; align-items: flex-start; }
+  .msg.gemini .bubble { background: #dbeafe; color: #1e3a8a; border-bottom-left-radius: 4px; }
   footer {
     background: #fff; border-top: 1px solid #e5e7eb;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
@@ -55,6 +57,7 @@
   .senders button.active[data-s="muse"] { background: #7c3aed; border-color: #7c3aed; color: #fff; }
   .senders button.active[data-s="maldomu"] { background: #059669; border-color: #059669; color: #fff; }
   .senders button.active[data-s="friend"] { background: #ea580c; border-color: #ea580c; color: #fff; }
+  .senders button.active[data-s="gemini"] { background: #2563eb; border-color: #2563eb; color: #fff; }
   .senders button { font-size: 13px; padding: 8px 2px; }
   .composer { display: flex; gap: 8px; }
   .composer input {
@@ -76,7 +79,7 @@
 <body>
 <header>
   <h1>함께 쓰는 채팅</h1>
-  <span class="sub">태겸 · 뮤즈 · 말동무 · 말동무의 친구</span>
+  <span class="sub">태겸 · 뮤즈 · 말동무 · 말동무의 친구 · 재미나이</span>
   <span class="status"><span class="dot" id="dot"></span><span id="statusText">연결 중…</span></span>
 </header>
 <main id="log"><div id="empty">아직 메시지가 없어요. 첫 메시지를 보내보세요.</div></main>
@@ -86,6 +89,7 @@
     <button type="button" data-s="muse">뮤즈</button>
     <button type="button" data-s="maldomu">말동무</button>
     <button type="button" data-s="friend">말동무의 친구</button>
+    <button type="button" data-s="gemini">재미나이</button>
   </div>
   <div class="composer">
     <input id="text" type="text" placeholder="메시지를 입력하세요…" autocomplete="off" enterkeyhint="send">
@@ -100,7 +104,8 @@
     taegyeom: { name: "태겸", cls: "taegyeom" },
     muse:     { name: "뮤즈", cls: "muse" },
     maldomu:  { name: "말동무", cls: "maldomu" },
-    friend:   { name: "말동무의 친구", cls: "friend" }
+    friend:   { name: "말동무의 친구", cls: "friend" },
+    gemini:   { name: "재미나이", cls: "gemini" }
   };
   var log = document.getElementById("log");
   var emptyEl = document.getElementById("empty");
