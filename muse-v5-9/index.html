@@ -914,9 +914,10 @@ html body #titleScreen {
         victory() {
           [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => setTimeout(() => this.tone(f, 'square', 0.2, 0.13), i * 85));
         }
-        /* v5.9 SFX: audio/sfx/*.mp3 (e8ca25e 정규화본) — 로드 실패 시 기존 beep 폴백.
-           게임 페이지는 muse-v5-9/이므로 ../audio/sfx/ 로 해결한다. */
-        _sfxUrl(name) { try { return new URL('../audio/sfx/' + name + '.mp3', document.baseURI).href; } catch (e) { return '../audio/sfx/' + name + '.mp3'; } }
+        /* v5.12 SFX: audio/sfx/*.mp3 (e8ca25e 정규화본) — 로드 실패 시 기존 beep 폴백.
+           <base href="../">라 document.baseURI는 이미 .../jaeu-jump/ — 'audio/sfx/'로 해결한다.
+           (v5.11까지 '../audio/sfx/'라 도메인 루트로 가서 404·전부 무음이었다 — B1) */
+        _sfxUrl(name) { try { return new URL('audio/sfx/' + name + '.mp3', document.baseURI).href; } catch (e) { return 'audio/sfx/' + name + '.mp3'; } }
         _sfxEl(name) {
           this._mp3 = this._mp3 || {};
           if (this._mp3[name]) return this._mp3[name];
@@ -5776,7 +5777,7 @@ extends CanvasLayer
       c.fillStyle = 'rgba(203,213,225,.85)';
       c.font = 'bold 9px "Galmuri11", monospace';
       c.textAlign = 'left';
-      c.fillText('최고 ' + Math.round(maxM) + 'm', 4, 11);
+      c.fillText('최고 ' + maxM.toFixed(1) + 'm', 4, 11);
       c.textAlign = 'right';
       c.fillText('⏱ ' + maxT.toFixed(1) + 's', w - 4, 11);
     }
@@ -7263,6 +7264,7 @@ extends CanvasLayer
       case 'lobby': {
         if (S.isHost) return;
         if (!m.room) return;
+        if (S.phase === 'idle') return;   /* v5.12 B7: 방을 나온 뒤 늦게 온 로비 방송이 방 상태를 되살리지 않게 */
         S.room = Object.assign({}, m.room);
         /* 방장 위임 직후 이전 방장이 보낸 lobby(host=새 방장)로는 방장을 바꾸지 않는다 → hostgive 로만 변경 */
         if (m.host && (!S.hostPid || m.host === m._p)) S.hostPid = m.host;
@@ -7383,6 +7385,7 @@ extends CanvasLayer
         break;
       }
       case 'start': {
+        if (S.phase !== 'lobby') return;   /* v5.12 B7: 로비 대기 중에만 시작을 받는다 — 나온 뒤 늦게 온 start가 방을 되살리지 않게 */
         S.lastHostHeard = now();
         if (S.isHost) beginCountdown(m.players);
         else { S.room = Object.assign({}, m.room); S.hostPid = m._p; beginCountdown(m.players); }
@@ -8093,6 +8096,31 @@ extends CanvasLayer
   }
 
   /* ---------- v4.6: 탈락/사망 직후 관전 모드 ---------- */
+  /* v5.12 B4: 봇도 생존자로 셈 — 봇만 남아도 관전으로 넘어간다.
+     방 봇(JW43.R.bots)과 AI 대전 봇(__jwgBotRows)을 peer 형태로 정규화한다. */
+  function allBotRows() {
+    const out = [];
+    const seen = {};
+    try {
+      const rb = (window.JW43 && window.JW43.R && window.JW43.R.bots) || [];
+      rb.forEach((b) => {
+        if (!b || !b.id) return;
+        if (seen[b.id]) return; seen[b.id] = 1;
+        out.push({ pid: b.id, nick: b.name, color: b.color, sk: b.skin, y: b.y, ry: b.y, fin: !!b.fin, elim: false, bot: true });
+      });
+    } catch (e) {}
+    try {
+      if (window.__jwgBotRows) window.__jwgBotRows().forEach((r) => {
+        if (!r || !r.pid) return;
+        if (seen[r.pid]) return; seen[r.pid] = 1;
+        out.push(r);
+      });
+    } catch (e) {}
+    return out;
+  }
+  function botAliveRows() {
+    return allBotRows().filter((b) => !b.elim && !b.fin);
+  }
   function aliveRacers() {
     const out = [];
     S.peers.forEach((pr) => {
@@ -8100,7 +8128,17 @@ extends CanvasLayer
       if (pr.elim || pr.fin) return;
       out.push(pr);
     });
+    botAliveRows().forEach((b) => out.push(b));
     return out;
+  }
+  /* 관전 대상 조회: 사람(peer) 우선, 없으면 봇 (위치·이름용 — fin 봇도 찾는다) */
+  function specTarget(pid) {
+    if (!pid) return null;
+    const pr = S.peers.get(pid);
+    if (pr) return pr;
+    const bots = allBotRows();
+    for (let i = 0; i < bots.length; i++) if (bots[i].pid === pid) return bots[i];
+    return null;
   }
   function specNameText(pr) {
     const nm = (pr && (pr.nick || (S.players.get(pr.pid) || {}).nick)) || '참가자';
@@ -8110,7 +8148,7 @@ extends CanvasLayer
     const el = $('mpSpecName');
     if (!el) return;
     if (S.specId) {
-      const pr = S.peers.get(S.specId);
+      const pr = specTarget(S.specId);
       el.textContent = specNameText(pr || { nick: ([...S.players.values()].find((x) => x.pid === S.specId) || {}).nick });
     } else el.textContent = '👀 관전 중';
   }
@@ -8168,7 +8206,7 @@ extends CanvasLayer
   function specWatchTick() {
     if (!S.deadSpec || S.phase !== 'race') return;
     const alive = aliveRacers();
-    if (S.specId && !S.peers.has(S.specId)) S.specId = null;
+    if (S.specId && !S.peers.has(S.specId) && !specTarget(S.specId)) S.specId = null;
     if (!S.specId && alive.length) { S.specId = alive[0].pid; paintSpecName(); }
     ensureSpecSwitch();
     if (alive.length) { paintSpecName(); return; }
@@ -8657,7 +8695,7 @@ extends CanvasLayer
   function cameraOverride(game, dt) {
     /* v4.6: 탈락 직후 관전 — 내가 고른 생존자를 따라간다 */
     if (S.deadSpec && S.specId) {
-      const pr2 = S.peers.get(S.specId);
+      const pr2 = specTarget(S.specId);
       if (pr2) {
         const ty2 = (pr2.ry !== undefined ? pr2.ry : pr2.y) - 240;
         game.camY += (ty2 - game.camY) * Math.min(1, dt * 6);
@@ -8665,9 +8703,9 @@ extends CanvasLayer
       }
     }
     if (S.spectating) {
-      /* 관전: 현재 1등(없으면 첫 상대)을 부드럽게 따라간다 */
+      /* 관전: 현재 1등(없으면 첫 상대)을 부드럽게 따라간다 — 봇도 포함 (v5.12 B4) */
       let best = null;
-      S.peers.forEach((pr) => { if (!pr.elim && (!best || (pr.ry !== undefined ? pr.ry : pr.y) < (best.ry !== undefined ? best.ry : best.y))) best = pr; });
+      aliveRacers().forEach((pr) => { if (!pr.elim && (!best || (pr.ry !== undefined ? pr.ry : pr.y) < (best.ry !== undefined ? best.ry : best.y))) best = pr; });
       if (best) {
         const ty = (best.ry !== undefined ? best.ry : best.y) - 240;
         game.camY += (ty - game.camY) * Math.min(1, dt * 5);
@@ -8676,7 +8714,7 @@ extends CanvasLayer
       return false;
     }
     if (S.phase === 'result' && S.specId) {
-      const pr = S.peers.get(S.specId);
+      const pr = specTarget(S.specId);
       if (pr) {
         const target = (pr.ry !== undefined ? pr.ry : pr.y) - 240;
         game.camY += (target - game.camY) * Math.min(1, dt * 6);
@@ -9009,8 +9047,8 @@ extends CanvasLayer
     S.resultRank = rank;
     const ELT = { lava: '🌋 탈락', zombie: '🧟 탈락', giveup: '🏳️ 기권', heart: '💔 탈락', caught: '🧟 탈락', dive: '🌊 탈락', timeup: '⏱️ ' + rank + '위 · 시간 종료' };
     let title = (rank === 1 && !S.eliminated) ? '🏆 우승!' : (S.eliminated ? (ELT[S.eliminated] || (rank + '위 · 탈락')) : (S.me.fin && S.rs.fin ? ('🏁 ' + rank + '위 완주') : (rank + '위')));
-    if (mode === 'relay' && rank === 1) title = '🤝 88층 완주!';
-    if (mode === 'descend') title = (rank === 1) ? '⬇️ 하강 성공!' : ('⬇️ 하강 ' + rank + '위');
+    if (mode === 'relay' && rank === 1 && !S.eliminated) title = '🤝 88층 완주!';
+    if (mode === 'descend' && !S.eliminated) title = (rank === 1) ? '⬇️ 하강 성공!' : ('⬇️ 하강 ' + rank + '위');
     $('mpResultTitle').textContent = title;
     $('mpResultTitle').className = 'text-2xl font-black text-center pixel-shadow ' + (rank === 1 ? 'text-amber-300' : 'text-slate-200');
     const stTxt = prof.streak > 1 ? ' · 🔥' + prof.streak + '연승' : '';
@@ -9066,7 +9104,7 @@ extends CanvasLayer
       origin: S.rs.origin || 0,
       worst: wd.at,
       title: myTitle().name,
-      result: (S.resultRank === 1 ? '🏆 우승! 정상 등극' : (S.me.fin && S.rs.fin ? '🏁 88층 완주!' : '도전 기록')),
+      result: (S.resultRank === 1 && !S.eliminated ? '🏆 우승! 정상 등극' : (S.me.fin && S.rs.fin && !S.eliminated ? '🏁 88층 완주!' : '도전 기록')),
       skin: S.me.skin,
       graphPts: S.graphPts.slice(),
       date: new Date().toLocaleString('ko-KR')
@@ -10989,7 +11027,7 @@ extends CanvasLayer
       if (ch && ch.fr && ch.fr.length > 2) { pick = ch; label = '👻 1등 ' + (ch.n || ''); }
     }
     if (!pick && mine && mine.fr && mine.fr.length > 4) {
-      pick = mine; label = '👻 내 최고 ' + Math.round(mine.m || 0) + 'm';
+      pick = mine; label = '👻 내 최고 ' + (mine.m || 0).toFixed(1) + 'm';
     }
     if (!pick) return null;
     return { fr: pick.fr, label: label, m: pick.m };
@@ -11013,7 +11051,7 @@ extends CanvasLayer
     if (V.ghostRec.length > 8 && (!prev || (V.maxM || 0) > (prev.m || 0) + 0.2)) {
       const fr = V.ghostRec.filter((x, i) => i % 2 === 0 || i === V.ghostRec.length - 1);
       ghostSave(key, { m: Math.round(V.maxM * 10) / 10, t: Math.round(J().game.time * 10) / 10, fr: fr.slice(-420), ts: Date.now() });
-      toast('👻 고스트 저장', 'lucky', '내 최고 ' + Math.round(V.maxM) + 'm 기록을 저장했어요', 2000);
+      toast('👻 고스트 저장', 'lucky', '내 최고 ' + V.maxM.toFixed(1) + 'm 기록을 저장했어요', 2000);
       return true;
     }
     return false;
@@ -43208,7 +43246,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v5.9 · 45 MAPS';
+      sp[1].textContent = '★ v5.12 · 45 MAPS';
     }
   }
 
@@ -65501,10 +65539,11 @@ if (typeof module !== 'undefined' && module.exports) {
   /* 목표 휘도까지 정확히 올리고/내리기 */
   function cdark(c, d) { var l = clum(c); return (d <= 0 || l <= 0.03) ? c : clue(c, -(d / (l - 0.028))); }
   function cbright(c, d) { var l = clum(c); return (d <= 0 || l >= 1) ? c : clue(c, d / (1 - l)); }
-  /* 약한 짝: 색 Δ가 작은 종류 쌍은 같은 맵 안에서 휘도를 최소 0.10까지 벌린다.
+  /* 약한 짝: 색 Δ가 작은 종류 쌍은 같은 맵 안에서 휘도를 벌린다.
+     목표 0.13으로 잡아 clue 근사·쌍 겹침 뒤에도 측정 Δ가 0.10을 넘게 한다 (v5.12 B2/B10).
      어두운 쪽을 내리고 밝은 쪽을 올리며, 밝기 하한이 우선이다. */
-  var KMIN = 0.10;
-  var KPAIRS = [['ice', 'glass'], ['moving', 'syrup'], ['moving', 'rotator']];
+  var KMIN = 0.13;
+  var KPAIRS = [['ice', 'glass'], ['moving', 'syrup'], ['moving', 'rotator'], ['crumble', 'syrup'], ['glass', 'rotator']];
   var KDARK = { abyss_floor: 0.28 };
   var KCM = {};
   function kindTable(p) {
@@ -65515,7 +65554,7 @@ if (typeof module !== 'undefined' && module.exports) {
       t[id] = kindBase(id, p);
     });
     /* 쌍이 겹쳐서(moving이 두 쌍에 들어감) 한 번에 다 안 벌어질 수 있어 두세 번 돌린다. */
-    for (var pass = 0; pass < 3; pass++) KPAIRS.forEach(function (pr) {
+    for (var pass = 0; pass < 5; pass++) KPAIRS.forEach(function (pr) {
       var A = pr[0], B = pr[1], ca = t[A], cb = t[B];
       if (!ca || !cb) return;
       var la = clum(ca), lb = clum(cb);
@@ -67533,6 +67572,16 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   var joinTimer = 0;
   function showJoin(code, nick, act) {
+    /* v5.12 B6: 내가 이미 들어간 방(내가 만든 방 포함)에는 합류 배너를 띄우지 않는다.
+       친구가 내 방에 들어오면 그 친구 활동의 room이 내 방 코드와 같아진다. */
+    try {
+      var _api = V.api && V.api();
+      var _in = _api && _api.internals && _api.internals();
+      var _myRoom = (_in && _in.S && _in.S.room) || (_api && _api.room && _api.room());
+      if (_myRoom && _myRoom.code && String(_myRoom.code) === String(code)) return;
+      var _me = _in && _in.S && _in.S.me && _in.S.me.nick;
+      if (_me && nick && String(_me) === String(nick)) return;
+    } catch (e) {}
     C.ensureRoot();
     var el = $('v51Join');
     if (!el) return;
