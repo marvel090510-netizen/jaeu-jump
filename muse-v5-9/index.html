@@ -347,6 +347,11 @@ html body #titleScreen {
     <div style="font-family:'Galmuri11',monospace;font-size:13px;color:#93c5fd;">로딩 중…</div>
   </div>
   <script>(function(){var done=false;function off(){if(done)return;done=true;var v=document.getElementById('v59Veil');if(v&&v.parentNode)v.parentNode.removeChild(v);}window.addEventListener('load',off);setTimeout(off,3000);})();</script>
+  <!-- v5.10 B5: 맵 진입 베일 — #v59Veil은 로드 후 제거되므로 진입용은 따로 둔다 (기본 숨김) -->
+  <div id="v59EntryVeil" style="position:fixed;inset:0;z-index:99998;background:#06040d;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;opacity:0;transition:opacity .22s ease-out;pointer-events:none;">
+    <div style="font-family:'Galmuri11',monospace;font-size:26px;font-weight:900;color:#fde68a;text-shadow:0 3px 0 #7c2d12;">성공하고싶은 재우</div>
+    <div style="font-family:'Galmuri11',monospace;font-size:13px;color:#93c5fd;">맵을 불러오는 중…</div>
+  </div>
 
   <!-- ALWAYS-LIVE GAME CANVAS -->
   <canvas id="gameCanvas" class="block w-full h-full pixelated"></canvas>
@@ -1409,14 +1414,15 @@ html body #titleScreen {
             continue;
           }
 
-          const dy = Math.round(110 + prog * 32 + (i % 3) * 4);
+          /* v5.10 난이도: dy 해시 지터 추가 (균일 간격 탈피 · 시드 불변) */
+          const dy = Math.round(110 + prog * 32 + (i % 3) * 4 + hash(i * 7 + PLAT_SEED * 13.37) * 12);
           cy -= dy;
 
           const safe = (i % 8 === 0);
-          const w = safe ? 156 : Math.round(128 - prog * 36);
+          const w = safe ? 156 : Math.round(128 - prog * 36 + (hash(i * 13 + PLAT_SEED * 13.37) - 0.5) * 36);
 
           const dir = (i % 2 === 0) ? 1 : -1;
-          const stepX = 88 + Math.floor(hash(i * 31 + PLAT_SEED * 13.37) * 64);
+          const stepX = 88 + Math.floor(hash(i * 31 + PLAT_SEED * 13.37) * 80);
           let nx = cx + dir * stepX;
           const minX = WALL_W + 12;
           const maxX = WORLD_W - WALL_W - w - 12;
@@ -1616,11 +1622,68 @@ html body #titleScreen {
         }
       }
 
+      /* v5.10 B3: 추락 딥 오버레이 (DOM이라 게임 리셋에 안 지워짐) */
+      function showFallDip() {
+        var d = document.getElementById('v59FallDip');
+        if (!d) {
+          d = document.createElement('div');
+          d.id = 'v59FallDip';
+          d.style.cssText = 'position:fixed;inset:0;z-index:9998;pointer-events:none;background:radial-gradient(ellipse at center,rgba(127,29,29,.28) 0%,rgba(5,3,10,.55) 100%);opacity:0;transition:opacity .18s ease-out;';
+          document.body.appendChild(d);
+        }
+        d.style.opacity = '1';
+      }
+      function hideFallDip() {
+        var d = document.getElementById('v59FallDip');
+        if (d) d.style.opacity = '0';
+      }
+      /* v5.10 B4: 피버 리셋 — JW43 모듈 상태라 window 경유 (코어 스코프에서 직접 안 닿음) */
+      function resetFeverSilent() {
+        try { var F = window.JW43 && window.JW43.fever; if (F) { F.combo = 0; F.on = false; F.t = 0; F.lastIdx = 0; F.flash = 0; } } catch (e) {}
+      }
+      function resetFeverFall() {
+        try {
+          var J43 = window.JW43;
+          if (J43 && J43.fever) {
+            if (J43.fever.on && J43.toast) J43.toast('🔥 피버 종료', 'chat', '추락', 1600);
+            J43.fever.combo = 0; J43.fever.on = false; J43.fever.t = 0; J43.fever.lastIdx = 0; J43.fever.flash = 0;
+          }
+        } catch (e) {}
+      }
+      /* v5.10 B5: 진입 베일 — 첫 프레임/배경이 준비되기 전 어두운 화면을 로딩 화면으로 가린다 */
+      function showEntryVeil() {
+        var v = document.getElementById('v59EntryVeil');
+        if (!v) return;
+        v.style.display = 'flex';
+        setTimeout(function () { v.style.opacity = '1'; }, 30);
+        var t0 = Date.now();
+        var iv = setInterval(function () {
+          var done = false;
+          try {
+            var cur = (window.JWMap && window.JWMap.current) || 'default';
+            var st = (window.JW51ART && window.JW51ART.stats) ? window.JW51ART.stats() : null;
+            if (st && st.last === cur) done = true;
+          } catch (e) {}
+          if (!done && Date.now() - t0 > 1500) done = true;
+          if (done) {
+            clearInterval(iv);
+            v.style.opacity = '0';
+            setTimeout(function () { v.style.display = 'none'; }, 250);
+          }
+        }, 100);
+      }
       function addText(x, y, txt, col = '#fde047') {
+        /* v5.10 B2: 같은 문구는 중복 쌓지 않고 기존 것을 갱신 (PERFECT! 겹침 방지) */
+        for (var _ti = 0; _ti < game.texts.length; _ti++) {
+          var _tt = game.texts[_ti];
+          if (_tt && _tt.txt === txt && _tt.life > 0) { _tt.x = x; _tt.y = y; _tt.col = col; _tt.life = 1.2; return; }
+        }
         game.texts.push({ x, y, txt, col, life: 1.2 });
       }
 
       function resetWorldAndPlayer(isOrigin = false) {
+        /* v5.10 B4: 새 월드 = 새 콤보 — 의도적 재시작/태초 귀환 시 피버 조용히 초기화 (토스트 없음) */
+        try { resetFeverSilent(); } catch (e) {}
         buildPlatforms();
         const sp = platforms[0];
         player.x = sp.x + sp.w / 2 - player.w / 2;
@@ -2135,7 +2198,22 @@ html body #titleScreen {
               }
 
               if (p.type === 'abyss_floor') {
-                addText(player.x + 14, player.y - 24, '🌪️ 심연 상승 기류! 시작 지점으로 복귀!', '#38bdf8');
+                /* v5.10 B3: 추락 연출 — 딥 + 사망 문구 + 낙하 대사. 800ms 뒤 텔레포트, 그 전에 뛰어내리면 취소됨 */
+                var _fallFrom = (typeof player.runBestPlat === 'number' ? player.runBestPlat : 0);
+                var _fallN = ((window.__v59fallN || 0) + 1); window.__v59fallN = _fallN;
+                var _fallLine = '아야… 괜찮아, 다시 올라가면 돼';
+                try {
+                  var _L = window.JW43 && window.JW43.G && window.JW43.G.LINES;
+                  if (_L && _L.length) {
+                    var _want = _fallN >= 3 ? 'fall3' : (_fallFrom >= 8 ? 'fall2' : 'fall1');
+                    for (var _li = 0; _li < _L.length; _li++) {
+                      if (_L[_li] && _L[_li].id === _want) { _fallLine = _L[_li].text; break; }
+                    }
+                  }
+                } catch (e) {}
+                addText(player.x + 14, player.y - 24, '💥 추락!' + (_fallFrom > 1 ? ' ' + _fallFrom + '층에서 떨어짐' : ''), '#f87171');
+                addText(player.x + 14, player.y - 44, _fallLine, '#fde68a');
+                try { showFallDip(); } catch (e) {}
                 setTimeout(() => {
                   if (player.plat && player.plat.type === 'abyss_floor') {
                     const sp = platforms[0];
@@ -2146,8 +2224,13 @@ html body #titleScreen {
                     player.plat = sp;
                     player.onGround = true;
                     addParticles(player.x + 14, player.y + 16, '#38bdf8', 20, 160);
+                    /* v5.10 B4: 추락 리스폰 시 피버 콤보 초기화 */
+                    try { resetFeverFall(); } catch (e) {}
+                    try { hideFallDip(); } catch (e) {}
+                  } else {
+                    try { hideFallDip(); } catch (e) {}
                   }
-                }, 550);
+                }, 800);
               }
 
               if (p.index === ((window.JWG && JWG.goalPlat) ? JWG.goalPlat() : TOTAL_PLATS)) {
@@ -2531,6 +2614,15 @@ html body #titleScreen {
           }
           const shk = p.crumbleTimer > 0 ? (((Math.random() - 0.5) * 6) | 0) : 0;
           if (!(window.JWG && JWG.drawPlatform && JWG.drawPlatform(ctx, p, (p.x + shk) | 0, py, game))) drawPlatformTile(p, (p.x + shk) | 0, py);
+          /* v5.10 (e): 안전 발판 라벨 — 노란 테두리/금색 표시가 안전 발판(추락해도 여기서부터)임을 알린다 */
+          if (p.safe && p.index > 1 && p.type !== 'summit') {
+            ctx.font = 'bold 9px "Galmuri11", monospace';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = 'rgba(5,3,10,.78)';
+            ctx.fillRect(((p.x + p.w / 2 - 20) | 0), py - 15, 40, 11);
+            ctx.fillStyle = '#fde047';
+            ctx.fillText('🛟 안전', ((p.x + p.w / 2) | 0), (py - 7) | 0);
+          }
         }
 
         // 3) Falling Rocks & Drones
@@ -2748,6 +2840,8 @@ html body #titleScreen {
         game.inPlay = true;
         game.paused = false;
         game.victory = false;
+        /* v5.10 B5: 진입 베일 표시 — 아트 준비되면 숨김, 1.5초 타임아웃 */
+        try { showEntryVeil(); } catch (e) {}
         resetWorldAndPlayer(false);
         /* muse-v5-8: Enter/퀵플레이 재시작도 솔로 상태를 보장 — 결과창이 뜬 채로 다음 판이 돌면 스테일 기록이 남는다 */
         try {
@@ -4046,7 +4140,15 @@ extends CanvasLayer
           else if (r === 4 || r === 8) type = 'syrup';
           else if (r === 5) type = 'cookie';
         }
-        P.push(mk(i, cx, cy, w, 22, type, zoneOf(i), safe));
+        const p = mk(i, cx, cy, w, 22, type, zoneOf(i), safe);
+        /* v5.10 난이도: 이동 발판 추가 (보통 · 와퍼 발판 중 14% · 그림은 그대로) */
+        if (!safe && p.type === 'normal' && i > 2 && i < TOTAL && hash(i * 23 + 77) < 0.14) {
+          p.type = 'moving';
+          p.moveRange = 36 + Math.floor(hash(i * 29 + 77) * 24);
+          p.moveSpeed = 0.4 + hash(i * 31 + 77) * 0.3;
+          p.movePhase = i * 0.7;
+        }
+        P.push(p);
       }
     },
     sky: ['#ffe9f5', '#ffd3e8', '#ffb7d6'],
@@ -4176,7 +4278,7 @@ extends CanvasLayer
         const prog = i / TOTAL;
         if (i === 1) { P.push(mk(i, W / 2 - 122, 0, 244, 26, 'slab', 1, true)); continue; }
         if (i === TOTAL) { cy -= 126; P.push(mk(i, W / 2 - 134, cy, 268, 30, 'roof', 5, true)); continue; }
-        const dy = Math.round(116 + prog * 34 + (i % 3) * 4);
+        const dy = Math.round(116 + prog * 34 + (i % 3) * 4 + hash(i * 7 + 11) * 12);
         cy -= dy;
         const safe = (i % 8 === 0);
         const w = safe ? 150 : Math.round(84 + hash(i * 17) * 30);
@@ -4315,7 +4417,7 @@ extends CanvasLayer
         if (i === 1) { P.push(mk(i, W / 2 - 128, 0, 256, 26, 'pad', 1, true)); continue; }
         if (i === TOTAL) { cy -= 208; P.push(mk(i, W / 2 - 136, cy, 272, 32, 'station', 5, true)); continue; }
         /* 저중력이라 층 간격이 크다 */
-        const dy = Math.round(168 + prog * 62 + (i % 3) * 6);
+        const dy = Math.round(168 + prog * 62 + (i % 3) * 6 + hash(i * 7 + 13) * 8);
         cy -= dy;
         const safe = (i % 8 === 0);
         const w = safe ? 168 : Math.round(90 + hash(i * 19) * 34);
@@ -4455,7 +4557,7 @@ extends CanvasLayer
         const prog = i / TOTAL;
         if (i === 1) { P.push(mk(i, W / 2 - 120, 0, 240, 26, 'stone', 1, true)); continue; }
         if (i === TOTAL) { cy -= 128; P.push(mk(i, W / 2 - 132, cy, 264, 30, 'shrine', 5, true)); continue; }
-        const dy = Math.round(122 + prog * 42 + (i % 3) * 5);
+        const dy = Math.round(122 + prog * 42 + (i % 3) * 5 + hash(i * 7 + 13) * 12);
         cy -= dy;
         const safe = (i % 8 === 0);
         const w = safe ? 148 : Math.round(76 + hash(i * 23) * 30);
@@ -4477,6 +4579,13 @@ extends CanvasLayer
         const p = mk(i, cx, cy, w, 20, type, zoneOf(i), safe);
         if (type === 'cloud') { p.flickPeriod = 3.4; p.flickPhase = i * 0.7; }
         if (type === 'hanji') { p.flickPeriod = 4.6; p.flickPhase = i * 1.1; }
+        /* v5.10 난이도: 이동 발판 추가 (극악 · 대나무 발판 중 22% · 그림은 그대로) */
+        if (!safe && p.type === 'normal' && i > 2 && i < TOTAL && hash(i * 23 + 91) < 0.22) {
+          p.type = 'moving';
+          p.moveRange = 36 + Math.floor(hash(i * 29 + 91) * 24);
+          p.moveSpeed = 0.4 + hash(i * 31 + 91) * 0.3;
+          p.movePhase = i * 0.7;
+        }
         P.push(p);
       }
     },
@@ -15207,6 +15316,8 @@ extends CanvasLayer
     const TK = TOT <= 65 ? { w: 1.18, dy: 0.92, safe: 6 }
       : TOT <= 89 ? { w: 1.0, dy: 1.0, safe: 8 }
         : { w: 0.9, dy: 1.07, safe: 10 };
+    /* v5.10 난이도: 이동 발판 비중 (맵 길이에 비례 — 긴 맵일수록 어려움) */
+    const moveRate = TOT <= 65 ? 0.10 : TOT <= 89 ? 0.15 : 0.20;
     abyss(A, cfg.id, cfg.ledges);
     let cy = 0, cx = W / 2 - 80;
     for (let i = 1; i <= TOT; i++) {
@@ -15217,7 +15328,8 @@ extends CanvasLayer
         const sp = mk(TOT, W / 2 - 132, cy, 264, 32, cfg.summitArt || 'summit', 'summit', 5, true);
         P.push(sp); continue;
       }
-      const dy = Math.round((cfg.dy0 + prog * cfg.dyK + (i % 3) * (cfg.dyJ || 4)) * TK.dy);
+      const dyV = (cfg.dyJ || 4) * 3;
+      const dy = Math.round((cfg.dy0 + prog * cfg.dyK + (i % 3) * (cfg.dyJ || 4) + hash(i * 7 + cfg.seed) * dyV) * TK.dy);
       cy -= dy;
       const safe = (i % (cfg.safeEvery || TK.safe) === 0);
       const w = safe ? Math.max(120, Math.round((cfg.safeW || 154) * (TK.w > 1 ? 1.06 : 1)))
@@ -15232,6 +15344,13 @@ extends CanvasLayer
       const a = cfg.art(i, prog, safe);
       const p = mk(i, cx, cy, w, cfg.h || 20, a.art, a.type, zoneOf(i, TOT), safe);
       if (cfg.extra) cfg.extra(i, p, prog, safe);
+      /* v5.10 난이도: 이동 발판 비중 확대 (해시 기반 · 시드 불변 · 안전 발판 제외) */
+      if (!safe && p.type === 'normal' && i > 2 && i < TOT && hash(i * 23 + cfg.seed) < moveRate) {
+        p.type = 'moving';
+        p.moveRange = 36 + Math.floor(hash(i * 29 + cfg.seed) * 24);
+        p.moveSpeed = 0.4 + hash(i * 31 + cfg.seed) * 0.3;
+        p.movePhase = i * 0.7;
+      }
       P.push(p);
     }
   }
@@ -34904,7 +35023,9 @@ extends CanvasLayer
   function patchMap() {
     const M = root.JWMap;
     if (!M || !M.drawBg) return false;
-    if (M.drawBg.__v45) return true;
+    /* v5.10 B1: 한 번만 설치 — 400ms 재패치가 JW51ART 래퍼 위에 다시 올라가 어두운 v45 파노로 배경을 고정하던 문제 수정 */
+    if (root.__v45mapInstalled) return true;
+    if (M.drawBg.__v45) { root.__v45mapInstalled = true; return true; }
     const o = M.drawBg;
     const w = function (id, ctx, camY, H) {
       if (D[id]) {
@@ -34914,6 +35035,7 @@ extends CanvasLayer
     };
     w.__v45 = true;
     M.drawBg = w;
+    root.__v45mapInstalled = true;
     return true;
   }
   function patchPano() {
@@ -37566,6 +37688,8 @@ extends CanvasLayer
 
   /* ---- drawBg 가로채기: art가 있으면 art, 없으면(1번 기본맵) 원래 그리기 ---- */
   function patchBg() {
+    /* v5.10 B1: 한 번만 설치 — bootArt 500ms 재호출이 JW51ART 래퍼와 ping-pong 하던 문제 수정 */
+    if (root.__v47bgInstalled) return;
     var M0 = MP();
     if (M0 && M0.drawBg && !M0.drawBg.__v47) {
       var o = M0.drawBg;
@@ -37577,6 +37701,7 @@ extends CanvasLayer
       };
       w.__v47 = true; w.__v45 = true; w.__v46 = true;
       M0.drawBg = w;
+      root.__v47bgInstalled = true;
     }
     var P = root.JW43PANO;
     if (P && P.drawBg && !P.drawBg.__v47) {
@@ -37589,6 +37714,7 @@ extends CanvasLayer
       };
       w2.__v47 = true; w2.__v45 = true;
       P.drawBg = w2;
+      root.__v47bgInstalled = true;
     }
   }
 
@@ -45862,7 +45988,7 @@ button, [role="button"]{touch-action:manipulation;}
     '#v53ModeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:48dvh;overflow-y:auto;',
     '  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:1px;}',
     '@media(min-width:600px){#v53ModeGrid{grid-template-columns:repeat(3,minmax(0,1fr));max-height:none;}}',
-    '.v53mm{display:flex;align-items:center;gap:7px;padding:7px 8px;min-height:52px;text-align:left;min-width:0;',
+    '.v53mm{display:flex;align-items:center;gap:7px;padding:7px 8px;min-height:60px;text-align:left;min-width:0;',
     '  background:linear-gradient(180deg,#22305a,#18213f);border:2px solid #0b1022;border-radius:10px;',
     '  box-shadow:inset 0 -4px 0 rgba(0,0,0,.3),inset 0 2px 0 rgba(255,255,255,.08),0 3px 0 #05030a;cursor:pointer;}',
     '.v53mm:active{transform:translateY(2px);}',
@@ -45871,7 +45997,12 @@ button, [role="button"]{touch-action:manipulation;}
     '.v53mm .tx{min-width:0;display:flex;flex-direction:column;gap:1px;}',
     '.v53mm .tx b{font-family:"Jua",sans-serif;font-size:13px;font-weight:400;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     '.v53mm .tx i{font-style:normal;font-size:9.5px;color:#a9b8d4;line-height:1.25;overflow:hidden;max-height:24px;}',
-    '.v53hide{display:none !important;}'
+    '.v53mm .tx i.ds{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;height:28px;flex-shrink:0;}',
+    '.v53mm .tx .cat{font-size:9px;color:#6b7c9c;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;}',
+    '.v53hide{display:none !important;}',
+    /* v5.10 긴급: 위저드 자체 검색/칩/즐겨찾기 헤더는 숨긴 #v43WizModes 전용이라 죽은 컨트롤이다. */
+    /* 보이는 그리드는 #v53ModeGrid + #v53ModeBar + QOL 검색(#v51s_mode)이 담당한다. */
+    '#v43WizQ,#v43WizCats,#v43WizFav{display:none !important;}'
   ].join('\n');
   doc.head.appendChild(s);
 
@@ -46011,8 +46142,8 @@ button, [role="button"]{touch-action:manipulation;}
       var desc = (root.JW53.modeDesc && root.JW53.modeDesc(m.id)) || m.desc || '';
       html += '<button type="button" class="v53mm' + (cur === m.id ? ' on' : '') + '" data-m="' + m.id + '">' +
         '<span class="ic">' + (m.emoji || '🎮') + '</span>' +
-        '<span class="tx"><b>' + esc(m.name || m.id) + '</b><i>' + esc(desc) + '</i>' +
-        (MODE_FILTER === 'all' ? '<i style="color:#6b7c9c;font-size:8.5px">' + label + '</i>' : '') + '</span></button>';
+        '<span class="tx"><b>' + esc(m.name || m.id) + '</b><i class="ds">' + esc(desc) + '</i>' +
+        (MODE_FILTER === 'all' ? '<span class="cat">' + label + '</span>' : '') + '</span></button>';
     });
     if (!html) html = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;font-size:11px;padding:16px">이 카테고리에 모드가 없어요</div>';
     if (grid.__v486grid !== html) { grid.__v486grid = html; grid.innerHTML = html; }
@@ -61298,10 +61429,11 @@ if (typeof module !== 'undefined' && module.exports) {
 
   /* 난이도별 밸런스: 쉬움은 발판이 넓고 간격이 완만, 극악은 좁고 가파르다 */
   var BAL = {
-    '쉬움': { total: 60, dy0: 86, dyK: 16, dyJ: 2, stepMin: 74, stepSpan: 34, wMin: 124, wSpan: 46, wShrink: 0.05, safeW: 186, safeEvery: 6 },
-    '보통': { total: 76, dy0: 94, dyK: 24, dyJ: 3, stepMin: 82, stepSpan: 42, wMin: 104, wSpan: 38, wShrink: 0.12, safeW: 164, safeEvery: 8 },
-    '어려움': { total: 90, dy0: 102, dyK: 30, dyJ: 4, stepMin: 88, stepSpan: 48, wMin: 88, wSpan: 34, wShrink: 0.17, safeW: 150, safeEvery: 9 },
-    '극악': { total: 100, dy0: 106, dyK: 32, dyJ: 5, stepMin: 90, stepSpan: 52, wMin: 76, wSpan: 30, wShrink: 0.2, safeW: 144, safeEvery: 10 }
+    /* v5.10 난이도: dyV=dy 해시 지터, stepSpan/wSpan 확대, moveRate=이동 발판 비중 (시드 불변) */
+    '쉬움': { total: 60, dy0: 86, dyK: 16, dyJ: 2, dyV: 10, stepMin: 74, stepSpan: 48, wMin: 124, wSpan: 60, wShrink: 0.05, safeW: 186, safeEvery: 6, moveRate: 0.10 },
+    '보통': { total: 76, dy0: 94, dyK: 24, dyJ: 3, dyV: 12, stepMin: 82, stepSpan: 58, wMin: 104, wSpan: 50, wShrink: 0.12, safeW: 164, safeEvery: 8, moveRate: 0.14 },
+    '어려움': { total: 90, dy0: 102, dyK: 30, dyJ: 4, dyV: 14, stepMin: 88, stepSpan: 66, wMin: 88, wSpan: 44, wShrink: 0.17, safeW: 150, safeEvery: 9, moveRate: 0.18 },
+    '극악': { total: 100, dy0: 106, dyK: 32, dyJ: 5, dyV: 16, stepMin: 90, stepSpan: 72, wMin: 76, wSpan: 40, wShrink: 0.2, safeW: 144, safeEvery: 10, moveRate: 0.22 }
   };
   function gen(P, A, cfg) {
     var B = BAL[cfg.diff] || BAL['보통'];
@@ -61317,7 +61449,7 @@ if (typeof module !== 'undefined' && module.exports) {
         P.push(mk(TOT, W / 2 - 132, cy, 264, 32, cfg.summitArt || 'summit', 'summit', 5, true));
         continue;
       }
-      var dy = Math.round((B.dy0 + prog * B.dyK + (i % 3) * B.dyJ) * TK.dy);
+      var dy = Math.round((B.dy0 + prog * B.dyK + (i % 3) * B.dyJ + hash(i * 7 + cfg.seed) * (B.dyV || 0)) * TK.dy);
       cy -= dy;
       var safe = (i % (B.safeEvery || 8) === 0);
       var w = safe ? Math.max(130, Math.round(B.safeW * (TK.w > 1 ? 1.04 : 1)))
@@ -61335,6 +61467,13 @@ if (typeof module !== 'undefined' && module.exports) {
       var a = cfg.art(i, prog, safe);
       var p = mk(i, cx, cy, w, cfg.h || 20, a.art, a.type, zoneOf(i, TOT), safe);
       if (cfg.extra) cfg.extra(i, p, prog, safe);
+      /* v5.10 난이도: 이동 발판 비중 확대 (해시 기반 · 시드 불변 · 안전 발판 제외) */
+      if (!safe && p.type === 'normal' && i > 2 && i < TOT && hash(i * 23 + cfg.seed) < (B.moveRate || 0)) {
+        p.type = 'moving';
+        p.moveRange = 36 + Math.floor(hash(i * 29 + cfg.seed) * 24);
+        p.moveSpeed = 0.4 + hash(i * 31 + cfg.seed) * 0.3;
+        p.movePhase = i * 0.7;
+      }
       P.push(p);
     }
   }
@@ -63616,6 +63755,8 @@ if (typeof module !== 'undefined' && module.exports) {
   function patch() {
     var M = root.JWMap;
     if (!M || typeof M.drawBg !== 'function') return false;
+    /* v5.10 B1: 한 번만 설치 — 250ms 재패치가 v47 래퍼와 ping-pong 하며 깜빡이던 문제 수정 */
+    if (root.__v51artInstalled) return true;
     if (M.drawBg.__v51art) return true;
     var o = M.drawBg;
     var w = function (id, ctx, camY, lh) {
@@ -63626,6 +63767,7 @@ if (typeof module !== 'undefined' && module.exports) {
     };
     w.__v51art = true;
     M.drawBg = w;
+    root.__v51artInstalled = true;
     try {
       var P = root.JW43PANO;
       if (P && typeof P.drawBg === 'function' && !P.drawBg.__v51art) {
