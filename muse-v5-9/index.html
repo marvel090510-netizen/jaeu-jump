@@ -340,6 +340,13 @@ html body #titleScreen {
 </style>
 </head>
 <body class="relative w-full h-full overflow-hidden select-none">
+  <!-- muse-v5-9: 진입 스플래시 베일 — Tailwind CDN·폰트가 늦게 오면 스타일 안 입은 옛 화면이 ~1초 보이는 것을 가린다.
+       인라인 스타일만 써서 파싱 즉시 보이고, load 후 또는 3초 뒤에 스스로 사라진다. -->
+  <div id="v59Veil" style="position:fixed;inset:0;z-index:99999;background:#06040d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
+    <div style="font-family:'Galmuri11',monospace;font-size:26px;font-weight:900;color:#fde68a;text-shadow:0 3px 0 #7c2d12;">성공하고싶은 재우</div>
+    <div style="font-family:'Galmuri11',monospace;font-size:13px;color:#93c5fd;">로딩 중…</div>
+  </div>
+  <script>(function(){var done=false;function off(){if(done)return;done=true;var v=document.getElementById('v59Veil');if(v&&v.parentNode)v.parentNode.removeChild(v);}window.addEventListener('load',off);setTimeout(off,3000);})();</script>
 
   <!-- ALWAYS-LIVE GAME CANVAS -->
   <canvas id="gameCanvas" class="block w-full h-full pixelated"></canvas>
@@ -11395,7 +11402,7 @@ extends CanvasLayer
       /* 4.3에서 새로 시작: 4.3이 보낸 기록만 받는다 (과거 버그 기록 차단) */
       if (e.ver !== '4.3') return;
       const idx = mine.findIndex((x) => x.n === e.n && x.map === e.map && x.mode === e.mode);
-      if (idx < 0) { mine.push({ n: String(e.n).slice(0, 12), map: e.map, mode: e.mode, m: Number(e.m) || 0, t: Number(e.t) || 0, clear: !!e.clear, ts: e.ts || Date.now(), fr: e.fr || null, live: true }); changed = true; }
+      if (idx < 0) { mine.push({ n: String(e.n).slice(0, 12), map: e.map, mode: e.mode, m: Number(e.m) || 0, t: Number(e.t) || 0, clear: !!e.clear, ts: e.ts || Date.now(), fr: e.fr || null, ti: e.ti || null, live: true }); changed = true; } /* muse-v5-9: 릴레이로 받은 기록의 칭호(ti)도 유지 — 랭킹에서 남의 칭호가 보이게 */
       else {
         const old = mine[idx];
         const better = e.clear ? (!old.clear || (e.t || 9999) < (old.t || 9999)) : (e.m || 0) > (old.m || 0);
@@ -25436,12 +25443,11 @@ extends CanvasLayer
       if (rec) titleName = rec;
       else if (V.api().titles) {
         var list = V.api().titles() || [];
-        var found = list.filter(function (t) { return t.id === tt.title; })[0];
+        /* muse-v5-9: 'auto'면 마지막 해금이 아니라 최고 등급 해금 칭호 — 로비/인게임/랭킹과 같은 답 */
+        var tid = tt.title || '';
+        try { if (root.JW56T5 && root.JW56T5.myTitleId) { var m = root.JW56T5.myTitleId(); if (m) tid = m; } } catch (e) {}
+        var found = list.filter(function (t) { return t.id === tid; })[0];
         if (found) titleName = found.short || found.name;
-        else if (V.api().unlockedTitles) {
-          var un = V.api().unlockedTitles() || [];
-          if (un.length) titleName = un[un.length - 1].short || un[un.length - 1].name;
-        }
       }
     } catch (e) {}
     var a = $('v43TPNick'), b = $('v43TPTitle'), c = $('v43TPStatus');
@@ -32057,7 +32063,7 @@ extends CanvasLayer
       rk.parentNode.replaceChild(c2, rk);
       c2.addEventListener('click', () => {
         closeAll();
-        openPanel('v44Codex', () => { G.renderCodex(); });
+        openPanel('v44Codex', () => { G.renderCodex(); try { codexShow(codexTab); } catch (e) {} });
       });
     }
     /* 스트릭 배지 */
@@ -32146,8 +32152,9 @@ extends CanvasLayer
     if (tabs) Array.prototype.forEach.call(tabs.querySelectorAll('[data-ctab]'), (b) => {
       b.classList.toggle('on', b.getAttribute('data-ctab') === tab);
     });
-    if (body) { body.classList.toggle('hidden', tab !== 'codex'); body.style.display = tab === 'codex' ? 'flex' : 'none'; }
-    if (ach) { ach.classList.toggle('hidden', tab !== 'ach'); ach.style.display = tab === 'ach' ? 'flex' : 'none'; }
+    /* muse-v5-9: 탭 전환은 !important로 확정 — v47 CSS의 display:block이 인라인 display:none을 이겨서 업적 탭이 도감 탭 아래에 보이던 누수 수정 */
+    if (body) { body.classList.toggle('hidden', tab !== 'codex'); body.style.setProperty('display', tab === 'codex' ? 'flex' : 'none', 'important'); }
+    if (ach) { ach.classList.toggle('hidden', tab !== 'ach'); ach.style.setProperty('display', tab === 'ach' ? 'flex' : 'none', 'important'); }
     if (tab === 'ach') renderCodexAch();
   }
   function paintCodexTabs() {
@@ -37546,7 +37553,7 @@ extends CanvasLayer
       '  background:#0b1222;border:2px solid #334155;color:#cbd5e1;border-radius:6px;}',
       '.v44-codextabs button.on{background:#1f2937;border-color:#fde047;color:#fef3c7;}',
       /* 업적: 2열 컴팩트 그리드 + 진행률 */
-      '#v44CodexAch{display:block!important;max-height:60dvh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-right:2px;}',
+      '#v44CodexAch{max-height:60dvh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-right:2px;}',
       '.v47-achsum{display:flex;flex-direction:column;gap:4px;padding:7px 9px;margin-bottom:6px;',
       '  border:2px solid #b45309;background:linear-gradient(180deg,#241a08,#1a1305);border-radius:8px;}',
       '.v47-achsum .bar{height:7px;border-radius:99px;background:#0b1222;overflow:hidden;border:1px solid #334155;}',
@@ -41042,7 +41049,7 @@ extends CanvasLayer
       '  background:linear-gradient(180deg,rgba(38,52,82,.42),rgba(14,20,36,.86)) !important;',
       '  border:1px solid rgba(150,190,255,.2) !important;box-shadow:0 20px 46px rgba(2,6,18,.46) !important;}',
       '#titleScreen #v43SideArt .sa-h{font-size:11px !important;letter-spacing:.04em !important;color:#a9bcd8 !important;}',
-      '#v50SideMapImg{display:block;width:100% !important;flex:1 1 auto;min-height:0;max-height:56dvh;margin-top:10px;',
+      '#v50SideMapImg{display:block;width:auto !important;max-width:100% !important;flex:0 0 auto;min-height:0;max-height:56dvh;margin:10px auto 0;',
       '  object-fit:contain;border-radius:16px;border:1px solid rgba(150,190,255,.24);background:rgba(8,12,24,.9);}',
       '#v50SideMapImg.hidden{display:none !important;}',
       '#titleScreen #v43SideArt #v43SideMap{width:100% !important;height:auto !important;flex:1 1 auto;min-height:0;',
@@ -43189,6 +43196,28 @@ html body div#pauseModal .v97stat > div > span{font-size:11px !important;}
 html body div#pauseModal .v97stat > div > strong{font-size:14px !important;}
 /* ---- 4. 판 정리 섹션 구분을 분명히 (위험 동작은 아래에 분리) ---- */
 html body div#pauseModal #v97secGo{border-color:#7c2d12 !important;background:rgba(30,16,8,.5) !important;}
+</style>
+<style id="muse-v59-fixes">
+/* muse-v5-9: 버그 묶음 수정 (도감 누수·랭킹 표기·버튼 탭·진입 깜빡임·타이틀 검은 띠·칭호 통일·랭킹 칭호).
+   Galmuri 유지, 모서리 4px, 새 폰트 없음. 기존 v58-ti 색상과 동일 (스코프만 전역으로 넓힘). */
+/* ---- 1. 칭호 칩 전역 스타일: v58-ti 플랫 칩 (로비/선택창과 같은 디자인, 랭킹·인게임·프로필·친구에서도 동일) ---- */
+.v58-ti{display:inline-flex !important;align-items:center !important;justify-content:center !important;padding:2px 7px !important;border:1px solid #64748b !important;border-radius:4px !important;background:#1e293b !important;color:#cbd5e1 !important;font-size:11px !important;font-weight:900 !important;line-height:1.3 !important;white-space:nowrap !important;}
+.v58-ti-r0{border-color:#64748b !important;background:#1e293b !important;color:#cbd5e1 !important;}
+.v58-ti-r1{border-color:#38bdf8 !important;background:#082f49 !important;color:#bae6fd !important;}
+.v58-ti-r2{border-color:#4ade80 !important;background:#052e16 !important;color:#bbf7d0 !important;}
+.v58-ti-r3{border-color:#fbbf24 !important;background:#451a03 !important;color:#fde68a !important;}
+.v58-ti-r4{border-color:#f59e0b !important;background:#451a03 !important;color:#fde68a !important;box-shadow:0 0 8px rgba(245,158,11,.35) !important;}
+.v58-ti-r5{border-color:#c084fc !important;background:#2e1065 !important;color:#e9d5ff !important;}
+.v58-ti-r6{border-color:#fbbf24 !important;background:#3b0764 !important;color:#fef08a !important;box-shadow:0 0 10px rgba(251,191,36,.45) !important;}
+/* 인게임 머리 위 이름표 안의 칭호 칩은 더 작게 (봇 이름표와 겹침 완화) */
+html body #v97Tag .v58-ti{font-size:10px !important;padding:1px 5px !important;}
+/* 명예의 전당 행 안의 칭호 칩은 한 줄로 작게 */
+html body #v48rk .bd .v58-ti{font-size:10px !important;padding:1px 6px !important;}
+/* ---- 2. 버튼 탭 신뢰성: 더블탭 줌 대기 없이 바로 클릭 (인게임 조작 버튼은 인라인 touch-action:none이 그대로 우선) ---- */
+button, [role="button"]{touch-action:manipulation;}
+/* 탭/작은 버튼 히트 영역: 도감·업적 탭과 타이틀 빠른 버튼은 36~44px 이상 */
+.v44-codextabs button, #v50CxTabs button{min-height:36px !important;padding:7px 4px !important;}
+#v44SideQuick button{min-height:44px !important;}
 </style>
 <script>
 /* ==========================================================================
@@ -45363,7 +45392,7 @@ html body div#pauseModal #v97secGo{border-color:#7c2d12 !important;background:rg
     if (idx >= 0) {
       const old = list[idx];
       const better = entry.clear ? (!old.clear || (entry.t || 9999) < (old.t || 9999)) : ((entry.m || 0) > (old.m || 0));
-      const merged = Object.assign({}, old, { uid: u || old.uid, n: entry.n, sk: entry.sk, col: entry.col, ts: Date.now() });
+      const merged = Object.assign({}, old, { uid: u || old.uid, n: entry.n, sk: entry.sk, col: entry.col, ti: entry.ti || old.ti, ts: Date.now() });
       if (better) { merged.m = entry.m; merged.clear = entry.clear; merged.t = entry.clear ? entry.t : 0; }
       list[idx] = merged;
     } else {
@@ -45389,7 +45418,7 @@ html body div#pauseModal #v97secGo{border-color:#7c2d12 !important;background:rg
       const sig = map + '|' + mode + '|' + m + '|' + clears + '|' + t;
       if (PUSHED[k] === sig) return;
       PUSHED[k] = sig;
-      upsert({ uid: u, n: n, map: map, mode: mode, m: m, t: clears ? t : 0, clear: clears > 0, ts: Date.now(), sk: sk, col: col, ver: '4.3', auto: true });
+      upsert({ uid: u, n: n, map: map, mode: mode, m: m, t: clears ? t : 0, clear: clears > 0, ts: Date.now(), sk: sk, col: col, ti: (function () { try { return (window.JW56T5 && window.JW56T5.myTitleId) ? window.JW56T5.myTitleId() : ''; } catch (e) { return ''; } })(), ver: '4.3', auto: true }); /* muse-v5-9: 기록 생성 시 칭호(ti)도 같이 저장 — 랭킹 뱃지용 */
     });
   }
   setInterval(() => { try { autoPush(); } catch (e) {} }, 2500);
@@ -57440,7 +57469,7 @@ html body div#pauseModal #v97secGo{border-color:#7c2d12 !important;background:rg
     return out;
   }
   function valText(e) { if (!e) return '-'; return SORT === 'time' ? fmtT(e.t) : Math.round(e.m || 0) + 'm'; }
-  function valSub(e) { if (!e) return ''; return SORT === 'time' ? Math.round(e.m || 0) + 'm 도달' : '#' + floorOf(e.m) + '층'; }
+  function valSub(e) { if (!e) return ''; return SORT === 'time' ? Math.round(e.m || 0) + 'm 도달' : floorOf(e.m) + '층 도달'; } /* muse-v5-9: '#50층'이 순위로 오해됨 → '#' 제거, '도달' 추가로 층수임을 명시 */
 
   function colorFor(name) {
     var cols = [];
@@ -63806,13 +63835,16 @@ html body div#pauseModal #v97secGo{border-color:#7c2d12 !important;background:rg
     doc.head.appendChild(s);
   }
   function badgeHtml(id, withText) {
-    var mm = meta(id);
-    var g = mm.grade || 'common';
+    var mm = null;
+    try { mm = meta(id); } catch (e) { mm = null; }
     var t = null;
     try { t = (V.api().titles() || []).filter(function (x) { return x.id === id; })[0]; } catch (e) {}
-    var nm = t ? (t.short || t.name) : (mm.name || '');
-    var icon = mm.icon ? '<img src="' + mm.icon + '" alt="">' : '';
-    return '<span class="v51badge g-' + g + '">' + icon + (withText === false ? '' : C.esc(nm)) + '</span>';
+    var nm = t ? (t.short || t.name) : ((mm && mm.name) || '');
+    if (withText === false) nm = '';
+    /* muse-v5-9: 칭호 칩 디자인 통일 — 로비/선택창과 같은 v58-ti 플랫 칩 (등급 r0~r6, 아이콘·그라데이션 제거) */
+    var r = (t && typeof t.rank === 'number') ? t.rank : 0;
+    if (r < 0) r = 0; if (r > 6) r = 6;
+    return '<span class="v58-ti v58-ti-r' + r + '">' + C.esc(nm) + '</span>';
   }
 
   /* 내 프로필/타이틀에 배지 삽입 + 기존 텍스트 꾸미기 */
@@ -67328,8 +67360,19 @@ html body div#pauseModal #v97secGo{border-color:#7c2d12 !important;background:rg
   function esc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;'; }); }
   function myNick() { try { var s = V.st(); return (s && s.me && s.me.nick) || ''; } catch (e) { return ''; } }
   function myTitleId() {
-    try { if (TI() && TI().equipped) return TI().equipped(); } catch (e) {}
-    try { var raw = V.lsGet('jw41_identity_v1', {}) || {}; return raw.title || 'auto'; } catch (e) { return 'auto'; }
+    var id = '';
+    try { if (TI() && TI().equipped) id = TI().equipped(); } catch (e) {}
+    if (!id) { try { var raw = V.lsGet('jw41_identity_v1', {}) || {}; id = raw.title || ''; } catch (e) {} }
+    if (id && id !== 'auto') return id;
+    /* muse-v5-9: 'auto'면 최고 등급 해금 칭호로 통일 — 메인(마지막 해금)/로비(최고 등급)/인게임(기본값)/랭킹(없음)이
+       제각각이던 것을 한 곳에서 같은 답으로 맞춘다. 장착 UI는 equipped()를 직접 쓰므로 'auto' 상태는 그대로 둔다. */
+    try {
+      var un = (V.api && V.api().unlockedTitles) ? V.api().unlockedTitles() : [];
+      var best = null;
+      (un || []).forEach(function (t) { if (t && (!best || (t.rank || 0) > (best.rank || 0))) best = t; });
+      if (best) return best.id;
+    } catch (e) {}
+    return 'rookie';
   }
   function titleName(id) {
     if (!id || id === 'auto') return '';
@@ -70752,9 +70795,9 @@ html body div#pauseModal #v97secGo{border-color:#7c2d12 !important;background:rg
     'html body #v51IGTag{display:none !important;}',
     'html body #v97Tag{position:fixed;left:0;top:0;z-index:31;pointer-events:none;display:none;transform:translate(-50%,-100%);}',
     'html body #v97Tag.on{display:block;}',
-    'html body #v97Tag .in{display:flex;align-items:center;gap:4px;padding:2px 7px;border-radius:9px;',
-    '  background:rgba(7,11,20,.78);border:1.5px solid rgba(96,165,250,.65);box-shadow:0 2px 8px rgba(0,0,0,.5);white-space:nowrap;}',
-    'html body #v97Tag .nm{font-size:11.5px;font-weight:900;color:#eef6ff;text-shadow:0 1px 0 #000;}',
+    'html body #v97Tag .in{display:flex;align-items:center;gap:3px;padding:1px 5px;border-radius:4px;',
+    '  background:rgba(7,11,20,.66);border:1px solid rgba(96,165,250,.45);box-shadow:0 1px 5px rgba(0,0,0,.45);white-space:nowrap;}',
+    'html body #v97Tag .nm{font-size:10.5px;font-weight:900;color:#eef6ff;text-shadow:0 1px 0 #000;}',
     'html body #v97Tag .tt{font-size:9.5px;font-weight:900;padding:1px 6px;border-radius:999px;background:rgba(251,191,36,.18);',
     '  border:1px solid rgba(251,191,36,.55);color:#ffe9a8;}',
 
