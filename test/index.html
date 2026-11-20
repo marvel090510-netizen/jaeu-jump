@@ -388,6 +388,16 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       <div class="spec">발판 91개 · 구역 6개 · 이벤트 9종 · 단일 파일 122KB</div>
       <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
     </a>
+    <a class="card" href="../muse-v5-8/" data-ai="muse" style="--a:#7dd3fc;--a2:#6366f1;--glow:125,211,252">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
+        <path d="M24 4l5 14 14 5-14 5-5 14-5-14-14-5 14-5z" fill="currentColor"/>
+      </svg></span>
+      <div class="tag">Muse 버전</div>
+      <h2>Muse <small>사망 원인·결과창·즐겨찾기·관전 수정 테스트판</small></h2>
+      <p>좀비/용암 사망이 추락으로 뜨던 버그 수정, 결과창 재디자인 + 사망 멘트, 즐겨찾기 별, 친구 관전, 퍼펙트 보너스, 화면 전환, 칭호 디자인.</p>
+      <div class="spec">v5.7 기반 · v5.7 수정 포함 · 루트 미반영</div>
+      <div class="go"><span class="count"><b>1</b>개 버전</span><span class="arrow">→</span></div>
+    </a>
     <a class="card" href="../muse-v5-7/" data-ai="muse" style="--a:#7dd3fc;--a2:#6366f1;--glow:125,211,252">
       <span class="logo" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none">
         <path d="M24 4l5 14 14 5-14 5-5 14-5-14-14-5 14-5z" fill="currentColor"/>
@@ -796,6 +806,18 @@ canvas, .touch-btn, .game-touch, .tb, #controls, #controls img,
       name: 'Muse', tag: 'Muse 버전', tagClass: 'u',
       accent: '#7dd3fc', accent2: '#6366f1', glow: '125,211,252',
       versions: [
+        {
+          ver: 'v5.8 (테스트)', label: '사망 원인 오표시 수정 — 좀비/용암이 추락으로 뜨던 버그 · 결과창 재디자인 · 사망 멘트 · 즐겨찾기 별 · 친구 관전 · 퍼펙트 보너스 · 화면 전환 · 칭호 디자인', href: '../muse-v5-8/', latest: false,
+          date: '2026.11.20',
+          spec: 'v5.7 기반 · v5.7 수정 포함 · 루트 미반영',
+          notes: [
+            '💥 사망 원인: 좀비/용암 사망이 이전 판 추락사로 뜨던 스테일 기록 수정 · 시간/남은 높이 스테일 수정',
+            '📝 사망 멘트: 원인별 한 줄 + 맵 테마 한 줄 · 결과 모달 재디자인(배지 13px·스탯 20px·맵 테마 테두리)',
+            '⭐ 즐겨찾기 별 표시 동기화 · 👥 친구 관전 스테일/시드 수정 · 🎯 퍼펙트 보너스 판정 복구',
+            '🎬 화면 전환 0.16초 페이드 · ✨ 콤보 글로우 발판 크기 비례 · 🎁 보상 알림 타이틀에서 배출 · 🌱 싱글/멀티 기본맵 시드 0 통일',
+            '🏷️ 칭호 디자인 등급별 칩 색 적용 · ⚠️ 루트 index.html 미반영 테스트판 — 정식 반영은 OK 후에만'
+          ]
+        },
         {
           ver: 'v5.7 (테스트)', label: 'UI+폰트+편리성 대규모 — Galmuri 전역 통일 · 모서리 4px · 설명 11px · 백업·즐겨찾기·조작 설정 직행', href: '../muse-v5-7/', latest: false,
           date: '2026.11.20',
