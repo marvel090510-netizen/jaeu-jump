@@ -259,7 +259,7 @@
 
   /* ---------- 파일 공통 ---------- */
   var EXT_ICON = {
-    zip: "🗜️", "7z": "🗜️", rar: "🗜️", tar: "🗜️", gz: "🗜️",
+    zip: "📦", "7z": "📦", rar: "📦", tar: "📦", gz: "📦",
     pdf: "📕", txt: "📄", md: "📄", csv: "📊", xls: "📊", xlsx: "📊",
     doc: "📝", docx: "📝", ppt: "📊", pptx: "📊", hwp: "📝", hwpx: "📝",
     png: "🖼️", jpg: "🖼️", jpeg: "🖼️", gif: "🖼️", webp: "🖼️", svg: "🖼️",
@@ -290,7 +290,8 @@
   // 서버 메시지의 file 필드를 안전하게 다듬는다. 이상한 값은 무시.
   function normalizeFileMeta(v) {
     if (!v || typeof v !== "object") return null;
-    if (typeof v.id !== "string" || !v.id || v.id.length > 200) return null;
+    // 저장소 키로만 쓰이는 안전한 id만 받는다(메시지 본문은 바깥에서 온 값이다).
+    if (typeof v.id !== "string" || !/^[A-Za-z0-9_-]{1,120}$/.test(v.id)) return null;
     var name = (typeof v.name === "string" && v.name.trim()) ? v.name.trim().slice(0, 120) : "파일";
     var type = (typeof v.type === "string") ? v.type.slice(0, 120) : "";
     var size = (typeof v.size === "number" && v.size >= 0) ? v.size : 0;
