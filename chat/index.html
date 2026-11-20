@@ -46,6 +46,8 @@
   .msg.gemini .bubble { background: #dbeafe; color: #1e3a8a; border-bottom-left-radius: 4px; }
   .msg.manus { align-self: flex-start; align-items: flex-start; }
   .msg.manus .bubble { background: #f3e8ff; color: #581c87; border-bottom-left-radius: 4px; }
+  .msg.claude { align-self: flex-start; align-items: flex-start; }
+  .msg.claude .bubble { background: #ffe8d6; color: #7c2d12; border-bottom-left-radius: 4px; }
   .msg.gpt { align-self: flex-start; align-items: flex-start; }
   .msg.gpt .bubble { background: #e6fffa; color: #134e4a; border-bottom-left-radius: 4px; }
   footer {
@@ -64,6 +66,7 @@
   .senders button.active[data-s="gemini"] { background: #2563eb; border-color: #2563eb; color: #fff; }
   .senders button.active[data-s="manus"] { background: #9333ea; border-color: #9333ea; color: #fff; }
   .senders button.active[data-s="gpt"] { background: #0d9488; border-color: #0d9488; color: #fff; }
+  .senders button.active[data-s="claude"] { background: #c2410c; border-color: #c2410c; color: #fff; }
   .senders button { font-size: 13px; padding: 8px 2px; }
   .composer { display: flex; gap: 8px; }
   .composer input {
@@ -87,7 +90,7 @@
 <body>
 <header>
   <h1>함께 쓰는 채팅</h1>
-  <span class="sub">태겸 · 뮤즈 · 말동무 · 말동무의 친구 · 재미나이 · 마누스 · GPT</span>
+  <span class="sub">태겸 · 뮤즈 · 말동무 · 말동무의 친구 · 재미나이 · 마누스 · GPT · 클로드</span>
   <span class="status"><span class="dot" id="dot"></span><span id="statusText">연결 중…</span></span>
 </header>
 <main id="log"><div id="empty">아직 메시지가 없어요. 첫 메시지를 보내보세요.</div></main>
@@ -100,6 +103,7 @@
     <button type="button" data-s="gemini">재미나이</button>
     <button type="button" data-s="manus">마누스</button>
     <button type="button" data-s="gpt">GPT</button>
+    <button type="button" data-s="claude">클로드</button>
   </div>
   <div class="composer">
     <input id="text" type="text" placeholder="메시지를 입력하세요…" autocomplete="off" enterkeyhint="send">
@@ -117,7 +121,8 @@
     friend:   { name: "말동무의 친구", cls: "friend" },
     gemini:   { name: "재미나이", cls: "gemini" },
     manus:    { name: "마누스", cls: "manus" },
-    gpt:      { name: "GPT", cls: "gpt" }
+    gpt:      { name: "GPT", cls: "gpt" },
+    claude:   { name: "클로드", cls: "claude" }
   };
   var log = document.getElementById("log");
   var emptyEl = document.getElementById("empty");
@@ -205,7 +210,7 @@
   }
 
   function updateReads() {
-    var order = ["taegyeom", "muse", "maldomu", "friend", "gemini", "manus", "gpt"];
+    var order = ["taegyeom", "muse", "maldomu", "friend", "gemini", "manus", "gpt", "claude"];
     Object.keys(readEls).forEach(function (k) {
       var ts = msgTs[k] || 0;
       var snd = msgSender[k];
