@@ -73209,7 +73209,7 @@ if (typeof module !== 'undefined' && module.exports) {
     setInterval(function () {
       if (!dirty) return;
       dirty = 0;
-      try { upgrade(); } catch (e) {}
+      try { refresh(); } catch (e) {}     /* 칭호가 바뀐 칩은 아이콘도 새로 */
       try { tidyPrev(); } catch (e) {}
     }, 450);
     console.log('[JW16T] 16-bit title plates ready');
