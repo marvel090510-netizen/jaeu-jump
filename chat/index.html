@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>셋이 쓰는 채팅 — 태겸 · 뮤즈 · 말동무 · 말동무의 친구</title>
+<!-- chat v1.1 (2026-11-20): 발신자 버튼 바·힌트 줄 제거, 사진 첨부(960px·JPEG), @멘션 자동완성 -->
 <style>
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { margin: 0; padding: 0; height: 100%; }
   body {
     font-family: -apple-system, "Segoe UI", "Noto Sans KR", sans-serif;
@@ -26,6 +28,7 @@
   #log {
     flex: 1; overflow-y: auto; padding: 16px 12px 8px;
     display: flex; flex-direction: column; gap: 10px;
+    -webkit-overflow-scrolling: touch;
   }
   #empty { text-align: center; color: #9ca3af; font-size: 14px; padding: 32px 16px; }
   .msg { display: flex; flex-direction: column; max-width: 78%; }
@@ -49,39 +52,82 @@
   .msg.gpt { align-self: flex-start; align-items: flex-start; }
   .msg.gpt .bubble { background: #e6fffa; color: #134e4a; border-bottom-left-radius: 4px; }
   footer {
+    position: relative;
     background: #fff; border-top: 1px solid #e5e7eb;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   }
-  .senders { display: flex; gap: 8px; margin-bottom: 8px; }
-  .senders button {
-    flex: 1; padding: 8px 0; border-radius: 999px; border: 1px solid #d1d5db;
-    background: #fff; font-size: 14px; cursor: pointer; color: #374151;
-  }
-  .senders button.active[data-s="taegyeom"] { background: #2563eb; border-color: #2563eb; color: #fff; }
-  .senders button.active[data-s="muse"] { background: #7c3aed; border-color: #7c3aed; color: #fff; }
-  .senders button.active[data-s="maldomu"] { background: #059669; border-color: #059669; color: #fff; }
-  .senders button.active[data-s="friend"] { background: #ea580c; border-color: #ea580c; color: #fff; }
-  .senders button.active[data-s="gemini"] { background: #2563eb; border-color: #2563eb; color: #fff; }
-  .senders button.active[data-s="manus"] { background: #9333ea; border-color: #9333ea; color: #fff; }
-  .senders button.active[data-s="gpt"] { background: #0d9488; border-color: #0d9488; color: #fff; }
-  .senders button { font-size: 13px; padding: 8px 2px; }
-  .composer { display: flex; gap: 8px; }
-  .composer input {
+  .composer { display: flex; gap: 8px; align-items: center; }
+  .composer #text {
     flex: 1; padding: 11px 14px; border-radius: 999px; border: 1px solid #d1d5db;
-    font-size: 15px; outline: none; min-width: 0;
+    font-size: 16px; outline: none; min-width: 0; background: #fff; color: #1a1a1a;
+    -webkit-appearance: none;
   }
-  .composer input:focus { border-color: #2563eb; }
-  .composer button {
-    padding: 0 18px; border-radius: 999px; border: none; background: #2563eb;
+  .composer #text:focus { border-color: #2563eb; }
+  .composer .icon-btn {
+    flex: 0 0 auto; width: 44px; height: 44px; padding: 0;
+    border-radius: 50%; border: 1px solid #d1d5db; background: #fff;
+    font-size: 20px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: #374151;
+  }
+  .composer .icon-btn:active { background: #f3f4f6; }
+  .composer .icon-btn.on { border-color: #2563eb; background: #eff6ff; }
+  .composer #send {
+    height: 44px; padding: 0 18px; border-radius: 999px; border: none; background: #2563eb;
     color: #fff; font-size: 15px; cursor: pointer; white-space: nowrap;
   }
-  .composer button:disabled { background: #9ca3af; cursor: default; }
-  .hint { font-size: 11px; color: #9ca3af; margin-top: 8px; text-align: center; word-break: break-all; }
+  .composer #send:disabled { background: #9ca3af; cursor: default; }
+  .preview { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .preview img {
+    width: 60px; height: 60px; object-fit: cover; display: block;
+    border-radius: 10px; border: 1px solid #e5e7eb; background: #f9fafb;
+  }
+  .preview .cap { font-size: 11px; color: #6b7280; flex: 1; min-width: 0; }
+  .preview #cancelImg {
+    flex: 0 0 auto; width: 26px; height: 26px; padding: 0; border-radius: 50%;
+    border: none; background: #e5e7eb; color: #374151; font-size: 16px; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .mention-menu {
+    position: absolute; left: 12px; right: 12px; bottom: calc(100% + 6px);
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.16);
+    padding: 4px; z-index: 30;
+    max-height: 46vh; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  .mention-menu .mi {
+    padding: 11px 12px; border-radius: 10px; font-size: 15px; color: #1f2937;
+    cursor: pointer; display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  }
+  .mention-menu .mi.sel { background: #eff6ff; color: #1d4ed8; }
+  .mention-menu .mi .hint2 { font-size: 11px; color: #9ca3af; flex: 0 0 auto; }
+  .mention-menu .none { padding: 12px; font-size: 13px; color: #9ca3af; text-align: center; }
   .bubble .mention { font-weight: 700; background: #fef08a; color: #713f12; padding: 0 3px; border-radius: 4px; }
   .msg .reads { font-size: 10px; color: #b0b4bb; margin: 3px 5px 0; letter-spacing: -0.2px; }
   .msg .reads.some { color: #4b5563; }
   .msg .meta b { cursor: pointer; }
-  .hint button { border: 1px solid #d1d5db; background: #f9fafb; border-radius: 999px; font-size: 11px; padding: 2px 8px; color: #374151; cursor: pointer; margin-right: 4px; }
+  .bubble.has-img { padding: 6px; }
+  .bubble .bubble-img {
+    max-width: 100%; border-radius: 10px; display: block; cursor: zoom-in;
+    background: #eef1f6; margin: 0;
+  }
+  .bubble .bubble-text { margin: 6px 6px 3px; }
+  .bubble.has-img .bubble-text:first-child { margin: 3px 6px 6px; }
+  #lightbox {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(8, 10, 16, 0.94); z-index: 200;
+    display: flex; align-items: center; justify-content: center; padding: 12px;
+  }
+  #lightbox img {
+    max-width: 100%; max-height: 100%; object-fit: contain;
+    border-radius: 8px; display: block;
+  }
+  #lightbox .lb-close {
+    position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 12px;
+    width: 40px; height: 40px; border-radius: 50%; border: none;
+    background: rgba(255, 255, 255, 0.16); color: #fff; font-size: 22px; line-height: 1;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
 </style>
 </head>
 <body>
@@ -92,20 +138,18 @@
 </header>
 <main id="log"><div id="empty">아직 메시지가 없어요. 첫 메시지를 보내보세요.</div></main>
 <footer>
-  <div class="senders" id="senders">
-    <button type="button" data-s="taegyeom">태겸 (나)</button>
-    <button type="button" data-s="muse">뮤즈</button>
-    <button type="button" data-s="maldomu">말동무</button>
-    <button type="button" data-s="friend">말동무의 친구</button>
-    <button type="button" data-s="gemini">재미나이</button>
-    <button type="button" data-s="manus">마누스</button>
-    <button type="button" data-s="gpt">GPT</button>
+  <div class="mention-menu" id="mentionMenu" role="listbox" hidden></div>
+  <div class="preview" id="preview" hidden>
+    <img id="previewImg" alt="첨부한 사진 미리보기">
+    <span class="cap">사진을 붙여서 보냅니다</span>
+    <button type="button" id="cancelImg" aria-label="첨부한 사진 취소">×</button>
   </div>
   <div class="composer">
+    <button type="button" class="icon-btn" id="photoBtn" aria-label="사진 첨부">📷</button>
+    <input type="file" id="file" accept="image/*" hidden>
     <input id="text" type="text" placeholder="메시지를 입력하세요…" autocomplete="off" enterkeyhint="send">
     <button id="send" type="button">전송</button>
   </div>
-  <div class="hint"><button type="button" id="allBtn">@모두</button> 이름을 누르면 입력창에 들어가요 · 2초마다 자동 갱신</div>
 </footer>
 <script>
 (function () {
@@ -125,19 +169,25 @@
   var statusText = document.getElementById("statusText");
   var input = document.getElementById("text");
   var sendBtn = document.getElementById("send");
-  var sender = localStorage.getItem("chat_sender") || "taegyeom";
-  if (!SENDERS[sender]) sender = "taegyeom";
+  var photoBtn = document.getElementById("photoBtn");
+  var fileInput = document.getElementById("file");
+  var previewEl = document.getElementById("preview");
+  var previewImg = document.getElementById("previewImg");
+  var cancelImgBtn = document.getElementById("cancelImg");
+  var menu = document.getElementById("mentionMenu");
+
+  // 발신자는 기본 태겸, ?as=muse 처럼 쿼리로 지정된 경우에만 바뀐다.
+  var asParam = null;
+  try { asParam = new URLSearchParams(location.search).get("as"); } catch (e) { asParam = null; }
+  var sender = (asParam && SENDERS[asParam]) ? asParam : "taegyeom";
+
   var seen = {};
   var reads = {};
   var msgTs = {};
   var msgSender = {};
   var readEls = {};
   var lastReadSent = 0;
-  document.getElementById("allBtn").addEventListener("click", function () {
-    if (input.value && !/\s$/.test(input.value)) input.value += " ";
-    input.value += "@모두 ";
-    input.focus();
-  });
+  var pendingImage = null;
 
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -157,22 +207,35 @@
   function nearBottom() {
     return log.scrollHeight - log.scrollTop - log.clientHeight < 120;
   }
-  function markSender() {
-    var btns = document.querySelectorAll("#senders button");
-    btns.forEach(function (b) {
-      b.classList.toggle("active", b.getAttribute("data-s") === sender);
-    });
-  }
-  document.getElementById("senders").addEventListener("click", function (e) {
-    var b = e.target.closest("button[data-s]");
-    if (!b) return;
-    sender = b.getAttribute("data-s");
-    localStorage.setItem("chat_sender", sender);
-    markSender();
-    input.focus();
-  });
-  markSender();
 
+  /* ---------- 라이트박스 ---------- */
+  function openLightbox(src) {
+    if (document.getElementById("lightbox")) return;
+    var lb = document.createElement("div");
+    lb.id = "lightbox";
+    var im = document.createElement("img");
+    im.src = src;
+    im.alt = "사진 크게 보기";
+    var close = document.createElement("button");
+    close.type = "button";
+    close.className = "lb-close";
+    close.setAttribute("aria-label", "닫기");
+    close.textContent = "×";
+    lb.appendChild(im);
+    lb.appendChild(close);
+    function shut() {
+      lb.remove();
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", onKey);
+    }
+    function onKey(ev) { if (ev.key === "Escape") shut(); }
+    lb.addEventListener("click", shut);
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(lb);
+    document.body.style.overflow = "hidden";
+  }
+
+  /* ---------- 메시지 렌더 ---------- */
   function addMessage(key, m) {
     if (seen[key]) return;
     seen[key] = true;
@@ -188,10 +251,26 @@
       if (input.value && !/\s$/.test(input.value)) input.value += " ";
       input.value += "@" + s.name + " ";
       input.focus();
+      closeMenu();
     });
     var bubble = document.createElement("div");
     bubble.className = "bubble";
-    bubble.innerHTML = withMentions(m.text || "");
+    var imgSrc = (typeof m.image === "string" && /^data:image\//.test(m.image)) ? m.image : null;
+    if (imgSrc) bubble.className += " has-img";
+    if (m.text) {
+      var tEl = document.createElement("div");
+      tEl.className = "bubble-text";
+      tEl.innerHTML = withMentions(m.text);
+      bubble.appendChild(tEl);
+    }
+    if (imgSrc) {
+      var im = document.createElement("img");
+      im.className = "bubble-img";
+      im.src = imgSrc;
+      im.alt = "사진";
+      im.addEventListener("click", function () { openLightbox(imgSrc); });
+      bubble.appendChild(im);
+    }
     var readEl = document.createElement("div");
     readEl.className = "reads";
     readEl.textContent = "안 읽음";
@@ -272,23 +351,284 @@
   poll();
   setInterval(poll, 2000);
 
+  /* ---------- 사진 첨부 ---------- */
+  var MAX_SIDE = 960;
+  var Q_MAIN = 0.72;
+  var Q_LOW = 0.55;
+  var LIMIT = 350 * 1024;
+
+  function dataUrlBytes(u) {
+    var i = u.indexOf(",");
+    if (i < 0) return 0;
+    var b = u.length - i - 1;
+    var pad = 0;
+    if (u.charAt(u.length - 1) === "=") pad = (u.charAt(u.length - 2) === "=") ? 2 : 1;
+    return Math.floor(b * 3 / 4) - pad;
+  }
+
+  function fileToDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      var fr = new FileReader();
+      fr.onload = function () { resolve(String(fr.result)); };
+      fr.onerror = function () { reject(new Error("read failed")); };
+      fr.readAsDataURL(file);
+    });
+  }
+
+  function loadImg(src) {
+    return new Promise(function (resolve, reject) {
+      var im = new Image();
+      im.onload = function () { resolve(im); };
+      im.onerror = function () { reject(new Error("decode failed")); };
+      im.src = src;
+    });
+  }
+
+  function drawScaled(im, maxSide) {
+    var w = im.naturalWidth || im.width;
+    var h = im.naturalHeight || im.height;
+    if (!w || !h) throw new Error("empty image");
+    var scale = Math.min(1, maxSide / Math.max(w, h));
+    var cw = Math.max(1, Math.round(w * scale));
+    var ch = Math.max(1, Math.round(h * scale));
+    var cv = document.createElement("canvas");
+    cv.width = cw;
+    cv.height = ch;
+    var ctx = cv.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, cw, ch);
+    ctx.drawImage(im, 0, 0, cw, ch);
+    return cv;
+  }
+
+  function toJpeg(cv, quality) {
+    var u = cv.toDataURL("image/jpeg", quality);
+    if (dataUrlBytes(u) > LIMIT) {
+      // 일부 브라우저는 지정 품질을 무시하므로 한 단계 더 줄여 본다.
+      u = cv.toDataURL("image/jpeg", Math.min(quality, 0.4));
+    }
+    return u;
+  }
+
+  function compressImage(file) {
+    return fileToDataUrl(file)
+      .then(loadImg)
+      .then(function (im) {
+        var cv = drawScaled(im, MAX_SIDE);
+        var u = cv.toDataURL("image/jpeg", Q_MAIN);
+        if (dataUrlBytes(u) > LIMIT) {
+          u = cv.toDataURL("image/jpeg", Q_LOW);
+          if (dataUrlBytes(u) > LIMIT) u = toJpeg(drawScaled(im, 720), Q_LOW);
+        }
+        return u;
+      });
+  }
+
+  function setPendingImage(u) {
+    pendingImage = u || null;
+    if (pendingImage) {
+      previewImg.src = pendingImage;
+      previewEl.hidden = false;
+      photoBtn.classList.add("on");
+    } else {
+      previewImg.removeAttribute("src");
+      previewEl.hidden = true;
+      photoBtn.classList.remove("on");
+    }
+  }
+
+  photoBtn.addEventListener("click", function () {
+    closeMenu();
+    fileInput.click();
+  });
+
+  fileInput.addEventListener("change", function () {
+    var f = fileInput.files && fileInput.files[0];
+    fileInput.value = "";
+    if (!f) return;
+    photoBtn.disabled = true;
+    compressImage(f)
+      .then(function (u) {
+        setPendingImage(u);
+        log.scrollTop = log.scrollHeight;
+      })
+      .catch(function () {
+        alert("이 사진은 브라우저에서 열 수 없어요. 다른 사진으로 시도해 주세요.");
+      })
+      .finally(function () { photoBtn.disabled = false; });
+  });
+
+  cancelImgBtn.addEventListener("click", function () {
+    setPendingImage(null);
+  });
+
+  /* ---------- @멘션 자동완성 ---------- */
+  var MENTION_CANDS = ["모두", "뮤즈", "말동무", "말동무의 친구", "재미나이", "마누스", "GPT", "태겸"];
+  var CHO = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
+  function initials(str) {
+    var out = "";
+    for (var i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i) - 0xAC00;
+      if (c >= 0 && c <= 11171) out += CHO[Math.floor(c / 588)];
+      else out += str.charAt(i);
+    }
+    return out;
+  }
+  function matchList(q) {
+    var lq = q.toLowerCase();
+    if (!lq) return MENTION_CANDS.slice();
+    return MENTION_CANDS.filter(function (n) {
+      if (n.toLowerCase().indexOf(lq) >= 0) return true;
+      // 한글 초성으로 친 경우: 이름의 초성이 입력한 초성으로 시작할 때
+      return initials(n).toLowerCase().indexOf(lq) === 0;
+    });
+  }
+
+  var menuOpen = false;
+  var menuSel = 0;
+  var menuNames = [];
+
+  function currentMention() {
+    var caret = input.selectionStart;
+    if (caret === null || caret === undefined) return null;
+    var before = input.value.slice(0, caret);
+    var m = /(?:^|\s)@([^\s]*)$/.exec(before);
+    if (!m) return null;
+    return { q: m[1] || "", at: caret - (m[1] || "").length - 1, caret: caret };
+  }
+
+  function highlight() {
+    for (var i = 0; i < menuNames.length; i++) {
+      var el = menu.querySelector('[data-i="' + i + '"]');
+      if (el) el.classList.toggle("sel", i === menuSel);
+    }
+    var cur = menu.querySelector('[data-i="' + menuSel + '"]');
+    if (cur && cur.scrollIntoView) {
+      try { cur.scrollIntoView({ block: "nearest" }); } catch (e) { cur.scrollIntoView(false); }
+    }
+  }
+
+  function renderMenu(names) {
+    menuNames = names;
+    menu.innerHTML = "";
+    if (!names.length) {
+      var nd = document.createElement("div");
+      nd.className = "none";
+      nd.textContent = "해당하는 이름이 없어요";
+      menu.appendChild(nd);
+    }
+    names.forEach(function (name, i) {
+      var d = document.createElement("div");
+      d.className = "mi" + (i === menuSel ? " sel" : "");
+      d.setAttribute("role", "option");
+      d.dataset.i = String(i);
+      var nm = document.createElement("span");
+      nm.textContent = "@" + name;
+      d.appendChild(nm);
+      d.addEventListener("mousedown", function (e) { e.preventDefault(); });
+      d.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        pick(i);
+      });
+      menu.appendChild(d);
+    });
+    menu.hidden = false;
+    menuOpen = true;
+    highlight();
+  }
+
+  function closeMenu() {
+    if (!menuOpen) return;
+    menuOpen = false;
+    menu.hidden = true;
+    menu.innerHTML = "";
+    menuNames = [];
+    menuSel = 0;
+  }
+
+  function updateMenu() {
+    var info = currentMention();
+    if (!info) { closeMenu(); return; }
+    var list = matchList(info.q);
+    menuSel = 0;
+    renderMenu(list);
+  }
+
+  function pick(i) {
+    var info = currentMention();
+    if (!info) { closeMenu(); return; }
+    var name = menuNames[i];
+    if (!name) return;
+    var v = input.value;
+    var before = v.slice(0, info.at);
+    var after = v.slice(info.caret);
+    var insert = "@" + name + " ";
+    input.value = before + insert + after;
+    var pos = before.length + insert.length;
+    try { input.setSelectionRange(pos, pos); } catch (e) {}
+    closeMenu();
+    input.focus();
+  }
+
+  input.addEventListener("input", updateMenu);
+  input.addEventListener("click", updateMenu);
+  input.addEventListener("focus", updateMenu);
+  document.addEventListener("pointerdown", function (e) {
+    if (!menuOpen) return;
+    if (menu.contains(e.target) || e.target === input) return;
+    closeMenu();
+  }, true);
+
+  input.addEventListener("keydown", function (e) {
+    if (menuOpen) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        var n = menuNames.length;
+        if (n) {
+          menuSel = (menuSel + (e.key === "ArrowDown" ? 1 : n - 1)) % n;
+          highlight();
+        }
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        if (menuNames.length) pick(menuSel);
+        else closeMenu();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeMenu();
+        return;
+      }
+    }
+    if (e.key === "Enter") send();
+  });
+
+  /* ---------- 전송 ---------- */
   function send() {
     var text = input.value.trim();
-    if (!text) return;
+    var img = pendingImage;
+    if (!text && !img) return;
     sendBtn.disabled = true;
+    var payload = {
+      sender: sender,
+      name: SENDERS[sender].name,
+      text: text,
+      ts: { ".sv": "timestamp" }
+    };
+    if (img) payload.image = img;
     fetch(DB + "/messages.json", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sender: sender,
-        name: SENDERS[sender].name,
-        text: text,
-        ts: { ".sv": "timestamp" }
-      })
+      body: JSON.stringify(payload)
     })
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(function () {
         input.value = "";
+        setPendingImage(null);
+        closeMenu();
         input.focus();
         poll();
       })
@@ -298,9 +638,6 @@
       .finally(function () { sendBtn.disabled = false; });
   }
   sendBtn.addEventListener("click", send);
-  input.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") send();
-  });
 })();
 </script>
 </body>
