@@ -340,6 +340,98 @@ html body #titleScreen {
 </style>
 </head>
 <body class="relative w-full h-full overflow-hidden select-none">
+  <!-- muse-v5-13-perf: 같은 값을 다시 쓰는 DOM 변이를 무효화하는 최소 가드.
+       인게임 실측에서 초당 1,200회가 넘던 변이의 공통 원인이 '값이 그대로인데 매 프레임 다시 쓰기'였다.
+       (textContent·classList·setAttribute·appendChild·img.src 를 값 비교 후에만 건드린다. 화면 결과는 동일) -->
+  <script id="jw53perfguard">
+  (function (w) {
+    'use strict';
+    if (w.__jwPerfGuard) return; w.__jwPerfGuard = 1;
+    var N = w.Node, E = w.Element, T = w.DOMTokenList, IM = w.HTMLImageElement;
+    var def = function (proto, name, make) {
+      try {
+        var dsc = Object.getOwnPropertyDescriptor(proto, name);
+        if (dsc && dsc.configurable) Object.defineProperty(proto, name, make(dsc));
+      } catch (e) {}
+    };
+    /* 1) textContent: 요소 자식이 없고 문자열이 같으면 텍스트 노드를 갈아끼우지 않는다 */
+    if (N) def(N.prototype, 'textContent', function (dsc) {
+      var g = dsc.get, s = dsc.set;
+      return { configurable: true, enumerable: dsc.enumerable, get: g, set: function (v) {
+        try { if (!this.firstElementChild && g.call(this) === String(v)) return; } catch (e) {}
+        s.call(this, v);
+      } };
+    });
+    /* 2) classList: 실제로 바뀔 때만 건드린다 (변화 없는 add/remove 도 변이로 기록되는 브라우저가 있다) */
+    if (T) {
+      var add0 = T.prototype.add, rem0 = T.prototype.remove, tog0 = T.prototype.toggle;
+      T.prototype.add = function () {
+        var ch = false;
+        for (var i = 0; i < arguments.length; i++) { if (!this.contains(arguments[i])) { ch = true; break; } }
+        if (!ch) return;
+        add0.apply(this, arguments);
+      };
+      T.prototype.remove = function () {
+        var ch = false;
+        for (var i = 0; i < arguments.length; i++) { if (this.contains(arguments[i])) { ch = true; break; } }
+        if (!ch) return;
+        rem0.apply(this, arguments);
+      };
+      T.prototype.toggle = function (t, force) {
+        if (force !== undefined && this.contains(t) === !!force) return !!force;
+        return tog0.apply(this, arguments);
+      };
+    }
+    /* 3) setAttribute·className: 값이 같으면 속성을 다시 쓰지 않는다 */
+    if (E) {
+      var sa = E.prototype.setAttribute;
+      E.prototype.setAttribute = function (n, v) {
+        try { if (this.getAttribute(n) === String(v)) return; } catch (e) {}
+        sa.call(this, n, v);
+      };
+      var cn = Object.getOwnPropertyDescriptor(E.prototype, 'className');
+      if (cn && cn.configurable && cn.set) Object.defineProperty(E.prototype, 'className', {
+        configurable: true, enumerable: cn.enumerable, get: cn.get, set: function (v) {
+          try { if (cn.get.call(this) === String(v)) return; } catch (e) {}
+          cn.set.call(this, v);
+        }
+      });
+    }
+    /* 4) appendChild·insertBefore: 이미 그 자리에 있는 노드는 다시 옮기지 않는다 */
+    if (N) {
+      var ac = N.prototype.appendChild, ib = N.prototype.insertBefore;
+      N.prototype.appendChild = function (c) {
+        try { if (c && c.parentNode === this && this.lastChild === c) return c; } catch (e) {}
+        return ac.apply(this, arguments);
+      };
+      N.prototype.insertBefore = function (c, ref) {
+        try { if (c && c.parentNode === this && c.nextSibling === (ref || null)) return c; } catch (e) {}
+        return ib.apply(this, arguments);
+      };
+    }
+    /* 5) img.src: 같은 주소면 다시 대입하지 않는다 (데이터 URL 은 문자열 비교가 정확하다) */
+    if (IM) def(IM.prototype, 'src', function (dsc) {
+      var g = dsc.get, s = dsc.set;
+      return { configurable: true, enumerable: dsc.enumerable, get: g, set: function (v) {
+        try { if (g.call(this) === String(v)) return; } catch (e) {}
+        s.call(this, v);
+      } };
+    });
+  })(window);
+  </script>
+  <!-- muse-v5-13-perf: 인게임 캔버스 위에 뜨는 HUD·토스트의 GPU 블러(backdrop-filter) 제거.
+       iOS Safari 는 캔버스 위 불투명 레이어의 블러 합성에 비용이 크다. (모달·타이틀은 그대로 유지) -->
+  <style id="jw53perfcss">
+  html body #mpToasts .mp-toast,
+  html body #v43Oxy, html body #v43ItemChip, html body #v43Heat, html body #v43ModeChip,
+  html body #v44HudLine, html body #v44Chip, html body #v43BestChip,
+  html body #v49Hud, html body #v97Tag, html body #v97Rank {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  /* 블러를 뺀 만큼 배경을 살짝 진하게 해 가독성 유지 */
+  html body #mpToasts .mp-toast { background: rgba(9,13,26,.9) !important; }
+  </style>
   <!-- muse-v5-9: 진입 스플래시 베일 — Tailwind CDN·폰트가 늦게 오면 스타일 안 입은 옛 화면이 ~1초 보이는 것을 가린다.
        인라인 스타일만 써서 파싱 즉시 보이고, load 후 또는 3초 뒤에 스스로 사라진다. -->
   <div id="v59Veil" style="position:fixed;inset:0;z-index:99999;background:#06040d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;">
@@ -2493,35 +2585,39 @@ html body #titleScreen {
         return (r && r.plat) ? r.plat : 1;
       }
 
+      /* muse-v5-13-perf: HUD 는 매 프레임 불리므로 '값이 다를 때만' DOM 에 쓴다 (같은 값 재기록이 초당 수백 회 변이를 만들던 원인) */
+      function hudSetText(el, v) { if (!el) return; v = String(v); if (el.textContent !== v) el.textContent = v; }
+      function hudSetStyle(el, prop, v) { if (!el) return; if (el.style[prop] !== v) el.style[prop] = v; }
+
       function syncHud(curMeters = 0) {
         const z = getZoneByY(player.y);
-        document.getElementById('hudZoneName').textContent = (window.JWG && JWG.zoneName) ? JWG.zoneName(player.y, z) : z.name;
-        document.getElementById('hudCurHeight').textContent = curMeters.toFixed(1) + 'm';
-        document.getElementById('hudBestHeight').textContent = (recordMeters()).toFixed(1) + 'm';
+        hudSetText(document.getElementById('hudZoneName'), (window.JWG && JWG.zoneName) ? JWG.zoneName(player.y, z) : z.name);
+        hudSetText(document.getElementById('hudCurHeight'), curMeters.toFixed(1) + 'm');
+        hudSetText(document.getElementById('hudBestHeight'), (recordMeters()).toFixed(1) + 'm');
 
         const curIdx = Math.max(1, (player.plat && player.plat.index > 0) ? player.plat.index : Math.max(1, player.runBestPlat || 1));
         /* v4.8.5: 무한 타워는 전체 층수가 없으므로 '094 / 088' 대신 '094층 · ∞' */
         const __endless = !!(window.JW43 && JW43.G && JW43.G.curMode && JW43.G.curMode() === 'endless');
         const sStr = __endless ? (String(curIdx).padStart(3, '0') + ' / ∞') : (String(curIdx).padStart(3, '0') + ' / ' + String((window.JW43 && JW43.mapTotal) ? JW43.mapTotal() : 88).padStart(3, '0'));
-        document.getElementById('hudStageCounter').textContent = sStr;
-        document.getElementById('hudStageCounterMobile').textContent = '★ ' + sStr;
-        document.getElementById('hudTimer').textContent = fmtTime(game.time);
+        hudSetText(document.getElementById('hudStageCounter'), sStr);
+        hudSetText(document.getElementById('hudStageCounterMobile'), '★ ' + sStr);
+        hudSetText(document.getElementById('hudTimer'), fmtTime(game.time));
 
-        document.getElementById('hudShieldSlot').textContent = 'x' + player.shields;
-        document.getElementById('hudShieldMobile').textContent = '🛡️ 보호막 x' + player.shields;
+        hudSetText(document.getElementById('hudShieldSlot'), 'x' + player.shields);
+        hudSetText(document.getElementById('hudShieldMobile'), '🛡️ 보호막 x' + player.shields);
 
         const pct = Math.round(player.charge * 100);
         const bar = document.getElementById('hudChargeBar');
         const lbl = document.getElementById('hudChargeLabel');
-        bar.style.width = pct + '%';
+        hudSetStyle(bar, 'width', pct + '%');
         if (player.charging) {
-          lbl.textContent = `충전 중... ${pct}%`;
-          bar.style.backgroundColor = pct > 80 ? '#fbbf24' : '#38bdf8';
+          hudSetText(lbl, `충전 중... ${pct}%`);
+          hudSetStyle(bar, 'backgroundColor', pct > 80 ? '#fbbf24' : '#38bdf8');
         } else if (!player.onGround) {
-          lbl.textContent = '공중 도약 중!';
+          hudSetText(lbl, '공중 도약 중!');
         } else {
-          lbl.textContent = '충전 대기 (0%)';
-          bar.style.backgroundColor = '#38bdf8';
+          hudSetText(lbl, '충전 대기 (0%)');
+          hudSetStyle(bar, 'backgroundColor', '#38bdf8');
         }
         if (window.JWG && JWG.afterHud) JWG.afterHud();
       }
@@ -21693,15 +21789,18 @@ extends CanvasLayer
     const core = $('hudHearts');
     if (core) {
       const imgs = core.querySelectorAll('img');
-      if (!R.heartsMax) {
-        imgs.forEach((im, i) => { im.style.display = ''; im.style.opacity = '0.9'; });
-      } else {
-        imgs.forEach((im, i) => {
-          const on = i < R.heartsMax;
-          im.style.display = on ? '' : 'none';
-          im.style.opacity = (on && i >= R.hearts) ? '0.22' : '1';
-        });
-      }
+      /* v5.13-perf: 하트 표시는 값이 바뀔 때만 쓴다.
+         다른 모듈이 'display:none !important'로 숨긴 상태를 매 프레임 되살리며 다투던 것을 막는다. */
+      imgs.forEach((im, i) => {
+        const forcedHidden = im.style.getPropertyPriority('display') === 'important' &&
+          im.style.getPropertyValue('display') === 'none';
+        if (forcedHidden) return;
+        const on = !R.heartsMax || i < R.heartsMax;
+        const dis = on ? '' : 'none';
+        if (im.style.display !== dis) im.style.display = dis;
+        const op = (!R.heartsMax) ? '0.9' : ((on && i >= R.hearts) ? '0.22' : '1');
+        if (im.style.opacity !== op) im.style.opacity = op;
+      });
     }
     const el = $('v43Hearts');
     if (el) el.classList.add('hidden');
@@ -23025,13 +23124,16 @@ extends CanvasLayer
     const rec = RC.cur || { m: 0 };
     const hb = $('hudBestHeight');
     if (hb) {
-      hb.textContent = (rec.m || 0).toFixed(1) + 'm';
-      hb.title = '이 맵·모드 최고 기록';
+      /* v5.13-perf: 문자열·속성이 같으면 다시 쓰지 않는다 */
+      const t = (rec.m || 0).toFixed(1) + 'm';
+      if (hb.textContent !== t) hb.textContent = t;
+      if (hb.title !== '이 맵·모드 최고 기록') hb.title = '이 맵·모드 최고 기록';
     }
     const over = $('v43Overall');
     if (over) {
       const s = (W.stats && W.stats.bestHeight) || 0;
-      over.textContent = '전체 ' + s.toFixed(1) + 'm';
+      const t2 = '전체 ' + s.toFixed(1) + 'm';
+      if (over.textContent !== t2) over.textContent = t2;
     }
   }
 
@@ -24202,18 +24304,20 @@ extends CanvasLayer
     if (lbl && Q.gaugePct && g.inPlay) {
       const pct = Math.round((pl.charge || 0) * 100);
       if (pl.charging) {
-        lbl.textContent = pct + '%' + (pct >= 100 ? ' MAX!' : '');
-        lbl.style.color = pct >= 100 ? '#fde047' : '#fff';
+        const txt = pct + '%' + (pct >= 100 ? ' MAX!' : '');
+        if (lbl.textContent !== txt) lbl.textContent = txt;
+        const col = pct >= 100 ? '#fde047' : '#fff';
+        if (lbl.style.color !== col) lbl.style.color = col;
         const bar = $('hudChargeBar');
-        if (bar && pct >= 100) bar.style.backgroundColor = '#fde047';
-        else if (bar) bar.style.backgroundColor = '#38bdf8';
+        const bg = pct >= 100 ? '#fde047' : '#38bdf8';
+        if (bar && bar.style.backgroundColor !== bg) bar.style.backgroundColor = bg;
       }
     }
     /* BEST · 페이스 */
     const chip = $('v43BestChip');
     if (chip) {
       const rec = V.recNow ? V.recNow() : (V.recOf ? V.recOf() : null);
-      if (!rec || !g.inPlay) chip.classList.add('hidden');
+      if (!rec || !g.inPlay) { if (!chip.classList.contains('hidden')) chip.classList.add('hidden'); }
       else {
         chip.classList.remove('hidden');
         let s = '';
@@ -24230,7 +24334,9 @@ extends CanvasLayer
           const eta = g.time / prog - g.time;
           s += (s ? ' · ' : '') + '완등까지 ~' + Math.round(eta) + '초';
         }
-        chip.textContent = s || '첫 기록 도전 중';
+        /* v5.13-perf: 문구가 그대로면 텍스트 노드를 갈아끼우지 않는다 */
+        const out = s || '첫 기록 도전 중';
+        if (chip.textContent !== out) chip.textContent = out;
       }
     }
     if (ST.origT > 0) ST.origT -= 0.016;
@@ -31456,7 +31562,8 @@ extends CanvasLayer
     if (!Q.presetsTitle) { row.classList.add('hidden'); return; }
     row.classList.remove('hidden');
     const ps = presets();
-    row.innerHTML = '<div class="hd">⭐ 꿀조합 프리셋 · 누르면 바로 출발</div><div class="row">' +
+    /* v5.13-perf: 내용이 같으면 innerHTML 을 다시 쓰지 않는다 (매 프레임 전면 교체 + 리스너 재등록 방지) */
+    const html = '<div class="hd">⭐ 꿀조합 프리셋 · 누르면 바로 출발</div><div class="row">' +
       [0, 1, 2].map((i) => {
         const d = ps[i];
         const map = d && MP() && MP().byId(d.map);
@@ -31467,6 +31574,9 @@ extends CanvasLayer
           '<i>' + (d ? ((mode && mode.emoji) || '') + ' ' + ((mode && mode.name) || d.mode) : '지금 설정 저장') + '</i></button>' +
           '<button type="button" class="sv" data-psave="' + i + '" title="지금 설정 저장">💾</button></div>';
       }).join('') + '</div>';
+    if (row.__v44html === html) return;
+    row.__v44html = html;
+    row.innerHTML = html;
     row.querySelectorAll('[data-psave]').forEach((b) => b.addEventListener('click', () => {
       const i = Number(b.getAttribute('data-psave'));
       if (V.savePresetSlot) V.savePresetSlot(i);
@@ -31833,7 +31943,9 @@ extends CanvasLayer
     const t = performance.now();
     if (t - QS.lastPracticeSave < 1500) return;
     QS.lastPracticeSave = t;
-    QS.practice[practiceKey()] = p.plat.index;
+    const key = practiceKey();
+    if (QS.practice[key] === p.plat.index) return;   /* v5.13-perf: 층이 그대로면 저장하지 않는다 */
+    QS.practice[key] = p.plat.index;
     V.lsSet('jw44_practice_v1', QS.practice);
   }
   G.resumePractice = function () {
@@ -31916,7 +32028,7 @@ extends CanvasLayer
       if (fresh) QS.seen[ftag] = { at: now, nick: a.nick };
       else if (!QS.seen[ftag]) QS.seen[ftag] = { at: a.ts || now, nick: a.nick };
     });
-    if (now % 5 < 1) V.lsSet('jw44_seen_v1', QS.seen);
+    if (now - (QS.seenSaveT || 0) > 5000) { QS.seenSaveT = now; V.lsSet('jw44_seen_v1', QS.seen); }
   }
   function renderFriendPanel() {
     const box = $('v44FriendBody');
@@ -32101,20 +32213,42 @@ extends CanvasLayer
   /* ================================================================
      프레임
      ================================================================ */
+  /* v5.13-perf: 타이틀·로비·결과창용 DOM 패치는 매 프레임 돌릴 이유가 없다.
+     (보이지 않는 타이틀 화면의 innerHTML 전면 교체·리스너 재등록이 인게임에서도 매 프레임 돌아
+      초당 수십 회 변이를 만들던 주범 → 0.6초에 한 번, 화면 상태가 바뀔 때는 즉시) */
+  let q44SlowT = 0, q44WasPlay = null;
+  function q44InPlay() {
+    try { const g = J() && J().game; return !!(g && g.inPlay); } catch (e) { return false; }
+  }
+  function q44SlowPatch() {
+    const nowPlay = q44InPlay();
+    const changed = q44WasPlay !== nowPlay;
+    q44WasPlay = nowPlay;
+    const t = performance.now();
+    if (!changed && t - q44SlowT < 600) return;
+    q44SlowT = t;
+    try {
+      if (!nowPlay) {
+        const ts = $('titleScreen');
+        /* 타이틀이 보일 때만 타이틀용 패치를 한다 */
+        if (!ts || !ts.classList.contains('hidden')) injectTitlePresets();
+        injectSearch();
+        injectQuick4();
+        ipadFit();
+      }
+      addRetryButtons();
+      installConfirm();
+      injectCopyBtn();
+    } catch (e) { console.warn('v44 slow patch', e); }
+  }
   G.q44Tick = function (dt) {
     pingTick();
     syncPlayButtons();
     trackRoom();
     savePracticeFloor();
-    addRetryButtons();
-    installConfirm();
-    injectCopyBtn();
-    injectSearch();
-    injectTitlePresets();
-    injectQuick4();
     if (Q.practiceSave) renderPracticeNote();
     friendTick();
-    ipadFit();
+    q44SlowPatch();
   };
   let pnoteT = 0;
   function renderPracticeNote() {
@@ -43246,7 +43380,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v5.12 · 45 MAPS';
+      sp[1].textContent = '★ v5.13 · 45 MAPS';
     }
   }
 
@@ -73975,11 +74109,22 @@ if (typeof module !== 'undefined' && module.exports) {
     /* 닉네임 · 칭호 · 한마디를 배너 안으로 (중복 제거) */
     var nick = onlyOne('v43TPNick'), title = onlyOne('v43TPTitle'), stt = onlyOne('v43TPStatus');
     var nmrow = wrap.querySelector('.nmrow'), stl = wrap.querySelector('.stline');
-    if (nick && nmrow) { if (nick.parentElement !== nmrow) nmrow.textContent = ''; nmrow.appendChild(nick); }
-    if (title && nmrow) nmrow.appendChild(title);
-    if (stt && stl) { if (stt.parentElement !== stl) stl.textContent = ''; stl.appendChild(stt); }
-    /* 오늘의 한마디가 없으면 줄 숨김 */
-    if (stl && !stl.textContent.trim()) stl.style.setProperty('display', 'none', 'important');
+    /* v5.13-perf: 이미 제자리에 있는 노드는 다시 appendChild 하지 않는다.
+       (매 프레임 동일 노드를 다시 옮기면서 .nmrow 228회/초·.stline 114회/초 변이를 만들었다) */
+    if (nick && nmrow && nick.parentElement !== nmrow) { nmrow.textContent = ''; nmrow.appendChild(nick); }
+    if (title && nmrow && (title.parentElement !== nmrow || title.previousElementSibling !== nick)) {
+      nmrow.appendChild(title);
+    }
+    if (stt && stl && stt.parentElement !== stl) { stl.textContent = ''; stl.appendChild(stt); }
+    /* 오늘의 한마디가 없으면 줄 숨김 (값이 이미 맞으면 건드리지 않는다) */
+    if (stl) {
+      var emptySt = !stl.textContent.trim();
+      var wantDis = emptySt ? 'none' : '';
+      if ((stl.style.getPropertyValue('display') || '') !== wantDis) {
+        if (emptySt) stl.style.setProperty('display', 'none', 'important');
+        else stl.style.removeProperty('display');
+      }
+    }
   }
 
   /* ================================================================ ⑦ 일시정지 개편 */
@@ -74091,9 +74236,19 @@ if (typeof module !== 'undefined' && module.exports) {
        - 인게임: 머리 위 태그만 60fps, 순위 카드는 5fps
        - 그 외: 전체 틱 8fps */
     var playing = function () { try { var g = root.__jwg && root.__jwg.game; return !!(g && g.inPlay); } catch (e) { return false; } };
+    var pbT = 0;
     setInterval(function () {
       try { if (playing()) tagFrame(); } catch (e) {}
-      try { profileBanner(); } catch (e) {}
+      /* v5.13-perf: 타이틀 프로필 배너는 인게임에서 쓰지 않는다. 타이틀이 보일 때만 0.5초에 한 번만.
+         (전에는 16ms 마다 돌면서 .nmrow/.stline 을 매번 다시 붙였다) */
+      var t = Date.now();
+      if (t - pbT < 500) return;
+      pbT = t;
+      try {
+        var ts = $('titleScreen');
+        if (ts && ts.classList.contains('hidden')) return;
+        profileBanner();
+      } catch (e) {}
     }, 16);
     setInterval(function () {
       try {
