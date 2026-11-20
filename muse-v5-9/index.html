@@ -5012,7 +5012,7 @@ extends CanvasLayer
     { id: 'timeattack', name: '2분 타임어택', emoji: '⏱️', desc: '2분 안에 가장 높이 오른 기록으로 종료', tag: '스피드' },
     { id: 'lava', name: '용암 차오르기', emoji: '🌋', desc: '바닥부터 차오르는 용암에 닿으면 탈락', tag: '서바이벌' },
     { id: 'zombie', name: 'AI 좀비 추격', emoji: '🧟', desc: 'AI 좀비가 발판을 밟고 쫓아옵니다 · 닿으면 탈락', tag: '추격' },
-    { id: 'relay', name: '2인 릴레이', emoji: '🤝', desc: '44층에서 바통 터치 후 2번 주자가 88층까지', tag: '협동' }
+    { id: 'relay', name: '2인 릴레이', emoji: '🤝', desc: '중간층에서 바통 터치 후 2번 주자가 정상까지', tag: '협동' }
   ];
   const modeById = (id) => MODES.find((m) => m.id === id) || MODES[0];
 
@@ -5872,7 +5872,7 @@ extends CanvasLayer
       const pl = (root.__jwg && root.__jwg.player) || null;
       extra = (zb && pl) ? ('🧟 ' + Math.max(0, Math.abs(pl.y - zb.y) / 13.4).toFixed(0) + 'm 아래') : '🧟 추격 중';
     }
-    else if (solo.mode === 'relay') extra = solo.relayLeg === 1 ? '🤝 1번 주자 · 44층에서 교대' : '🤝 2번 주자';
+    else if (solo.mode === 'relay') extra = solo.relayLeg === 1 ? '🤝 1번 주자 · ' + (root.JW43 && root.JW43.handFloor ? root.JW43.handFloor() : 44) + '층에서 교대' : '🤝 2번 주자';
     else if (solo.mode === 'classic') extra = '🏛️ 규칙 잠금';
     const t = $('modeBarText'); if (t) t.textContent = txt;
     const e = $('modeBarExtra'); if (e) e.textContent = extra;
@@ -5940,7 +5940,7 @@ extends CanvasLayer
       if (pl.y + pl.h > solo.lavaY) endSolo('lava');
     } else if (solo.mode === 'relay') {
       solo.legTime += dt;
-      if (solo.relayLeg === 1 && pl.runBestPlat >= 44) {
+      if (solo.relayLeg === 1 && pl.runBestPlat >= (root.JW43 && root.JW43.handFloor ? root.JW43.handFloor() : 44)) {
         solo.relayLeg = 2;
         solo.legTime = 0;
         toast('🤝', '바통 터치!', '2번 주자로 교대합니다', 'lucky');
@@ -7094,7 +7094,7 @@ extends CanvasLayer
     if (r.mode === 'timeattack') desc = '2분 안에 가장 높이! · 동점이면 서든데스';
     else if (r.mode === 'lava') desc = '용암을 피해 88층까지! 닿으면 탈락';
     else if (r.mode === 'zombie') desc = 'AI 좀비에게 잡히면 탈락 · 정상까지 도망쳐라';
-    else if (r.mode === 'relay') desc = '44층에서 바통 터치 → 2번 주자가 정상까지';
+    else if (r.mode === 'relay') desc = '중간층에서 바통 터치 → 2번 주자가 정상까지';
     else if (r.mode === 'classic') desc = '순정 물리 · 태초 3% · 규칙 잠금';
     toast(md.emoji + ' ' + md.name + ' · ' + mapDef.name, 'lucky', desc, 2800);
     updateModeHudMp();
@@ -7117,7 +7117,7 @@ extends CanvasLayer
     if (r.mode === 'timeattack') txt = '⏱ ' + fmt(S.modeState.timeLeft || 0);
     else if (r.mode === 'lava') txt = '🌋 ' + Math.max(0, Math.round((S.startY - (S.modeState.lavaY || S.startY)) / 13.4)) + 'm';
     else if (r.mode === 'zombie') txt = '🧟 추격';
-    else if (r.mode === 'relay') txt = (S.relayRole === 2 && !S.baton) ? '⏳ 1번 주자 기다리는 중' : ((S.relayLeg || 1) === 2 ? '🏃 2번 주자' : '🏃 1번 주자 · 44층에서 교대');
+    else if (r.mode === 'relay') txt = (S.relayRole === 2 && !S.baton) ? '⏳ 1번 주자 기다리는 중' : ((S.relayLeg || 1) === 2 ? '🏃 2번 주자' : '🏃 1번 주자 · ' + (JW43.handFloor ? JW43.handFloor() : 44) + '층에서 교대');
     if (S.room && S.room.originRandom) txt += (txt ? ' · ' : '') + '🎲 태초 ' + Math.round(S.liveOrigin) + '%';
     ex.textContent = txt;
     layoutModeBar();
@@ -7321,6 +7321,10 @@ extends CanvasLayer
           S.peers.set(m.pid, { pid: m.pid, nick: pl.nick, color: pl.color, sk: pl.sk, x: m.x, y: m.y, rx: m.x, ry: m.y, vy: 0, plat: m.i, last: now(), fin: false, time: 0 });
         }
         const pr = S.peers.get(m.pid);
+        /* v5.11 M1: 멀티 릴레이로 순서가 뒤바뀐 옛날 pos 패킷은 버린다 — 안 그러면 상대가 뒤로 순간이동한다.
+           ts가 없는 옛 버전 패킷은 그대로 받는다 (하위 호환). */
+        if (m.ts && pr.lastTs && m.ts < pr.lastTs) break;
+        if (m.ts) pr.lastTs = m.ts;
         /* ── 60fps 예측 보간용 원본 샘플 ── */
         pr.bx = m.x; pr.by = m.y;
         pr.bvx = Number(m.vx) || 0;
@@ -7395,11 +7399,12 @@ extends CanvasLayer
       case 'baton': {
         if (m.to && m.to !== S.me.pid) return;
         if (S.phase !== 'race') return;
-        /* 파트너가 44층에서 바통을 넘겼다 → 나는 44층에서 이어 뛴다 */
+        /* v5.11 M2: 파트너가 교대층(handFloor)에서 바통을 넘겼다 → 나는 그 층에서 이어 뛴다 */
         S.relayLeg = 2;
         S.baton = true;
         const plats = JW().platforms || [];
-        const p44 = plats[43] || plats[plats.length - 1];
+        const hf = (JW43.handFloor ? JW43.handFloor() : 44);
+        const p44 = (JW43.platOf ? JW43.platOf(hf) : null) || plats[43] || plats[plats.length - 1];
         if (p44) {
           const pl = JW().player;
           pl.x = p44.x + p44.w / 2 - pl.w / 2;
@@ -7407,7 +7412,7 @@ extends CanvasLayer
           pl.vx = 0; pl.vy = 0; pl.onGround = true; pl.plat = p44;
           JW().game.camY = pl.y - 240;
         }
-        toast('🤝 바통 받았습니다!', 'lucky', (m.from || '파트너') + ' 님이 44층에서 넘겼습니다 · 정상까지!', 2800);
+        toast('🤝 바통 받았습니다!', 'lucky', (m.from || '파트너') + ' 님이 ' + hf + '층에서 넘겼습니다 · 정상까지!', 2800);
         beep(1040, 0.14, 0.15, 'square', 1560);
         break;
       }
@@ -7910,14 +7915,14 @@ extends CanvasLayer
       if (MD().zombie.active) MD().zombieTick(dt, JW());
     } else if (mode === 'relay') {
       S.modeState.legT = (S.modeState.legT || 0) + dt;
-      if (S.relayLeg !== 2 && p.runBestPlat >= 44 && !S.me.fin) {
+      if (S.relayLeg !== 2 && p.runBestPlat >= (JW43.handFloor ? JW43.handFloor() : 44) && !S.me.fin) {
         S.relayLeg = 2;
         const partner = relayPartner();
         if (partner) {
           sendEv({ t: 'baton', to: partner.pid, from: S.me.nick });
           toast('🤝 바통 터치!', 'lucky', (partner.nick || '파트너') + ' 님이 이어서 달립니다', 2600);
         } else {
-          toast('🤝 바통 터치!', 'chat', '이제 2번 주자로 88층까지', 2400);
+          toast('🤝 바통 터치!', 'chat', '이제 2번 주자로 정상까지', 2400);
         }
         beep(1040, 0.12, 0.14, 'square', 1560);
       }
@@ -12797,7 +12802,7 @@ extends CanvasLayer
   ];
   const MODE_DESC = {
     normal: '먼저 정상에 도착하면 승리', classic: '규칙 잠금 · 순정 그대로', timeattack: '2분 안에 가장 높이',
-    lava: '바닥부터 용암이 차오름', zombie: 'AI 좀비에게 닿으면 탈락', relay: '44층에서 바통 터치',
+    lava: '바닥부터 용암이 차오름', zombie: 'AI 좀비에게 닿으면 탈락', relay: '중간층에서 바통 터치',
     chain: '사슬로 묶여 함께 오르기', bomb: '부딪혀 폭탄 넘기기', boss: '정상 앞 수문장과 대결',
     dive: '물이 차오름 · 산소 5초', blackout: '불빛 밖은 캄캄', rhythm: '게이지가 자동 왕복 · 타이밍 탭', burning: '3초 뒤 발판이 불탄다',
     bossrush: '수문장 패턴을 피해 격파', tag: '술래가 도망자를 잡는다', descend: '정상에서 1층까지 안전 하강',
@@ -19447,8 +19452,9 @@ extends CanvasLayer
     if (!r || !r.waiting || !r.partner || !el) return false;
     el.classList.remove('hidden');
     const fl = Math.max(0, Math.round(V.meters(r.partner.ry) / 8.4));
-    el.innerHTML = '<b>👀 파트너 관전 중</b><span>' + root.JWEsc(r.partner.nick || '파트너') + ' · ' + Math.min(44, fl) + '/44층' +
-      (RX.own ? ' · 내 화면' : ' · 44층 도달 시 바통 터치!') + '</span>';
+    const hf = (V.handFloor ? V.handFloor() : 44);
+    el.innerHTML = '<b>👀 파트너 관전 중</b><span>' + root.JWEsc(r.partner.nick || '파트너') + ' · ' + Math.min(hf, fl) + '/' + hf + '층' +
+      (RX.own ? ' · 내 화면' : ' · ' + hf + '층 도달 시 바통 터치!') + '</span>';
     const btn = $('v43RelayToggle');
     if (btn) {
       btn.classList.remove('hidden');
@@ -20332,7 +20338,7 @@ extends CanvasLayer
       extra = '🎵 ' + Math.round(M.rhythm.osc * 100) + '%' + (M.rhythm.combo ? ' · x' + M.rhythm.combo : '');
     } else if (mode === 'relay') {
       const r = relayState();
-      extra = r ? (r.waiting ? '👀 파트너 관전' : (r.baton ? '🤝 바통 받음 · 2번 주자' : '🏃 1번 주자 · 44층에서 교대')) : '';
+      extra = r ? (r.waiting ? '👀 파트너 관전' : (r.baton ? '🤝 바통 받음 · 2번 주자' : '🏃 1번 주자 · ' + (V.handFloor ? V.handFloor() : 44) + '층에서 교대')) : '';
     } else if (mode === 'burning') {
       const p = pl.plat;
       extra = (p && p._burnT > 0) ? '🔥 ' + Math.max(0, p._burnT).toFixed(1) + 's' : '🔥 대기';
@@ -24370,7 +24376,8 @@ extends CanvasLayer
   V.reconnect = reconnect;
 
   function resetAll() {
-    const keys = ['jw43_qol_v1', 'jw43_presets_v1', 'jw43_solo_v1', 'jw43_fav_v1', 'jw43_recent_v1', 'jw43_freq_v1', 'jw43_best_v1'];
+    /* v5.11 M5: 최고 기록(jw43_best_v1)은 지우지 않는다 — 토스트('기록은 그대로')가 거짓말이던 문제 */
+    const keys = ['jw43_qol_v1', 'jw43_presets_v1', 'jw43_solo_v1', 'jw43_fav_v1', 'jw43_recent_v1', 'jw43_freq_v1'];
     try { keys.forEach((k) => localStorage.removeItem(k)); } catch (e) {}
     Object.keys(Q).forEach((k) => { if (k in V.QOL_DEF) Q[k] = V.QOL_DEF[k]; });
     V.saveQol();
@@ -25115,7 +25122,7 @@ extends CanvasLayer
       burning: '밟은 발판이 3초 뒤 불탄다',
       chain: '파트너와 사슬로 묶여서',
       bomb: '폭탄을 주고받기',
-      relay: '1번→44층→2번 주자'
+      relay: '1번→' + (V.handFloor ? V.handFloor() : 44) + '층→2번 주자'
     };
     return D[m.id] || (m.desc || '');
   }
@@ -35503,8 +35510,12 @@ extends CanvasLayer
       S.peers.forEach((pr) => {
         if (pr.stale) return;
         if (Math.abs((pr.rx + 14) - (p.x + 14)) < 26 && Math.abs((pr.ry + 16) - (p.y + 16)) < 32) {
+          /* v5.11 M4: 탈취를 전원에게 전송 — 안 그러면 뺏은 사람 화면에서만 소유자가 바뀌고 상대는 계속 '보유 중'으로 본다.
+             한 프레임에 여러 명이 겹치면 첫 번째 탈취만 전송 (두 번째는 owner가 이미 바뀌어 재검사 탈락). */
+          if (G.flag.owner !== ME() && G.flag.owner !== 'me') return;
           G.flag.owner = pr.pid;
           try { V.toast('🚩 깃발을 뺏겼다!', 'danger', (pr.nick || '상대') + ' 님에게', 1800); } catch (e) {}
+          try { V.send({ t: 'v45flag', owner: pr.pid }); } catch (e) {}
         }
       });
     }
@@ -37072,6 +37083,8 @@ extends CanvasLayer
     for (var i = 0; i < ps.length; i++) if (ps[i] && ps[i].index === idx) return ps[i];
     return null;
   }
+  /* v5.11 M2: 교대층(handFloor)과 발판 조회(platOf)를 다른 모듈에서 쓸 수 있게 노출 — 44층 하드코딩 제거 */
+  V.handFloor = handFloor; V.platOf = platOf;
   function relayBoot() {
     if (!relayMode()) { relayOff(); return; }
     var S = st();
@@ -37138,7 +37151,7 @@ extends CanvasLayer
     var S0 = st();
     if (S0) { S0.relayHideMe = false; S0.spectating = false; }
     setRelaySpec(false, null);
-    /* 44층(교대층)에서 이어 달린다 */
+    /* 교대층(handFloor)에서 이어 달린다 */
     var q = platOf(handFloor());
     var p = pl();
     if (q && p) {
@@ -42472,18 +42485,19 @@ extends CanvasLayer
     var ps = null;
     try { ps = root.__jwg && __jwg.platforms; } catch (e) {}
     var mid = null;
-    if (ps && ps.length) mid = ps.filter(function (q) { return q.index === 44; })[0] || null;
+    var hf2 = (V.handFloor ? V.handFloor() : 44);
+    if (ps && ps.length) mid = ps.filter(function (q) { return q.index === hf2; })[0] || null;
     bots.forEach(function (b) {
       if (!b) return;
       var botTurn = (leg === 2);           /* 봇은 2번 주자 역할 */
       if (botTurn) {
         if (b.__v50hid) {
           b.__v50hid = false;
-          if (mid) { b.x = mid.x + mid.w / 2 - 12; b.y = mid.y - 34; b.idx = 44; b.vy = 0; b.onGround = true; b.wait = 0.4; b.chg = false; b.ch = 0; }
+          if (mid) { b.x = mid.x + mid.w / 2 - 12; b.y = mid.y - 34; b.idx = hf2; b.vy = 0; b.onGround = true; b.wait = 0.4; b.chg = false; b.ch = 0; }
         }
       } else if (!b.__v50hid) {
         b.__v50hid = true;
-        b.y = -99999; b.vy = 0; b.vx = 0; b.onGround = false; b.idx = 44;   /* 그리기/충돌 모두 화면 밖 */
+        b.y = -99999; b.vy = 0; b.vx = 0; b.onGround = false; b.idx = hf2;   /* 그리기/충돌 모두 화면 밖 */
       }
     });
     /* 배지 문구 */
@@ -42492,7 +42506,7 @@ extends CanvasLayer
       who = '내 차례!';
       el.className = 'me';
       el.innerHTML = '<span>🏃</span><span class="who">' + who + '</span>' +
-        '<span class="tag">' + (leg === 1 ? '44층까지 · 바통 준비' : '2번 주자 · 정상까지') + '</span>';
+        '<span class="tag">' + (leg === 1 ? (V.handFloor ? V.handFloor() : 44) + '층까지 · 바통 준비' : '2번 주자 · 정상까지') + '</span>';
     } else {
       var nm = '';
       if (bots.length) nm = bots[0].name || bots[0].nick || '봇';
@@ -42576,8 +42590,9 @@ extends CanvasLayer
         if (b.__v50hid) {
           b.__v50hid = false;
           var mid = null;
-          if (ps) { for (var k = 0; k < ps.length; k++) { if (ps[k].index === 44) { mid = ps[k]; break; } } }
-          if (mid) { b.x = mid.x + mid.w / 2 - 12; b.y = mid.y - 34; b.idx = 44; b.vy = 0; b.vx = 0; b.onGround = true; b.wait = 0.5; b.chg = false; b.ch = 0; }
+          var hf3 = (V.handFloor ? V.handFloor() : 44);
+          if (ps) { for (var k = 0; k < ps.length; k++) { if (ps[k].index === hf3) { mid = ps[k]; break; } } }
+          if (mid) { b.x = mid.x + mid.w / 2 - 12; b.y = mid.y - 34; b.idx = hf3; b.vy = 0; b.vx = 0; b.onGround = true; b.wait = 0.5; b.chg = false; b.ch = 0; }
         }
       } else {
         b.__v50hid = true;
@@ -44880,12 +44895,48 @@ button, [role="button"]{touch-action:manipulation;}
       ctx.fillStyle = 'rgba(186,230,253,.92)'; ctx.fillRect(x, y, w, h);
       ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(x + 3, y + 3, Math.max(6, w - 6), 2);
       ctx.fillStyle = 'rgba(224,242,254,.5)'; ctx.fillRect(x + 6, y + 7, Math.max(6, w - 14), 1);
+      /* v5.11: 고드름 */
+      ctx.fillStyle = '#bae6fd';
+      for (let ic2 = 10; ic2 < w - 8; ic2 += 18) { ctx.fillRect(x + ic2, y + h - 1, 3, 4); ctx.fillRect(x + ic2 + 1, y + h + 2, 1, 2); }
     } else if (p.type === 'jelly') {
       ctx.fillStyle = '#f472b6'; ctx.fillRect(x, y, w, h);
       ctx.fillStyle = '#fbcfe8'; ctx.fillRect(x + 2, y + 2, w - 4, Math.max(3, h - 6));
+      /* v5.11: 스프링 */
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x + 10, y - 6, 3, 6); ctx.fillRect(x + w - 13, y - 6, 3, 6);
     } else if (p.type === 'summit') {
       ctx.fillStyle = '#fde047'; ctx.fillRect(x, y, w, h);
       ctx.fillStyle = '#fef08a'; ctx.fillRect(x + 2, y + 2, w - 4, 3);
+      /* v5.11: 금별 */
+      ctx.fillStyle = '#fde047'; ctx.font = 'bold 11px "Galmuri11", monospace'; ctx.textAlign = 'center';
+      ctx.fillText('★', x + (w >> 1), y + (h >> 1) + 4);
+    } else if (p.type === 'syrup' || p.art === 'syrup') {
+      /* v5.11: 시럽 */
+      ctx.fillStyle = '#5b2a12'; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#8a4a22'; ctx.fillRect(x, y, w, 6);
+      ctx.fillStyle = '#c98a52'; ctx.fillRect(x + 3, y + 2, w - 6, 3);
+      for (let sy3 = 12; sy3 < w - 10; sy3 += 22) { ctx.fillStyle = '#8a4a22'; ctx.fillRect(x + sy3, y + h, 4, 4); ctx.fillStyle = '#5b2a12'; ctx.fillRect(x + sy3 + 1, y + h + 3, 2, 2); }
+    } else if (p.type === 'rotator') {
+      /* v5.11: 회전 */
+      ctx.fillStyle = c[0]; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = c[1]; ctx.fillRect(x, y + h - 4, w, 4);
+      ctx.fillStyle = c[2]; ctx.fillRect(x, y, w, 3);
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x + (w >> 1), y + (h >> 1), 5, 0, 6.2832); ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.moveTo(x + (w >> 1), y + (h >> 1) - 9); ctx.lineTo(x + (w >> 1) + 4, y + (h >> 1) - 4); ctx.lineTo(x + (w >> 1) - 4, y + (h >> 1) - 4); ctx.closePath(); ctx.fill();
+    } else if (p.type === 'glass') {
+      /* v5.11: 유리 */
+      ctx.fillStyle = c[0]; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(x + 3, y + 3, Math.max(6, w - 6), 2);
+      ctx.fillStyle = 'rgba(255,255,255,.95)';
+      ctx.fillRect(x + (w >> 1) - 2, y + 4, 4, 4);
+      ctx.fillRect(x + (w >> 1) - 1, y + 2, 2, 8);
+    } else if (p.type === 'abyss_floor') {
+      /* v5.11: 심연 바닥 */
+      ctx.fillStyle = '#1e1b4b'; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#7c3aed'; ctx.fillRect(x, y, w, 5);
+      for (let ab3 = 6; ab3 < w - 6; ab3 += 14) { ctx.fillStyle = '#a78bfa'; ctx.fillRect(x + ab3, y + 2, 8, 2); }
     } else {
       ctx.fillStyle = c[0]; ctx.fillRect(x, y, w, h);
       ctx.fillStyle = c[1]; ctx.fillRect(x, y + h - 4, w, 4);
@@ -44913,6 +44964,16 @@ button, [role="button"]{touch-action:manipulation;}
       ctx.beginPath();
       for (let k = 10; k < w - 6; k += 26) { ctx.moveTo(x + k, y + 3); ctx.lineTo(x + k + 4, y + h - 3); }
       ctx.stroke();
+    }
+    /* v5.11: 튕기는 발판(_bounce) — 스프링 지그재그 */
+    if (p._bounce && p.type !== 'jelly') {
+      const cx = x + (w >> 1);
+      ctx.save(); ctx.globalAlpha = 0.95;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx - 9, y - 9, 18, 2); ctx.fillRect(cx - 6, y - 7, 12, 2);
+      ctx.fillRect(cx - 9, y - 5, 18, 2); ctx.fillRect(cx - 6, y - 3, 12, 2);
+      ctx.fillStyle = '#fde047'; ctx.fillRect(cx - 5, y - 11, 10, 2);
+      ctx.restore();
     }
     /* 발판 번호 (게임과 동일: 1번 · 5의 배수) */
     if (p.index === 1 || (p.index > 0 && p.index % 5 === 0)) {
@@ -45252,6 +45313,9 @@ button, [role="button"]{touch-action:manipulation;}
   root.JW485SPEC.close = close;
   root.JW485SPEC.send = coachSend;
   root.JW485SPEC.receive = receiveBubble;
+  /* v5.11 S1/S3: v51 관전이 기본 맵 발판을 그릴 수 있게 buildWorld/paintPlat 노출 */
+  root.JW485SPEC.buildWorld = buildWorld;
+  root.JW485SPEC.paintPlat = paintPlat;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(boot, 200));
   else setTimeout(boot, 200);
 })(window);
@@ -65195,7 +65259,7 @@ if (typeof module !== 'undefined' && module.exports) {
   };
   var TYPEICON = {
     moving: '↔', crumble: '⌛', ice: '❄', jelly: '◎', spike: '▲', glass: '◇',
-    summit: '★', rotator: '⟳', abyss_floor: '≈', gold: '★'
+    summit: '★', rotator: '⟳', abyss_floor: '≈', gold: '★', syrup: '●'
   };
 
   /* ---------- 맵별 가시 테마 (s=모양, b=몸통, t=끝) : 그림만, 판정은 그대로 ---------- */
@@ -65382,49 +65446,114 @@ if (typeof module !== 'undefined' && module.exports) {
     }
     c.restore();
 
-    /* 7) 종류별 최소 표시 (실루엣·두께는 그대로) */
+    /* 7) 종류별 표시 — 한눈에 구분되게 (실루엣·두께는 그대로, 판정 불변).
+       v5.11: '최소 표시'에서 '확실히 보이는 표시'로 강화. 가시는 맵별 테마 그대로 두지 않는다. */
     if (type === 'moving') {
-      c.save(); c.globalAlpha = 0.9;
-      R(c, 5, 5, 3, 1, p.a); R(c, w - 8, 5, 3, 1, p.a);
+      /* 움직이는 발판: 좌우 화살표 + 점선 레일 (맵 보조색) */
+      c.save(); c.globalAlpha = 0.95;
+      var my = (hh >> 1);
+      R(c, 6, my - 1, 2, 2, p.a); R(c, 8, my - 2, 2, 4, p.a); R(c, 10, my - 3, 2, 6, p.a);
+      R(c, w - 12, my - 3, 2, 6, p.a); R(c, w - 10, my - 2, 2, 4, p.a); R(c, w - 8, my - 1, 2, 2, p.a);
+      if (w > 64) { for (var mv = 16; mv < w - 18; mv += 12) R(c, mv, my - 1, 5, 2, p.a); }
       c.restore();
     } else if (type === 'crumble') {
-      c.save(); c.globalAlpha = 0.55;
-      c.strokeStyle = rgb(mix(dark, '#000000', 0.2)); c.lineWidth = 1;
-      for (var ck = 10; ck < w - 10; ck += 20) {
-        c.beginPath(); c.moveTo(ck, 6); c.lineTo(ck + 3, hh - 2); c.stroke();
+      /* 부서지는 발판: 굵은 금 + 부서진 모서리 (공사장=금 간 콘크리트) */
+      c.save();
+      c.globalAlpha = 0.85;
+      c.strokeStyle = rgb(mix(dark, '#000000', 0.1)); c.lineWidth = 1;
+      for (var ck = 8; ck < w - 8; ck += 16) {
+        c.beginPath(); c.moveTo(ck, 5); c.lineTo(ck + 4, hh - 2); c.stroke();
+        c.beginPath(); c.moveTo(ck + 8, 5); c.lineTo(ck + 5, hh - 3); c.stroke();
       }
+      c.globalAlpha = 0.9;
+      R(c, w - 8, 2, 6, 3, mix(dark, '#000000', 0.3));
+      R(c, 2, hh - 3, 4, 2, mix(dark, '#000000', 0.3));
       c.restore();
-    } else if (type === 'ice' || type === 'glass') {
-      c.save(); c.globalAlpha = 0.5;
-      R(c, 6, 6, Math.max(6, w - 12), 1, mix(top, '#ffffff', 0.5));
+    } else if (type === 'ice') {
+      /* 미끄러지는 발판: 얼음 결정 — 밝은 윗면 + 고드름 + 반짝임 */
+      c.save();
+      c.globalAlpha = 0.9;
+      R(c, 2, 2, w - 4, 2, '#e0f2fe');
+      R(c, 3, 4, w - 6, 1, 'rgba(255,255,255,.8)');
+      c.globalAlpha = 0.85;
+      for (var ic = 10; ic < w - 8; ic += 18) {
+        R(c, ic, hh - 1, 3, 4, '#bae6fd');
+        R(c, ic + 1, hh + 2, 1, 2, '#e0f2fe');
+      }
+      c.globalAlpha = 0.95;
+      R(c, (w >> 1) - 1, 5, 2, 2, '#ffffff');
+      R(c, (w >> 1) - 2, 6, 4, 1, '#ffffff');
+      c.restore();
+    } else if (type === 'glass') {
+      /* 유리 발판: 다이아몬드 반짝임 + 굴절선 (얼음과 다르게) */
+      c.save(); c.globalAlpha = 0.9;
+      var gx = (w >> 1);
+      R(c, gx - 1, 4, 2, 2, 'rgba(255,255,255,.95)');
+      R(c, gx - 2, 6, 4, 2, 'rgba(255,255,255,.85)');
+      R(c, gx - 1, 8, 2, 2, 'rgba(255,255,255,.7)');
+      R(c, 6, 6, Math.max(6, w - 12), 1, 'rgba(255,255,255,.5)');
       c.restore();
     } else if (type === 'spike') {
       var sp = SPIKE[id] || { s: 'bar', b: mix(top, '#000000', 0.25), t: '#eef3fa' };
       drawSpike(c, sp.s, sp.b, sp.t, w);
     } else if (type === 'jelly') {
-      /* 점프 패드: 맵 보조색 밴드 + 윗면색 보조선 + 스프링 틱 2개 (dessert=분홍 패드) */
-      c.save(); c.globalAlpha = 0.9;
-      R(c, 5, 6, w - 10, 2, p.a);
-      R(c, 8, 9, w - 16, 1, top);
-      R(c, 10, -4, 2, 4, '#ffffff'); R(c, w - 12, -4, 2, 4, '#ffffff');
+      /* 점프 패드: 스프링 + 밝은 패드 (dessert=분홍 젤리) */
+      c.save(); c.globalAlpha = 0.95;
+      R(c, 5, 6, w - 10, 3, p.a);
+      R(c, 8, 10, w - 16, 1, top);
+      R(c, 10, -6, 3, 6, '#ffffff'); R(c, w - 13, -6, 3, 6, '#ffffff');
+      R(c, 10, -7, 3, 2, '#ffffff'); R(c, w - 13, -7, 3, 2, '#ffffff');
+      c.globalAlpha = 0.75;
+      R(c, (w >> 1) - 8, 3, 16, 1, '#ffffff');
+      c.restore();
+    } else if (type === 'syrup') {
+      /* 시럽: 끈적한 방울 — 호박색 방울 + 광택 (디저트 시럽) */
+      c.save();
+      c.globalAlpha = 0.95;
+      R(c, 2, 2, w - 4, 2, '#c98a52');
+      R(c, 3, 4, w - 6, 1, '#e8b07a');
+      for (var sy = 12; sy < w - 10; sy += 22) {
+        R(c, sy, hh - 1, 4, 4, '#8a4a22');
+        R(c, sy + 1, hh + 2, 2, 2, '#5b2a12');
+      }
       c.restore();
     } else if (type === 'summit') {
+      /* 정상: 금빛 밴드 + 금별 */
       R(c, 2, 2, w - 4, 3, mix(top, '#ffe9a8', 0.5));
-      c.save(); c.globalAlpha = 0.9; R(c, 8, -4, w - 16, 2, '#fbbf24'); c.restore();
+      c.save(); c.globalAlpha = 0.95;
+      R(c, 8, -4, w - 16, 2, '#fbbf24');
+      c.fillStyle = '#fde047';
+      c.font = 'bold 11px "Galmuri11", monospace'; c.textAlign = 'center';
+      c.fillText('★', w / 2, (hh >> 1) + 4);
+      c.restore();
     } else if (type === 'rotator') {
+      /* 회전: 원형 화살표 */
+      c.save();
+      c.strokeStyle = rgb(mix(top, '#ffffff', 0.3)); c.lineWidth = 2;
+      c.beginPath(); c.arc(w / 2, hh / 2, 4, 0, 6.2832); c.stroke();
       c.fillStyle = rgb(mix(top, '#ffffff', 0.3));
-      c.beginPath(); c.arc(w / 2, hh / 2, 2, 0, 6.2832); c.fill();
+      c.beginPath(); c.moveTo(w / 2, hh / 2 - 8); c.lineTo(w / 2 + 3, hh / 2 - 4); c.lineTo(w / 2 - 3, hh / 2 - 4); c.closePath(); c.fill();
+      c.restore();
+    } else if (type === 'abyss_floor') {
+      /* 심연 바닥: 물결 + 보라 빛 */
+      c.save(); c.globalAlpha = 0.9;
+      for (var ab = 4; ab < w - 4; ab += 12) {
+        R(c, ab, 3, 7, 1, '#a78bfa');
+        R(c, ab + 7, 4, 3, 1, '#7c3aed');
+      }
+      R(c, 2, hh - 2, w - 4, 2, '#4c1d95');
+      c.restore();
     }
 
-    /* 8) 종류 배지 (아주 작게) */
+    /* 8) 종류 배지 — 조금 더 또렷하게 */
     var ic = TYPEICON[type];
     if (ic && w > 64 && hh >= 11) {
       c.save();
-      c.globalAlpha = 0.5;
-      c.fillStyle = 'rgba(6,9,16,.5)';
-      c.fillRect(w - 12, hh - 10, 10, 8);
+      c.globalAlpha = 0.85;
+      c.fillStyle = 'rgba(6,9,16,.65)';
+      c.fillRect(w - 13, hh - 11, 11, 9);
       c.fillStyle = '#e7eefb';
-      c.font = 'bold 7px "Galmuri11", monospace';
+      c.font = 'bold 8px "Galmuri11", monospace';
       c.textAlign = 'center';
       c.fillText(ic, w - 7, hh - 4);
       c.restore();
@@ -65482,6 +65611,37 @@ if (typeof module !== 'undefined' && module.exports) {
       ctx.textAlign = 'center';
       ctx.fillStyle = '#fef08a';
       ctx.fillText('★ 별빛 최종 정상 (88F) ★', px + w / 2, py - 62);
+    } else if (p.type === 'jelly') {
+      /* v5.11: 점프 패드 — 분홍 패드 + 스프링 */
+      R(ctx, px, py, w, h, '#f472b6'); R(ctx, px + 2, py + 2, w - 4, h - 6, '#fbcfe8');
+      R(ctx, px, py, w, 5, '#ffe3f0');
+      R(ctx, px + 10, py - 6, 3, 6, '#ffffff'); R(ctx, px + w - 13, py - 6, 3, 6, '#ffffff');
+    } else if (p.type === 'syrup' || p.art === 'syrup') {
+      /* v5.11: 시럽 — 호박색 + 방울 */
+      R(ctx, px, py, w, h, '#5b2a12'); R(ctx, px, py, w, 6, '#8a4a22');
+      R(ctx, px + 3, py + 2, w - 6, 3, '#c98a52');
+      for (var sy2 = 12; sy2 < w - 10; sy2 += 22) { R(ctx, px + sy2, py + h, 4, 4, '#8a4a22'); R(ctx, px + sy2 + 1, py + h + 3, 2, 2, '#5b2a12'); }
+    } else if (p.type === 'rotator') {
+      /* v5.11: 회전 — 원형 화살표 */
+      R(ctx, px, py, w, h, z[0]);
+      R(ctx, px + (w >> 1), py + 4, (w >> 1) - 2, h - 6, z[1]);
+      R(ctx, px, py, w, 6, z[2]);
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(px + (w >> 1), py + (h >> 1), 5, 0, 6.2832); ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.moveTo(px + (w >> 1), py + (h >> 1) - 9); ctx.lineTo(px + (w >> 1) + 4, py + (h >> 1) - 4); ctx.lineTo(px + (w >> 1) - 4, py + (h >> 1) - 4); ctx.closePath(); ctx.fill();
+    } else if (p.type === 'glass') {
+      /* v5.11: 유리 — 다이아몬드 반짝임 */
+      R(ctx, px, py, w, h, z[0]);
+      R(ctx, px + (w >> 1), py + 4, (w >> 1) - 2, h - 6, z[1]);
+      R(ctx, px, py, w, 6, '#e0f2fe');
+      ctx.fillStyle = 'rgba(255,255,255,.95)';
+      ctx.fillRect(px + (w >> 1) - 2, py + 4, 4, 4);
+      ctx.fillRect(px + (w >> 1) - 1, py + 2, 2, 8);
+    } else if (p.type === 'abyss_floor') {
+      /* v5.11: 심연 바닥 — 물결 */
+      R(ctx, px, py, w, h, '#1e1b4b'); R(ctx, px, py, w, 5, '#7c3aed');
+      for (var ab2 = 6; ab2 < w - 6; ab2 += 14) { R(ctx, px + ab2, py + 2, 8, 2, '#a78bfa'); R(ctx, px + ab2 + 8, py + 3, 4, 1, '#7c3aed'); }
     } else {
       R(ctx, px, py, w, h, z[0]);
       R(ctx, px + (w >> 1), py + 4, (w >> 1) - 2, h - 6, z[1]);
@@ -65497,20 +65657,62 @@ if (typeof module !== 'undefined' && module.exports) {
     return true;
   }
 
+  /* 튕기는 발판(_bounce) 표시 — 타입(moving/ice/crumble/…)과 직교하므로 strip 캐시 밖에서 덧그린다.
+     v5.11: 발판 종류 구분. 판정·튕김 세기는 건드리지 않는다 (그림만). */
+  function drawBounceMark(ctx, p, px, py) {
+    if (!p || !p._bounce || p.type === 'jelly') return;
+    try {
+      var w = p.w | 0, cx = px + (w >> 1);
+      ctx.save();
+      ctx.globalAlpha = 0.95;
+      /* 스프링 지그재그 (발판 위) */
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx - 9, py - 9, 18, 2);
+      ctx.fillRect(cx - 6, py - 7, 12, 2);
+      ctx.fillRect(cx - 9, py - 5, 18, 2);
+      ctx.fillRect(cx - 6, py - 3, 12, 2);
+      /* 금빛 패드 */
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(cx - 5, py - 11, 10, 2);
+      ctx.restore();
+    } catch (e) {}
+  }
+
   function drawPlat(id, ctx, p, px, py) {
     if (!p) return false;
     if (p.crumbled) return false;
-    if (id === 'retro20') { try { return paintV20(ctx, p, px, py); } catch (e) { return false; } }
+    /* v5.11 memory: 기억력 모드에서 발판이 투명해진 뒤엔 아트를 그리지 않고 옅은 선만 그린다.
+       JW51PLAT가 JWG.drawPlatform을 덮어서 아래 기억력 래퍼가 안 불리던 문제. 서 있는 발판은 정상으로 그린다. */
+    try {
+      var _G = root.JW43 && root.JW43.G;
+      if (_G && _G.memHidden && _G.memHidden() && p.index > 0) {
+        var _pl = root.__jwg && root.__jwg.player;
+        if (!(_pl && _pl.plat === p)) {
+          ctx.fillStyle = 'rgba(165,243,252,.055)';
+          ctx.fillRect(px, py, p.w, 3);
+          return true;
+        }
+      }
+    } catch (e) {}
+    if (id === 'retro20') {
+      try {
+        var _r20 = paintV20(ctx, p, px, py);
+        if (_r20) drawBounceMark(ctx, p, px, py);
+        return _r20;
+      } catch (e) { return false; }
+    }
     var w = Math.max(8, Math.round((p.w || 100) / 4) * 4);
     var h = Math.max(7, Math.round(p.h || 18));
     var type = p.type || 'normal';
     if (type === 'normal' && p._glass) type = 'glass';
+    if (p.art === 'syrup') type = 'syrup';   /* v5.11: 디저트 시럽 — 얼음 물리지만 시럽처럼 보이게 */
     var cv = strip(id in P ? id : 'custom', type, w, h);
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = 1;
     ctx.drawImage(cv, (px - 4) | 0, (py - 8) | 0);
     ctx.restore();
+    drawBounceMark(ctx, p, px, py);
     drawn++; lastId = id;
     return true;
   }
@@ -67199,7 +67401,7 @@ if (typeof module !== 'undefined' && module.exports) {
   var $ = function (id) { return doc.getElementById(id); };
   var W = 540;
 
-  var SPEC = { open: false, tag: '', nick: '', map: '', res: null, t: 0, endAt: 0, dx: 0, dy: 0 };
+  var SPEC = { open: false, tag: '', nick: '', map: '', res: null, t: 0, endAt: 0, dx: 0, dy: 0, world: null, worldKey: '' };
 
   function pos(tag) {
     try { return (root.JW45SOCIAL && root.JW45SOCIAL.POS) ? root.JW45SOCIAL.POS[tag] : null; } catch (e) { return null; }
@@ -67283,6 +67485,7 @@ if (typeof module !== 'undefined' && module.exports) {
     SPEC.map = p.map || 'default';
     SPEC.dx = p.x || 270; SPEC.dy = p.y || 0;
     SPEC.res = null; SPEC.endAt = 0;
+    SPEC.world = null; SPEC.worldKey = '';   /* v5.11 S3: 관전 대상 바뀌면 발판 캐시 초기화 */
     var m = $('v51Spec');
     m.classList.remove('hide');
     $('v51SpRes').classList.add('hide');
@@ -67401,17 +67604,35 @@ if (typeof module !== 'undefined' && module.exports) {
     var camY = SPEC.dy - viewH * 0.58;
     c.save();
     c.scale(scale, scale);
-    /* 배경 */
+    /* 배경 — v5.11: JWMap.drawBg 그대로 (default.jpg 그림이 전 맵 체인 수정으로 복원됨) */
     try { if (root.JWMap && root.JWMap.drawBg) root.JWMap.drawBg(p.map || 'default', c, camY, viewH); } catch (e) {}
-    /* 발판 */
-    var plats = [];
-    try { root.JWMap.build(p.map || 'default', plats, []); } catch (e) { plats = []; }
+    /* 발판 — v5.11 S1/S3: 맵+시드별 캐시 (매 프레임 build 금지 — 35회/2초 → 1회).
+       기본 맵은 JW485SPEC.buildWorld로 발판을 만든다 (JWMap.build('default')는 false — DEFAULT_MAP에 build가 없음).
+       기본 맵 발판은 paintPlat으로 그리고, 그 외는 JWMap.drawPlat으로 그린다. */
+    var mapId = p.map || 'default';
+    var wkey = mapId + '|' + (p.seed != null ? p.seed : 0);
+    if (!SPEC.world || SPEC.worldKey !== wkey) {
+      var wld = null;
+      try { if (root.JW485SPEC && root.JW485SPEC.buildWorld) wld = root.JW485SPEC.buildWorld(mapId, p.seed || 0); } catch (e) { wld = null; }
+      if (!wld || !wld.plats) {
+        var _pl = [];
+        try { if (root.JWMap && root.JWMap.build) root.JWMap.build(mapId, _pl, []); } catch (e) { _pl = []; }
+        wld = { plats: _pl, abyss: [], isDefault: (mapId === 'default') };
+      }
+      SPEC.world = wld;
+      SPEC.worldKey = wkey;
+    }
+    var plats = (SPEC.world && SPEC.world.plats) || [];
+    var isDefault = !!(SPEC.world && SPEC.world.isDefault);
     for (var i = 0; i < plats.length; i++) {
       var q = plats[i];
       var sy = q.y - camY;
       if (sy < -40 || sy > viewH + 40) continue;
       var ok = false;
-      try { ok = !!root.JWMap.drawPlat(p.map || 'default', c, q, q.x, sy); } catch (e) { ok = false; }
+      try {
+        if (isDefault && root.JW485SPEC && root.JW485SPEC.paintPlat) { root.JW485SPEC.paintPlat(c, q, q.x, sy); ok = true; }
+        else ok = !!root.JWMap.drawPlat(mapId, c, q, q.x, sy);
+      } catch (e) { ok = false; }
       if (!ok) { c.fillStyle = 'rgba(148,180,214,.75)'; c.fillRect(q.x, sy, q.w, Math.max(6, q.h || 6)); }
     }
     /* 친구 */
