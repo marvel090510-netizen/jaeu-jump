@@ -42176,6 +42176,20 @@ extends CanvasLayer
   function mapName(id) {
     try { const m = MP() && MP().byId ? MP().byId(id) : null; return m ? ((m.emoji || '') + ' ' + m.name).trim() : '기본 맵'; } catch (e) { return '기본 맵'; }
   }
+  /* v5.16: 관전 HUD 에도 게임 HUD 와 같은 '구간(zone)' 이름을 쓴다.
+     기본 맵(default)은 JWMap.zoneName 이 null 이라 엔진의 getZoneByY 로 계산한다.
+     (폰 HUD '1. 초록 초원과 부유섬' 과 같은 글자가 관전 화면에도 보이게) */
+  function zoneOfPoint(id, y) {
+    try {
+      if (id && id !== 'default') {
+        const z = MP() && MP().zoneName ? MP().zoneName(id, y) : null;
+        if (z) return z;
+      }
+      const j = J();
+      const zz = j && j.getZoneByY ? j.getZoneByY(y) : null;
+      return (zz && zz.name) || '';
+    } catch (e) { return ''; }
+  }
   function modeName(id) {
     try { const m = MD() && MD().modeById ? MD().modeById(id) : null; return m ? ((m.emoji || '') + ' ' + m.name).trim() : ''; } catch (e) { return ''; }
   }
@@ -42253,25 +42267,24 @@ extends CanvasLayer
 
     ctx.setTransform(dpr * k, 0, 0, dpr * k, 0, 0);
     ctx.fillStyle = '#05070f'; ctx.fillRect(0, 0, 540, lh);
-    /* 1) 배경 */
-    if (c.isDefault) drawDefaultBg(ctx, camY, lh);
-    else {
-      let ok = false;
-      try { ok = !!(MP() && MP().drawBg && MP().drawBg(c.map, ctx, camY, lh)); } catch (e) { ok = false; }
-      if (!ok) { ctx.fillStyle = '#0b1226'; ctx.fillRect(0, 0, 540, lh); }
+    /* 1) 배경 — v5.16: 1번 기본 맵도 게임 본체와 같은 일러스트(assets/maps/default.jpg) 체인으로 그린다.
+       예전엔 default 만 drawDefaultBg(옛 6구간 절차 배경)로 분기해서, 같은 맵·같은 발판인데도
+       폰에서 보던 그림과 전혀 달라 '다른 맵을 관전하는 것처럼' 보였다. */
+    let bgOk = false;
+    try { bgOk = !!(MP() && MP().drawBg && MP().drawBg(c.map, ctx, camY, lh)); } catch (e) { bgOk = false; }
+    if (!bgOk) {
+      if (c.isDefault) drawDefaultBg(ctx, camY, lh);
+      else { ctx.fillStyle = '#0b1226'; ctx.fillRect(0, 0, 540, lh); }
     }
-    /* 2) 발판 */
+    /* 2) 발판 — v5.16: 모든 맵을 게임과 같은 발판 아트(JW51PLAT)로 그린다 (실패할 때만 paintPlat 폴백) */
     const all = c.plats || [];
     for (let i = 0; i < all.length; i++) {
       const q = all[i];
       const sy = q.y - camY;
       if (sy < -60 || sy > lh + 60) continue;
       let ok = false;
-      if (!c.isDefault) {
-        try { ok = !!(MP() && MP().drawPlat && MP().drawPlat(c.map, ctx, q, q.x, sy)); } catch (e) { ok = false; }
-      }
+      try { ok = !!(MP() && MP().drawPlat && MP().drawPlat(c.map, ctx, q, q.x, sy)); } catch (e) { ok = false; }
       if (!ok) paintPlat(ctx, q, q.x, sy);
-      else if (MP() && MP().drawPlat) { /* 4.3 맵도 게임과 동일 */ }
     }
     /* 3) 모닥불 · 정상 깃발 */
     if (c.isDefault) drawCampfire(ctx, camY);
@@ -42318,13 +42331,21 @@ extends CanvasLayer
     const fl = Math.max(1, (p && p.floor) || 1);
     const mt = Math.round(Math.max(0, -(c.dy || 0) / 13.4));
     const line1 = mapName(c.map);
+    const zn = zoneOfPoint(c.map, (p && typeof p.y === 'number') ? p.y : c.dy);
     const line2 = (modeName(c.mode) || '일반') + ' · ' + fl + '층 · ' + mt + 'm';
-    const w1 = Math.max(ctx.measureText(line1).width, ctx.measureText(line2).width) + 16;
+    /* v5.16: 구간명이 있으면 맵 이름 아래에 한 줄 더 (폰 HUD 와 같은 글자) */
+    const lines = zn ? [line1, zn, line2] : [line1, line2];
+    let w1 = 0;
+    for (let li = 0; li < lines.length; li++) w1 = Math.max(w1, ctx.measureText(lines[li]).width);
+    w1 += 16;
+    const bh = 26 + (lines.length - 1) * 15;
     ctx.fillStyle = 'rgba(6,10,20,.72)';
-    ctx.fillRect(8, 8, w1, 38);
-    ctx.strokeStyle = 'rgba(96,165,250,.45)'; ctx.strokeRect(8, 8, w1, 38);
-    ctx.fillStyle = '#e2e8f0'; ctx.fillText(line1, 16, 24);
-    ctx.fillStyle = '#93c5fd'; ctx.fillText(line2, 16, 39);
+    ctx.fillRect(8, 8, w1, bh);
+    ctx.strokeStyle = 'rgba(96,165,250,.45)'; ctx.strokeRect(8, 8, w1, bh);
+    for (let li = 0; li < lines.length; li++) {
+      ctx.fillStyle = li === 0 ? '#e2e8f0' : (li === lines.length - 1 ? '#93c5fd' : '#bfdbfe');
+      ctx.fillText(lines[li], 16, 24 + li * 15);
+    }
     /* 실시간 표시 */
     ctx.fillStyle = '#f87171';
     ctx.beginPath(); ctx.arc(540 - 20, 20, 4, 0, 6.2832); ctx.fill();
@@ -64829,10 +64850,11 @@ if (typeof module !== 'undefined' && module.exports) {
       var sy = q.y - camY;
       if (sy < -40 || sy > viewH + 40) continue;
       var ok = false;
-      try {
-        if (isDefault && root.JW485SPEC && root.JW485SPEC.paintPlat) { root.JW485SPEC.paintPlat(c, q, q.x, sy); ok = true; }
-        else ok = !!root.JWMap.drawPlat(mapId, c, q, q.x, sy);
-      } catch (e) { ok = false; }
+      /* v5.16: 1번 기본 맵도 게임과 같은 발판 아트(JW51PLAT)로 — 옛 paintPlat 분기 제거 */
+      try { ok = !!(root.JWMap && root.JWMap.drawPlat && root.JWMap.drawPlat(mapId, c, q, q.x, sy)); } catch (e) { ok = false; }
+      if (!ok) {
+        try { if (root.JW485SPEC && root.JW485SPEC.paintPlat) { root.JW485SPEC.paintPlat(c, q, q.x, sy); ok = true; } } catch (e) { ok = false; }
+      }
       if (!ok) { c.fillStyle = 'rgba(148,180,214,.75)'; c.fillRect(q.x, sy, q.w, Math.max(6, q.h || 6)); }
     }
     /* 친구 */
