@@ -1,7 +1,7 @@
 /* 성공하고싶은 재우 — 게임 본체 (v5.15 정식 루트)
    muse-v5-9/index.html(v5.15) <body> 안의 인라인 <script> 108개를 순서 그대로 이어 붙인 파일이다.
    iPad Safari 가 3.4MB 통짜 인라인을 파싱하며 메인 스레드가 멈추던 문제(베일이 안 걷힘)를
-   없애기 위해 분리했고, index.html 은 <script src="game.js?v=515tw4" defer></script> 로 불러온다.
+   없애기 위해 분리했고, index.html 은 <script src="game.js?v=515tw5" defer></script> 로 불러온다.
    각 블록은 원래 그대로(대부분 IIFE)라 한 블록의 예외가 다음 블록을 막지 않는다. */
 
 /* ── block 1 (muse-v5-9/index.html 979줄) ── */
@@ -5006,7 +5006,9 @@ extends CanvasLayer
         cx.imageSmoothingEnabled = false;
         cx.drawImage(sp, 0, 0);
         cx.globalCompositeOperation = 'source-atop';
-        cx.globalAlpha = 0.46;
+        /* v5.15-r4: 0.46 → 0.22 — 스킨 위에 플레이어 색을 덧입히던 농도를 낮춰
+           24종 캐릭터 본연의 색감이 살아나게 (태겸 님: "덧입히는 농도 줄여줘") */
+        cx.globalAlpha = 0.22;
         cx.fillStyle = colorHex(color);
         cx.fillRect(0, 0, cv.width, cv.height);
         S.skinTint[key] = cv;
@@ -30097,10 +30099,11 @@ extends CanvasLayer
       var isCur = cur === t.id;
       var g = mm.grade || 'common';
       var icon = mm.icon ? '<img class="badgeimg" src="' + escT(mm.icon) + '" alt="">' : '<span style="width:26px;text-align:center;font-size:18px">🏅</span>';
+      if (root.JW16T) { try { icon = JW16T.iconTile(t.id, 26); } catch (e) {} }
       var crown = g === 'champion' ? '👑 ' : '';
       return '<div class="v51tc ' + g + '" style="' + (has ? '' : 'opacity:.86') + '">' + icon +
         '<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:5px;min-width:0">' +
-        '<b class="v51tg g-' + g + '" style="font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + crown + escT(t.short || t.name) + '</b>' +
+        ((root.JW16T) ? JW16T.listTitle(t.id, (t.short || t.name), g) : ('<b class="v51tg g-' + g + '" style="font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + crown + escT(t.short || t.name) + '</b>')) +
         '<span class="gr">' + (GRADE_L[g] || '') + '</span></div>' +
         '<div style="font-size:9.5px;color:#93a4c4;font-weight:800;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escT(mm.why || '') + '</div></div>' +
         (has ? '<button type="button" class="v51btn sm ' + (isCur ? 'green' : 'dark') + '" data-v51eq="' + t.id + '" style="white-space:nowrap;padding:6px 9px">' + (isCur ? '착용중' : '장착') + '</button>' : '<span class="v51sub" style="white-space:nowrap;font-size:9.5px">🔒 잠김</span>') +
@@ -63425,7 +63428,7 @@ if (typeof module !== 'undefined' && module.exports) {
       var pn = '';
       try { var pt = (V.api().titles() || []).filter(function (x) { return x.id === cur; })[0]; pn = pt ? (pt.short || pt.name) : '자동 선택'; } catch (e) { pn = ''; }
       prev.innerHTML = (pmm.icon ? '<img class="badgeimg" src="' + pmm.icon + '" alt="">' : '<span style="font-size:24px">🏅</span>') +
-        '<div style="flex:1;min-width:0"><div class="big v51tg g-' + (pmm.grade || 'common') + '">' + C.esc(cur === 'auto' ? '자동 (최고 등급)' : pn) + '</div>' +
+        '<div style="flex:1;min-width:0"><div style="margin:2px 0 3px">' + ((root.JW16T) ? JW16T.plate(cur, '', { h: 26, fs: 12, ic: 15 }) : ('<span class="big v51tg g-' + (pmm.grade || 'common') + '">' + C.esc(cur === 'auto' ? '자동 (최고 등급)' : pn) + '</span>')) + '</div>' +
         '<div class="sm">' + (GRADE[pmm.grade] || '') + ' · ' + (pmm.why || '현재 장착') + '</div></div>';
     }
     box.innerHTML = rows.map(function (t) {
@@ -63434,12 +63437,13 @@ if (typeof module !== 'undefined' && module.exports) {
       var isCur = cur === t.id;
       var g = mm.grade || 'common';
       var icon = mm.icon ? '<img class="badgeimg" src="' + mm.icon + '" alt="">' : '<span style="width:26px;text-align:center;font-size:18px">🏅</span>';
+      if (root.JW16T) { try { icon = JW16T.iconTile(t.id, 26); } catch (e) {} }
       var crown = g === 'champion' ? '👑 ' : '';
       return '<div class="v51tc ' + g + '" style="' + (has ? '' : 'opacity:.86') + '">' +
         icon +
         '<div style="flex:1;min-width:0">' +
         '<div style="display:flex;align-items:center;gap:5px;min-width:0">' +
-        '<b class="v51tg g-' + g + '" style="font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + crown + C.esc(t.short || t.name) + '</b>' +
+        ((root.JW16T) ? JW16T.listTitle(t.id, (t.short || t.name), g) : ('<b class="v51tg g-' + g + '" style="font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + crown + C.esc(t.short || t.name) + '</b>')) +
         '<span class="gr">' + (GRADE[g] || '') + '</span></div>' +
         '<div style="font-size:9.5px;color:#93a4c4;font-weight:800;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + C.esc(mm.why || '') + '</div>' +
         '</div>' +
@@ -65848,7 +65852,7 @@ if (typeof module !== 'undefined' && module.exports) {
     var html = icon +
       '<div style="flex:1;min-width:0;position:relative;z-index:1">' +
       '<div class="sm" style="margin:0 0 2px">지금 장착한 칭호</div>' +
-      '<div class="big v51tg g-' + g + '">' + crown + (cur === 'auto' ? '자동 (최고 등급)' : nm) + '</div>' +
+      '<div style="margin:2px 0 3px">' + ((root.JW16T) ? JW16T.plate(cur, '', { h: 26, fs: 12, ic: 15 }) : ('<span class="big v51tg g-' + g + '">' + crown + (cur === 'auto' ? '자동 (최고 등급)' : nm) + '</span>')) + '</div>' +
       '<div class="sm">' + (mm.why || (cur === 'auto' ? '조건에 맞는 가장 높은 칭호가 자동 적용' : '')) + '</div>' +
       '<div id="v51TlBar"><i style="width:' + pct + '%"></i></div>' +
       '<div class="sm" style="margin-top:3px">보유 ' + c.have + ' / ' + c.total + ' · ' + pct + '%</div>' +
@@ -67962,6 +67966,7 @@ if (typeof module !== 'undefined' && module.exports) {
         'text-shadow:0 1px 2px #000;">' + esc(nick) + '</span>' +
         (bd ? '<span style="display:flex">' + bd + '</span>' : '') +
         '</div>';
+      if (root.JW16T && root.JW16T.tag) { try { var _v16b = root.JW16T.tag(nick, ''); if (_v16b) tag.innerHTML = _v16b; } catch (e) {} }
       tag.__w = tag.offsetWidth || 120;
       tag.__h = tag.offsetHeight || 30;
     }
@@ -70952,7 +70957,7 @@ if (typeof module !== 'undefined' && module.exports) {
       var id = (root.JW56T5 && root.JW56T5.myTitleId) ? root.JW56T5.myTitleId() : 'auto';
       if (id && id !== 'auto' && root.JW51TITLES && root.JW51TITLES.badge) {
         var b = root.JW51TITLES.badge(id, true);
-        if (b) return { html: '<span class="v50badge-holder">' + b + '</span>', plain: '' };
+        if (b) return { html: '<span class="v50badge-holder">' + b + '</span>', plain: '', id: id };
       }
     } catch (e) {}
     var t = '';
@@ -70966,7 +70971,7 @@ if (typeof module !== 'undefined' && module.exports) {
       } catch (e) {}
     }
     if (!t) t = '🌱 도전자';
-    return { html: '<span class="tt">' + esc(t) + '</span>', plain: t };
+    return { html: '<span class="tt">' + esc(t) + '</span>', plain: t, id: '' };
   }
   function tagFrame() {
     var el = $('v97Tag');
@@ -71005,6 +71010,8 @@ if (typeof module !== 'undefined' && module.exports) {
     var nick = myNick() || '나';
     var th = titleHtml();
     var html = '<div class="in"><span class="nm" id="v97TagNm">' + esc(nick) + '</span>' + th.html + '</div>';
+    /* v5.15-r4: 칭호가 있으면 16비트 도트 일체형 명패 — [아이콘] 칭호 · 이름 (칭호가 앞, 이름이 뒤) */
+    if (root.JW16T && root.JW16T.tag) { try { var _v16 = root.JW16T.tag(nick, th.id || ''); if (_v16) html = _v16; } catch (e) {} }
     if (el.__sig !== html) {
       el.__sig = html; el.innerHTML = html;
       /* 폭·높이는 화면에 붙은 상태에서 재야 한다 (display:none 이면 0 → 기본값으로 어긋난다) */
@@ -72472,3 +72479,749 @@ if (typeof module !== 'undefined' && module.exports) {
   } catch (e) {}
   root.addEventListener('pageshow', bootOp);
 })(window);
+
+/* v5.15-r4 TITLES16 */
+/* 칭호 16비트 도트 명패 — 12×12 픽셀 아이콘 + 일체형 명패 */
+/* ==========================================================================
+   v5.15-r4 · 16비트 도트 일체형 칭호 명패 (JW16T)
+     - 칭호마다 전용 12×12 픽셀 아이콘 (맵 칭호는 그 맵의 팔레트·실루엣)
+     - [아이콘] 칭호명 · 이름  — 칭호가 앞, 이름이 뒤 / 경계선 없이 테마색 → #0f172a
+     - 2px 픽셀 베벨 + 바깥 1px 다크 아웃라인(#0c0816) + Galmuri11 픽셀 폰트
+     - 특정 맵 1등 전용(champ_*)은 그 맵 테마색 + 황금 왕관 + 금빛 베벨·글로우
+   새 외부 폰트/이미지 요청 없음. 아이콘은 SVG data URI 로 즉석 생성 (캐시).
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  if (root.JW16T) return;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) {
+      return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;';
+    });
+  }
+
+  /* ---------------------------------------------------------------- 색 유틸 */
+  function hx(c) {
+    c = String(c || '#888888').replace('#', '');
+    if (c.length === 3) c = c.charAt(0) + c.charAt(0) + c.charAt(1) + c.charAt(1) + c.charAt(2) + c.charAt(2);
+    var n = parseInt(c, 16);
+    if (isNaN(n)) return [136, 136, 136];
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function toHex(r, g, b) {
+    var f = function (v) { v = Math.max(0, Math.min(255, Math.round(v))); return (v < 16 ? '0' : '') + v.toString(16); };
+    return '#' + f(r) + f(g) + f(b);
+  }
+  function mix(a, b, t) {
+    var A = hx(a), B = hx(b);
+    return toHex(A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, A[2] + (B[2] - A[2]) * t);
+  }
+  function lite(c, t) { return mix(c, '#ffffff', t == null ? 0.34 : t); }
+  function deep(c, t) { return mix(c, '#050810', t == null ? 0.42 : t); }
+  var NAVY = '#0f172a';
+
+  /* 계단식(하드 스톱) 도트 그라데이션 — 부드러운 블러 없이 픽셀 밴드로 떨어진다 */
+  function steps(c1, c2, n) {
+    n = n || 6;
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      var t0 = i / n, t1 = (i + 1) / n;
+      var c = mix(c1, c2, Math.pow((i + 0.5) / n, 0.9));
+      out.push(c + ' ' + (t0 * 100).toFixed(1) + '% ' + (t1 * 100).toFixed(1) + '%');
+    }
+    return 'linear-gradient(112deg,' + out.join(',') + ')';
+  }
+
+  /* ---------------------------------------------------------------- 12×12 픽셀 아트 */
+  /*  k 아웃라인 · w 크림 · a 메인 · l 밝은 메인 · d 어두운 메인 · g 금 · h 금 하이라이트 · c 보석 */
+  var ART = {
+    sprout: [
+      '............',
+      '.....kk.....',
+      '...kkllkk...',
+      '..kllllllk..',
+      '..kllkkllk..',
+      '...kkllkk...',
+      '.....kk.....',
+      '.....kk.....',
+      '....kllk....',
+      '....kkkk....',
+      '............',
+      '............'
+    ],
+    portal: [
+      '............',
+      '...kkkkkk...',
+      '..kllllllk..',
+      '.kllkkkkllk.',
+      '.kllkwwkllk.',
+      '.kllkwwkllk.',
+      '.kllkkkkllk.',
+      '..kllllllk..',
+      '...kkkkkk...',
+      '............',
+      '............',
+      '............'
+    ],
+    spark: [
+      '.....k......',
+      '..k..y..k...',
+      '...kyyyk....',
+      '..kyywyyk...',
+      '.kyywwwyyk..',
+      '.kyywwwyyk..',
+      '..kyywyyk...',
+      '...kyyyk....',
+      '..k..y..k...',
+      '.....k......',
+      '............',
+      '............'
+    ],
+    flame: [
+      '............',
+      '.....kk.....',
+      '....kwwk....',
+      '...kwyylk...',
+      '...kwyylk...',
+      '..kwyylolk..',
+      '..kwyylolk..',
+      '..kwyyyoolk.',
+      '..kwyyyoolk.',
+      '...kkorrkk..',
+      '.....kk.....',
+      '............'
+    ],
+    crown: [
+      '............',
+      '.kk..kk..kk.',
+      '.klk.klk.klk',
+      '.kllkllkllk.',
+      '.kllllllllk.',
+      '.klccllcclk.',
+      '.kllllllllk.',
+      '.kggggggggk.',
+      '.kggggggggk.',
+      '..kkkkkkkk..',
+      '............',
+      '............',
+      '............'
+    ],
+    crownStar: [
+      '.....kk.....',
+      '....khhk....',
+      '...khgggk...',
+      '..kkkggkkk..',
+      '.khkgggkhk..',
+      '.khgggggggk.',
+      '.kggcggcggk.',
+      '.kggggggggk.',
+      '.khhhhhhhhk.',
+      '..kkkkkkkk..',
+      '............',
+      '............'
+    ],
+    trophy: [
+      '............',
+      '.kkkkkkkkkk.',
+      '.kllllllllk.',
+      '.kllggggllk.',
+      '..kllggllk..',
+      '...kllllk...',
+      '....kllk....',
+      '....kllk....',
+      '....kllk....',
+      '...kddddk...',
+      '..kkkkkkkk..',
+      '............'
+    ],
+    flag: [
+      '............',
+      '..kk........',
+      '..kakkkkkk..',
+      '..kaaaaaak..',
+      '..kaaaaaak..',
+      '..kaaaakk...',
+      '..kkkkkk....',
+      '..kak.......',
+      '..kak.......',
+      '..kak.......',
+      '.kkakk......',
+      '...kk.......'
+    ],
+    skull: [
+      '............',
+      '...kkkkkk...',
+      '..kllllllk..',
+      '.kllllllllk.',
+      '.klkkllkklk.',
+      '.klkkllkklk.',
+      '.kllllllllk.',
+      '..kllkkllk..',
+      '...kllllk...',
+      '...klklkk...',
+      '...kkkkkk...',
+      '............'
+    ],
+    tower: [
+      '....kkkk....',
+      '....kllk....',
+      '....kllk....',
+      '...kkllkk...',
+      '...klaalk...',
+      '...kllllk...',
+      '...klwllk...',
+      '...kllllk...',
+      '..kkllllkk..',
+      '..klallalk..',
+      '..kkkkkkkk..',
+      '............'
+    ],
+    tree: [
+      '....kkkk....',
+      '..kkllllkk..',
+      '.kllllllllk.',
+      '.klllaalllk.',
+      'kllllllllllk',
+      '.kllllllllk.',
+      '..kkllllkk..',
+      '....kddk....',
+      '....kddk....',
+      '...kkddkk...',
+      '............',
+      '............'
+    ],
+    wave: [
+      '............',
+      '............',
+      '...kkk......',
+      '..klllkkk...',
+      '.kllllllllk.',
+      'kllllllllllk',
+      'kkkkkkkkkkkk',
+      '..kkk...kkk.',
+      '.klllkkklllk',
+      'kllllllllllk',
+      'kkkkkkkkkkkk',
+      '............'
+    ],
+    star: [
+      '.....kk.....',
+      '.....kk.....',
+      '....kllk....',
+      'kkkkkllkkkkk',
+      '.kllllllllk.',
+      '..kllllllk..',
+      '...kllllk...',
+      '..kllkkllk..',
+      '.kllk..kllk.',
+      '.kkk....kkk.',
+      '............',
+      '............'
+    ],
+    dome: [
+      '............',
+      '...kkkkkk...',
+      '..kllllllk..',
+      '.kllllllllk.',
+      'kllllllllllk',
+      'kkkkkkkkkkkk',
+      '..ka.kk.ak..',
+      '..ka.kk.ak..',
+      '..ka.kk.ak..',
+      '.kkkkkkkkkk.',
+      '............',
+      '............'
+    ],
+    pyramid: [
+      '............',
+      '.....kk.....',
+      '....kllk....',
+      '....kllk....',
+      '...klaalk...',
+      '...kllllk...',
+      '..kllllllk..',
+      '..kllllllk..',
+      '.kllaallllk.',
+      '.kllllllllk.',
+      'kkkkkkkkkkkk',
+      '............'
+    ],
+    ghost: [
+      '............',
+      '...kkkkkk...',
+      '..kllllllk..',
+      '.kllllllllk.',
+      '.klkkllkklk.',
+      '.klkkllkklk.',
+      '.kllllllllk.',
+      '.kllllllllk.',
+      '.kllllllllk.',
+      '.klkllllklk.',
+      '.kk.kkkk.kk.',
+      '............'
+    ],
+    gear: [
+      '............',
+      '...k.kk.k...',
+      '..klkkkklk..',
+      '.kkllllllkk.',
+      '.klllkklllk.',
+      'kllkaddakllk',
+      '.klllkklllk.',
+      '.kkllllllkk.',
+      '..klkkkklk..',
+      '...k.kk.k...',
+      '............',
+      '............'
+    ],
+    boat: [
+      '............',
+      '....k.......',
+      '....k.kkkk..',
+      '....k.kllk..',
+      '....k.kkkk..',
+      '....k.......',
+      'kkkkkkkkkk..',
+      'kllllllllk..',
+      '.kllllllk...',
+      '..kkkkkk....',
+      '............',
+      '............'
+    ],
+    flask: [
+      '............',
+      '....kkkk....',
+      '....kddk....',
+      '....kddk....',
+      '...kkddkk...',
+      '..kddddddk..',
+      '.kddddddddk.',
+      '.kddaaaaddk.',
+      '.kddaaaaddk.',
+      '.kkddddddkk.',
+      '..kkkkkkkk..',
+      '............'
+    ],
+    snow: [
+      '............',
+      '...k....k...',
+      '....k..k....',
+      '.....kk.....',
+      '..kkkllkkk..',
+      'kkllllllllkk',
+      '..kkkllkkk..',
+      '.....kk.....',
+      '....k..k....',
+      '...k....k...',
+      '............',
+      '............'
+    ],
+    cloud: [
+      '............',
+      '............',
+      '.....kkk....',
+      '...kkllkkk..',
+      '..klllllllk.',
+      '.klllllllllk',
+      'kllllllllllk',
+      'kllllllllllk',
+      'kkkkkkkkkkkk',
+      '.kkkkkkkkkk.',
+      '............',
+      '............'
+    ],
+    candy: [
+      '............',
+      '....kkkk....',
+      '..kkllllkk..',
+      '.klllaalllk.',
+      '.klllaalllk.',
+      '.kllllllllk.',
+      '..kkllllkk..',
+      '....kddk....',
+      '....kddk....',
+      '....kkkk....',
+      '............',
+      '............'
+    ],
+    moon: [
+      '............',
+      '...kkkk.....',
+      '..kllllk..k.',
+      '.kllllk..klk',
+      '.klllk....k.',
+      'kllllk......',
+      'kllllk......',
+      '.klllk....k.',
+      '.kllllk..klk',
+      '..kllllk..k.',
+      '...kkkk.....',
+      '............'
+    ]
+  };
+
+  /* ---------------------------------------------------------------- 아이콘 → SVG data URI */
+  var URIS = {};
+  function uri(art, pal) {
+    var key = art + '|' + pal.k + pal.a + pal.l + pal.d + pal.g + pal.h + pal.c + pal.w + pal.y + pal.o + pal.r;
+    if (URIS[key]) return URIS[key];
+    var rows = ART[art] || ART.star;
+    var body = '';
+    for (var y = 0; y < rows.length; y++) {
+      var row = rows[y], x = 0;
+      while (x < row.length) {
+        var ch = row.charAt(x);
+        if (ch === '.' || !pal[ch]) { x++; continue; }
+        var x2 = x + 1;
+        while (x2 < row.length && row.charAt(x2) === ch) x2++;
+        body += '<rect x="' + x + '" y="' + y + '" width="' + (x2 - x) + '" height="1" fill="' + pal[ch] + '"/>';
+        x = x2;
+      }
+    }
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12" shape-rendering="crispEdges">' + body + '</svg>';
+    URIS[key] = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    return URIS[key];
+  }
+
+  /* ---------------------------------------------------------------- 칭호 id → 테마 */
+  var MAP_ART = {
+    default: 'cloud', dessert: 'candy', site: 'gear', space: 'star', bamboo: 'tree', atlantis: 'wave',
+    arcade: 'star', arctic: 'snow', mansion: 'ghost', volcano: 'flame', school: 'dome', clock: 'gear',
+    kitchen: 'candy', train: 'tower', wuxia: 'flag', rainbow: 'star', newyork: 'tower', seoul: 'tower',
+    paris: 'tower', egypt: 'pyramid', fuji: 'snow', london: 'tower', skycastle: 'cloud', pirate: 'boat',
+    carnival: 'star', mushroom: 'tree', cyberpunk: 'star', olympus: 'dome', lab: 'flask', canyon: 'pyramid',
+    santa: 'tree', stadium: 'tower', rockfest: 'star', onsen: 'dome', honey: 'candy', library: 'dome',
+    cheese: 'candy', dino: 'skull', alien: 'star', gyeongju: 'dome', venice: 'boat', snowclock: 'snow',
+    fireworks: 'star', baseball: 'tower', retro20: 'gear', custom: 'gear'
+  };
+  /* 맵 묶음(그룹) — 같은 그림이라도 그룹별로 색 계열을 확실히 나눈다 */
+  var GROUP = {
+    sky: ['default', 'skycastle', 'fuji', 'arctic', 'snowclock'],
+    fire: ['volcano', 'canyon', 'egypt'],
+    sea: ['atlantis', 'venice', 'pirate'],
+    space: ['space', 'cyberpunk', 'arcade', 'alien'],
+    forest: ['bamboo', 'mushroom', 'santa', 'honey'],
+    sweet: ['dessert', 'kitchen', 'cheese', 'candy'],
+    night: ['mansion', 'library', 'clock'],
+    city: ['site', 'newyork', 'seoul', 'london', 'paris', 'train', 'stadium', 'baseball'],
+    party: ['carnival', 'rockfest', 'rainbow', 'fireworks', 'retro20'],
+    relic: ['olympus', 'gyeongju', 'onsen', 'egypt', 'wuxia'],
+    wild: ['dino', 'school', 'lab', 'custom']
+  };
+  var G_OF = {};
+  for (var g in GROUP) if (GROUP.hasOwnProperty(g)) GROUP[g].forEach(function (m) { G_OF[m] = g; });
+
+  var BASICS = {
+    rookie: { art: 'sprout', a: '#34d399', l: '#a7f3d0', bd: '#34d399', g1: '#0d3f2e', champ: false, label: '도전자' },
+    origin: { art: 'portal', a: '#a855f7', l: '#e9d5ff', bd: '#c084fc', g1: '#3b1d6b', champ: false, label: '태초 고인물' },
+    collide: { art: 'spark', a: '#fb923c', l: '#fde047', bd: '#fb923c', g1: '#4a1f0a', champ: false, label: '충돌 매니아' },
+    streak: { art: 'flame', a: '#f97316', l: '#fde047', bd: '#fb923c', g1: '#4d1a05', champ: false, label: '연승 파이터' },
+    king: { art: 'crown', a: '#ffd24a', l: '#fff3b0', bd: '#ffd24a', g1: '#4a3308', champ: true, label: '정상 정복자' },
+    conquer: { art: 'flag', a: '#f87171', l: '#fecaca', bd: '#fbbf24', g1: '#4a1518', champ: true, label: '전 맵 정복자' },
+    legend: { art: 'crownStar', a: '#ffe066', l: '#fffbe6', bd: '#ffe066', g1: '#3b2a5e', champ: true, label: '전설의 재우' },
+    rec: { art: 'flag', a: '#38bdf8', l: '#bae6fd', bd: '#38bdf8', g1: '#0b2740', champ: false, label: '내 기록' }
+  };
+  var SPECIALS = {
+    ill_conquer: { art: 'trophy', a: '#ffd24a', l: '#fff3b0', bd: '#ffd24a', g1: '#4a3308', champ: true, label: '45맵 정복' },
+    ill_slayer: { art: 'skull', a: '#e2e8f0', l: '#f8fafc', bd: '#c084fc', g1: '#2a1444', champ: false, label: '보스 슬레이어' },
+    ill_champ1: { art: 'trophy', a: '#ffe066', l: '#fffbe6', bd: '#ffd24a', g1: '#4a3308', champ: true, label: '첫 챔피언' },
+    ill_ten: { art: 'star', a: '#38bdf8', l: '#bfe9ff', bd: '#38bdf8', g1: '#123a63', champ: false, label: '10맵 여행자' },
+    ill_night: { art: 'moon', a: '#c4b5fd', l: '#ede9fe', bd: '#a78bfa', g1: '#241a4d', champ: false, label: '밤샘 등반가' }
+  };
+
+  var MAP_PAL = {};   /* 맵 팔레트 (JWMap 에서 한 번만 읽어 캐시) */
+  function mapPal(mid) {
+    if (MAP_PAL[mid]) return MAP_PAL[mid];
+    var o = { sky: '', acc: '', name: mid };
+    try {
+      var m = (root.JWMap && root.JWMap.byId) ? (root.JWMap.byId(mid) || {}) : {};
+      var sky = m.sky || [];
+      o.sky = sky[2] || sky[1] || sky[0] || '';
+      o.acc = m.diffColor || '';
+      o.name = m.name || mid;
+    } catch (e) {}
+    MAP_PAL[mid] = o;
+    return o;
+  }
+  /* 그룹 기본색 (맵 팔레트가 없을 때·보색이 필요할 때) */
+  var GROUP_COL = {
+    sky: '#7dd3fc', fire: '#fb923c', sea: '#22d3ee', space: '#a78bfa', forest: '#4ade80',
+    sweet: '#f9a8d4', night: '#c4b5fd', city: '#93c5fd', party: '#e879f9', relic: '#fcd34d', wild: '#94a3b8'
+  };
+
+  function labelOf(id) {
+    try {
+      var l = (root.JW43 && root.JW43.api) ? (JW43.api().titles() || []) : [];
+      for (var i = 0; i < l.length; i++) {
+        if (l[i] && l[i].id === id) {
+          var s = String(l[i].short || l[i].name || '');
+          return s.replace(/^[^\w가-힣]+/, '').trim() || s;
+        }
+      }
+    } catch (e) {}
+    if (BASICS[id]) return BASICS[id].label;
+    if (SPECIALS[id]) return SPECIALS[id].label;
+    return '';
+  }
+
+  /* id → { art, pal, bd, g1, g2, champ, label } */
+  function theme(id) {
+    id = String(id || '');
+    var t = null;
+    if (BASICS[id]) t = BASICS[id];
+    else if (SPECIALS[id]) t = SPECIALS[id];
+    else if (/^champ_/.test(id) || /^clr_/.test(id)) {
+      var mid = id.replace(/^(champ_|clr_)/, '');
+      var grp = G_OF[mid] || 'city';
+      var mp = mapPal(mid);
+      var acc = mp.sky || GROUP_COL[grp] || '#94a3b8';
+      var isC = /^champ_/.test(id);
+      var art = MAP_ART[mid] || 'tower';
+      if (isC) {
+        /* 1등 전용: 맵 실루엣 대신 황금 왕관 + 그 맵의 보석색 — 어느 맵이든 '왕' 느낌은 유지 */
+        t = {
+          art: grp === 'space' || grp === 'party' ? 'crownStar' : 'crown',
+          a: '#ffd24a', l: '#fff3b0', bd: '#ffd24a',
+          g1: mix(acc, '#3a2a05', 0.62), champ: true, gemAccent: acc
+        };
+      } else {
+        t = { art: art, a: acc, l: lite(acc, 0.42), bd: lite(acc, 0.12), g1: mix(deep(acc, 0.55), '#101a2e', 0.55), champ: false };
+      }
+      t.label = labelOf(id) || (isC ? '맵 1등' : '맵 클리어');
+      t.map = mid;
+      t.group = grp;
+      t.accent = acc; t.acc = acc;
+      return finish(t, id);
+    }
+    if (!t) t = { art: 'star', a: '#38bdf8', l: '#bae6fd', bd: '#38bdf8', g1: '#123a63', champ: false, label: labelOf(id) };
+    if (!t.label) t.label = labelOf(id);
+    return finish(t, id);
+  }
+  function finish(t, id) {
+    t.id = id;
+    if (!t.pal) {
+      t.pal = {
+        k: t.champ ? '#3a2405' : '#0c0816',
+        a: t.a, l: t.l, d: deep(t.a, 0.45),
+        g: t.acc ? t.acc : '#ffd24a',
+        h: '#fff3b0',
+        c: t.gemAccent || (t.champ ? '#67e8f9' : lite(t.a, 0.55)),
+        w: '#fff8e7', y: '#fde047', o: t.a, r: deep(t.a, 0.3)
+      };
+    }
+    if (t.champ && t.acc) t.pal.g = t.acc;     /* 왕관 테두리 = 맵 색 */
+    if (!t.uri) t.uri = uri(t.art, t.pal);
+    return t;
+  }
+
+  /* ---------------------------------------------------------------- 명패 HTML */
+  var F_PIX = "'Galmuri11','DungGeunMo','Apple SD Gothic Neo',monospace";
+  function shadowFor(t, big) {
+    if (!t.champ) {
+      return 'inset 1px 1px 0 rgba(255,255,255,.22),inset -1px -1px 0 rgba(0,0,0,.5),0 0 0 1px #0c0816,0 1px 2px rgba(0,0,0,.55)';
+    }
+    var gl = t.acc || '#ffd24a';
+    return 'inset 0 0 0 1px ' + rgba(gl, 0.55) + ',inset 2px 2px 0 rgba(255,240,180,.55),inset -2px -2px 0 rgba(0,0,0,.45),0 0 0 1px #2a1a02,' +
+      '0 0 ' + (big ? 10 : 7) + 'px rgba(255,204,60,.45),0 0 ' + (big ? 20 : 13) + 'px ' + rgba(gl, 0.28);
+  }
+  function rgba(c, a) {
+    var x = hx(c);
+    return 'rgba(' + x[0] + ',' + x[1] + ',' + x[2] + ',' + a + ')';
+  }
+
+  /* o = { h, fs, nfs, ic } */
+  function plate(id, nick, o) {
+    o = o || {};
+    if (!id || id === 'auto') id = myTitleId();   /* 'auto' = 지금 적용 중인 가장 높은 칭호 */
+    var t = theme(id);
+    var h = o.h || 24;
+    var fs = o.fs || 11;
+    var nfs = o.nfs || (fs + 1);
+    var ic = o.ic || Math.round(h * 0.54);
+    var start = t.champ ? mix(t.acc || '#c99a20', '#141022', 0.58) : mix(t.a, t.g1, 0.42);
+    var bg = steps(start, NAVY, t.champ ? 7 : 6);
+    var fg = t.champ ? '#fff6d8' : lite(t.a, 0.3);
+    var html = '<span class="v16pl' + (t.champ ? ' v16ch' : '') + '" data-v16id="' + esc(id) + '" style="' +
+      'display:inline-flex;align-items:center;gap:4px;box-sizing:border-box;' +
+      'height:' + h + 'px;padding:0 7px 0 3px;border-radius:3px;' +
+      'border:2px solid ' + t.bd + ';background:' + bg + ';' +
+      'box-shadow:' + shadowFor(t, h > 26) + ';' +
+      'font-family:' + F_PIX + ' !important;font-size:' + fs + 'px !important;line-height:1 !important;font-weight:700 !important;letter-spacing:-.02em !important;' +
+      'white-space:nowrap;vertical-align:middle;color:' + fg + ';text-shadow:0 1px 0 #05070f;"' +
+      ' data-v16ch="' + (t.champ ? 1 : 0) + '">' +
+      '<img alt="" src="' + t.uri + '" width="' + ic + '" height="' + ic + '" style="display:block;image-rendering:pixelated;' +
+      'flex:0 0 auto;' + (t.champ ? 'filter:drop-shadow(0 0 2px rgba(255,210,74,.75));' : '') + '">' +
+      '<span style="font-family:' + F_PIX + ' !important;font-size:' + fs + 'px !important;font-weight:700 !important;letter-spacing:-.02em !important;line-height:1 !important;color:' + fg + ';">' +
+      esc(t.label || labelOf(id)) + '</span>' +
+      (nick ? '<span style="color:' + (t.champ ? 'rgba(255,225,150,.85)' : 'rgba(190,215,255,.75)') + ';font-size:' +
+        (fs - 1) + 'px;padding:0 1px;">·</span>' +
+        '<span id="v16plNm" style="font-family:' + F_PIX + ' !important;font-size:' + nfs + 'px !important;font-weight:700 !important;letter-spacing:-.02em !important;line-height:1 !important;color:#ffffff !important;">' +
+        esc(nick) + '</span>' : '') +
+      '</span>';
+    return html;
+  }
+
+  function iconTile(id, px) {
+    var t = theme(id);
+    var pad = Math.max(2, Math.round(px * 0.1));
+    return '<span class="v16tile" style="display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;' +
+      'width:' + px + 'px;height:' + px + 'px;border-radius:3px;padding:' + pad + 'px;box-sizing:border-box;' +
+      'background:linear-gradient(160deg,' + rgba(t.champ ? '#ffd24a' : t.a, 0.22) + ',' + rgba(NAVY, 0.9) + ');' +
+      'border:1px solid ' + rgba(t.champ ? '#ffd24a' : t.a, 0.55) + ';">' +
+      '<img alt="" src="' + t.uri + '" width="' + (px - pad * 2) + '" height="' + (px - pad * 2) +
+      '" style="display:block;image-rendering:pixelated;">' +
+      '</span>';
+  }
+  function listTitle(id, text, grade) {
+    var t = theme(id);
+    /* 이모지 대신 도트 아이콘이 앞에 붙으므로 칭호 글자에서 앞 이모지는 뺀다 */
+    var raw = String(text == null ? '' : text);
+    var clean = raw.replace(/^[^0-9A-Za-z가-힣]+/, '').trim();
+    text = clean || raw;
+    var fg = t.champ ? '#ffe9a8' : lite(t.a, 0.55);
+    var sh = t.champ
+      ? 'text-shadow:0 0 6px rgba(255,190,60,.7),0 1px 0 #2a1a02;'
+      : 'text-shadow:0 1px 0 rgba(0,0,0,.7);';
+    return '<b class="v16lt" style="font-family:' + F_PIX + ' !important;font-size:12.5px !important;font-weight:700 !important;letter-spacing:-.02em !important;' +
+      'color:' + fg + ';' + sh + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(text) + '</b>';
+  }
+
+  /* ---------------------------------------------------------------- 인게임 머리 위 태그 */
+  function myTitleId() {
+    var id = '';
+    try { id = (root.JW56T5 && root.JW56T5.myTitleId) ? root.JW56T5.myTitleId() : ''; } catch (e) {}
+    if (!id) { try { id = (root.JW51TITLES && JW51TITLES.equipped) ? JW51TITLES.equipped() : ''; } catch (e) {} }
+    if (!id || id === 'auto') {
+      try {
+        var un = (JW43.api().unlockedTitles() || []), best = null;
+        un.forEach(function (t) { if (t && (!best || (t.rank || 0) > (best.rank || 0))) best = t; });
+        if (best) id = best.id;
+      } catch (e) {}
+    }
+    return id || 'rookie';
+  }
+  /* #v97Tag / #v51IGTag 전용: [아이콘] 칭호 · 이름 한 덩어리 */
+  function tag(nick, id) {
+    var tid = id && id !== 'auto' ? id : myTitleId();
+    return plate(tid, nick || '', { h: 24, fs: 11, nfs: 12, ic: 14 });
+  }
+
+  /* ---------------------------------------------------------------- 기존 칩(.v58-ti) 업그레이드 */
+  var NAME2ID = null;
+  function norm(s) { return String(s == null ? '' : s).replace(/^[^\w가-힣]+/, '').replace(/\s+/g, '').trim(); }
+  function nameMap() {
+    if (NAME2ID) return NAME2ID;
+    NAME2ID = {};
+    var put = function (k, id) { k = norm(k); if (k && !NAME2ID[k]) NAME2ID[k] = id; };
+    try {
+      (JW43.api().titles() || []).forEach(function (t) { put(t.short, t.id); put(t.name, t.id); });
+    } catch (e) {}
+    for (var k in BASICS) if (BASICS.hasOwnProperty(k)) put(BASICS[k].label, k);
+    for (var s in SPECIALS) if (SPECIALS.hasOwnProperty(s)) put(SPECIALS[s].label, s);
+    return NAME2ID;
+  }
+  function idOfText(txt) {
+    var k = norm(txt);
+    if (!k) return '';
+    var m = nameMap();
+    return m[k] || '';
+  }
+
+  var UPG = 0;
+  function upgrade() {
+    var list = doc.querySelectorAll('.v58-ti:not([data-v16]),.v51badge:not([data-v16])');
+    if (!list.length) return 0;
+    var n = 0;
+    for (var i = 0; i < list.length; i++) {
+      var el = list[i];
+      if (!el || (el.closest && el.closest('#v97Tag'))) continue;
+      var id = idOfText(el.textContent);
+      if (!id) { el.setAttribute('data-v16', ''); continue; }
+      var t = theme(id);
+      var small = el.closest && el.closest('#v48rk,.v485fc,.mp-lrow,.mp-row');
+      var fs = small ? 10 : 10.5;
+      var st = el.style;
+      st.setProperty('font-family', F_PIX, 'important');
+      st.setProperty('font-size', fs + 'px', 'important');
+      st.setProperty('font-weight', '700', 'important');
+      st.setProperty('letter-spacing', '-.02em', 'important');
+      st.setProperty('border', '1px solid ' + t.bd, 'important');
+      st.setProperty('border-radius', '3px', 'important');
+      st.setProperty('background', steps(t.g1, NAVY, 5), 'important');
+      st.setProperty('color', t.champ ? '#fff6d8' : '#eef6ff', 'important');
+      st.setProperty('padding', '1px 5px 2px 3px', 'important');
+      st.setProperty('line-height', '1.3', 'important');
+      st.setProperty('box-shadow', t.champ
+        ? 'inset 1px 1px 0 rgba(255,240,180,.5),0 0 0 1px #2a1a02,0 0 6px rgba(255,204,60,.5)'
+        : 'inset 1px 1px 0 rgba(255,255,255,.18),0 0 0 1px #0c0816', 'important');
+      if (!el.querySelector('img.v16bi')) {
+        var im = doc.createElement('img');
+        im.className = 'v16bi';
+        im.alt = '';
+        im.src = t.uri;
+        im.width = 11; im.height = 11;
+        im.style.cssText = 'width:11px;height:11px;image-rendering:pixelated;display:inline-block;vertical-align:-1px;margin-right:3px;flex:0 0 auto;';
+        el.insertBefore(im, el.firstChild);
+      }
+      el.setAttribute('data-v16', id);
+      n++;
+    }
+    UPG += n;
+    return n;
+  }
+
+  /* 칭호를 바꾸면 아이콘도 새로 (id 가 바뀐 칩만 다시) */
+  function refresh() {
+    doc.querySelectorAll('[data-v16]').forEach(function (el) {
+      var id = el.getAttribute('data-v16');
+      var cur = idOfText(el.textContent);
+      if (cur && cur !== id) {
+        el.removeAttribute('data-v16');
+        var im = el.querySelector('img.v16bi');
+        if (im) im.parentNode.removeChild(im);
+      }
+    });
+    upgrade();
+  }
+
+  /* 칭호 도감 미리보기(#v51TlPrev)에 명패가 들어갔으면 옛 큰 아이콘은 숨긴다 */
+  function tidyPrev() {
+    var p = $('v51TlPrev');
+    if (!p || !p.querySelector('.v16pl')) return;
+    Array.prototype.forEach.call(p.children, function (c) {
+      if (c.tagName === 'IMG' || c.tagName === 'SPAN') {
+        if (c.style.display !== 'none') c.style.display = 'none';
+      }
+    });
+  }
+
+  /* ---------------------------------------------------------------- 부트 */
+  var booted = false;
+  function boot() {
+    if (booted) return;
+    booted = true;
+    try { upgrade(); } catch (e) {}
+    var dirty = 0;
+    try {
+      new MutationObserver(function () { dirty = 1; }).observe(doc.body, { childList: true, subtree: true });
+    } catch (e) { dirty = 1; }
+    setInterval(function () {
+      if (!dirty) return;
+      dirty = 0;
+      try { upgrade(); } catch (e) {}
+      try { tidyPrev(); } catch (e) {}
+    }, 450);
+    console.log('[JW16T] 16-bit title plates ready');
+  }
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 700); });
+  else setTimeout(boot, 700);
+
+  root.JW16T = {
+    theme: theme, uri: function (id) { return theme(id).uri; },
+    plate: plate, tag: tag, iconTile: iconTile, listTitle: listTitle,
+    upgrade: upgrade, refresh: refresh, art: ART, steps: steps,
+    label: function (id) { return theme(id).label; }
+  };
+})(window);
+
