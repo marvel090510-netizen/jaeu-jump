@@ -1,24 +1,11 @@
-/* ── v5.15-r4 perf: 인게임 중에는 '화면 장식용' 주기 작업을 돌리지 않는다 ──
-   인게임 45초 실측: UI 패처 setInterval 이 약 3.0초(6.7%)를 먹고,
-   35ms 초과 프레임 끊김의 87% 안에서 이 콜백이 돌고 있었다.
-   일시정지·승리 화면에서는 false 를 돌려 기존 패처가 그대로 돌게 한다. */
-window.__jwInPlay = window.__jwInPlay || function () {
-  try {
-    var g = window.__jwg && window.__jwg.game;
-    if (!g) return false;
-    if (g.paused || g.victory) return false;
-    return !!g.inPlay;
-  } catch (e) { return false; }
-};
-var __jwIP = window.__jwInPlay;
-/* v5.15-r4 ingame-gate */
-/* 성공하고싶은 재우 — 게임 본체 (v5.15 정식 루트)
-   muse-v5-9/index.html(v5.15) <body> 안의 인라인 <script> 108개를 순서 그대로 이어 붙인 파일이다.
-   iPad Safari 가 3.4MB 통짜 인라인을 파싱하며 메인 스레드가 멈추던 문제(베일이 안 걷힘)를
-   없애기 위해 분리했고, index.html 은 <script src="game.js?v=515tw6" defer></script> 로 불러온다.
-   각 블록은 원래 그대로(대부분 IIFE)라 한 블록의 예외가 다음 블록을 막지 않는다. */
+/* ==========================================================================
+   muse-v5-9 game.js — v5.16 테스트판
+   (v5.15 테스트판 index.html 인라인 스크립트를 외부 파일로 분리, 정식 루트 v5.15-r4 방식과 동일)
+   - <base href="../"> 유지: 상대 경로(audio/sfx/ 등)는 계속 루트 기준
+   - VERSION = '4.8' (멀티 호환) — 절대 변경 금지
+   ========================================================================== */
 
-/* ── block 1 (muse-v5-9/index.html 979줄) ── */
+/* ===== v59 inline block #4 (was index.html L940-3433) ===== */
 
     (function () {
       'use strict';
@@ -1112,6 +1099,8 @@ var __jwIP = window.__jwInPlay;
        * 7. HAZARD HIT & JUMP RELEASE PHYSICS
        *************************************************************************/
       function hitPlayerWithKnockback(vx, vy, msg) {
+        /* v5.19-dev: 무적(/god)이면 피격 자체를 무시 */
+        if (window.JWDEV && JWDEV.god) return;
         if (player.invulnT > 0) return;
         if (player.shields > 0) {
           player.shields--;
@@ -1183,6 +1172,7 @@ var __jwIP = window.__jwInPlay;
         if (dir !== 0) player.facing = dir;
         player.onGround = false;
         player.plat = null;
+        player._bounceAir = false; /* 직접 점프는 튐 비행이 아님 — 공중 조종 해제 */
 
         sfx.jump(pwr);
         setMood(pwr > 0.8 ? '힘듦' : '결의', 1.1);
@@ -1325,6 +1315,10 @@ var __jwIP = window.__jwInPlay;
           player.aimDir = dirIn;
         }
 
+        /* v5.19-dev: 비행 중 지상 점프 키 = 충전 없이 바로 이륙 */
+        if (window.JWDEV && JWDEV.fly && player.onGround && player.plat && keys.jump && player.splatT <= 0) {
+          player.onGround = false; player.plat = null; player.charging = false; player.charge = 0;
+        }
         if (player.onGround && player.plat) {
           player.peakFallVy = 0;
           if (player.plat.dx) player.x += player.plat.dx;
@@ -1372,11 +1366,33 @@ var __jwIP = window.__jwInPlay;
           if (game.activeEv && game.activeEv.id === 'wind' && player.shields <= 0) {
             player.vx += game.windDir * 200 * dt;
           }
-          let g = (window.JWG && JWG.gravity) ? JWG.gravity() : 1380;
-          if (game.activeEv && (game.activeEv.id === 'lowgrav' || game.activeEv.id === 'celestial')) g = 980 * (g / 1380);
-          if (player.featherT > 0) g *= 0.52;
-          player.vy = Math.min(1060, player.vy + g * dt);
-          if (player.vy > player.peakFallVy) player.peakFallVy = player.vy;
+          if (window.JWDEV && JWDEV.fly) {
+            /* v5.19-dev: 비행 — 점프 키를 누르면 상승(vy=-260), 떼면 호버(vy=0). 중력 무시 */
+            player.charging = false; player.charge = 0;
+            player.vy = keys.jump ? -260 : 0;
+            if (dirIn !== 0) {
+              player.vx += dirIn * 1200 * dt;
+              if (Math.abs(player.vx) > 200) player.vx = Math.sign(player.vx) * 200;
+            } else {
+              player.vx *= Math.pow(0.80, dt * 60);
+              if (Math.abs(player.vx) < 4) player.vx = 0;
+            }
+          } else {
+            /* v5.19-fix: 통통 발판 비행(_bounceAir) 중에만 방향키 조종 허용.
+               일반 점프는 Jump King식 공중 고정 그대로 유지하고, 젤리/_bounce/덩굴·토스터·
+               거품 같은 강제 튐 비행에서만 좌우 가속을 준다. vy(높이·리듬)는 건드리지 않고,
+               입력이 없을 때는 vx를 그대로 둬서 튀는 궤적이 전과 동일하다. */
+            if (player._bounceAir && dirIn !== 0) {
+              player.vx += dirIn * 1000 * dt;
+              if (Math.abs(player.vx) > 260) player.vx = Math.sign(player.vx) * 260;
+              player.facing = dirIn;
+            }
+            let g = (window.JWG && JWG.gravity) ? JWG.gravity() : 1380;
+            if (game.activeEv && (game.activeEv.id === 'lowgrav' || game.activeEv.id === 'celestial')) g = 980 * (g / 1380);
+            if (player.featherT > 0) g *= 0.52;
+            player.vy = Math.min(1060, player.vy + g * dt);
+            if (player.vy > player.peakFallVy) player.peakFallVy = player.vy;
+          }
         }
 
         if (player.onGround && game.activeEv && game.activeEv.id === 'wind' && player.shields <= 0) {
@@ -1461,6 +1477,7 @@ var __jwIP = window.__jwInPlay;
               player.plat = p;
               player.peakFallVy = 0;
               player._bounced = false;
+              player._bounceAir = false; /* 착지하면 튐 비행 종료 (onLand가 다시 켤 수 있음) */
               if (window.JWG && JWG.onLand) JWG.onLand(p, impact);
 
               if (!player._bounced && impact >= 760 && p.index !== ((window.JWG && JWG.goalPlat) ? JWG.goalPlat() : TOTAL_PLATS)) {
@@ -1617,7 +1634,7 @@ var __jwIP = window.__jwInPlay;
           const snapY = roomIdx * roomH;
           game.camY += (snapY - game.camY) * Math.min(1, dt * 16);
         } else {
-          const targetY = player.y - (window.v515CamOff ? v515CamOff() : 240);
+          const targetY = player.y - 240;
           game.camY += (targetY - game.camY) * Math.min(1, dt * 8.5);
         }
 
@@ -1853,7 +1870,7 @@ var __jwIP = window.__jwInPlay;
         let ox = ((canvas.width - viewW) >> 1);
         if (zoomK !== 1) ox = Math.round(canvas.width / 2 - (player.x + 14) * scale);
         const logicalH = Math.ceil(canvas.height / scale);
-        game.camH = logicalH; game.camW = viewW; window.__jwCamH = logicalH;
+        game.camH = logicalH; game.camW = viewW;
 
         const sx = game.shakeT > 0 ? ((Math.random() - 0.5) * game.shakeMag * 2) | 0 : 0;
         const sy = game.shakeT > 0 ? ((Math.random() - 0.5) * game.shakeMag * 2) | 0 : 0;
@@ -2524,9 +2541,7 @@ extends CanvasLayer
       }
     })();
   
-;
-
-/* ── block 2 (muse-v5-9/index.html 4026줄) ── */
+/* ===== v59 inline block #5 (was index.html L3987-4284) ===== */
 
 /* ===== 재우 4.0 실시간 통신 (공용 WSS 릴레이 풀 pub/sub) ===== */
 (function (root) {
@@ -2825,9 +2840,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 3 (muse-v5-9/index.html 4324줄) ── */
+/* ===== v59 inline block #6 (was index.html L4285-5165) ===== */
 
 /* ===== 4.1: 신규 맵 5종 (배경·발판·기믹·사운드) ===== */
 /* ==========================================================================
@@ -3709,9 +3722,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 4 (muse-v5-9/index.html 5205줄) ── */
+/* ===== v59 inline block #7 (was index.html L5166-6251) ===== */
 
 /* ===== 4.1: 모드 5종 · 버프/함정 · 스킨 · 결과 리포트 ===== */
 /* ==========================================================================
@@ -3925,6 +3936,7 @@ extends CanvasLayer
     /* 젤리 트램펄린: 통통 튀어 오른다 */
     if (p.art === 'jelly') {
       pl._bounced = true;
+      pl._bounceAir = true; /* 튐 비행 시작 — 공중 방향키 조종 허용 */
       pl.onGround = false;
       pl.plat = null;
       pl.vy = -Math.max(660, Math.min(1000, impact * 0.85 + 300));
@@ -4660,7 +4672,7 @@ extends CanvasLayer
         lava.style.top = Math.max(0, sy * scale) + 'px';
         lava.style.height = '100%';
       }
-      if (pl.y + pl.h > solo.lavaY) endSolo('lava');
+      if (!(window.JWDEV && JWDEV.god) && pl.y + pl.h > solo.lavaY) endSolo('lava');
     } else if (solo.mode === 'relay') {
       solo.legTime += dt;
       if (solo.relayLeg === 1 && pl.runBestPlat >= (root.JW43 && root.JW43.handFloor ? root.JW43.handFloor() : 44)) {
@@ -4798,9 +4810,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 5 (muse-v5-9/index.html 6291줄) ── */
+/* ===== v59 inline block #8 (was index.html L6252-10480) ===== */
 
 /* ==========================================================================
    성공하고싶은 재우 4.1 : 실시간 멀티 레이스 / 방 규칙 / 친구 / 채팅 / 관전 /
@@ -5082,7 +5092,7 @@ extends CanvasLayer
       onMessage: (m) => {
         if (m.t === 'presence' && m.f) {
           const prev = S.presence[m.f];
-          S.presence[m.f] = { nick: m.n, room: m.r || null, ts: Date.now(), color: m.c, sk: m.sk || 'jaeu', sm: m.sm || '', pid: m.p };
+          S.presence[m.f] = { nick: m.n, room: m.r || null, ts: Date.now(), color: m.c, sk: m.sk || 'jaeu', sm: m.sm || '', pid: m.p, st: m.st || null };
           /* v4.6: 친구가 닉네임/스킨을 바꾸면 친구 목록에도 즉시 반영 */
           try {
             const f2 = friends.find((x) => x.ftag === m.f);
@@ -5122,7 +5132,11 @@ extends CanvasLayer
   function publishPresence() {
     const bus = S.pres;
     if (!bus || !bus.pk) return;
-    const body = JSON.stringify({ t: 'presence', f: S.me.ftag, p: S.me.pid, n: S.me.nick, c: S.me.color, sk: S.me.skin || meSkinId(), sm: prof.status || '', r: (S.phase !== 'idle' && S.room) ? S.room.code : null });
+    /* v5.19: 스토리 모드면 스테이지·맵·미션을 같이 전한다 (없으면 null) */
+    let __st = null;
+    try { __st = (window.JW43 && window.JW43.storyPresence) ? window.JW43.storyPresence() : null; } catch (e) {}
+    if (!__st) { try { const __run = window.JW43 && window.JW43.storyRun; if (__run && !__run.done) __st = { i: __run.index, map: __run.mapId, name: __run.mapId, label: null }; } catch (e) {} }
+    const body = JSON.stringify({ t: 'presence', f: S.me.ftag, p: S.me.pid, n: S.me.nick, c: S.me.color, sk: S.me.skin || meSkinId(), sm: prof.status || '', st: __st, r: (S.phase !== 'idle' && S.room) ? S.room.code : null });
     JWNet.makeEvent(bus.sk, body, presenceTag()).then((ev) => bus.send(ev)).catch(() => {});
   }
 
@@ -6801,9 +6815,24 @@ extends CanvasLayer
     for (let i = 0; i < bots.length; i++) if (bots[i].pid === pid) return bots[i];
     return null;
   }
+  /* v5.19: 관전 대상이 스토리 모드면 이름 뒤에 스테이지·맵을 붙인다 (방 안에서는
+     스토리 판이 있을 수 없지만, 혹시 모를 경우를 대비해 presence에서 확인) */
+  function specStorySuffix(pid) {
+    try {
+      const h = window.JW485HUB;
+      if (!h || !h.actOf) return '';
+      const pl = (S.players && S.players.get(pid)) || {};
+      const tag = (pl && pl.ftag) || '';
+      if (!tag) return '';
+      const a = h.actOf(tag);
+      const st = a && a.story;
+      if (!st) return '';
+      return ' · 📖 스토리 모드 · ' + st.i + '스테이지 ' + (st.name || st.map);
+    } catch (e) { return ''; }
+  }
   function specNameText(pr) {
     const nm = (pr && (pr.nick || (S.players.get(pr.pid) || {}).nick)) || '참가자';
-    return '👀 관전 중 · ' + nm + ' 님';
+    return '👀 관전 중 · ' + nm + ' 님' + (pr && pr.pid ? specStorySuffix(pr.pid) : '');
   }
   function paintSpecName() {
     const el = $('mpSpecName');
@@ -7895,7 +7924,7 @@ extends CanvasLayer
         const rec = records[f.ftag] || { w: 0, l: 0 };
         const inRoom = online && pr.room;
         const fnick = (online && pr.nick) ? pr.nick : f.nick;
-        const stTxt = (pr && pr.sm) ? '💬 ' + esc(pr.sm) : (online ? (inRoom ? '방 대기 중 · ' + esc(inRoom) : '온라인') : '오프라인');
+        const stTxt = (pr && pr.st) ? ('📖 스토리 모드 · ' + pr.st.i + '스테이지 ' + esc(pr.st.name || pr.st.map) + (pr.st.label ? ' · 🎯 ' + esc(pr.st.label) : '') + (pr.sm ? ' · 💬 ' + esc(pr.sm) : '')) : ((pr && pr.sm) ? '💬 ' + esc(pr.sm) : (online ? (inRoom ? '방 대기 중 · ' + esc(inRoom) : '온라인') : '오프라인'));
         return '<div class="' + (opts.rowClass || 'mp-lrow') + '" style="flex-wrap:wrap">' +
           '<span class="mp-dot" style="background:' + (online ? '#34d399' : '#475569') + '"></span>' +
           '<canvas class="v46fr-ava" data-frface="' + esc(f.ftag) + '" width="28" height="32" style="width:22px;height:26px;image-rendering:pixelated;flex:0 0 auto"></canvas>' +
@@ -8703,7 +8732,7 @@ extends CanvasLayer
     wireGameHooks();
     renderProfileCard();
     window.addEventListener('resize', () => { if (S.phase === 'race' || S.phase === 'result') layoutRaceHud(); });
-    setInterval(function () { if (__jwIP()) return; syncQuickBar(); }, 350);
+    setInterval(syncQuickBar, 350);
     window.addEventListener('orientationchange', () => setTimeout(() => { if (S.phase === 'race' || S.phase === 'result') layoutRaceHud(); }, 350));
     setInterval(() => { if (S.phase !== 'idle') publishPresence(); }, 25000);
   }
@@ -9040,9 +9069,7 @@ extends CanvasLayer
 })();
 
 
-;
-
-/* ── block 6 (muse-v5-9/index.html 10808줄) ── */
+/* ===== v59 inline block #9 (was index.html L10769-13456) ===== */
 
 /* =====================================================================
     재우 4.2 · 10종 신기능 엔진
@@ -10856,13 +10883,15 @@ extends CanvasLayer
     const box = document.createElement('div');
     box.id = 'v42SetBox';
     box.innerHTML =
-      '<div class="text-xs font-black" style="color:#c4b5fd">4.2 신기능</div>' +
+      '<details><summary class="text-xs font-black" style="color:#c4b5fd;cursor:pointer">4.2 신기능</summary>' +
       '<div class="v42-row"><span class="v42-lbl">🌧️ 실시간 날씨 변화</span><button type="button" class="v42-chip" id="v42CfgWeather">OFF</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">👻 고스트 리플레이</span><button type="button" class="v42-chip" id="v42CfgGhost">자동</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">🔥 연속 착지 피버</span><button type="button" class="v42-chip" id="v42CfgFever">ON</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">🥊 78층부터 수문장</span><button type="button" class="v42-chip" id="v42CfgBoss">OFF</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">⛓️ 사슬 최대 거리</span><input type="range" id="v42CfgChain" min="120" max="340" step="10" style="width:96px" /></div>' +
-      '<div class="v42-sub">날씨·수문장은 새로 시작하는 판부터 적용됩니다. 고스트는 이 기기에 저장된 내 기록으로 재생됩니다.</div>' +
+      '<div class="v42-sub">날씨·수문장은 새로 시작하는 판부터 적용됩니다. 고스트는 이 기기에 저장된 내 기록으로 재생됩니다.</div></details>' +
+      '<div class="v42-row"><span class="v42-lbl">🛠️ 개발자 모드</span><button type="button" class="v42-chip" id="v42CfgDev">OFF</button></div>' +
+      '<div class="v42-row" id="v42DevPinRow"><span class="v42-lbl">🔑 PIN 4자리</span><input type="password" class="mp-in" id="v42DevPin" maxlength="4" inputmode="numeric" autocomplete="off" style="width:84px;text-align:center;letter-spacing:.2em;padding:6px 4px;font-size:14px" /><button type="button" class="v42-chip" id="v42DevPinOk">해금</button></div>' +
       '<button type="button" id="v42GodotLink" hidden aria-hidden="true" tabindex="-1" style="display:none!important;margin-top:2px;font-size:10px;font-weight:800;color:#c4b5fd;text-decoration:underline;background:none;border:0;text-align:left;padding:2px 0;opacity:.75">📦 Godot 4 코드 · 도트 PNG 에셋 내보내기</button>';
     card.appendChild(box);
     const wb = $('v42CfgWeather'), gb = $('v42CfgGhost'), fb = $('v42CfgFever'), bb = $('v42CfgBoss'), cs = $('v42CfgChain');
@@ -10873,6 +10902,14 @@ extends CanvasLayer
       const gl = { off: '끄기', auto: '자동', champ: '1등' }[CFG.ghost] || '자동';
       gb.textContent = gl; gb.classList.toggle('on', CFG.ghost !== 'off');
       cs.value = CFG.chainMax;
+      /* v5.19-dev: 개발자 모드 칩 + PIN 행 */
+      try {
+        var __dv = $('v42CfgDev'), __pr = $('v42DevPinRow');
+        var __un = !!(window.JWDEV && JWDEV.isUnlocked && JWDEV.isUnlocked());
+        var __on = !!(window.JWDEV && JWDEV.isDev && JWDEV.isDev());
+        if (__dv) { __dv.textContent = !__un ? '잠김' : (__on ? 'ON' : 'OFF'); __dv.classList.toggle('on', __on); }
+        if (__pr) __pr.style.display = __un ? 'none' : '';
+      } catch (e) {}
     };
     wb.addEventListener('click', () => { CFG.weather = !CFG.weather; saveCfg(); paint(); });
     fb.addEventListener('click', () => { CFG.fever = !CFG.fever; saveCfg(); paint(); });
@@ -10882,11 +10919,80 @@ extends CanvasLayer
       saveCfg(); paint();
     });
     cs.addEventListener('input', () => { CFG.chainMax = +cs.value; saveCfg(); });
+    /* v5.19-dev: 개발자 모드 PIN 해금 + ON/OFF 토글 (PIN은 문자열 '0209' 비교) */
+    const dvB = $('v42CfgDev'), pinOk = $('v42DevPinOk'), pinInp = $('v42DevPin');
+    if (dvB) dvB.addEventListener('click', () => {
+      if (!window.JWDEV) return;
+      if (!JWDEV.isUnlocked()) { JWDEV.toast('🔒 먼저 PIN을 입력해 해금해요', 'danger', 'PIN 4자리를 입력하고 해금을 눌러요', 2000); return; }
+      JWDEV.setDev(!JWDEV.isDev());
+      JWDEV.toast(JWDEV.isDev() ? '🛠️ 개발자 모드 ON' : '🛠️ 개발자 모드 OFF', 'lucky', JWDEV.isDev() ? '게임 화면 오른쪽 위에 🛠️ 버튼이 떠요' : '🛠️ 버튼이 사라져요', 1800);
+      paint();
+    });
+    if (pinOk) pinOk.addEventListener('click', () => {
+      if (!window.JWDEV) return;
+      const inp = $('v42DevPin');
+      const v = inp ? inp.value.trim() : '';
+      if (JWDEV.unlock(v)) {
+        if (inp) inp.value = '';
+        JWDEV.toast('🛠️ 개발자 모드 해금!', 'lucky', '개발자 모드를 켰어요 · 게임 화면 오른쪽 위에 🛠️ 버튼이 떠요', 2600);
+      } else {
+        JWDEV.toast('PIN이 틀렸어요', 'danger', '4자리 PIN을 다시 입력해요', 2000);
+        if (inp) inp.select();
+      }
+      paint();
+    });
+    if (pinInp) pinInp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); const ok = $('v42DevPinOk'); if (ok) ok.click(); } });
     const gl = $('v42GodotLink');
     if (gl) gl.addEventListener('click', () => {
       const sm = $('settingsModal'); if (sm) sm.classList.add('hidden');
       const gb2 = $('btnOpenGodotCode'); if (gb2) gb2.click();
     });
+    paint();
+  }
+  /* v5.21: 자주 쓰는 설정 — 설정창 최상단에 고정 (탭과 무관하게 항상 보임).
+     BGM 켜기/볼륨 · 대사 속도 · BGM 페이드 · 대사 태그 보기 · 대사 저장 일시정지.
+     값은 V.QOL(4.3)에 저장 — 대사 장면·BGM 코드가 같은 QOL을 읽는다. */
+  function injectTopFav() {
+    const card = document.querySelector('#settingsModal .pixel-panel');
+    if (!card || $('v51TopFav')) return;
+    var V43 = window.JW43 || null;
+    var Q = (V43 && V43.QOL) || {};
+    const box = document.createElement('div');
+    box.id = 'v51TopFav';
+    box.style.cssText = 'background:#0d1526;border:2px solid #f59e0b;padding:10px;display:flex;flex-direction:column;gap:6px';
+    box.innerHTML =
+      '<div class="text-xs font-black" style="color:#fbbf24">⭐ 자주 쓰는 설정</div>' +
+      '<div class="v42-row"><span class="v42-lbl">🎵 BGM</span><button type="button" class="v42-chip" id="v51FavBgm">ON</button><input type="range" id="v51FavBgmVol" min="0" max="100" step="1" style="width:96px" /><span id="v51FavBgmVolV" style="font-size:11px;font-weight:800;color:#93c5fd;min-width:32px;text-align:right">32%</span></div>' +
+      '<div class="v42-row"><span class="v42-lbl">💬 대사 속도</span><input type="range" id="v51FavDlgSpd" min="0.5" max="2" step="0.25" style="width:120px" /><span id="v51FavDlgSpdV" style="font-size:11px;font-weight:800;color:#93c5fd;min-width:40px;text-align:right">1×</span></div>' +
+      '<div class="v42-row"><span class="v42-lbl">🎵 BGM 페이드</span><button type="button" class="v42-chip" id="v51FavFade">ON</button></div>' +
+      '<div class="v42-row"><span class="v42-lbl">🏷️ 대사 태그 보기</span><button type="button" class="v42-chip" id="v51FavTags">ON</button></div>' +
+      '<div class="v42-row"><span class="v42-lbl">⏸ 대사 저장 일시정지</span><button type="button" class="v42-chip" id="v51FavSavePause">저장 중</button></div>';
+    var first = card.querySelector('.v51-sec');
+    if (first) card.insertBefore(box, first); else card.appendChild(box);
+    /* v5.21: 저장 버튼을 카드 맨 아래로 — sticky bottom과 함께 스크롤 중에도 항상 보이게 */
+    try {
+      var sv = document.getElementById('btnSaveSettings');
+      if (sv && sv.parentElement) card.appendChild(sv.parentElement);
+    } catch (e) {}
+    var saveQ = function () { try { if (V43 && V43.saveQol) V43.saveQol(); } catch (e) {} };
+    var syncBgm = function () { try { if (window.JW43MP3 && window.JW43MP3.sync) window.JW43MP3.sync(); } catch (e) {} };
+    const paint = () => {
+      var bgmOn = !(Q.bgm === false);
+      var bg = $('v51FavBgm'); if (bg) { bg.textContent = bgmOn ? 'ON' : 'OFF'; bg.classList.toggle('on', bgmOn); }
+      var bv = $('v51FavBgmVol'); if (bv) bv.value = Math.round((Q.bgmVol == null ? 0.32 : Q.bgmVol) * 100);
+      var bvv = $('v51FavBgmVolV'); if (bvv) bvv.textContent = Math.round((Q.bgmVol == null ? 0.32 : Q.bgmVol) * 100) + '%';
+      var sp = $('v51FavDlgSpd'); if (sp) sp.value = (Q.dlgSpeed == null ? 1 : Q.dlgSpeed);
+      var spv = $('v51FavDlgSpdV'); if (spv) spv.textContent = (Q.dlgSpeed == null ? 1 : Q.dlgSpeed) + '×';
+      var fd = $('v51FavFade'); if (fd) { var f = Q.bgmFade !== false; fd.textContent = f ? 'ON' : 'OFF'; fd.classList.toggle('on', f); }
+      var tg = $('v51FavTags'); if (tg) { var t = Q.dlgTags !== false; tg.textContent = t ? 'ON' : 'OFF'; tg.classList.toggle('on', t); }
+      var ps = $('v51FavSavePause'); if (ps) { var p = !!Q.dlgSavePause; ps.textContent = p ? '일시정지 중' : '저장 중'; ps.classList.toggle('on', p); }
+    };
+    var bg = $('v51FavBgm'); if (bg) bg.addEventListener('click', () => { var on = Q.bgm === false; try { if (window.JW43MP3) window.JW43MP3.on = on; } catch (e) {} Q.bgm = on; saveQ(); syncBgm(); paint(); });
+    var bv = $('v51FavBgmVol'); if (bv) bv.addEventListener('input', () => { Q.bgmVol = Number(bv.value) / 100; saveQ(); syncBgm(); paint(); });
+    var sp = $('v51FavDlgSpd'); if (sp) sp.addEventListener('input', () => { Q.dlgSpeed = Number(sp.value); saveQ(); paint(); });
+    var fd = $('v51FavFade'); if (fd) fd.addEventListener('click', () => { Q.bgmFade = !(Q.bgmFade !== false); saveQ(); paint(); });
+    var tg = $('v51FavTags'); if (tg) tg.addEventListener('click', () => { Q.dlgTags = !(Q.dlgTags !== false); saveQ(); paint(); });
+    var ps = $('v51FavSavePause'); if (ps) ps.addEventListener('click', () => { Q.dlgSavePause = !Q.dlgSavePause; saveQ(); paint(); });
     paint();
   }
   function injectResultButtons() {
@@ -11265,9 +11371,12 @@ extends CanvasLayer
     const skins = W().skins(), cols = W().colors();
     const grid = $('v42SkinGrid');
     if (grid) {
-      grid.innerHTML = skins.map((s) =>
-        '<button type="button" class="v42-skcard' + (s.id === sk ? ' on' : '') + '" data-sk="' + s.id + '">' +
-        '<canvas width="32" height="36"></canvas><span class="nm">' + s.emoji + ' ' + s.name + '</span></button>').join('');
+      grid.innerHTML = skins.map((s) => {
+        /* v5.16 스토리 잠금: 잠긴 스킨은 🔒 + 반투명으로 표시 (선택 시 setSkin이 토스트 후 차단) */
+        const lk = !!(window.JW43 && JW43.skinLocked && JW43.skinLocked(s.id));
+        return '<button type="button" class="v42-skcard' + (s.id === sk ? ' on' : '') + '" data-sk="' + s.id + '"' + (lk ? ' style="opacity:.55"' : '') + '>' +
+          '<canvas width="32" height="36"></canvas><span class="nm">' + (lk ? '🔒 ' : '') + s.emoji + ' ' + s.name + '</span></button>';
+      }).join('');
       grid.querySelectorAll('[data-sk]').forEach((b) => {
         const id = b.getAttribute('data-sk');
         const sp = W().spriteFor(col, 'idle1', id);
@@ -11698,6 +11807,7 @@ extends CanvasLayer
     hookAll();
     injectTitleRow();
     injectSettingsBox();
+    try { injectTopFav(); } catch (e) {}
     injectResultButtons();
     bindUI();
     edLoad();
@@ -11731,9 +11841,7 @@ extends CanvasLayer
 })();
 
 
-;
-
-/* ── block 7 (muse-v5-9/index.html 14555줄) ── */
+/* ===== v59 inline block #10 (was index.html L14516-15150) ===== */
 
 /* ==========================================================================
    성공하고싶은 재우 4.3 : 공통 코어 (네임스페이스 · 맵 연결 · 썸네일)
@@ -11767,7 +11875,8 @@ extends CanvasLayer
     footprints: true, pieces: 2, chargePitch: true, bgm: true, bgmVol: 0.32, sfxVol: 0.7,
     lowSpec: false, focus: false, oneHand: false, platformNums: true, practice: false,
     ceremony: '만세', fallLine: '', quick4: true, aura: true, gentle: true,
-    dnd: false, autoFit: true, bigEmoji: true, anime: true
+    dnd: false, autoFit: true, bigEmoji: true, anime: true,
+    dlgSpeed: 1, bgmFade: true, dlgTags: true, dlgSavePause: false
   };
   const QOL = Object.assign({}, QOL_DEF, lsGet(LS.qol, {}));
   function saveQol() { lsSet(LS.qol, QOL); }
@@ -12110,6 +12219,7 @@ extends CanvasLayer
       return;
     }
     pl._bounced = true;
+    pl._bounceAir = true; /* 덩굴·토스터·거품 튐 비행 시작 — 공중 방향키 조종 허용 */
     pl.onGround = false;
     pl.plat = null;
     pl.vy = f.vy;
@@ -12369,9 +12479,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 8 (muse-v5-9/index.html 15190줄) ── */
+/* ===== v59 inline block #11 (was index.html L15151-15251) ===== */
 
 /* ==========================================================================
    재우 4.3 : 4.3 전용 메시지 버스 (방 버스 · 프레즌스 버스에 얹기)
@@ -12473,9 +12581,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 9 (muse-v5-9/index.html 15291줄) ── */
+/* ===== v59 inline block #12 (was index.html L15252-15535) ===== */
 
 /* ==========================================================================
    재우 4.3 : 스킨 20종 (기존 12 + 신규 8) · 색상 12종 (기존 6 + 신규 6)
@@ -12760,9 +12866,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 10 (muse-v5-9/index.html 15575줄) ── */
+/* ===== v59 inline block #13 (was index.html L15536-17325) ===== */
 
 /* ==========================================================================
    성공하고싶은 재우 4.3 : 신규 맵 11종 (총 16맵)
@@ -14302,9 +14406,1096 @@ extends CanvasLayer
   };
 
   /* ==========================================================================
+     ⑰ '🐾' '고양이 골목 & 지붕' — 스토리 신규 맵 ('쉬움' · 60층 · grav 1320)
+     기믹(가볍게만 반영): 줄 발판: 밟으면 처지고 3초 뒤 끊어진다. 쥐가 발판을 물고 옆으로 끌고 간다.
+     ========================================================================== */
+  const ALLEY = {
+    id: 'alley', name: '고양이 골목 & 지붕', emoji: '🐾', diff: '쉬움', diffColor: '#86efac', total: 60,
+    desc: '빨래줄·전깃줄 발판 · 쥐가 물고 도망가는 판자 · 처마끝 미끄럼',
+    zones: ['6. 골목 하수구', '1. 골목 입구', '2. 생선가게 처마', '3. 빨래줄 지붕', '4. 종탑 지붕', '5. 🐾 고양이 왕국'],
+    phys: { grav: 1320, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'alley', total: 60, seed: 401, dy0: 102, dyK: 28, dyJ: 4, stepMin: 86, stepSpan: 48,
+        wMin: 98, wSpan: 32, wShrink: 0.13, safeW: 160,
+        art(i, prog, safe) {
+          if (safe) return { art: 'roof', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'rope', type: 'crumble' };
+          if (r === 6) return { art: 'wire', type: 'moving' };
+          return { art: 'roof', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'wire') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#35476b', '#6d5c74', '#e7b489'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(53,71,107,0)', 'rgba(255,216,138,.25)', 'rgba(53,71,107,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(138,100,64,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(255,216,138,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(255,216,138,.45)', 'rgba(231,180,137,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#2e2117');
+      if (p.art === 'rope') {
+        rect(c, px0, py0, w, h, '#8a6440');
+        rect(c, px0, py0, w, 4, '#ffd88a');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#4a3524');
+      } else if (p.art === 'wire') {
+        rect(c, px0, py0, w, h, '#4a3524');
+        rect(c, px0, py0 + 3, w, 4, '#c79a6a');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#ffd88a');
+      } else {
+        rect(c, px0, py0, w, h, '#8a6440');
+        rect(c, px0, py0, w, 5, p.safe ? '#ffd88a' : '#c79a6a');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#ffd88a');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#4a3524');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#4a3524');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '고양이 왕국', '#ffd88a');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ⑱ '🪷' '개울가 연못 & 연잎 다리' — 스토리 신규 맵 ('쉬움' · 58층 · grav 1320)
+     기믹(가볍게만 반영): 연잎이 물결 주기에 맞춰 상승·하강(타이밍 점프), 개구리밥이 덮인 발판은 미끄럽다.
+     ========================================================================== */
+  const POND = {
+    id: 'pond', name: '개울가 연못 & 연잎 다리', emoji: '🪷', diff: '쉬움', diffColor: '#86efac', total: 58,
+    desc: '물결 따라 오르내리는 연잎 · 미끄러운 개구리밥 · 모기떼',
+    zones: ['6. 진흙 바닥', '1. 갈대 개울', '2. 연잎 디딤돌', '3. 모기떼 수풀', '4. 버들잎 둑', '5. 🪷 버들잎 정상'],
+    phys: { grav: 1320, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'pond', total: 58, seed: 402, dy0: 102, dyK: 28, dyJ: 4, stepMin: 86, stepSpan: 48,
+        wMin: 98, wSpan: 32, wShrink: 0.13, safeW: 160,
+        art(i, prog, safe) {
+          if (safe) return { art: 'leaf', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'lily', type: 'moving' };
+          if (r === 6) return { art: 'reed', type: 'normal' };
+          return { art: 'leaf', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'lily') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#9fd3e6', '#cfe9d8', '#f0f7e0'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(159,211,230,0)', 'rgba(247,182,200,.25)', 'rgba(159,211,230,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(95,143,74,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(247,182,200,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(247,182,200,.45)', 'rgba(240,247,224,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#22381e');
+      if (p.art === 'lily') {
+        rect(c, px0, py0, w, h, '#5f8f4a');
+        rect(c, px0, py0, w, 4, '#f7b6c8');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#33512c');
+      } else if (p.art === 'reed') {
+        rect(c, px0, py0, w, h, '#33512c');
+        rect(c, px0, py0 + 3, w, 4, '#8fb96a');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#f7b6c8');
+      } else {
+        rect(c, px0, py0, w, h, '#5f8f4a');
+        rect(c, px0, py0, w, 5, p.safe ? '#f7b6c8' : '#8fb96a');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#f7b6c8');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#33512c');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#33512c');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '버들잎 정상', '#f7b6c8');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ⑲ '🐤' '병아리 양계장 & 부화장' — 스토리 신규 맵 ('쉬움' · 56층 · grav 1320)
+     기믹(가볍게만 반영): 컨베이어가 반대 방향으로 흐르고, 굴러온 알이 부딪히면 발판이 깨진다.
+     ========================================================================== */
+  const HATCHERY = {
+    id: 'hatchery', name: '병아리 양계장 & 부화장', emoji: '🐤', diff: '쉬움', diffColor: '#86efac', total: 56,
+    desc: '반대로 흐르는 컨베이어 · 굴러오는 알 · 깨지는 발판',
+    zones: ['6. 알 더미 아래', '1. 모이통 마당', '2. 알 상자 미로', '3. 인큐베이터 벨트', '4. 둥지 계단', '5. 🐤 둥지 꼭대기'],
+    phys: { grav: 1320, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'hatchery', total: 56, seed: 403, dy0: 104, dyK: 28, dyJ: 4, stepMin: 88, stepSpan: 46,
+        wMin: 96, wSpan: 30, wShrink: 0.14, safeW: 158,
+        art(i, prog, safe) {
+          if (safe) return { art: 'crate', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'belt', type: 'moving' };
+          if (r === 6) return { art: 'egg', type: 'crumble' };
+          return { art: 'crate', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'belt') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#ffe7b0', '#fff3d0', '#fffaf0'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(255,231,176,0)', 'rgba(255,215,94,.25)', 'rgba(255,231,176,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(184,144,78,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(255,215,94,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(255,215,94,.45)', 'rgba(255,250,240,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#4a3719');
+      if (p.art === 'belt') {
+        rect(c, px0, py0, w, h, '#b8904e');
+        rect(c, px0, py0, w, 4, '#ffd75e');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#6b5127');
+      } else if (p.art === 'egg') {
+        rect(c, px0, py0, w, h, '#6b5127');
+        rect(c, px0, py0 + 3, w, 4, '#e3c07a');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#ffd75e');
+      } else {
+        rect(c, px0, py0, w, h, '#b8904e');
+        rect(c, px0, py0, w, 5, p.safe ? '#ffd75e' : '#e3c07a');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#ffd75e');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#6b5127');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#6b5127');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '둥지 꼭대기', '#ffd75e');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ⑳ '🥕' '당근밭 & 토끼 굴' — 스토리 신규 맵 ('쉬움' · 58층 · grav 1320)
+     기믹(가볍게만 반영): 굴 구간은 가까이 가야 발판이 드러나는 암흑 시야, 당근을 뽑으면 새 발판이 자란다.
+     ========================================================================== */
+  const BURROW = {
+    id: 'burrow', name: '당근밭 & 토끼 굴', emoji: '🥕', diff: '쉬움', diffColor: '#86efac', total: 58,
+    desc: '뽑으면 나오는 당근 발판 · 어둠 속 굴길 · 늑대 허수아비',
+    zones: ['6. 굴속 깊은 곳', '1. 당근밭 이랑', '2. 굴속 미로', '3. 늑대 허수아비 밭', '4. 토끼집 지붕', '5. 🥕 언덕 위 토끼집'],
+    phys: { grav: 1320, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'burrow', total: 58, seed: 404, dy0: 102, dyK: 28, dyJ: 4, stepMin: 86, stepSpan: 48,
+        wMin: 98, wSpan: 32, wShrink: 0.13, safeW: 160,
+        art(i, prog, safe) {
+          if (safe) return { art: 'dirt', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'carrot', type: 'normal' };
+          if (r === 6) return { art: 'root', type: 'crumble' };
+          return { art: 'dirt', type: 'normal' };
+        }
+      });
+    },
+    sky: ['#c9a075', '#a9793f', '#5c4028'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(201,160,117,0)', 'rgba(242,138,60,.25)', 'rgba(201,160,117,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(138,85,39,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(242,138,60,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(242,138,60,.45)', 'rgba(92,64,40,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#2f1c0e');
+      if (p.art === 'carrot') {
+        rect(c, px0, py0, w, h, '#8a5527');
+        rect(c, px0, py0, w, 4, '#f28a3c');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#4a2c16');
+      } else if (p.art === 'root') {
+        rect(c, px0, py0, w, h, '#4a2c16');
+        rect(c, px0, py0 + 3, w, 4, '#b57b45');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#f28a3c');
+      } else {
+        rect(c, px0, py0, w, h, '#8a5527');
+        rect(c, px0, py0, w, 5, p.safe ? '#f28a3c' : '#b57b45');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#f28a3c');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#4a2c16');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#4a2c16');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '언덕 위 토끼집', '#f28a3c');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉑ '🌾' '가을 밀밭 & 바람개비 언덕' — 스토리 신규 맵 ('쉬움' · 60층 · grav 1320)
+     기믹(가볍게만 반영): 바람개비가 도는 방향으로 캐릭터를 밀어내고, 까마귀가 발판을 쪼아 흔든다.
+     ========================================================================== */
+  const WHEATFIELD = {
+    id: 'wheatfield', name: '가을 밀밭 & 바람개비 언덕', emoji: '🌾', diff: '쉬움', diffColor: '#86efac', total: 60,
+    desc: '돌아가는 바람개비 · 쪼아대는 까마귀 · 흔들리는 밀단',
+    zones: ['6. 밀 그루 아래', '1. 밀 이랑', '2. 바람개비 밭', '3. 까마귀 떼', '4. 밀단 창고', '5. 🌾 노을 언덕'],
+    phys: { grav: 1320, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'wheatfield', total: 60, seed: 405, dy0: 102, dyK: 28, dyJ: 4, stepMin: 86, stepSpan: 48,
+        wMin: 98, wSpan: 32, wShrink: 0.13, safeW: 160,
+        art(i, prog, safe) {
+          if (safe) return { art: 'hay', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'pinwheel', type: 'moving' };
+          if (r === 6) return { art: 'crow', type: 'normal' };
+          return { art: 'hay', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'pinwheel') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#f6c98a', '#fbdfa8', '#fdf1cf'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(246,201,138,0)', 'rgba(255,233,163,.25)', 'rgba(246,201,138,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(179,129,58,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(255,233,163,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(255,233,163,.45)', 'rgba(253,241,207,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#453015');
+      if (p.art === 'pinwheel') {
+        rect(c, px0, py0, w, h, '#b3813a');
+        rect(c, px0, py0, w, 4, '#ffe9a3');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#66491f');
+      } else if (p.art === 'crow') {
+        rect(c, px0, py0, w, h, '#66491f');
+        rect(c, px0, py0 + 3, w, 4, '#dfae5c');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#ffe9a3');
+      } else {
+        rect(c, px0, py0, w, h, '#b3813a');
+        rect(c, px0, py0, w, 5, p.safe ? '#ffe9a3' : '#dfae5c');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#ffe9a3');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#66491f');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#66491f');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '노을 언덕', '#ffe9a3');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉒ '🐙' '문어 항아리 동굴' — 스토리 신규 맵 ('보통' · 72층 · grav 1360)
+     기믹(가볍게만 반영): 항아리에 들어가면 통과 판정이 작아지고, 문어 다리가 발판을 감아 좌우로 옮긴다.
+     ========================================================================== */
+  const OCTOCAVE = {
+    id: 'octocave', name: '문어 항아리 동굴', emoji: '🐙', diff: '보통', diffColor: '#7dd3fc', total: 72,
+    desc: '항아리 통과(몸 축소) · 발판을 감아 옮기는 다리 · 먹물 암전',
+    zones: ['6. 동굴 바닥', '1. 조수 웅덩이', '2. 항아리 미로', '3. 먹물 동굴', '4. 산호 아치', '5. 🐙 여덟 팔 왕좌'],
+    phys: { grav: 1360, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'octocave', total: 72, seed: 411, dy0: 102, dyK: 29, dyJ: 5, stepMin: 84, stepSpan: 48,
+        wMin: 90, wSpan: 32, wShrink: 0.15, safeW: 152,
+        art(i, prog, safe) {
+          if (safe) return { art: 'pot', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'tentacle', type: 'moving' };
+          if (r === 6) return { art: 'ink', type: 'ice' };
+          return { art: 'pot', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'tentacle') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#2c6a7a', '#1d4f60', '#123340'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(44,106,122,0)', 'rgba(246,168,156,.25)', 'rgba(44,106,122,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(71,112,108,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(246,168,156,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(246,168,156,.45)', 'rgba(18,51,64,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#152b2a');
+      if (p.art === 'tentacle') {
+        rect(c, px0, py0, w, h, '#47706c');
+        rect(c, px0, py0, w, 4, '#f6a89c');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#24413f');
+      } else if (p.art === 'ink') {
+        rect(c, px0, py0, w, h, '#24413f');
+        rect(c, px0, py0 + 3, w, 4, '#6c9a92');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#f6a89c');
+      } else {
+        rect(c, px0, py0, w, h, '#47706c');
+        rect(c, px0, py0, w, 5, p.safe ? '#f6a89c' : '#6c9a92');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#f6a89c');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#24413f');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#24413f');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '여덟 팔 왕좌', '#f6a89c');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉓ '🍌' '바나나 농장 & 과일 시장' — 스토리 신규 맵 ('보통' · 72층 · grav 1360)
+     기믹(가볍게만 반영): 바나나 껍질 발판은 한 번 밟으면 미끄러지고, 수레가 굴러와 발판을 옆으로 민다.
+     ========================================================================== */
+  const FRUITFARM = {
+    id: 'fruitfarm', name: '바나나 농장 & 과일 시장', emoji: '🍌', diff: '보통', diffColor: '#7dd3fc', total: 72,
+    desc: '미끄러운 바나나 껍질 · 굴러오는 과일 수레 · 코코넛 창고',
+    zones: ['6. 과일 상자 아래', '1. 바나나 농장', '2. 과일 수레 시장', '3. 코코넛 창고', '4. 과일탑 계단', '5. 🍌 과일탑 정상'],
+    phys: { grav: 1360, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'fruitfarm', total: 72, seed: 412, dy0: 102, dyK: 29, dyJ: 5, stepMin: 84, stepSpan: 48,
+        wMin: 90, wSpan: 32, wShrink: 0.15, safeW: 152,
+        art(i, prog, safe) {
+          if (safe) return { art: 'fruit', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'peel', type: 'ice' };
+          if (r === 6) return { art: 'cart', type: 'moving' };
+          return { art: 'fruit', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'cart') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#bfe6c8', '#e8f2c4', '#fbf6d8'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(191,230,200,0)', 'rgba(255,215,94,.25)', 'rgba(191,230,200,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(146,96,58,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(255,215,94,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(255,215,94,.45)', 'rgba(251,246,216,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#372315');
+      if (p.art === 'peel') {
+        rect(c, px0, py0, w, h, '#92603a');
+        rect(c, px0, py0, w, 4, '#ffd75e');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#54371f');
+      } else if (p.art === 'cart') {
+        rect(c, px0, py0, w, h, '#54371f');
+        rect(c, px0, py0 + 3, w, 4, '#c08a52');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#ffd75e');
+      } else {
+        rect(c, px0, py0, w, h, '#92603a');
+        rect(c, px0, py0, w, 5, p.safe ? '#ffd75e' : '#c08a52');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#ffd75e');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#54371f');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#54371f');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '과일탑 정상', '#ffd75e');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉔ '🐘' '사바나 & 물길' — 스토리 신규 맵 ('보통' · 74층 · grav 1360)
+     기믹(가볍게만 반영): 코끼리가 코로 물을 뿜어 발판을 밀고, 물길 발판은 주기적으로 떠내려간다.
+     ========================================================================== */
+  const SAVANNA = {
+    id: 'savanna', name: '사바나 & 물길', emoji: '🐘', diff: '보통', diffColor: '#7dd3fc', total: 74,
+    desc: '코로 물을 뿜는 코끼리 · 떠내려가는 물길 발판 · 마른 덤불',
+    zones: ['6. 마른 강바닥', '1. 마른 풀밭', '2. 아카시아 나무', '3. 코끼리 물길', '4. 바오밥 그늘', '5. 🐘 바오밥 언덕'],
+    phys: { grav: 1360, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'savanna', total: 74, seed: 413, dy0: 104, dyK: 30, dyJ: 5, stepMin: 84, stepSpan: 50,
+        wMin: 88, wSpan: 32, wShrink: 0.16, safeW: 150,
+        art(i, prog, safe) {
+          if (safe) return { art: 'acacia', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'water', type: 'moving' };
+          if (r === 6) return { art: 'dry', type: 'normal' };
+          return { art: 'acacia', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'water') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#eac37e', '#f6dfa9', '#fbeecb'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(234,195,126,0)', 'rgba(232,131,63,.25)', 'rgba(234,195,126,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(141,99,55,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(232,131,63,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(232,131,63,.45)', 'rgba(251,238,203,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#33220f');
+      if (p.art === 'water') {
+        rect(c, px0, py0, w, h, '#8d6337');
+        rect(c, px0, py0, w, 4, '#e8833f');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#4f371d');
+      } else if (p.art === 'dry') {
+        rect(c, px0, py0, w, h, '#4f371d');
+        rect(c, px0, py0 + 3, w, 4, '#bb8b52');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#e8833f');
+      } else {
+        rect(c, px0, py0, w, h, '#8d6337');
+        rect(c, px0, py0, w, 5, p.safe ? '#e8833f' : '#bb8b52');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#e8833f');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#4f371d');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#4f371d');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '바오밥 언덕', '#e8833f');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉕ '🎃' '할로윈 마을 & 사탕 거리' — 스토리 신규 맵 ('보통' · 74층 · grav 1360)
+     기믹(가볍게만 반영): 사탕을 먹으면 잠깐 몸이 부풀어 점프력이 오르고, 호박이 켜질 때만 발판이 보인다.
+     ========================================================================== */
+  const HALLOWEEN = {
+    id: 'halloween', name: '할로윈 마을 & 사탕 거리', emoji: '🎃', diff: '보통', diffColor: '#7dd3fc', total: 74,
+    desc: '켜지면 나타나는 호박 발판 · 사탕 버프 · 유령 의상 상점',
+    zones: ['6. 호박 밭 아래', '1. 잭오랜턴 밭', '2. 사탕 거리', '3. 호박 마차 길', '4. 마녀의 가게', '5. 🎃 호박 왕관'],
+    phys: { grav: 1360, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'halloween', total: 74, seed: 414, dy0: 104, dyK: 30, dyJ: 5, stepMin: 84, stepSpan: 50,
+        wMin: 88, wSpan: 32, wShrink: 0.16, safeW: 150,
+        art(i, prog, safe) {
+          if (safe) return { art: 'pumpkin', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'candy', type: 'normal' };
+          if (r === 6) return { art: 'lantern', type: 'normal' };
+          return { art: 'pumpkin', type: 'normal' };
+        }
+      });
+    },
+    sky: ['#3a2b57', '#5d3f6b', '#8a5a3a'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(58,43,87,0)', 'rgba(255,160,66,.25)', 'rgba(58,43,87,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(116,71,31,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(255,160,66,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(255,160,66,.45)', 'rgba(138,90,58,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#2a190a');
+      if (p.art === 'candy') {
+        rect(c, px0, py0, w, h, '#74471f');
+        rect(c, px0, py0, w, 4, '#ffa042');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#3f2610');
+      } else if (p.art === 'lantern') {
+        rect(c, px0, py0, w, h, '#3f2610');
+        rect(c, px0, py0 + 3, w, 4, '#a06a33');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#ffa042');
+      } else {
+        rect(c, px0, py0, w, h, '#74471f');
+        rect(c, px0, py0, w, 5, p.safe ? '#ffa042' : '#a06a33');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#ffa042');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#3f2610');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#3f2610');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '호박 왕관', '#ffa042');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉖ '🫧' '슬라임 늪 왕국' — 스토리 신규 맵 ('보통' · 76층 · grav 1360)
+     기믹(가볍게만 반영): 점액 발판은 밟고 3초 뒤 가라앉고, 부하 슬라임이 발판을 통째로 삼킨다.
+     ========================================================================== */
+  const SLIMEMARSH = {
+    id: 'slimemarsh', name: '슬라임 늪 왕국', emoji: '🫧', diff: '보통', diffColor: '#7dd3fc', total: 76,
+    desc: '가라앉는 점액 발판 · 발판을 삼키는 슬라임 · 젤리 벽',
+    zones: ['6. 늪 바닥', '1. 끈적 늪', '2. 슬라임 성벽', '3. 젤리 회랑', '4. 왕좌 앞', '5. 🫧 왕관 첨탑'],
+    phys: { grav: 1360, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'slimemarsh', total: 76, seed: 415, dy0: 104, dyK: 30, dyJ: 5, stepMin: 84, stepSpan: 50,
+        wMin: 88, wSpan: 32, wShrink: 0.16, safeW: 150,
+        art(i, prog, safe) {
+          if (safe) return { art: 'slime', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'jelly', type: 'crumble' };
+          if (r === 6) return { art: 'bubble', type: 'moving' };
+          return { art: 'slime', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'bubble') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#4c7a63', '#6a9a5f', '#8fb56a'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(76,122,99,0)', 'rgba(212,245,126,.25)', 'rgba(76,122,99,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(99,148,64,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(212,245,126,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(212,245,126,.45)', 'rgba(143,181,106,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#22380f');
+      if (p.art === 'jelly') {
+        rect(c, px0, py0, w, h, '#639440');
+        rect(c, px0, py0, w, 4, '#d4f57e');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#33521f');
+      } else if (p.art === 'bubble') {
+        rect(c, px0, py0, w, h, '#33521f');
+        rect(c, px0, py0 + 3, w, 4, '#8ec25e');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#d4f57e');
+      } else {
+        rect(c, px0, py0, w, h, '#639440');
+        rect(c, px0, py0, w, 5, p.safe ? '#d4f57e' : '#8ec25e');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#d4f57e');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#33521f');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#33521f');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '왕관 첨탑', '#d4f57e');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉗ '🥊' '권투 링 체육관' — 스토리 신규 맵 ('보통' · 72층 · grav 1360)
+     기믹(가볍게만 반영): 링 로프가 트램펄린처럼 튕겨 올리고, 글러브가 날아와 캐릭터를 밀어낸다. 라운드 종이 울리면 발판이 통째로 교체.
+     ========================================================================== */
+  const BOXING = {
+    id: 'boxing', name: '권투 링 체육관', emoji: '🥊', diff: '보통', diffColor: '#7dd3fc', total: 72,
+    desc: '튕겨 올리는 링 로프 · 날아오는 글러브 · 링 밖 낙하',
+    zones: ['6. 체육관 지하', '1. 체육관 현관', '2. 샌드백 복도', '3. 로프 링', '4. 챔피언 락커', '5. 🥊 챔피언 벨트'],
+    phys: { grav: 1360, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'boxing', total: 72, seed: 416, dy0: 102, dyK: 29, dyJ: 5, stepMin: 84, stepSpan: 48,
+        wMin: 90, wSpan: 32, wShrink: 0.15, safeW: 152,
+        art(i, prog, safe) {
+          if (safe) return { art: 'canvas', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'rope', type: 'moving' };
+          if (r === 6) return { art: 'glove', type: 'normal' };
+          return { art: 'canvas', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'rope') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#33404f', '#4d5b70', '#7c8798'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(51,64,79,0)', 'rgba(229,106,94,.25)', 'rgba(51,64,79,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(184,174,154,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(229,106,94,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(229,106,94,.45)', 'rgba(124,135,152,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#453f33');
+      if (p.art === 'rope') {
+        rect(c, px0, py0, w, h, '#b8ae9a');
+        rect(c, px0, py0, w, 4, '#e56a5e');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#6b6455');
+      } else if (p.art === 'glove') {
+        rect(c, px0, py0, w, h, '#6b6455');
+        rect(c, px0, py0 + 3, w, 4, '#e4dccc');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#e56a5e');
+      } else {
+        rect(c, px0, py0, w, h, '#b8ae9a');
+        rect(c, px0, py0, w, 5, p.safe ? '#e56a5e' : '#e4dccc');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#e56a5e');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#6b6455');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#6b6455');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '챔피언 벨트', '#e56a5e');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉘ '🧹' '호화 저택 대청소' — 스토리 신규 맵 ('보통' · 72층 · grav 1360)
+     기믹(가볍게만 반영): 먼지가 쌓이면 발판이 느려지고, 빗자루로 쓸면 먼지가 걷히며 새 발판이 드러난다. 물걸레 구간은 미끄럽다.
+     ========================================================================== */
+  const MANSIONCLEAN = {
+    id: 'mansionclean', name: '호화 저택 대청소', emoji: '🧹', diff: '보통', diffColor: '#7dd3fc', total: 72,
+    desc: '먼지 쌓인 발판 · 쓸면 생기는 길 · 물걸레 미끄럼',
+    zones: ['6. 하인 계단', '1. 대리석 현관', '2. 촛대 복도', '3. 식기 선반', '4. 다락 계단', '5. 🧹 다락 창가'],
+    phys: { grav: 1360, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'mansionclean', total: 72, seed: 417, dy0: 102, dyK: 29, dyJ: 5, stepMin: 84, stepSpan: 48,
+        wMin: 90, wSpan: 32, wShrink: 0.15, safeW: 152,
+        art(i, prog, safe) {
+          if (safe) return { art: 'marble', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'dust', type: 'crumble' };
+          if (r === 6) return { art: 'candle', type: 'normal' };
+          return { art: 'marble', type: 'normal' };
+        }
+      });
+    },
+    sky: ['#3b3548', '#5f5468', '#8f8088'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(59,53,72,0)', 'rgba(255,217,138,.25)', 'rgba(59,53,72,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(192,178,156,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(255,217,138,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(255,217,138,.45)', 'rgba(143,128,136,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#463d33');
+      if (p.art === 'dust') {
+        rect(c, px0, py0, w, h, '#c0b29c');
+        rect(c, px0, py0, w, 4, '#ffd98a');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#6e6354');
+      } else if (p.art === 'candle') {
+        rect(c, px0, py0, w, h, '#6e6354');
+        rect(c, px0, py0 + 3, w, 4, '#e9e0cf');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#ffd98a');
+      } else {
+        rect(c, px0, py0, w, h, '#c0b29c');
+        rect(c, px0, py0, w, 5, p.safe ? '#ffd98a' : '#e9e0cf');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#ffd98a');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#6e6354');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#6e6354');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '다락 창가', '#ffd98a');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉙ '🏮' '중국 객잔 & 강시 마을' — 스토리 신규 맵 ('어려움' · 80층 · grav 1400)
+     기믹(가볍게만 반영): 강시가 팔을 뻗은 채 뛰어와 넘어야 하고, 부적을 붙이면 3초 멈춘다.
+     ========================================================================== */
+  const OLDINN = {
+    id: 'oldinn', name: '중국 객잔 & 강시 마을', emoji: '🏮', diff: '어려움', diffColor: '#fca5a5', total: 80,
+    desc: '팔을 뻗고 뛰어오는 강시 · 부적 봉인 · 기와지붕',
+    zones: ['6. 마을 우물', '1. 객잔 마당', '2. 등롱 거리', '3. 지붕 기와', '4. 부적 제단', '5. 🏮 달빛 언덕'],
+    phys: { grav: 1400, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'oldinn', total: 80, seed: 421, dy0: 104, dyK: 30, dyJ: 5, stepMin: 86, stepSpan: 50,
+        wMin: 86, wSpan: 30, wShrink: 0.17, safeW: 148,
+        art(i, prog, safe) {
+          if (safe) return { art: 'tile', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'lantern', type: 'moving' };
+          if (r === 6) return { art: 'talisman', type: 'normal' };
+          return { art: 'tile', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'lantern') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#2b2334', '#4a2c33', '#6b3434'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(43,35,52,0)', 'rgba(255,180,74,.25)', 'rgba(43,35,52,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(112,64,46,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(255,180,74,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(255,180,74,.45)', 'rgba(107,52,52,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#28150e');
+      if (p.art === 'lantern') {
+        rect(c, px0, py0, w, h, '#70402e');
+        rect(c, px0, py0, w, 4, '#ffb44a');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#3d2218');
+      } else if (p.art === 'talisman') {
+        rect(c, px0, py0, w, h, '#3d2218');
+        rect(c, px0, py0 + 3, w, 4, '#9a5a44');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#ffb44a');
+      } else {
+        rect(c, px0, py0, w, h, '#70402e');
+        rect(c, px0, py0, w, 5, p.safe ? '#ffb44a' : '#9a5a44');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#ffb44a');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#3d2218');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#3d2218');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '달빛 언덕', '#ffb44a');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉚ '🏥' '병원 & 응급실' — 스토리 신규 맵 ('어려움' · 80층 · grav 1400)
+     기믹(가볍게만 반영): 엘리베이터가 층마다 잠깐 멈추고(타이밍 점프), 경보가 울리면 조명이 어두워져 발판이 흐려진다.
+     ========================================================================== */
+  const HOSPITAL = {
+    id: 'hospital', name: '병원 & 응급실', emoji: '🏥', diff: '어려움', diffColor: '#fca5a5', total: 80,
+    desc: '층마다 멈추는 엘리베이터 · 지나가는 들것 · 어두워지는 조명',
+    zones: ['6. 지하 주차장', '1. 응급실 접수', '2. 수술실 복도', '3. 약품 엘리베이터', '4. 옥상 계단', '5. 🏥 옥상 헬기장'],
+    phys: { grav: 1400, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'hospital', total: 80, seed: 422, dy0: 104, dyK: 30, dyJ: 5, stepMin: 86, stepSpan: 50,
+        wMin: 86, wSpan: 30, wShrink: 0.17, safeW: 148,
+        art(i, prog, safe) {
+          if (safe) return { art: 'ward', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'lift', type: 'moving' };
+          if (r === 6) return { art: 'gurney', type: 'normal' };
+          return { art: 'ward', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'lift') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#465f70', '#7d97a4', '#d6e6ea'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(70,95,112,0)', 'rgba(143,230,194,.25)', 'rgba(70,95,112,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(166,183,189,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(143,230,194,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(143,230,194,.45)', 'rgba(214,230,234,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#3d4b50');
+      if (p.art === 'lift') {
+        rect(c, px0, py0, w, h, '#a6b7bd');
+        rect(c, px0, py0, w, 4, '#8fe6c2');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#5f7076');
+      } else if (p.art === 'gurney') {
+        rect(c, px0, py0, w, h, '#5f7076');
+        rect(c, px0, py0 + 3, w, 4, '#cfdde1');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#8fe6c2');
+      } else {
+        rect(c, px0, py0, w, h, '#a6b7bd');
+        rect(c, px0, py0, w, 5, p.safe ? '#8fe6c2' : '#cfdde1');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#8fe6c2');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#5f7076');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#5f7076');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '옥상 헬기장', '#8fe6c2');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉛ '🗿' '고대 돌 신전 폐허' — 스토리 신규 맵 ('어려움' · 80층 · grav 1400)
+     기믹(가볍게만 반영): 룬을 순서대로 밝히면 새 발판이 생기고, 골렘이 깨어나 지나간 발판을 부순다.
+     ========================================================================== */
+  const RUINS = {
+    id: 'ruins', name: '고대 돌 신전 폐허', emoji: '🗿', diff: '어려움', diffColor: '#fca5a5', total: 80,
+    desc: '깨어나 부수는 골렘 · 켜지면 생기는 룬 발판 · 무너지는 계단',
+    zones: ['6. 지하 제단', '1. 풀 덮인 계단', '2. 무너진 기둥', '3. 룬 벽', '4. 거대 석상', '5. 🗿 봉인된 제단'],
+    phys: { grav: 1400, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'ruins', total: 80, seed: 423, dy0: 104, dyK: 30, dyJ: 5, stepMin: 86, stepSpan: 50,
+        wMin: 86, wSpan: 30, wShrink: 0.17, safeW: 148,
+        art(i, prog, safe) {
+          if (safe) return { art: 'stone', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'rune', type: 'normal' };
+          if (r === 6) return { art: 'pillar', type: 'crumble' };
+          return { art: 'stone', type: 'normal' };
+        }
+      });
+    },
+    sky: ['#7b8a67', '#a9b189', '#d6cfa6'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(123,138,103,0)', 'rgba(143,224,216,.25)', 'rgba(123,138,103,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(141,139,108,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(143,224,216,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(143,224,216,.45)', 'rgba(214,207,166,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#343326');
+      if (p.art === 'rune') {
+        rect(c, px0, py0, w, h, '#8d8b6c');
+        rect(c, px0, py0, w, 4, '#8fe0d8');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#4f4e3a');
+      } else if (p.art === 'pillar') {
+        rect(c, px0, py0, w, h, '#4f4e3a');
+        rect(c, px0, py0 + 3, w, 4, '#b5b393');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#8fe0d8');
+      } else {
+        rect(c, px0, py0, w, h, '#8d8b6c');
+        rect(c, px0, py0, w, 5, p.safe ? '#8fe0d8' : '#b5b393');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#8fe0d8');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#4f4e3a');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#4f4e3a');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '봉인된 제단', '#8fe0d8');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉜ '🦈' '상어 해류 & 사냥터' — 스토리 신규 맵 ('어려움' · 82층 · grav 1400)
+     기믹(가볍게만 반영): 상어가 좌우로 순찰하며 닿으면 1회 피격, 해류가 계속 한 방향으로 밀어낸다.
+     ========================================================================== */
+  const SHARKBAY = {
+    id: 'sharkbay', name: '상어 해류 & 사냥터', emoji: '🦈', diff: '어려움', diffColor: '#fca5a5', total: 82,
+    desc: '한 방향으로 미는 해류 · 순찰하는 상어 · 청새치 떼',
+    zones: ['6. 해저 모래', '1. 얕은 산호', '2. 해류 협곡', '3. 청새치 떼', '4. 상어 순찰로', '5. 🦈 상어 왕의 바다'],
+    phys: { grav: 1400, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'sharkbay', total: 82, seed: 424, dy0: 104, dyK: 30, dyJ: 5, stepMin: 86, stepSpan: 50,
+        wMin: 86, wSpan: 30, wShrink: 0.17, safeW: 148,
+        art(i, prog, safe) {
+          if (safe) return { art: 'reef', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'current', type: 'moving' };
+          if (r === 6) return { art: 'fin', type: 'ice' };
+          return { art: 'reef', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'current') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#1e7a95', '#12617d', '#0c3f57'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(30,122,149,0)', 'rgba(166,240,226,.25)', 'rgba(30,122,149,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(58,113,133,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(166,240,226,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(166,240,226,.45)', 'rgba(12,63,87,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#122b36');
+      if (p.art === 'current') {
+        rect(c, px0, py0, w, h, '#3a7185');
+        rect(c, px0, py0, w, 4, '#a6f0e2');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#1e4353');
+      } else if (p.art === 'fin') {
+        rect(c, px0, py0, w, h, '#1e4353');
+        rect(c, px0, py0 + 3, w, 4, '#5a9cb0');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#a6f0e2');
+      } else {
+        rect(c, px0, py0, w, h, '#3a7185');
+        rect(c, px0, py0, w, 5, p.safe ? '#a6f0e2' : '#5a9cb0');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#a6f0e2');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#1e4353');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#1e4353');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '상어 왕의 바다', '#a6f0e2');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉝ '🌊' '심해 해구 & 난파선' — 스토리 신규 맵 ('극악' · 88층 · grav 1430)
+     기믹(가볍게만 반영): 산소 게이지가 줄고 발판 위에서만 회복, 물기포가 위로 밀어올리고 수압이 점프력을 깎는다.
+     ========================================================================== */
+  const TRENCH = {
+    id: 'trench', name: '심해 해구 & 난파선', emoji: '🌊', diff: '극악', diffColor: '#f87171', total: 88,
+    desc: '산소 게이지 · 물기포 상승 · 수압으로 낮아지는 점프',
+    zones: ['6. 해구 바닥', '1. 수면', '2. 난파선 선체', '3. 열수구 지대', '4. 잠수정 도킹', '5. 🌊 잠수정 탈출'],
+    phys: { grav: 1430, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'trench', total: 88, seed: 431, dy0: 108, dyK: 32, dyJ: 5, stepMin: 88, stepSpan: 54,
+        wMin: 74, wSpan: 30, wShrink: 0.2, safeW: 142,
+        art(i, prog, safe) {
+          if (safe) return { art: 'wreck', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'bubble', type: 'moving' };
+          if (r === 6) return { art: 'vent', type: 'normal' };
+          return { art: 'wreck', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'bubble') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#10354f', '#0a2438', '#051520'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(16,53,79,0)', 'rgba(111,240,208,.25)', 'rgba(16,53,79,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(34,68,90,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(111,240,208,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(111,240,208,.45)', 'rgba(5,21,32,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#08161e');
+      if (p.art === 'bubble') {
+        rect(c, px0, py0, w, h, '#22445a');
+        rect(c, px0, py0, w, 4, '#6ff0d0');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#0f2532');
+      } else if (p.art === 'vent') {
+        rect(c, px0, py0, w, h, '#0f2532');
+        rect(c, px0, py0 + 3, w, 4, '#35617a');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#6ff0d0');
+      } else {
+        rect(c, px0, py0, w, h, '#22445a');
+        rect(c, px0, py0, w, 5, p.safe ? '#6ff0d0' : '#35617a');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#6ff0d0');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#0f2532');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#0f2532');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '잠수정 탈출', '#6ff0d0');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉞ '🧛' '뱀파이어 성 & 지하 묘지' — 스토리 신규 맵 ('극악' · 86층 · grav 1430)
+     기믹(가볍게만 반영): 촛불이 꺼지면 발판이 보이지 않고, 박쥐 떼가 화면을 가리며, 관에서 뱀파이어가 튀어나온다.
+     ========================================================================== */
+  const VCASTLE = {
+    id: 'vcastle', name: '뱀파이어 성 & 지하 묘지', emoji: '🧛', diff: '극악', diffColor: '#f87171', total: 86,
+    desc: '꺼지면 암전되는 촛불 · 화면을 가리는 박쥐 떼 · 관에서 튀어나옴',
+    zones: ['6. 지하 묘지', '1. 성문', '2. 촛불 복도', '3. 관 뚜껑', '4. 종탑', '5. 🧛 핏빛 달 정상'],
+    phys: { grav: 1430, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'vcastle', total: 86, seed: 432, dy0: 106, dyK: 31, dyJ: 5, stepMin: 88, stepSpan: 52,
+        wMin: 78, wSpan: 30, wShrink: 0.19, safeW: 144,
+        art(i, prog, safe) {
+          if (safe) return { art: 'coffin', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'bat', type: 'moving' };
+          if (r === 6) return { art: 'candle', type: 'normal' };
+          return { art: 'coffin', type: 'normal' };
+        },
+        extra(i, p, prog) {
+          if (p.art === 'bat') { p.moveRange = 30 + (i % 3) * 12; p.moveSpeed = 0.55 + prog * 0.35; p.movePhase = i * 1.1; }
+        }
+      });
+    },
+    sky: ['#2b1a35', '#4a2030', '#6b2436'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(43,26,53,0)', 'rgba(247,106,114,.25)', 'rgba(43,26,53,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(84,74,88,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(247,106,114,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(247,106,114,.45)', 'rgba(107,36,54,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#1c1721');
+      if (p.art === 'bat') {
+        rect(c, px0, py0, w, h, '#544a58');
+        rect(c, px0, py0, w, 4, '#f76a72');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#2e2833');
+      } else if (p.art === 'candle') {
+        rect(c, px0, py0, w, h, '#2e2833');
+        rect(c, px0, py0 + 3, w, 4, '#7a6a7a');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#f76a72');
+      } else {
+        rect(c, px0, py0, w, h, '#544a58');
+        rect(c, px0, py0, w, 5, p.safe ? '#f76a72' : '#7a6a7a');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#f76a72');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#2e2833');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#2e2833');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '핏빛 달 정상', '#f76a72');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
+     ㉟ '😈' '마왕성 & 지옥의 문' — 스토리 신규 맵 ('극악' · 90층 · grav 1430)
+     기믹(가볍게만 반영): 용암이 아래에서 계속 차올라 강제로 올라가야 하고, 번개가 발판을 부순다.
+     ========================================================================== */
+  const DEMONKING = {
+    id: 'demonking', name: '마왕성 & 지옥의 문', emoji: '😈', diff: '극악', diffColor: '#f87171', total: 90,
+    desc: '차오르는 용암 · 발판을 부수는 번개 · 무너지는 뼈 감옥',
+    zones: ['6. 지옥의 구덩이', '1. 지옥문', '2. 용암 다리', '3. 뼈 감옥', '4. 번개 탑', '5. 😈 마왕의 왕좌'],
+    phys: { grav: 1430, jump: 1.0, horiz: 1.0 },
+    build(P, A) {
+      gen(P, A, {
+        id: 'demonking', total: 90, seed: 433, dy0: 108, dyK: 32, dyJ: 5, stepMin: 88, stepSpan: 54,
+        wMin: 74, wSpan: 30, wShrink: 0.2, safeW: 142,
+        art(i, prog, safe) {
+          if (safe) return { art: 'bone', type: 'normal' };
+          const r = i % 8;
+          if (r === 3) return { art: 'lava', type: 'crumble' };
+          if (r === 6) return { art: 'bolt', type: 'normal' };
+          return { art: 'bone', type: 'normal' };
+        }
+      });
+    },
+    sky: ['#3d1b1b', '#2a1010', '#160808'],
+    decor(c) {
+      ditherV(c, 0, 0, W, 260, ['rgba(61,27,27,0)', 'rgba(255,122,51,.25)', 'rgba(61,27,27,0)']);
+      for (let k = 0; k < 5; k++) {
+        const bx = 24 + k * 104, bh = 90 + (k * 53) % 150;
+        rect(c, bx, 700 - bh, 14, bh, 'rgba(85,41,28,.30)');
+        rect(c, bx, 700 - bh, 14, 5, 'rgba(255,122,51,.45)');
+      }
+      dots(c, 93, 50, W, 720, ['rgba(255,122,51,.45)', 'rgba(22,8,8,.35)'], 2);
+    },
+    plat(c, p, px0, py0) {
+      const w = p.w | 0, h = p.h | 0;
+      rect(c, px0 - 2, py0 - 2, w + 4, h + 4, '#1b0804');
+      if (p.art === 'lava') {
+        rect(c, px0, py0, w, h, '#55291c');
+        rect(c, px0, py0, w, 4, '#ff7a33');
+        for (let dx = 8; dx < w - 6; dx += 16) rect(c, px0 + dx, py0 + 6, 2, h - 8, '#2e1009');
+      } else if (p.art === 'bolt') {
+        rect(c, px0, py0, w, h, '#2e1009');
+        rect(c, px0, py0 + 3, w, 4, '#7a4530');
+        rect(c, px0 + 4, py0 + 9, w - 8, 3, '#ff7a33');
+      } else {
+        rect(c, px0, py0, w, h, '#55291c');
+        rect(c, px0, py0, w, 5, p.safe ? '#ff7a33' : '#7a4530');
+        rect(c, px0 + 2, py0 + 5, w - 4, 3, '#ff7a33');
+        for (let dx = 8; dx < w - 6; dx += 18) rect(c, px0 + dx, py0 + 10, 5, 4, '#2e1009');
+        rect(c, px0 + 3, py0 + h - 4, w - 6, 3, '#2e1009');
+      }
+      if (p.type === 'summit') summitSign(c, px0, py0, w, '마왕의 왕좌', '#ff7a33');
+      stamp(c, p, px0, py0);
+    }
+  };
+
+  /* ==========================================================================
      등록 + 래퍼 (이미 있는 5맵은 그대로 두고 11맵만 얹는다)
      ========================================================================== */
-  const NEW_MAPS = [ATLANTIS, ARCADE, ARCTIC, MANSION, VOLCANO, SCHOOL, CLOCK, KITCHEN, TRAIN, WUXIA, RAINBOW, NEWYORK, SEOUL, PARIS, EGYPT, FUJI];
+  const NEW_MAPS = [ATLANTIS, ARCADE, ARCTIC, MANSION, VOLCANO, SCHOOL, CLOCK, KITCHEN, TRAIN, WUXIA, RAINBOW, NEWYORK, SEOUL, PARIS, EGYPT, FUJI, ALLEY, POND, HATCHERY, BURROW, WHEATFIELD, OCTOCAVE, FRUITFARM, SAVANNA, HALLOWEEN, SLIMEMARSH, BOXING, MANSIONCLEAN, OLDINN, HOSPITAL, RUINS, SHARKBAY, TRENCH, VCASTLE, DEMONKING];
   const BY_ID = {};
   NEW_MAPS.forEach((m) => { BY_ID[m.id] = m; });
 
@@ -14553,9 +15744,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 11 (muse-v5-9/index.html 17365줄) ── */
+/* ===== v59 inline block #14 (was index.html L17326-19538) ===== */
 
 /* ==========================================================================
    성공하고싶은 재우 4.3 : 연속 수직 파노라마 배경 (seamless)
@@ -16769,9 +17958,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 12 (muse-v5-9/index.html 19578줄) ── */
+/* ===== v59 inline block #15 (was index.html L19539-20775) ===== */
 
 /* ==========================================================================
    재우 4.3 : 모드 개편 + 신규 모드 4종
@@ -18009,9 +19196,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 13 (muse-v5-9/index.html 20815줄) ── */
+/* ===== v59 inline block #16 (was index.html L20776-20895) ===== */
 
 /* ==========================================================================
    재우 4.3 : 신규 함정 6종 (총 14종) + 화면 연출 함정 구현
@@ -18132,9 +19317,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 14 (muse-v5-9/index.html 20935줄) ── */
+/* ===== v59 inline block #17 (was index.html L20896-21127) ===== */
 
 /* ==========================================================================
    재우 4.3 : 마무리 연출
@@ -18367,9 +19550,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 15 (muse-v5-9/index.html 21167줄) ── */
+/* ===== v59 inline block #18 (was index.html L21128-21551) ===== */
 
 /* ==========================================================================
    재우 4.3 : 신규 아이템 7종 + 개별 선택 필터
@@ -18794,9 +19975,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 16 (muse-v5-9/index.html 21591줄) ── */
+/* ===== v59 inline block #19 (was index.html L21552-22836) ===== */
 
 /* ==========================================================================
    재우 4.3 : 방 설정 10종 + 비방장 제안 + 변경 강조 + 봇 통합 + 버전 안내
@@ -19031,6 +20210,8 @@ extends CanvasLayer
   function heartTick() {
     const W = J(), pl = W && W.player;
     if (!pl) return;
+    /* v5.19-dev: 무적(/god)이면 하트 감소·사망 처리 자체를 막음 (타임어택 시간 종료는 그대로) */
+    if (window.JWDEV && JWDEV.god) return;
     /* v4.8.6 __v486Heart: 하트 없는 모드에서는 감소·사망 처리 자체를 막음 */
     try {
       if (window.JW56HEART && window.JW56HEART.need && !window.JW56HEART.need()) {
@@ -20082,9 +21263,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 17 (muse-v5-9/index.html 22876줄) ── */
+/* ===== v59 inline block #20 (was index.html L22837-23005) ===== */
 
 /* ==========================================================================
    재우 4.3 : 멀티 재참여(Rejoin)
@@ -20254,9 +21433,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 18 (muse-v5-9/index.html 23045줄) ── */
+/* ===== v59 inline block #21 (was index.html L23006-23376) ===== */
 
 /* ==========================================================================
    재우 4.3 : 맵별 + 모드별 최고 기록 분리 저장
@@ -20606,7 +21783,7 @@ extends CanvasLayer
     });
   }
   V.paintRecTitles = paintTitles;
-  setInterval(() => { if (__jwIP()) return; try { paintTitles(); } catch (e) {} }, 900);
+  setInterval(() => { try { paintTitles(); } catch (e) {} }, 900);
 
   V.initRecords = function () {
     const W = V.api();
@@ -20639,9 +21816,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 19 (muse-v5-9/index.html 23416줄) ── */
+/* ===== v59 inline block #22 (was index.html L23377-23983) ===== */
 
 /* ==========================================================================
    재우 4.3 : 친구 확실하게
@@ -20842,6 +22017,7 @@ extends CanvasLayer
     if (a.act === 'spectate') return { text: '👀 관전 중 · ' + map + ' · 방 ' + (a.room || ''), off: false };
     if (a.act === 'lobby') return { text: '🏠 방 대기 중 · 코드 ' + (a.room || ''), off: false };
     if (a.act === 'result') return { text: '🏆 결과 보는 중 · ' + map, off: false };
+    if (a.act === 'solo' && a.story) return { text: '📖 스토리 모드 · ' + a.story.i + '스테이지 ' + esc(a.story.name || a.story.map) + (a.story.label ? ' · 🎯 ' + esc(a.story.label) : ''), off: false };
     if (a.act === 'solo') return { text: '🎮 혼자 플레이 중 · ' + map + ' · ' + (a.floor || 0) + '층', off: false };
     return { text: '🟢 타이틀 대기', off: false };
   }
@@ -21146,7 +22322,7 @@ extends CanvasLayer
     if (!S) return;
     if (m.t === 'v43pres') {
       if (!m.ftag || m.ftag === me().ftag) return;
-      F.act[m.ftag] = { act: m.act, map: m.map, mode: m.mode, floor: m.floor, room: m.room, ver: m.ver, sm: m.sm, hidden: !!m.hidden, at: Date.now() };
+      F.act[m.ftag] = { act: m.act, map: m.map, mode: m.mode, floor: m.floor, room: m.room, ver: m.ver, sm: m.sm, hidden: !!m.hidden, at: Date.now(), story: m.story || null };
       if (isFriend(m.ftag) && !m.hidden && m.act && m.act !== 'off' && m.act !== 'title') V.onFriendPresence(m.ftag, { nick: m.nick });
       if (F.sel === m.ftag) detail(m.ftag);
       return;
@@ -21249,9 +22425,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 20 (muse-v5-9/index.html 24023줄) ── */
+/* ===== v59 inline block #23 (was index.html L23984-26929) ===== */
 
 /* ==========================================================================
    재우 4.3 : 편리성(QoL) + 손맛·연출·통계
@@ -21779,7 +22953,6 @@ extends CanvasLayer
   const QOL_ROWS = [
     ['oneHand', '✋ 한 손 조작 프리셋', '이동·점프를 오른손 한쪽에 모읍니다'],
     ['lowSpec', '🔋 저사양·배터리 절약', '파티클·연출을 줄입니다'],
-    ['focus', '🎧 집중 모드 (오프라인 표시)', '친구에게 오프라인으로 보이고 알림도 끕니다'],
     ['gaugePct', '📊 게이지 % 숫자', '충전 게이지를 숫자로'],
     ['bestLine', '📏 BEST 돌파선', '이 맵·모드 최고 기록선 표시'],
     ['pace', '⏱️ 최고 기록 대비 페이스', '내 최고와 실시간 비교'],
@@ -21791,7 +22964,6 @@ extends CanvasLayer
     ['chargePitch', '🎼 충전 음정 상승', '충전할수록 음이 올라갑니다'],
     ['practice', '🎯 연습장 모드', '되감기·궤적 · 랭킹 미등록'],
     ['gentle', '💬 격려 말풍선', '3연속 추락 시 격려'],
-    ['autoFit', '🔄 가로/세로 자동 맞춤', '화면 방향에 맞춰 버튼 재배치'],
     ['anime', '⚡ 태초 클로즈업', '태초 귀환 시 천둥번개 연출'],
     ['dnd', '🔕 위험 알림만', '중요 경고만 표시']
   ];
@@ -21817,20 +22989,20 @@ extends CanvasLayer
     h += '<div class="v43-block"><b>💬 나만의 추락 말풍선</b>' +
       '<input id="v43FallLine" class="mp-in" maxlength="24" placeholder="예: 아 진짜 ㅋㅋㅋ" value="' + esc(Q.fallLine || '') + '" />' +
       '<div class="v43-sub">큰 추락 때 이 말이 말풍선으로 뜹니다.</div></div>';
-    h += '<div class="v43-block"><b>💾 내 프리셋 3개</b><div class="v43-presets">' +
+    h += '<details class="v43-block"><summary style="font-weight:900;cursor:pointer">💾 내 프리셋 3개</summary><div class="v43-presets">' +
       [0, 1, 2].map((i) => '<button type="button" data-preset-save="' + i + '">' + (i + 1) + ' 저장</button>').join('') +
       '</div><div class="v43-presets">' +
       [0, 1, 2].map((i) => '<button type="button" data-preset-load="' + i + '">' + (presets()[i] ? '📂 ' + (i + 1) + ' 불러오기' : '📂 ' + (i + 1) + ' 비어있음') + '</button>').join('') +
-      '</div></div>';
-    h += '<div class="v43-block"><b>★ 즐겨찾기</b><div id="v43FavStrip" class="v43-opts">' +
+      '</div></details>';
+    h += '<details class="v43-block"><summary style="font-weight:900;cursor:pointer">★ 즐겨찾기</summary><div id="v43FavStrip" class="v43-opts">' +
       '<span class="v43-sub">아직 없음 · 규칙 화면에서 ★</span></div>' +
-      '<button type="button" class="mp-chip gold" id="v43FavCur" style="padding:6px">★ 지금 선택 즐겨찾기</button></div>';
-    h += '<div class="v43-block"><b>🛠️ 기타</b><div class="v43-opts">' +
+      '<button type="button" class="mp-chip gold" id="v43FavCur" style="padding:6px">★ 지금 선택 즐겨찾기</button></details>';
+    h += '<details class="v43-block"><summary style="font-weight:900;cursor:pointer">🛠️ 기타</summary><div class="v43-opts">' +
       '<button type="button" class="mp-chip" id="v43Ios">🔊 iOS 소리 복구</button>' +
       '<button type="button" class="mp-chip" id="v43Recon">🔄 멀티 재연결</button>' +
       '<button type="button" class="mp-chip" id="v43ShareBtn">📋 카톡 공유 문구</button>' +
       '<button type="button" class="mp-chip red" id="v43Reset">🧹 설정·캐시 초기화</button>' +
-      '</div><div class="v43-sub">기록은 남기고 설정만 초기화합니다.</div></div>';
+      '</div><div class="v43-sub">기록은 남기고 설정만 초기화합니다.</div></details>';
     body.innerHTML = h;
     body.querySelectorAll('[data-qset]').forEach((b) => b.addEventListener('click', () => {
       const k = b.getAttribute('data-qset');
@@ -22476,7 +23648,7 @@ extends CanvasLayer
       const skins = MD().SKINS;
       sw.innerHTML = skins.map((s) => {
         const lk = V.skinLocked && V.skinLocked(s.id);
-        return '<button type="button" class="v42-skcard' + (s.id === sk ? ' on' : '') + (lk ? ' locked' : '') + '" data-pskin="' + s.id + '" style="' + (lk ? 'opacity:.5' : '') + '"><canvas width="32" height="36"></canvas><span class="nm">' + (lk ? '🔒 ' : '') + s.emoji + ' ' + s.name + '</span>' + (lk ? '<span class="nm" style="font-size:8px;color:#fca5a5">' + s.why + '</span>' : '') + '</button>';
+        return '<button type="button" class="v42-skcard' + (s.id === sk ? ' on' : '') + (lk ? ' locked' : '') + '" data-pskin="' + s.id + '" style="' + (lk ? 'opacity:.5' : '') + '"><canvas width="32" height="36"></canvas><span class="nm">' + (lk ? '🔒 ' : '') + s.emoji + ' ' + s.name + '</span>' + (lk ? '<span class="nm" style="font-size:8px;color:#fca5a5">' + (s.why || '스토리 클리어로 해금') + '</span>' : '') + '</button>';
       }).join('');
       sw.querySelectorAll('[data-pskin]').forEach((b) => {
         const id = b.getAttribute('data-pskin');
@@ -23951,12 +25123,53 @@ extends CanvasLayer
   /* 맵별 전용 트랙: 파일 audio/bgm-<id>.mp3 가 있으면 그 맵에서 재생 */
   var MAP_TRACKS = ['default', 'dessert', 'site', 'space', 'bamboo', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano',
     'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji', 'london', 'skycastle', 'pirate', 'carnival', 'mushroom', 'cyberpunk', 'olympus', 'lab', 'canyon', 'santa', 'stadium', 'rockfest', 'onsen', 'honey', 'library', 'cheese', 'dino', 'alien', 'gyeongju', 'venice', 'snowclock', 'fireworks', 'baseball', 'retro20'];
+  /* v5.20: 신규 19맵 챕터 BGM (마누스 제작, 챕터별 1트랙 · 파일 assets/audio/chapter-bgm-01~08.mp3).
+     story-data.json newMaps19의 chapter(0~7) 순서대로 매칭 — 트랙 01이 1장(데이터 ch0 프롤로그),
+     …, 트랙 08이 8장(데이터 ch7 심연의 문). 같은 챕터 맵끼리 같은 트랙 공유.
+     (마누스 README 분위기 표기와 데이터 챕터명은 일부 다름 — 순번 기준 매칭) */
+  var CHAPTER_BGM = {
+    alley: 'ch0', pond: 'ch0',
+    hatchery: 'ch1', burrow: 'ch1', wheatfield: 'ch1',
+    octocave: 'ch2', fruitfarm: 'ch2', savanna: 'ch2', halloween: 'ch2', slimemarsh: 'ch2',
+    boxing: 'ch3', mansionclean: 'ch3',
+    oldinn: 'ch4',
+    hospital: 'ch5', ruins: 'ch5',
+    sharkbay: 'ch6',
+    trench: 'ch7', vcastle: 'ch7', demonking: 'ch7'
+  };
+  /* v5.20: 신규 19맵 맵별 BGM (마누스 제작, 맵마다 고유 1트랙 · 파일 assets/audio/map-bgm-01~19.mp3).
+     story-data.json newMaps19 순서와 1:1 대응 — 01 alley, 02 pond, 03 hatchery, 04 burrow,
+     05 wheatfield, 06 octocave, 07 fruitfarm, 08 savanna, 09 halloween, 10 slimemarsh,
+     11 boxing, 12 mansionclean, 13 oldinn, 14 hospital, 15 ruins, 16 sharkbay,
+     17 trench, 18 vcastle, 19 demonking. */
+  var MAP_BGM = {
+    alley: 'mb0', pond: 'mb1', hatchery: 'mb2', burrow: 'mb3', wheatfield: 'mb4',
+    octocave: 'mb5', fruitfarm: 'mb6', savanna: 'mb7', halloween: 'mb8', slimemarsh: 'mb9',
+    boxing: 'mb10', mansionclean: 'mb11', oldinn: 'mb12', hospital: 'mb13', ruins: 'mb14',
+    sharkbay: 'mb15', trench: 'mb16', vcastle: 'mb17', demonking: 'mb18'
+  };
   var BGM = { main: null, boss: null, lobby: null, cur: '', unlocked: false, target: 0 };
   function bgmAudio(file) {
     var a = new Audio();
     /* v4.8.4: 24곡을 한꺼번에 받지 않는다 — 실제로 틀 곡만 preload='auto' 로 전환 */
     a.preload = 'none';
     a.src = subPath() + 'audio/' + file;
+    a.loop = true; a.volume = 0;
+    return a;
+  }
+  /* v5.20: 챕터 BGM은 스토리 애셋 폴더에 있음 (스토리 BGM·음성과 같은 경로 규칙) */
+  function bgmChapterAudio(ci) {
+    var a = new Audio();
+    a.preload = 'none';
+    a.src = 'assets/audio/chapter-bgm-0' + (ci + 1) + '.mp3';
+    a.loop = true; a.volume = 0;
+    return a;
+  }
+  /* v5.20: 맵별 BGM은 스토리 애셋 폴더에 있음 (스토리 BGM·음성과 같은 경로 규칙) */
+  function bgmMapAudio(mi) {
+    var a = new Audio();
+    a.preload = 'none';
+    a.src = 'assets/audio/map-bgm-' + ('0' + (mi + 1)).slice(-2) + '.mp3';
     a.loop = true; a.volume = 0;
     return a;
   }
@@ -23967,6 +25180,8 @@ extends CanvasLayer
       BGM.boss = bgmAudio('bgm-boss.mp3');
       BGM.lobby = bgmAudio('bgm-lobby.mp3');
       MAP_TRACKS.forEach(function (k) { BGM[k] = bgmAudio('bgm-' + k + '.mp3'); });
+      for (var ci = 0; ci < 8; ci++) { BGM['ch' + ci] = bgmChapterAudio(ci); }
+      for (var mi = 0; mi < 19; mi++) { BGM['mb' + mi] = bgmMapAudio(mi); }
     } catch (e) {}
   }
   function bgmCurMap() {
@@ -24004,6 +25219,32 @@ extends CanvasLayer
     if (!on) bgmPauseAll();
     bgmSync();
   }
+  /* v5.21: BGM 페이드 (QOL.bgmFade, 기본 ON) — 맵 BGM 전환 + 스토리 BGM 시작/끝.
+     트랙별 __fadeGen으로 가드: 같은 트랙에 새 페이드가 시작되면 이전 페이드는 취소된다.
+     __fading이 켜져 있는 동안은 900ms 틱의 볼륨 램프와 pause-others 루프가 그 트랙을 건드리지 않는다. */
+  function bgmFadeOn() { try { return !(V.QOL && V.QOL.bgmFade === false); } catch (e) { return true; } }
+  function bgmFadeTo(track, target, ms, done) {
+    if (!track) { if (done) { try { done(); } catch (e) {} } return; }
+    var gen = (track.__fadeGen || 0) + 1;
+    track.__fadeGen = gen;
+    track.__fading = true;
+    var from = track.volume || 0, t0 = Date.now();
+    var finish = function () {
+      track.__fading = false;
+      if (done) { try { done(); } catch (e) {} }
+    };
+    if (ms <= 0 || from === target) {
+      try { track.volume = target; } catch (e) {}
+      finish();
+      return;
+    }
+    var iv = setInterval(function () {
+      if (track.__fadeGen !== gen) { clearInterval(iv); return; } /* 새 페이드가 이어받음 */
+      var k = Math.min(1, (Date.now() - t0) / ms);
+      try { track.volume = from + (target - from) * k; } catch (e) {}
+      if (k >= 1) { clearInterval(iv); finish(); }
+    }, 50);
+  }
   function bgmSync() {
     bgmInit();
     if (!BGM.main) return;
@@ -24019,27 +25260,55 @@ extends CanvasLayer
     var _bossAlive = false;
     try { var _G = V.G; _bossAlive = !!(_G && _G.boss && !(_G.boss.dead || _G.boss.gone)); } catch (e) {}
     var boss = inPlay && (_bm === 'boss' || _bm === 'bossrush' || _bm === 'raid' || _bossAlive);
-    /* 라우팅: 타이틀·로비 → 로비 / 보스·80%↑ → 보스 / 맵 전용 → 그 맵 / 나머지 → 메인 */
+    /* 라우팅: 타이틀·로비 → 로비 / 보스·80%↑ → 보스 / 맵 전용 → 그 맵 / 신규 19맵 → 맵별 BGM / 챕터 BGM(폴백) / 나머지 → 메인 */
     var mapId = bgmCurMap();
-    var wantTrack = !inPlay ? 'lobby' : (boss ? 'boss' : (MAP_TRACKS.indexOf(mapId) >= 0 ? mapId : 'main'));
+    var mapTrack = MAP_BGM[mapId]; /* v5.20: 신규 19맵은 맵마다 고유 BGM */
+    var chTrack = CHAPTER_BGM[mapId]; /* 챕터 BGM은 스토리 모드용으로 유지 (맵별 BGM 없을 때 폴백) */
+    var wantTrack = !inPlay ? 'lobby' : (boss ? 'boss' : (MAP_TRACKS.indexOf(mapId) >= 0 ? mapId : (mapTrack ? mapTrack : (chTrack ? chTrack : 'main'))));
+    var justSwitched = false;
     if (BGM.cur !== wantTrack) {
       var old = BGM[BGM.cur];
-      if (old) { try { old.pause(); } catch (e) {} }
+      if (old) {
+        /* v5.21: 페이드 ON이면 옛 곡을 400ms 페이드아웃 후 정지 (즉시 끊지 않음) */
+        if (bgmFadeOn() && !old.paused) {
+          (function (o) {
+            bgmFadeTo(o, 0, 400, function () {
+              try { o.pause(); } catch (e) {}
+            });
+          })(old);
+        } else { try { old.pause(); } catch (e) {} }
+      }
       BGM.cur = wantTrack;
+      justSwitched = true;
     }
     var a = BGM[wantTrack] || BGM.main;
     if (a && a.preload !== 'auto') { try { a.preload = 'auto'; } catch (e) {} }
     Object.keys(BGM).forEach(function (k) {
       var t = BGM[k];
-      if (t && t !== a && t.pause && !t.paused) { try { t.pause(); } catch (e) {} }
+      if (t && t !== a && t.pause && !t.paused && !t.__fading) { try { t.pause(); } catch (e) {} }
     });
     if (!a) return;
     /* 볼륨 페이드 */
     var v = want * 0.85;
-    if (Math.abs((a.volume || 0) - v) > 0.01) a.volume = Math.max(0, Math.min(1, (a.volume || 0) + (v - (a.volume || 0)) * 0.25));
+    /* v5.21: 페이드 중이면 900ms 틱의 램프가 볼륨을 건드리지 않음 (페이드 헬퍼가 전담) */
+    if (!a.__fading && Math.abs((a.volume || 0) - v) > 0.01) a.volume = Math.max(0, Math.min(1, (a.volume || 0) + (v - (a.volume || 0)) * 0.25));
     if (want > 0.001 && BGM.unlocked) {
       if (a.paused) { var pr = a.play(); if (pr && pr.catch) pr.catch(function () {}); }
-    } else if (!a.paused) { try { a.pause(); } catch (e) {} }
+      /* v5.21: 방금 전환된 곡은 볼륨 0에서 800ms 페이드인 */
+      if (justSwitched && bgmFadeOn()) {
+        try { a.volume = 0; } catch (e) {}
+        bgmFadeTo(a, v, 800);
+      }
+    } else if (!a.paused) {
+      /* v5.21: BGM OFF(볼륨 0·대사 장면) — 페이드 ON이면 400ms 페이드아웃 후 정지 */
+      if (bgmFadeOn()) {
+        (function (o) {
+          bgmFadeTo(o, 0, 400, function () {
+            try { o.pause(); } catch (e) {}
+          });
+        })(a);
+      } else { try { a.pause(); } catch (e) {} }
+    }
   }
   function bgmUnlock() {
     BGM.unlocked = true;
@@ -24184,7 +25453,7 @@ extends CanvasLayer
     try { dedupeWindows(); } catch (e) {}
     try { wireRulesEntry(); } catch (e) {}
     tick();
-    setInterval(function () { if (__jwIP()) return; tick(); }, 900);
+    setInterval(tick, 900);
     /* 위저드 맵 단계로 넘어갈 때 */
     var wiz = $('v43Wiz');
     if (wiz) wiz.addEventListener('click', function () { setTimeout(tick, 60); }, true);
@@ -24198,9 +25467,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 21 (muse-v5-9/index.html 26969줄) ── */
+/* ===== v59 inline block #24 (was index.html L26930-43559) ===== */
 
 /* ==========================================================================
    재우 4.4 : 신규 모드 15종 + 방 규칙 스위치 4종
@@ -26766,6 +28033,7 @@ extends CanvasLayer
     const pl = root.__jwg && root.__jwg.player;
     if (!pl || !p || !p._bounce) return false;
     pl.vy = -p._bounce;
+    pl._bounceAir = true; /* 스프링 발판 튐 비행 시작 — 공중 방향키 조종 허용 */
     pl.onGround = false; pl.plat = null; pl.peakFallVy = 0;
     V.parts && V.parts(pl.x + 14, p.y, '#fde047', 12, 160);
     V.text && V.text(pl.x + 14, p.y - 22, '🍮 통통!', '#fde047');
@@ -28752,6 +30020,19 @@ extends CanvasLayer
       if (pause && pause.parentNode) pause.parentNode.insertBefore(b, pause);
       else body.appendChild(b);
     }
+    /* v5.19-dev: 개발자 명령 버튼 (개발자 모드 ON일 때만 syncPlayButtons가 표시) */
+    if (!$('v44DevBtn')) {
+      const b = document.createElement('button');
+      b.id = 'v44DevBtn';
+      b.type = 'button';
+      b.className = 'v44-pausebtn hidden';
+      b.textContent = '🛠️';
+      b.title = '개발자 명령';
+      b.addEventListener('click', () => { try { if (window.JWDEV) JWDEV.togglePanel(); } catch (e) {} });
+      const pause = $('btnPauseHud');
+      if (pause && pause.parentNode) pause.parentNode.insertBefore(b, pause);
+      else body.appendChild(b);
+    }
     if (!$('v44Dnd')) {
       /* 🔔 알림 토글은 인게임 하단 조작부에서 빼고 일시정지(설정) 안으로 */
       const b = document.createElement('button');
@@ -28821,6 +30102,13 @@ extends CanvasLayer
     const inPlay = !!(g && g.inPlay && !g.victory);
     const fr = $('v44FastRestart');
     if (fr) fr.classList.toggle('hidden', !inPlay);
+    /* v5.19-dev: 개발자 버튼은 싱글 인게임 + 개발자 모드 ON일 때만 (멀티 레이스 중 숨김) */
+    const dv = $('v44DevBtn');
+    if (dv) {
+      let dvMulti = false;
+      try { dvMulti = !!(window.JWDEV && JWDEV.inMultiRace && JWDEV.inMultiRace()); } catch (e) {}
+      dv.classList.toggle('hidden', !(inPlay && window.JWDEV && JWDEV.isDev && JWDEV.isDev() && !dvMulti));
+    }
     const dd = $('v44Dnd');
     if (dd) {
       dd.classList.toggle('hidden', !inPlay);
@@ -35118,7 +36406,6 @@ extends CanvasLayer
     };
   })();
   setInterval(function () {
-    if (__jwIP()) return;
     try { hookTick(); hookCamera(); hookDraw(); css(); fixRestart(); bindRestart(); } catch (e) {}
     try { paintRainbow(); } catch (e) {}
   }, 700);
@@ -36980,7 +38267,7 @@ extends CanvasLayer
   }
   ensureResultCss();
   injectForfeit();
-  setInterval(function () { if (__jwIP()) return; tick(); }, 600);
+  setInterval(tick, 600);
   U.startSpec = startSpec;
   U.specNext = specNext;
 })(window);
@@ -37223,7 +38510,7 @@ extends CanvasLayer
       try { V.toast('🔒 ' + name, 'chat', (why ? why + need : '해금 조건을 아직 못 채웠어요' + need) + cur, 2800); } catch (er) {}
     }, true);
   }
-  setInterval(function () { if (__jwIP()) return; titleHint(); }, 1200);
+  setInterval(titleHint, 1200);
 })(window);
 
 /* ==========================================================================
@@ -37663,8 +38950,6 @@ extends CanvasLayer
     /^이렇게 놀아요/, /^지금 열려 있는 공개 방이 없어요/, /^접속 중인 친구에게 바로 합류/];
   var declT = 0;
   function declutter() {
-    /* v5.15-r4: body div/p/span/li 전수 훑기 — 인게임에서는 정리할 게 없다. */
-    if (__jwIP()) return;
     if (Date.now() - declT < 2500) return;
     declT = Date.now();
     var n = document.querySelectorAll('body div, body p, body span, body li');
@@ -38045,7 +39330,7 @@ extends CanvasLayer
     if (!bar) return;
     var spans = bar.querySelectorAll('span');
     if (spans.length > 1) {
-      if (spans[1].textContent.indexOf('★') < 0) spans[1].textContent = '★ 45 MAPS';
+      if (spans[1].textContent.indexOf('★') < 0) spans[1].textContent = '★ 64 MAPS';
     }
     var toast = $('v43TitleToast');
     if (toast) toast.textContent = '';
@@ -38993,7 +40278,7 @@ extends CanvasLayer
     try { hookEndSolo(); } catch (e) {}
     try { ctrlApply(); } catch (e) {}
     tick();
-    setInterval(function () { if (__jwIP()) return; tick(); }, 600);
+    setInterval(tick, 600);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else setTimeout(boot, 120);
@@ -40733,7 +42018,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v5.15 · 45 MAPS';
+      sp[1].textContent = '★ v5.21 · 64 MAPS';
     }
   }
 
@@ -40746,14 +42031,10 @@ extends CanvasLayer
     var col = t.querySelector(':scope > div.relative.z-10');
     if (!col) return;
     var wide = root.innerWidth >= 760 && root.innerHeight >= 780;
-    /* v5.15 폰: 세로가 모자라므로 '가운데 정렬' 대신 위에서부터 쌓는다.
-       가운데 정렬이면 내용이 화면보다 길 때 배너 위쪽과 맨 아래 버튼이 함께 잘린다. */
-    var phone = root.innerWidth <= 560;
-    var want = wide ? 'space-evenly' : (phone ? 'flex-start' : 'center');
-    var gap = wide ? '6px' : (phone ? '6px' : '14px');
-    if (col.style.getPropertyValue('justify-content') !== want || col.style.getPropertyValue('gap') !== gap) {
+    var want = wide ? 'space-evenly' : 'center';
+    if (col.style.getPropertyValue('justify-content') !== want) {
       col.style.setProperty('justify-content', want, 'important');
-      col.style.setProperty('gap', gap, 'important');
+      col.style.setProperty('gap', wide ? '6px' : '14px', 'important');
     }
   }
 
@@ -40865,9 +42146,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 22 (muse-v5-9/index.html 44077줄) ── */
+/* ===== v59 inline block #25 (was index.html L44038-44465) ===== */
 
 /* ==========================================================================
    재우 4.8.5 : 버그 수정 레이어 + 한눈에 보이는 HUD/UI (게임 분위기 유지)
@@ -41146,7 +42425,7 @@ extends CanvasLayer
     var t = $('mpToasts');
     if (t && t.children.length && shown(t)) place(t, { left: Math.max(8, (innerWidth - Math.min(360, innerWidth - 16)) / 2), top: 8, maxW: Math.min(360, innerWidth - 16) });
   }
-  setInterval(function () { if (__jwIP()) return; try { layout(); } catch (e) {} }, 200);
+  setInterval(function () { try { layout(); } catch (e) {} }, 200);
   window.addEventListener('resize', function () { setTimeout(layout, 50); });
   (root.JW485 = root.JW485 || {}).layout = layout;
 })(window);
@@ -41193,7 +42472,7 @@ extends CanvasLayer
     var open = cp && vis(cp) && !cp.classList.contains('hidden');
     document.body.classList.toggle('v485-chatopen', !!open);
   }
-  setInterval(function () { if (__jwIP()) return; try { fixTouch(); pauseMusic(); roomSet(); quickChat(); } catch (e) {} }, 300);
+  setInterval(function () { try { fixTouch(); pauseMusic(); roomSet(); quickChat(); } catch (e) {} }, 300);
 })();
 
 
@@ -41288,26 +42567,7 @@ extends CanvasLayer
       if (fs && fs < f - 0.2) { e.style.setProperty('font-size', f + 'px', 'important'); e.__v485fs = true; }
     }
   }
-  /* v5.15: 이 순회는 전 화면 텍스트 노드를 getComputedStyle 로 훑어 1회 400ms대가 걸린다(0.7초마다).
-     인게임에서는 아예 돌리지 않고, 타이틀·모달에서도 DOM 이 실제로 바뀐 뒤에만 다시 훑는다. */
-  var v485mut = 0, v485last = -1;
-  try { new MutationObserver(function () { v485mut++; }).observe(document.body, { childList: true, subtree: true }); } catch (e) {}
-  function v485inGame() {
-    try {
-      var j = window.__jwg;
-      if (j && j.game && (j.game.inPlay || j.game.victory)) return true;
-      var h = document.getElementById('gameHud');
-      if (h && h.offsetParent !== null && !h.classList.contains('hidden')) return true;
-      return false;
-    } catch (e) { return false; }
-  }
-  setInterval(function () {
-    try {
-      if (v485inGame()) return;
-      if (v485mut === v485last) return;
-      v485last = v485mut; run();
-    } catch (e) {}
-  }, 1000);
+  setInterval(function () { try { run(); } catch (e) {} }, 700);
   window.addEventListener('resize', function () {
     document.querySelectorAll('*').forEach(function (e) { if (e.__v485fs) { e.style.removeProperty('font-size'); e.__v485fs = false; } });
     setTimeout(run, 60);
@@ -41315,9 +42575,7 @@ extends CanvasLayer
 })();
 
 
-;
-
-/* ── block 23 (muse-v5-9/index.html 44507줄) ── */
+/* ===== v59 inline block #26 (was index.html L44468-46410) ===== */
 
 /* ==========================================================================
    v4.8.5-2 : 소셜 허브 (친구창 전면 개편) · 프레즌스 고속화 · 스킨 실시간 동기화
@@ -41403,6 +42661,48 @@ extends CanvasLayer
   function mapName(id) { try { const m = MP() && MP().byId ? MP().byId(id) : null; return m ? ((m.emoji || '') + ' ' + m.name).trim() : (id || '기본'); } catch (e) { return id || '기본'; } }
   function modeName(id) { try { const m = MD() && MD().modeById ? MD().modeById(id) : null; return m ? ((m.emoji || '') + ' ' + m.name).trim() : (id || '일반'); } catch (e) { return id || '일반'; } }
 
+  /* ---------------------------------------------------------------- 스토리 모드 presence (v5.19)
+     내 스토리 판 상태(window.JW43.storyRun)를 이미 있는 presence 경로로 친구에게 전한다.
+     스테이지 이름·미션 문구는 story-data.json에서 가져온다 (스토리 IIFE 밖에서는
+     STAGE_BY_IDX에 닿지 않으므로 여기서 한 번만 fetch해 캐시한다).
+     반환: null(스토리 아님) | { i: 스테이지 번호, map: mapId, name: 맵 표시 이름, label: 미션 문구|null } */
+  var __storyData = null, __storyDataLoading = false;
+  function loadStoryData() {
+    var urls = ['assets/story-data.json'];
+    var i = 0;
+    (function next() {
+      if (i >= urls.length) { __storyDataLoading = false; return; }
+      var url = urls[i++];
+      try {
+        fetch(url, { cache: 'no-cache' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (d) {
+          __storyData = d; __storyDataLoading = false;
+        }).catch(function () { next(); });
+      } catch (e) { next(); }
+    })();
+  }
+  function storyPresence() {
+    var run = null;
+    try { run = (V && V.storyRun) || null; } catch (e) {}
+    if (!run || run.done) return null;
+    var idx = run.index, mapId = run.mapId;
+    var name = null, label = null;
+    if (__storyData && __storyData.stages) {
+      var st = null;
+      for (var k = 0; k < __storyData.stages.length; k++) { if (__storyData.stages[k].index === idx) { st = __storyData.stages[k]; break; } }
+      if (st) { name = st.mapName || null; label = (st.mission && st.mission.label) || null; }
+    } else if (!__storyDataLoading) { __storyDataLoading = true; loadStoryData(); }
+    if (!name) { try { var m = MP() && MP().byId ? MP().byId(mapId) : null; name = m ? (m.name || mapId) : mapId; } catch (e) { name = mapId; } }
+    return { i: idx, map: mapId, name: name, label: label };
+  }
+  function storyLabel(st) {
+    if (!st) return '';
+    return '📖 스토리 모드 · ' + st.i + '스테이지 ' + (st.name || st.map);
+  }
+  V.storyPresence = storyPresence;
+  V.storyLabel = storyLabel;
+  HUB.storyPresence = storyPresence;
+  HUB.storyLabel = storyLabel;
+
   const origActivity = V.myActivity;
   V.myActivity = function () {
     let a = {};
@@ -41424,6 +42724,7 @@ extends CanvasLayer
       a.sk = V.api().meSkin();
       a.col = V.api().meColor();
       a.ti = (V.api().internals().ident.title || '');
+      a.story = storyPresence();
       const inp = document.activeElement;
       void inp;
     } catch (e) {}
@@ -41440,6 +42741,7 @@ extends CanvasLayer
           const a = V.myActivity();
           obj.m = a.m || 0; obj.rc = a.rc || 0; obj.rm = a.rm || 0; obj.seed = a.seed || 0;
           obj.sk = a.sk; obj.col = a.col; obj.ti = a.ti; obj.nick = a.nick;
+          obj.story = a.story || null;
         }
       } catch (e) {}
       return origSend.apply(this, arguments);
@@ -41456,7 +42758,7 @@ extends CanvasLayer
       act: m.act || 'title', map: m.map || 'default', mode: m.mode || 'normal',
       floor: m.floor || 0, m: m.m || 0, room: m.room || null, rc: m.rc || 0, rm: m.rm || 0,
       ver: m.ver || '', sm: m.sm || '', sk: m.sk || '', col: m.col || '', ti: m.ti || '',
-      nick: m.nick || '', hidden: !!m.hidden, at: now()
+      nick: m.nick || '', hidden: !!m.hidden, at: now(), story: m.story || null
     };
     if (m.nick || m.sk || m.col || m.ti) saveMeta(m.ftag, { nick: m.nick, sk: m.sk, col: m.col, ti: m.ti });
     if (HUB.open) queueRender();
@@ -41468,7 +42770,7 @@ extends CanvasLayer
     const S = st();
     const pr = S && S.presence ? S.presence[tag] : null;
     if (pr && now() - (pr.ts || 0) < 70000) {
-      return { act: pr.room ? 'lobby' : 'title', map: 'default', mode: 'normal', floor: 0, m: 0, room: pr.room || null, sm: pr.sm || '', sk: pr.sk || '', col: pr.color || pr.col || '', at: pr.ts || now() };
+      return { act: pr.room ? 'lobby' : 'title', map: 'default', mode: 'normal', floor: 0, m: 0, room: pr.room || null, sm: pr.sm || '', sk: pr.sk || '', col: pr.color || pr.col || '', at: pr.ts || now(), story: pr.st || null };
     }
     return null;
   }
@@ -41492,6 +42794,7 @@ extends CanvasLayer
     const map = mapName(a.map), mode = modeName(a.mode);
     const fl = ((a.floor || 1) + '층');
     const mt = a.m ? (' · ' + a.m + 'm') : '';
+    if (a.act === 'solo' && a.story) return { off: false, icon: '📖', head: '스토리 모드 · ' + a.story.i + '스테이지 ' + (a.story.name || a.story.map), sub: a.story.label ? ('🎯 ' + a.story.label) : (map + ' · ' + mode), extra: (fl + mt).replace(/^ · /, ''), act: 'solo' };
     if (a.act === 'solo') return { off: false, icon: '🎮', head: '싱글 플레이 중', sub: map + ' · ' + mode, extra: (fl + mt).replace(/^ · /, ''), act: 'solo' };
     if (a.act === 'race') return { off: false, icon: '🏁', head: '멀티 레이스 중', sub: map + ' · ' + mode, extra: (fl + mt).replace(/^ · /, ''), act: 'race', room: a.room };
     if (a.act === 'lobby') return { off: false, icon: '🏠', head: '대기실', sub: map + ' · ' + mode, extra: '대기실 ' + (a.rc || 1) + '/' + (a.rm || 4) + '명' + (a.room ? ' · ' + a.room : ''), act: 'lobby', room: a.room };
@@ -41670,7 +42973,7 @@ extends CanvasLayer
     if (!HUB.open && !force) return;
     const _sig = (function () {
       try {
-        const L = friendsList().map((f) => { const a = actOf(f.ftag) || {}; return f.ftag + f.nick + (f.pair ? 1 : 0) + '|' + (a.act || '') + (a.map || '') + (a.mode || '') + (a.floor || 0) + (a.room || '') + (a.rc || 0) + (a.sm || '') + (a.sk || '') + (a.col || ''); }).join(',');
+        const L = friendsList().map((f) => { const a = actOf(f.ftag) || {}; return f.ftag + f.nick + (f.pair ? 1 : 0) + '|' + (a.act || '') + (a.map || '') + (a.mode || '') + (a.floor || 0) + (a.room || '') + (a.rc || 0) + (a.sm || '') + (a.sk || '') + (a.col || '') + (a.story ? ('|ST' + a.story.i + (a.story.name || '') + (a.story.label || '')) : ''); }).join(',');
         return HUB.tab + '#' + L + '#R' + reqList().length + '#S' + (ls(K_SENT, []) || []).length + '#D' + (HUB.sel || '');
       } catch (e) { return String(Math.random()); }
     })();
@@ -42229,18 +43532,21 @@ extends CanvasLayer
     const map = pos.map || 'default';
     const world = buildWorld(map, pos.seed || 0);
     const who = String(pos.nick || tag || '친구').trim();
+    /* v5.19: 관전 대상의 스토리 모드 상태 (presence에서 온 것 — 없으면 일반 관전) */
+    const _st0 = (function () { try { const h = root.JW485HUB; const a = h && h.actOf ? h.actOf(tag) : null; return a && a.story ? a.story : null; } catch (e) { return null; } })();
     S.on = true;
     S.cur = {
       tag: tag, nick: who, map: map, seed: pos.seed || 0,
       plats: world.plats, abyss: world.abyss, isDefault: world.isDefault,
       camY: (pos.y || 0) - 380, dx: pos.x || 220, dy: pos.y || 0,
-      raf: 0, lastWatch: 0, lastDraw: performance.now(), mode: pos.mode || 'normal'
+      raf: 0, lastWatch: 0, lastDraw: performance.now(), mode: pos.mode || 'normal',
+      story: _st0 || null, storySig: _st0 ? (_st0.i + '|' + (_st0.name || '') + '|' + (_st0.label || '')) : '', lastStoryAt: 0
     };
     S.sent = [];
     el.classList.remove('hidden');
     const tEl = $('v45SpecTitle'); if (tEl) tEl.textContent = '👁️ ' + who + ' 님 관전';
     const sEl = $('v45SpecSub');
-    if (sEl) sEl.textContent = mapName(map) + ' · ' + (pos.floor || 1) + '층 · 실시간';
+    if (sEl) sEl.textContent = _st0 ? storyLabel(_st0) : (mapName(map) + ' · ' + (pos.floor || 1) + '층 · 실시간');
     const feed = $('v485cFeed'); if (feed) feed.innerHTML = '<div class="v485c-tip">💬 훈수는 친구 화면에 바로 뜹니다 (1.5초 쿨타임)</div>';
     sizeCanvas();
     beep(880, 0.08, 0.1, 'square', 1180);
@@ -42268,6 +43574,11 @@ extends CanvasLayer
   }
   function modeName(id) {
     try { const m = MD() && MD().modeById ? MD().modeById(id) : null; return m ? ((m.emoji || '') + ' ' + m.name).trim() : ''; } catch (e) { return ''; }
+  }
+  /* v5.19: 스토리 모드 관전 라벨 — 친구창과 같은 형식 */
+  function storyLabel(st) {
+    if (!st) return '';
+    return '📖 스토리 모드 · ' + st.i + '스테이지 ' + (st.name || st.map);
   }
 
   let START_T = performance.now();
@@ -42406,11 +43717,23 @@ extends CanvasLayer
     ctx.font = 'bold 11px "Galmuri11", monospace';
     const fl = Math.max(1, (p && p.floor) || 1);
     const mt = Math.round(Math.max(0, -(c.dy || 0) / 13.4));
-    const line1 = mapName(c.map);
+    /* v5.19: 관전 대상이 스토리 모드면 스테이지·맵·미션을 표시 (1초마다 presence에서 갱신) */
+    if (!c.lastStoryAt || ts - c.lastStoryAt > 1000) {
+      c.lastStoryAt = ts;
+      let st2 = null;
+      try { const h = root.JW485HUB; const a = h && h.actOf ? h.actOf(c.tag) : null; st2 = a && a.story ? a.story : null; } catch (e) {}
+      const sig2 = st2 ? (st2.i + '|' + (st2.name || '') + '|' + (st2.label || '')) : '';
+      if (sig2 !== (c.storySig || '')) {
+        c.storySig = sig2; c.story = st2;
+        const sEl2 = $('v45SpecSub');
+        if (sEl2) sEl2.textContent = st2 ? storyLabel(st2) : (mapName(c.map) + ' · ' + fl + '층 · 실시간');
+      }
+    }
+    const line1 = c.story ? storyLabel(c.story) : mapName(c.map);
     const zn = zoneOfPoint(c.map, (p && typeof p.y === 'number') ? p.y : c.dy);
     const line2 = (modeName(c.mode) || '일반') + ' · ' + fl + '층 · ' + mt + 'm';
     /* v5.16: 구간명이 있으면 맵 이름 아래에 한 줄 더 (폰 HUD 와 같은 글자) */
-    const lines = zn ? [line1, zn, line2] : [line1, line2];
+    const lines = [line1].concat(zn ? [zn] : []).concat(c.story && c.story.label ? ['🎯 ' + c.story.label] : []).concat([line2]);
     let w1 = 0;
     for (let li = 0; li < lines.length; li++) w1 = Math.max(w1, ctx.measureText(lines[li]).width);
     w1 += 16;
@@ -43279,9 +44602,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 24 (muse-v5-9/index.html 46475줄) ── */
+/* ===== v59 inline block #27 (was index.html L46436-46849) ===== */
 
 /* ==========================================================================
    v4.8.5-3 : A. 공통 · 맵 16비트 썸네일 · 싱글 위저드 카테고리(맵/모드)
@@ -43295,14 +44616,18 @@ extends CanvasLayer
   if (!V) return;
   var doc = document;
   var $ = function (id) { return doc.getElementById(id); };
-  var MAPHAS = { arcade: 1, arctic: 1, atlantis: 1, bamboo: 1, clock: 1, default: 1, dessert: 1, egypt: 1, fuji: 1, kitchen: 1, mansion: 1, newyork: 1, paris: 1, rainbow: 1, school: 1, seoul: 1, site: 1, space: 1, train: 1, volcano: 1, wuxia: 1, london: 1, skycastle: 1, pirate: 1, carnival: 1, mushroom: 1, cyberpunk: 1, olympus: 1, lab: 1, canyon: 1, santa: 1, stadium: 1, rockfest: 1, onsen: 1, honey: 1, library: 1, cheese: 1, dino: 1, alien: 1, gyeongju: 1, venice: 1, snowclock: 1, fireworks: 1, baseball: 1, retro20: 1 };
-  var MAP_ORDER = ['default', 'dessert', 'site', 'space', 'bamboo', 'custom', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano', 'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji', 'london', 'skycastle', 'pirate', 'carnival', 'mushroom', 'cyberpunk', 'olympus', 'lab', 'canyon', 'santa', 'stadium', 'rockfest', 'onsen', 'honey', 'library', 'cheese', 'dino', 'alien', 'gyeongju', 'venice', 'snowclock', 'fireworks', 'baseball', 'retro20'];
+  var MAPHAS = { arcade: 1, arctic: 1, atlantis: 1, bamboo: 1, clock: 1, default: 1, dessert: 1, egypt: 1, fuji: 1, kitchen: 1, mansion: 1, newyork: 1, paris: 1, rainbow: 1, school: 1, seoul: 1, site: 1, space: 1, train: 1, volcano: 1, wuxia: 1, london: 1, skycastle: 1, pirate: 1, carnival: 1, mushroom: 1, cyberpunk: 1, olympus: 1, lab: 1, canyon: 1, santa: 1, stadium: 1, rockfest: 1, onsen: 1, honey: 1, library: 1, cheese: 1, dino: 1, alien: 1, gyeongju: 1, venice: 1, snowclock: 1, fireworks: 1, baseball: 1, retro20: 1, alley: 1, pond: 1, hatchery: 1, burrow: 1, wheatfield: 1, octocave: 1, fruitfarm: 1, savanna: 1, halloween: 1, slimemarsh: 1, boxing: 1, mansionclean: 1, oldinn: 1, hospital: 1, ruins: 1, sharkbay: 1, trench: 1, vcastle: 1, demonking: 1 };
+  var MAP_ORDER = ['default', 'dessert', 'site', 'space', 'bamboo', 'custom', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano', 'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji', 'london', 'skycastle', 'pirate', 'carnival', 'mushroom', 'cyberpunk', 'olympus', 'lab', 'canyon', 'santa', 'stadium', 'rockfest', 'onsen', 'honey', 'library', 'cheese', 'dino', 'alien', 'gyeongju', 'venice', 'snowclock', 'fireworks', 'baseball', 'retro20', 'alley', 'pond', 'hatchery', 'burrow', 'wheatfield', 'octocave', 'fruitfarm', 'savanna', 'halloween', 'slimemarsh', 'boxing', 'mansionclean', 'oldinn', 'hospital', 'ruins', 'sharkbay', 'trench', 'vcastle', 'demonking'];
   var THEME = {
     default: 'nature', dessert: 'nature', site: 'city', space: 'special', bamboo: 'nature', custom: 'special',
     atlantis: 'nature', arcade: 'city', arctic: 'nature', mansion: 'special', volcano: 'nature', school: 'city',
     clock: 'special', kitchen: 'city', train: 'special', wuxia: 'nature', rainbow: 'nature', newyork: 'city',
     seoul: 'city', paris: 'city', egypt: 'city', fuji: 'city',
-    london: 'city', skycastle: 'nature', pirate: 'special', carnival: 'city', mushroom: 'nature', cyberpunk: 'city', olympus: 'nature', lab: 'special', canyon: 'nature', santa: 'special', stadium: 'city', rockfest: 'city', onsen: 'nature', honey: 'nature', library: 'special', cheese: 'nature', dino: 'special', alien: 'special', gyeongju: 'city', venice: 'city', snowclock: 'nature', fireworks: 'city', baseball: 'city', retro20: 'special'
+    london: 'city', skycastle: 'nature', pirate: 'special', carnival: 'city', mushroom: 'nature', cyberpunk: 'city', olympus: 'nature', lab: 'special', canyon: 'nature', santa: 'special', stadium: 'city', rockfest: 'city', onsen: 'nature', honey: 'nature', library: 'special', cheese: 'nature', dino: 'special', alien: 'special', gyeongju: 'city', venice: 'city', snowclock: 'nature', fireworks: 'city', baseball: 'city', retro20: 'special',
+    alley: 'city', pond: 'nature', hatchery: 'city', burrow: 'nature', wheatfield: 'nature',
+    octocave: 'nature', fruitfarm: 'nature', savanna: 'nature', halloween: 'special', slimemarsh: 'special',
+    boxing: 'city', mansionclean: 'city', oldinn: 'special', hospital: 'city', ruins: 'nature',
+    sharkbay: 'nature', trench: 'special', vcastle: 'special', demonking: 'special'
   };
   var MODE_CAT = {
     normal: 'basic', classic: 'basic', pureclassic: 'basic',
@@ -43696,9 +45021,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 25 (muse-v5-9/index.html 46889줄) ── */
+/* ===== v59 inline block #28 (was index.html L46850-47236) ===== */
 
 /* ==========================================================================
    v4.8.5-3 : B. 멀티 대기실 — 💡 제안하기 버튼 복구 · 방 설정 4탭 개편 · 잔여 텍스트 제거
@@ -44086,9 +45409,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 26 (muse-v5-9/index.html 47276줄) ── */
+/* ===== v59 inline block #29 (was index.html L47237-47494) ===== */
 
 /* ==========================================================================
    v4.8.5-3 : C. 칭호 대개편 — 등급 배지 · 카테고리 탭 · 해금 진행도 + 즉시 갱신
@@ -44347,9 +45668,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 27 (muse-v5-9/index.html 47534줄) ── */
+/* ===== v59 inline block #30 (was index.html L47495-47679) ===== */
 
 /* ==========================================================================
    v4.8.5-3 : D. 친구창 3D 픽셀 버튼 · 모달 깜빡임 0 · 모드 금지요소 차단
@@ -44535,9 +45854,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 28 (muse-v5-9/index.html 47874줄) ── */
+/* ===== v59 inline block #31 (was index.html L47835-47853) ===== */
 
 /* 꾹 누르기(롱프레스) 방지: 컨텍스트 메뉴·선택·드래그·핀치 확대 차단 */
 (function () {
@@ -44557,9 +45874,7 @@ extends CanvasLayer
   }, { passive: false });
 })();
 
-;
-
-/* ── block 29 (muse-v5-9/index.html 47954줄) ── */
+/* ===== v59 inline block #32 (was index.html L47915-48722) ===== */
 
 /* ==========================================================================
    v4.8-mg2 : 00 코어 — 🕹️ 미니게임 셸 · 캔버스 · 입력 · 기록 · 대전 버스
@@ -45368,9 +46683,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 30 (muse-v5-9/index.html 48762줄) ── */
+/* ===== v59 inline block #33 (was index.html L48723-48856) ===== */
 
 /* ==========================================================================
    v4.8-mg2 : 10 전용관(로비) — 25종 카드 · 혼자/봇/친구 · 같은 시드 코드 · 초대
@@ -45505,9 +46818,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 31 (muse-v5-9/index.html 48896줄) ── */
+/* ===== v59 inline block #34 (was index.html L48857-49611) ===== */
 
 /* ==========================================================================
    v4.8-mg1 : 20 미니게임 ① 🧩 블록 블라스트 · 🧱 대전 테트리스 · 🐍 지렁이
@@ -46263,9 +47574,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 32 (muse-v5-9/index.html 49651줄) ── */
+/* ===== v59 inline block #35 (was index.html L49612-50219) ===== */
 
 /* ==========================================================================
    v4.8-mg1 : 21 미니게임 ② ⚫ 스피드 오목 · 🔢 2048 스피드전 · 💣 지뢰찾기 · 🃏 메모리
@@ -46874,9 +48183,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 33 (muse-v5-9/index.html 50259줄) ── */
+/* ===== v59 inline block #36 (was index.html L50220-50526) ===== */
 
 /* ==========================================================================
    v4.8-mg1 : 22 미니게임 ③ 🏓 하이퍼 핑퐁 · 🫧 버블 슈터
@@ -47184,9 +48491,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 34 (muse-v5-9/index.html 50566줄) ── */
+/* ===== v59 inline block #37 (was index.html L50527-50853) ===== */
 
 /* ==========================================================================
    v4.8-mg1 : 23 미니게임 ④ ☄️ 운석 피하기 · ⏱️ 정확히 5.00초 · 💡 반짝 순서
@@ -47514,9 +48819,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 35 (muse-v5-9/index.html 50893줄) ── */
+/* ===== v59 inline block #38 (was index.html L50854-51368) ===== */
 
 /* ==========================================================================
    v4.8-mg2 : 24 미니게임 ⑤ 🎯 딱 한 번 점프 다트 · 🪙 하늘 코인 받기 · ⬡ 헥사곤 발판 버티기
@@ -48032,9 +49335,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 36 (muse-v5-9/index.html 51408줄) ── */
+/* ===== v59 inline block #39 (was index.html L51369-51781) ===== */
 
 /* ==========================================================================
    v4.8-mg2 : 25 미니게임 ⑥ 🌉 흔들다리 균형 · 🕳️ 구멍 뚫기 비행 · 🥌 빙판 컬링
@@ -48448,9 +49749,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 37 (muse-v5-9/index.html 51821줄) ── */
+/* ===== v59 inline block #40 (was index.html L51782-52262) ===== */
 
 /* ==========================================================================
    v4.8-mg2 : 26 미니게임 ⑦ 👟 머리 밟기 배틀 · 🟩 안전한 발판 찾기 · 🎵 리듬 점프
@@ -48932,9 +50231,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 38 (muse-v5-9/index.html 52302줄) ── */
+/* ===== v59 inline block #41 (was index.html L52263-52935) ===== */
 
 /* ==========================================================================
    v4.8-mg2 : 27 미니게임 ⑧ 🦖 장애물 뛰어넘기 · 🎣 대어 낚시 · 📦 흔들리지 마! 배달 · 🔑 어둠 속 열쇠 탈출
@@ -49608,9 +50905,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 39 (muse-v5-9/index.html 52975줄) ── */
+/* ===== v59 inline block #42 (was index.html L52936-53196) ===== */
 
 /* ==========================================================================
    v4.8-mg1 : 30 등반 신규 — 🎈 풍선 터뜨리기 모드 · ⚡ 원버튼 스피드런
@@ -49872,9 +51167,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 40 (muse-v5-9/index.html 53236줄) ── */
+/* ===== v59 inline block #43 (was index.html L53197-53546) ===== */
 
 /* ==========================================================================
    v4.8-mg1 : 31 🎵 BGM 주크박스 — 23+1 트랙 중 원하는 곡을 로비/보스/맵 BGM으로
@@ -50225,9 +51518,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 41 (muse-v5-9/index.html 53586줄) ── */
+/* ===== v59 inline block #44 (was index.html L53547-53877) ===== */
 
 /* ==========================================================================
    v4.8-mg1 : 32 😈 시작 전 닉변빵 — 제안 → 수락 → 승패 확정 시 패자 닉네임 변경
@@ -50559,9 +51850,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 42 (muse-v5-9/index.html 53917줄) ── */
+/* ===== v59 inline block #45 (was index.html L53878-54046) ===== */
 
 /* ==========================================================================
    v4.8-mg1 : 33 📣 관전자 응원 / 장난 — 관전 중 응원(속도·기분) 또는 가벼운 장난
@@ -50731,9 +52020,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 43 (muse-v5-9/index.html 54086줄) ── */
+/* ===== v59 inline block #46 (was index.html L54047-54802) ===== */
 
 /* ==========================================================================
    v4.8-mg2 : 34 등반 신규 ② — 🚪 협동 스위치 문 · 🧪 물약 조합 · ⏪ 시간 역행
@@ -51490,9 +52777,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 44 (muse-v5-9/index.html 54842줄) ── */
+/* ===== v59 inline block #47 (was index.html L54803-54822) ===== */
 
 /* ==========================================================================
    v5.1-tut : 🎓 정식 배포 1회 — 모두 튜토리얼부터 다시
@@ -51513,9 +52798,7 @@ extends CanvasLayer
 })(window);
 
 
-;
-
-/* ── block 45 (muse-v5-9/index.html 54862줄) ── */
+/* ===== v59 inline block #48 (was index.html L54823-57481) ===== */
 
 /* ==========================================================================
    muse-v5.9: 보스 v2 픽셀 스프라이트 데이터 (boss-sprites-v2.js, 입체감 패스)
@@ -53196,7 +54479,64 @@ if (typeof module !== 'undefined' && module.exports) {
       pats: [['rain', '모래 폭풍'], ['pillar', '태양 광선 기둥'], ['snipe', '저주 저격']] },
     fuji: { n: '후지 오니 쇼군', e: '🗻', t: '"설산의 주인은… 나다!"', form: 'yokai', hp: 180,
       c: ['#f87171', '#fecaca', '#e2e8f0', '#fde047'],
-      pats: [['patch', '혹한 장판'], ['pillar', '온천 분출'], ['ring', '눈싸락 탄막']] }
+      pats: [['patch', '혹한 장판'], ['pillar', '온천 분출'], ['ring', '눈싸락 탄막']] },
+    alley: { n: '골목 대장 냥', e: '😾', t: '"이 골목 지붕은 내 구역이다, 냐옹."', form: 'ninja', hp: 130,
+      c: ['#8a6440', '#c79a6a', '#ffd88a', '#fde047'],
+      pats: [['dash', '그림자 돌진'], ['spread', '풍선 파편'], ['sweep', '발판 밀어내기']] },
+    pond: { n: '황소개구리 왕눈이', e: '🐸', t: '"개굴! 내 연못에서 물장구 치지 마라!"', form: 'madslime', hp: 130,
+      c: ['#5f8f4a', '#8fb96a', '#f7b6c8', '#fde047'],
+      pats: [['dash', '혀 낚아채기'], ['wave', '물결 뒤집기'], ['spread', '연잎 파편']] },
+    hatchery: { n: '수탉 새벽대왕', e: '🐓', t: '"꼬끼오! 아직 새벽인데 왜 깨어 있느냐!"', form: 'eagleking', hp: 130,
+      c: ['#b8904e', '#e3c07a', '#ffd75e', '#fde047'],
+      pats: [['wave', '새벽 울음 파동'], ['spin', '닭벼슬 회전'], ['rain', '알 낙하']] },
+    burrow: { n: '여우 허수아비', e: '🦊', t: '"내 밭에서 뭘 뽑는 거야."', form: 'tanuki', hp: 130,
+      c: ['#8a5527', '#b57b45', '#f28a3c', '#fde047'],
+      pats: [['clone', '가짜 분신'], ['sweep', '밭 갈퀴'], ['patch', '함정 장판']] },
+    wheatfield: { n: '까마귀 대장 검은부리', e: '🐦‍⬛', t: '"까악! 이 밭은 우리 사냥터다!"', form: 'eagleking', hp: 130,
+      c: ['#b3813a', '#dfae5c', '#ffe9a3', '#fde047'],
+      pats: [['shuriken', '깃털 부채꼴'], ['gust', '까마귀 떼 돌풍'], ['sweep', '쪼아 흔들기']] },
+    octocave: { n: '거대 문어 여덟팔', e: '🐙', t: '"내 항아리들을 뒤지지 마라."', form: 'kraken', hp: 140,
+      c: ['#47706c', '#6c9a92', '#f6a89c', '#fde047'],
+      pats: [['spread', '먹물 탄막'], ['dash', '다리 휘감기'], ['wave', '파도 밀어내기']] },
+    fruitfarm: { n: '킹 바나나', e: '🍌', t: '"껍질 조심해. 내가 다 뿌려놨거든."', form: 'macaron', hp: 140,
+      c: ['#92603a', '#c08a52', '#ffd75e', '#fde047'],
+      pats: [['patch', '껍질 미끄럼 장판'], ['dash', '수레 돌진'], ['spread', '과일 파편']] },
+    savanna: { n: '뿔코뿔소', e: '🦏', t: '"쿵! 쿵! 내 물길이다!"', form: 'dino', hp: 140,
+      c: ['#8d6337', '#bb8b52', '#e8833f', '#fde047'],
+      pats: [['dash', '뿔 돌진'], ['gust', '흙먼지 돌풍'], ['pillar', '땅울림 기둥']] },
+    halloween: { n: '킹 펌킨', e: '🎃', t: '"불이 꺼지면 아무것도 안 보여. 후후."', form: 'ghost', hp: 140,
+      c: ['#74471f', '#a06a33', '#ffa042', '#fde047'],
+      pats: [['bomb', '호박 폭탄'], ['patch', '암전 장판'], ['spread', '사탕 파편']] },
+    slimemarsh: { n: '반란 슬라임 검은젤리', e: '🫧', t: '"왕좌는 내 거다. 늪도 내 거다."', form: 'madslime', hp: 140,
+      c: ['#639440', '#8ec25e', '#d4f57e', '#fde047'],
+      pats: [['patch', '점액 장판'], ['spread', '점액 튀기기'], ['dash', '삼키기 돌진']] },
+    boxing: { n: '챔피언 강철주먹', e: '🥊', t: '"3라운드. 숨이 차면 넌 끝이야."', form: 'slugger', hp: 150,
+      c: ['#b8ae9a', '#e4dccc', '#e56a5e', '#fde047'],
+      pats: [['dash', '3연타 돌진'], ['ring', '링 로프 파동'], ['sweep', '어퍼컷 스윕']] },
+    mansionclean: { n: '까다로운 영감님', e: '🕯️', t: '"이봐! 촛대에 먼지 앉았어!"', form: 'sage', hp: 140,
+      c: ['#c0b29c', '#e9e0cf', '#ffd98a', '#fde047'],
+      pats: [['rain', '촛대 낙하'], ['gust', '먼지 돌풍'], ['patch', '먼지 장판']] },
+    oldinn: { n: '강시 대장 푸른송곳니', e: '🧟', t: '"…쿵… 쿵… 쿵…"', form: 'ghost', hp: 150,
+      c: ['#70402e', '#9a5a44', '#ffb44a', '#fde047'],
+      pats: [['dash', '강시 점프 돌진'], ['sweep', '팔 휘두르기'], ['clone', '부적 분신']] },
+    hospital: { n: '그림자 의사', e: '🩺', t: '"환자는 내가 데려간다."', form: 'ghost', hp: 150,
+      c: ['#a6b7bd', '#cfdde1', '#8fe6c2', '#fde047'],
+      pats: [['dash', '들것 추격'], ['patch', '경보 암전 장판'], ['sweep', '메스 스윕']] },
+    ruins: { n: '태고의 수호자', e: '🗿', t: '"룬의 순서를 틀리면 돌이 너를 삼킨다."', form: 'sphinx', hp: 150,
+      c: ['#8d8b6c', '#b5b393', '#8fe0d8', '#fde047'],
+      pats: [['pillar', '돌주먹 기둥'], ['spin', '룬 회전'], ['rain', '돌 파편 낙하']] },
+    sharkbay: { n: '메갈로돈', e: '🦈', t: '"이 해류는 내 사냥길이다."', form: 'kraken', hp: 150,
+      c: ['#3a7185', '#5a9cb0', '#a6f0e2', '#fde047'],
+      pats: [['dash', '상어 돌진'], ['wave', '해류 역전'], ['spread', '이빨 파편']] },
+    trench: { n: '심해의 눈 아비스', e: '👁️', t: '"여기는 아무도 오지 않는 곳이다."', form: 'crystalien', hp: 160,
+      c: ['#22445a', '#35617a', '#6ff0d0', '#fde047'],
+      pats: [['pillar', '물기포 기둥'], ['grav', '수압 펄스'], ['ring', '심해의 눈 파동']] },
+    vcastle: { n: '백작', e: '🧛', t: '"한 번만 물리면 넌 내 것이 된다."', form: 'maskcount', hp: 160,
+      c: ['#544a58', '#7a6a7a', '#f76a72', '#fde047'],
+      pats: [['clone', '박쥐 분신'], ['dash', '암전 덮치기'], ['laserV', '핏빛 광선']] },
+    demonking: { n: '그림자 군주', e: '😈', t: '"이 문은 너를 위해 열렸다."', form: 'yokai', hp: 170,
+      c: ['#55291c', '#7a4530', '#ff7a33', '#fde047'],
+      pats: [['pillar', '용암 기둥'], ['laserV', '번개 광선'], ['bomb', '지옥불 폭탄']] },
   };
   B.BOSSES = BOSSES;
 
@@ -54175,9 +55515,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 46 (muse-v5-9/index.html 57521줄) ── */
+/* ===== v59 inline block #49 (was index.html L57482-58170) ===== */
 
 /* ==========================================================================
    v4.8-boss : 41 보스 아트 — 21맵 전용 보스 21종 픽셀 드로잉
@@ -54867,9 +56205,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 47 (muse-v5-9/index.html 58210줄) ── */
+/* ===== v59 inline block #50 (was index.html L58171-58660) ===== */
 
 /* ==========================================================================
    v4.8-boss : 42 보스 러시 연출 — 등장 인트로 배너 · 격파 클리어 배너 · 👑 보스 도감
@@ -55360,9 +56696,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 48 (muse-v5-9/index.html 58700줄) ── */
+/* ===== v59 inline block #51 (was index.html L58661-59159) ===== */
 
 /* ==========================================================================
    v4.8-mgint : 45 🕹️ 미니게임 25종을 싱글/멀티 '안'으로 통합
@@ -55862,9 +57196,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 49 (muse-v5-9/index.html 59199줄) ── */
+/* ===== v59 inline block #52 (was index.html L59160-59475) ===== */
 
 /* ==========================================================================
    v4.8-uilab : 46 대기실/설정 다듬기
@@ -55975,7 +57307,7 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   /* ---------------------------------------------------------------- 3. 방 정보 썸네일 */
-  var MAPHAS = { arcade: 1, arctic: 1, atlantis: 1, bamboo: 1, clock: 1, default: 1, dessert: 1, egypt: 1, fuji: 1, kitchen: 1, mansion: 1, newyork: 1, paris: 1, rainbow: 1, school: 1, seoul: 1, site: 1, space: 1, train: 1, volcano: 1, wuxia: 1 };
+  var MAPHAS = { arcade: 1, arctic: 1, atlantis: 1, bamboo: 1, clock: 1, default: 1, dessert: 1, egypt: 1, fuji: 1, kitchen: 1, mansion: 1, newyork: 1, paris: 1, rainbow: 1, school: 1, seoul: 1, site: 1, space: 1, train: 1, volcano: 1, wuxia: 1, alley: 1, pond: 1, hatchery: 1, burrow: 1, wheatfield: 1, octocave: 1, fruitfarm: 1, savanna: 1, halloween: 1, slimemarsh: 1, boxing: 1, mansionclean: 1, oldinn: 1, hospital: 1, ruins: 1, sharkbay: 1, trench: 1, vcastle: 1, demonking: 1 };
   function thumbOf(id) { return 'assets/maps/t/' + (MAPHAS[id] ? id : 'default') + '.jpg'; }
   function roomMap() {
     var s = S();
@@ -56181,9 +57513,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 50 (muse-v5-9/index.html 59515줄) ── */
+/* ===== v59 inline block #53 (was index.html L59476-59775) ===== */
 
 /* ==========================================================================
    v4.8-joinlab : 47 방 참가 로딩창 — 초대 · 초대링크(?room=) · 공개방 · 코드 입력
@@ -56484,9 +57814,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 51 (muse-v5-9/index.html 59815줄) ── */
+/* ===== v59 inline block #54 (was index.html L59776-60343) ===== */
 
 /* ==========================================================================
    v4.8-rank (v5.6 대개편) : 🏆 명예의 전당
@@ -57055,9 +58383,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 52 (muse-v5-9/index.html 60383줄) ── */
+/* ===== v59 inline block #55 (was index.html L60344-61235) ===== */
 
 /* ==========================================================================
    v4.9-prop : 💡 제안하기 전면 개편 (비방장 → 방장)
@@ -57950,9 +59276,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 53 (muse-v5-9/index.html 61275줄) ── */
+/* ===== v59 inline block #56 (was index.html L61236-61444) ===== */
 
 /* ==========================================================================
    v4.9-fix : 방 설정 세부규칙 적용 + 봇 표시 동기화
@@ -58162,9 +59486,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 54 (muse-v5-9/index.html 61484줄) ── */
+/* ===== v59 inline block #57 (was index.html L61445-61612) ===== */
 
 /* ==========================================================================
    v4.9-back : 뒤로가기 방지 전수 보강
@@ -58333,9 +59655,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 55 (muse-v5-9/index.html 61652줄) ── */
+/* ===== v59 inline block #58 (was index.html L61613-61739) ===== */
 
 /* ==========================================================================
    v4.9-hud : ⏱️ 타임어택 남은 시간 표시 복구/보강
@@ -58463,9 +59783,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 56 (muse-v5-9/index.html 61779줄) ── */
+/* ===== v59 inline block #59 (was index.html L61740-61846) ===== */
 
 /* ==========================================================================
    v4.9-font : 얇고 흐린 작은 글씨 → 두껍고 선명하게 통일
@@ -58566,16 +59884,14 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   /* 화면이 바뀔 때만 가볍게 (DOM 교체가 많은 앱이라 1.2초 간격 + 예산 제한) */
-  setInterval(function () { if (__jwIP()) return; try { sweep(); } catch (e) {} }, 1200);
+  setInterval(function () { try { sweep(); } catch (e) {} }, 1200);
   setTimeout(function () { try { sweep(); } catch (e) {} }, 900);
 
   root.JW49FONT = { sweep: sweep };
 })(window);
 
 
-;
-
-/* ── block 57 (muse-v5-9/index.html 61886줄) ── */
+/* ===== v59 inline block #60 (was index.html L61847-61915) ===== */
 
 /* ==========================================================================
    v4.9-ui : 하단 안내 배너(#v49Notice) 추가
@@ -58645,9 +59961,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 58 (muse-v5-9/index.html 61955줄) ── */
+/* ===== v59 inline block #61 (was index.html L61916-63231) ===== */
 
 /* ==========================================================================
    v5.0-world : 새 맵 24종 (기존 21 + 신규 24 = 총 45맵)
@@ -59964,9 +61278,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 59 (muse-v5-9/index.html 63271줄) ── */
+/* ===== v59 inline block #62 (was index.html L63232-63775) ===== */
 
 /* ==========================================================================
    v5.0-modes : 새 등반 모드 4종
@@ -60511,9 +61823,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 60 (muse-v5-9/index.html 63815줄) ── */
+/* ===== v59 inline block #63 (was index.html L63776-63827) ===== */
 
 /* ==========================================================================
    v5.0-easy : '쉬움' 난이도 정식 등록 + 필터 도우미 + 맵 카드 라벨 보강
@@ -60566,9 +61876,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 61 (muse-v5-9/index.html 63867줄) ── */
+/* ===== v59 inline block #64 (was index.html L63828-63956) ===== */
 
 /* ==========================================================================
    v5.0-mglock : 🕹️ 미니게임 25종 진입 잠금 (🔒 준비 중)
@@ -60698,9 +62006,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 62 (muse-v5-9/index.html 63996줄) ── */
+/* ===== v59 inline block #65 (was index.html L63957-64454) ===== */
 
 /* ==========================================================================
    v5.1-artbg : 인게임 배경 = 16비트 정상등반 일러스트(assets/maps/{id}.jpg)
@@ -60971,8 +62277,7 @@ if (typeof module !== 'undefined' && module.exports) {
       c.drawImage(e.im, 0, 0, dw, dh);
       b = BIG[key] = { cv: cv, dw: dw, dh: dh };
       BIGQ.push(key);
-      /* v5.15-r4 bake: 4 → 8 — 구간을 왕복할 때 다시 굽지 않게 */
-      while (BIGQ.length > 8) { delete BIG[BIGQ.shift()]; }
+      while (BIGQ.length > 4) { delete BIG[BIGQ.shift()]; }
     } catch (er) { return null; }
     return b;
   }
@@ -61059,12 +62364,6 @@ if (typeof module !== 'undefined' && module.exports) {
     ctx.save();
     try { ctx.imageSmoothingEnabled = true; } catch (er) {}
     var big = bigFor(id, H);
-    if (big && big.__warm !== 1) {
-      /* v5.15-r4 bake: 구운 캔버스의 첫 blit 은 GPU 텍스처 업로드로 28.6ms(4배 스로틀 실측).
-         화면에 보이기 전에 1px 로 한 번 붙여 업로드를 끝내 두면 그 프레임이 28.6ms 를 안 낸다. */
-      big.__warm = 1;
-      try { ctx.drawImage(big.cv, 0, 0, 1, 1, -4, -4, 1, 1); } catch (eW) {}
-    }
     if (big) {
       /* 미리 구운 캔버스에서 화면에 보일 만큼만 잘라 1:1 로 붙인다 */
       var dh2 = big.dh, dw2 = big.dw;
@@ -61085,14 +62384,7 @@ if (typeof module !== 'undefined' && module.exports) {
       if (sy < 0) sy = 0;
       if (sy > dh - H) sy = dh - H;
       var sx = (dw - W) / 2;
-      /* v5.15-r4 bake: 원본 JPEG 확대는 smoothing 을 끄면 0.39ms → 0.02ms (픽셀아트라 티도 안 난다) */
-      var __smooth = ctx.imageSmoothingEnabled;
-      try {
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(e.im, -sx, -sy, dw, dh);
-      } finally {
-        ctx.imageSmoothingEnabled = __smooth;
-      }
+      ctx.drawImage(e.im, -sx, -sy, dw, dh);
     }
     /* 고도 구간 공기층 */
     if (!(opt && opt.noAir)) {
@@ -61213,9 +62505,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 63 (muse-v5-9/index.html 64494줄) ── */
+/* ===== v59 inline block #66 (was index.html L64455-64793) ===== */
 
 /* ==========================================================================
    v5.1-common : 이번 업데이트의 공통 토대
@@ -61239,7 +62529,9 @@ if (typeof module !== 'undefined' && module.exports) {
     traj: false,         /* v4.8.6: 평소 점프선은 원본 도트 3개 (긴 가이드 선은 특수 아이템만) */
     dmSound: true,
     joinBanner: true,
-    statsPlus: true
+    statsPlus: true,
+    dev: false,      /* v5.19-dev: 개발자 모드 ON/OFF (PIN 해금 뒤 토글) */
+    devUnlock: false /* v5.19-dev: PIN 0209 해금 여부 (영구) */
   };
   function load() {
     var o = {};
@@ -61555,9 +62847,384 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
+/* ===== v5.19-dev : 개발자 모드 + 치트 명령어 (태겸 확정 스펙, 2026-11-21) =====
+   - 설정 → PIN '0209'(문자열 비교) 입력 시 해금. 해금·ON/OFF는 jw51_cfg_v1의
+     JW51U.CFG.dev / .devUnlock에 저장 (DEF 화이트리스트 포함이라 와이프에도 유지).
+   - 개발자 모드 ON일 때만 게임 화면 오른쪽 위에 🛠️ 버튼이 뜨고, 누르면 명령 입력창.
+   - 명령어(영어만, 슬래시 유무·대소문자 무관): /top /god /fly /skip /unlockall /bossskip.
+     없는 명령어는 "없는 명령어야". 멀티 레이스 중에는 버튼 숨김 + 명령어 전부 차단.
+   - god/fly는 세션 전용 토글(저장 안 함). 스토리 클리어 기록은 onStoryClear 훅에
+     의존하지 않고 jw64_story_v1/jw64_char_v1에 직접 씀. V.storyDevSkip은
+     스토리 IIFE 쪽 게이트 우회용 플래그(다른 팀 구현 중)로, 호출 뒤 3초 뒤 해제.
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JWDEV) return;
+  var doc = document;
 
-/* ── block 64 (muse-v5-9/index.html 64833줄) ── */
+  var PIN = '0209'; /* 문자열 비교 — 숫자로 바꾸면 앞자리 0이 날아감 */
+  var KEY_CFG = 'jw51_cfg_v1';
+  var KEY_STORY = 'jw64_story_v1';
+  var KEY_CHAR = 'jw64_char_v1';
+  var DATA_URLS = ['assets/story-data.json'];
+
+  function $(id) { return doc.getElementById(id); }
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function toast(a, b, c, d) { try { if (V.toast) V.toast(a, b, c, d); } catch (e) {} }
+
+  /* ---------------- 저장: jw51_cfg_v1 (JW51U.CFG 경유, 없으면 직접 병합) ---------------- */
+  function cfg() { try { if (root.JW51U && root.JW51U.CFG) return root.JW51U.CFG; } catch (e) {} return null; }
+  function saveCfg() { try { if (root.JW51U && root.JW51U.save) root.JW51U.save(); } catch (e) {} }
+  function readRaw() { var o = lsGet(KEY_CFG, {}) || {}; return { dev: !!o.dev, devUnlock: !!o.devUnlock }; }
+
+  /* ---------------- 멀티 판정 ---------------- */
+  function inMultiRace() {
+    try { if (V.G && V.G.multi && V.G.multi()) return true; } catch (e) {}
+    try {
+      var st = V.st && V.st();
+      if (st && (st.phase === 'race' || st.phase === 'count' || st.phase === 'result') && st.room) return true;
+    } catch (e) {}
+    return false;
+  }
+
+  /* ---------------- 명령 입력창 (#mpChatPanel 구조 복사, 별도 핸들러) ---------------- */
+  function ensureCss() {
+    if ($('devCmdCss')) return;
+    var st = doc.createElement('style');
+    st.id = 'devCmdCss';
+    st.textContent = '#devCmdPanel{position:absolute;left:0;right:0;bottom:0;z-index:46;background:rgba(7,10,23,.97);border-top:3px solid #a78bfa;padding:8px;display:flex;flex-direction:column;gap:6px;max-height:62vh;}' +
+      '#devCmdLog{overflow-y:auto;max-height:30vh;display:flex;flex-direction:column;gap:4px;font-size:12px;}' +
+      '#devCmdLog .dev-line{color:#e2e8f0;font-weight:700;}';
+    doc.head.appendChild(st);
+  }
+  function setTyping(on) {
+    try { var st = V.st && V.st(); if (st) st.typing = !!on; } catch (e) {}
+  }
+  function ensurePanel() {
+    ensureCss();
+    if ($('devCmdPanel')) return;
+    var p = doc.createElement('div');
+    p.id = 'devCmdPanel';
+    p.className = 'hidden';
+    p.innerHTML =
+      '<div class="flex items-center justify-between">' +
+      '<span class="mp-lbl">🛠️ 개발자 명령</span>' +
+      '<button id="devCmdClose" class="mp-chip" style="padding:3px 8px;font-size:11px">닫기 ✕</button></div>' +
+      '<div id="devCmdLog"></div>' +
+      '<div style="font-size:11px;color:#94a3b8;font-weight:700">/top · /god · /fly · /skip · /unlockall · /bossskip — 슬래시 없이 쳐도 돼요</div>' +
+      '<div class="flex gap-1.5">' +
+      '<input id="devCmdInput" class="mp-in flex-1" maxlength="40" placeholder="/top — 명령어 입력 (Enter 전송)" />' +
+      '<button id="devCmdSend" class="mp-btn blue" style="padding:8px 12px;font-size:12px">실행</button></div>';
+    doc.body.appendChild(p);
+    var inp = $('devCmdInput');
+    inp.addEventListener('keydown', function (e) {
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); run(inp.value); inp.value = ''; }
+      else if (e.key === 'Escape') { e.preventDefault(); closePanel(); }
+    });
+    inp.addEventListener('focus', function () { setTyping(true); });
+    inp.addEventListener('blur', function () { setTyping(false); });
+    $('devCmdSend').addEventListener('click', function () { run(inp.value); inp.value = ''; inp.focus(); });
+    $('devCmdClose').addEventListener('click', function () { closePanel(); });
+  }
+  function logLine(html) {
+    var log = $('devCmdLog');
+    if (!log) return;
+    var d = doc.createElement('div');
+    d.className = 'dev-line';
+    d.innerHTML = html;
+    log.appendChild(d);
+    while (log.children.length > 30) log.removeChild(log.firstChild);
+    log.scrollTop = log.scrollHeight;
+  }
+  function openPanel() {
+    if (!D.isDev()) return;
+    ensurePanel();
+    var p = $('devCmdPanel');
+    if (!p) return;
+    p.classList.remove('hidden');
+    var inp = $('devCmdInput');
+    if (inp) setTimeout(function () { try { inp.focus(); } catch (e) {} }, 30);
+  }
+  function closePanel() {
+    var p = $('devCmdPanel');
+    if (p) p.classList.add('hidden');
+    setTyping(false);
+  }
+  function togglePanel() {
+    var p = $('devCmdPanel');
+    if (p && !p.classList.contains('hidden')) closePanel();
+    else openPanel();
+  }
+
+  /* ---------------- 스토리 데이터 (스킨 해금·스테이지 정보용) ---------------- */
+  var storyData = null, storyLoading = false, storyCbs = [];
+  function loadStoryData(cb) {
+    if (storyData) { if (cb) cb(storyData); return; }
+    if (cb) storyCbs.push(cb);
+    if (storyLoading) return;
+    storyLoading = true;
+    var i = 0;
+    (function next() {
+      if (i >= DATA_URLS.length) {
+        storyLoading = false;
+        var cbs = storyCbs; storyCbs = [];
+        cbs.forEach(function (f) { try { f(null); } catch (e) {} });
+        return;
+      }
+      var url = DATA_URLS[i++];
+      try {
+        fetch(url, { cache: 'no-cache' }).then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        }).then(function (d) {
+          storyData = d;
+          storyLoading = false;
+          var cbs2 = storyCbs; storyCbs = [];
+          cbs2.forEach(function (f) { try { f(d); } catch (e) {} });
+        }).catch(function () { next(); });
+      } catch (e) { next(); }
+    })();
+  }
+  /* 스토리 IIFE의 onStoryClear과 같은 형태의 직접 기록 (훅에 의존하지 않음) */
+  function recordStoryClear(run, data) {
+    var st = null, i;
+    if (data && data.stages) {
+      for (i = 0; i < data.stages.length; i++) {
+        if (data.stages[i].index === run.index) { st = data.stages[i]; break; }
+      }
+    }
+    var sv = lsGet(KEY_STORY, null);
+    if (!sv || typeof sv !== 'object') sv = { v: 1, cleared: {}, boss: {} };
+    if (!sv.cleared) sv.cleared = {};
+    if (!sv.boss) sv.boss = {};
+    sv.cleared['map:' + run.mapId] = run.index;
+    if (st && st.boss) sv.boss['map:' + run.mapId] = true;
+    lsSet(KEY_STORY, sv);
+    if (st && st.unlockSkin) {
+      var cv = lsGet(KEY_CHAR, null);
+      if (!cv || typeof cv !== 'object') cv = { v: 1, unlocked: {} };
+      if (!cv.unlocked) cv.unlocked = {};
+      if (!cv.unlocked['skin:' + st.unlockSkin]) {
+        cv.unlocked['skin:' + st.unlockSkin] = run.index;
+        lsSet(KEY_CHAR, cv);
+      }
+    }
+  }
+
+  /* ---------------- 명령어 ---------------- */
+  function inPlayNow() {
+    var jw = root.__jwg;
+    return !!(jw && jw.game && jw.game.inPlay && !jw.game.victory);
+  }
+  function callVictory() {
+    try {
+      if (root.JWG && root.JWG.onReachVictory) return !!root.JWG.onReachVictory();
+    } catch (e) {}
+    return false;
+  }
+
+  function cmdTop() {
+    var jw = root.__jwg;
+    if (!inPlayNow()) { toast('⛰️ 뛰는 중에만 쓸 수 있어', 'danger', '판을 시작한 뒤에 쳐요', 2000); return; }
+    var plats = (jw.platforms || []).slice();
+    if (!plats.length) { toast('발판을 찾지 못했어요', 'danger', '', 1800); return; }
+    var goal = 0;
+    try { if (root.JWG && root.JWG.goalPlat) goal = root.JWG.goalPlat() || 0; } catch (e) {}
+    if (!goal) { try { if (jw.goalPlat) goal = jw.goalPlat() || 0; } catch (e) {} }
+    if (!goal) { try { if (V.G && V.G.goalPlat) goal = V.G.goalPlat() || 0; } catch (e) {} }
+    if (!goal) { try { if (V.goalNow) goal = V.goalNow() || 0; } catch (e) {} }
+    if (!goal) goal = jw.TOTAL || 0;
+    var top = null, i, p;
+    for (i = 0; i < plats.length; i++) { if (plats[i].index === goal) { top = plats[i]; break; } }
+    if (!top) {
+      top = plats[0];
+      for (i = 1; i < plats.length; i++) { if ((plats[i].index || 0) > (top.index || 0)) top = plats[i]; }
+    }
+    var pl = jw.player;
+    pl.x = top.x + (top.w - (pl.w || 28)) / 2;
+    pl.y = top.y - (pl.h || 32) - 4;
+    pl.vx = 0; pl.vy = 30;
+    pl.charging = false; pl.charge = 0;
+    pl.plat = null; pl.onGround = false;
+    try { if (jw.addParticles) jw.addParticles(pl.x + 14, pl.y + 16, '#a78bfa', 16, 160); } catch (e) {}
+    toast('⛰️ 정상으로 이동!', 'lucky', '착지하면 클리어돼요', 1600);
+    logLine('정상 발판(' + (top.index || '?') + '층)으로 이동했어요');
+    /* 안전망: 착지 판정이 1초 안에 안 타면(예: 발판이 움직인 경우) 직접 승리 호출 */
+    setTimeout(function () {
+      try {
+        var j2 = root.__jwg;
+        if (!j2 || !j2.game || !j2.game.inPlay || j2.game.victory) return;
+        var pp = j2.player;
+        if (pp && pp.plat && pp.plat.index === top.index) callVictory();
+      } catch (e) {}
+    }, 1000);
+  }
+
+  function cmdSkip() {
+    if (!inPlayNow()) { toast('⏭️ 뛰는 중에만 쓸 수 있어', 'danger', '판을 시작한 뒤에 쳐요', 2000); return; }
+    var run = null;
+    try { run = V.storyRun || null; } catch (e) {}
+    if (!run) {
+      /* 일반 싱글 판: 바로 승리 처리 */
+      if (callVictory()) {
+        toast('⏭️ 스테이지 클리어!', 'lucky', '바로 클리어 처리했어요', 2000);
+        logLine('지금 스테이지 바로 클리어했어요');
+      } else {
+        toast('클리어 처리가 안 됐어요', 'danger', '판을 시작한 뒤에 다시 쳐요', 2000);
+        logLine('클리어 처리가 안 됐어요');
+      }
+      return;
+    }
+    /* 스토리 판: 게이트 우회 플래그 → 직접 클리어·해금 기록 → 승리 호출 */
+    try { V.storyDevSkip = true; } catch (e) {}
+    try { recordStoryClear(run, null); } catch (e) {}
+    loadStoryData(function (data) { try { if (data) recordStoryClear(run, data); } catch (e) {} });
+    if (callVictory()) {
+      toast('⏭️ 스토리 스테이지 클리어!', 'lucky', (run.index || '') + '번 스테이지 · 다음 스테이지 개방', 2600);
+      logLine('스토리 ' + (run.index || '?') + '번 스테이지 바로 클리어했어요');
+    } else {
+      toast('클리어 기록은 저장했어요', 'danger', '승리 화면이 안 떴으면 판을 끝내고 다시 확인해요', 2600);
+      logLine('클리어 기록은 저장했지만 승리 화면이 안 떴어요');
+    }
+    setTimeout(function () { try { V.storyDevSkip = false; } catch (e) {} }, 3000);
+  }
+
+  function cmdUnlockAll() {
+    var ids = {}, i;
+    try {
+      var skins = (root.JWMode && root.JWMode.SKINS) || [];
+      for (i = 0; i < skins.length; i++) { if (skins[i] && skins[i].id) ids[skins[i].id] = 1; }
+    } catch (e) {}
+    loadStoryData(function (data) {
+      if (data && data.stages) {
+        for (var j = 0; j < data.stages.length; j++) {
+          var s = data.stages[j];
+          if (s.skinId) ids[s.skinId] = s.index || 1;
+          if (s.unlockSkin) ids[s.unlockSkin] = s.index || 1;
+        }
+      }
+      var cv = lsGet(KEY_CHAR, null);
+      if (!cv || typeof cv !== 'object') cv = { v: 1, unlocked: {} };
+      if (!cv.unlocked) cv.unlocked = {};
+      var n = 0;
+      Object.keys(ids).forEach(function (id) {
+        if (!cv.unlocked['skin:' + id]) cv.unlocked['skin:' + id] = ids[id] || 1;
+        n++;
+      });
+      lsSet(KEY_CHAR, cv);
+      /* 스킨 목록은 다음에 열릴 때 다시 그려지면서 해금이 반영돼요 (잠금 판정은 저장소를 매번 새로 읽어요) */
+      toast('🎉 스킨 ' + n + '개 전부 해금!', 'lucky', '스킨 목록을 다시 열면 모두 열려 있어요', 2600);
+      logLine('스킨 ' + n + '개 전부 해금했어요');
+    });
+  }
+
+  function cmdBossSkip() {
+    try {
+      if (V.storyBossKill && typeof V.storyBossKill === 'function') {
+        V.storyBossKill();
+        toast('👊 보스 처치!', 'lucky', '스토리 보스를 바로 잡았어요', 2000);
+        logLine('스토리 보스를 바로 잡았어요');
+        return;
+      }
+    } catch (e) {}
+    var boss = null;
+    try { boss = V.G && V.G.boss; } catch (e) {}
+    if (boss && !boss.dead && !boss.gone) {
+      try {
+        if (root.JW48B && root.JW48B.kill) {
+          root.JW48B.kill();
+          toast('👊 보스 처치!', 'lucky', '보스를 바로 잡았어요', 2000);
+          logLine('보스를 바로 잡았어요');
+          return;
+        }
+      } catch (e) {}
+    }
+    toast('보스가 없어', 'danger', '지금 떠 있는 보스가 없어요', 2000);
+    logLine('보스가 없어요');
+  }
+
+  function run(raw) {
+    var cmd = String(raw == null ? '' : raw).trim().toLowerCase();
+    if (cmd.charAt(0) === '/') cmd = cmd.slice(1);
+    cmd = cmd.trim();
+    if (!cmd) return;
+    logLine('&gt; /' + esc(cmd));
+    if (inMultiRace()) {
+      toast('🚫 멀티 레이스 중에는 개발자 명령을 쓸 수 없어', 'danger', '싱글·스토리 판에서만 써요', 2200);
+      logLine('멀티 레이스 중에는 쓸 수 없어요');
+      return;
+    }
+    switch (cmd) {
+      case 'top': cmdTop(); return;
+      case 'god':
+        D.god = !D.god;
+        toast(D.god ? '🛡️ 무적 ON' : '🛡️ 무적 OFF', 'lucky', D.god ? '낙하·피격 사망을 막아요 (타임어택 시간 종료는 그대로)' : '다시 원래대로', 2000);
+        logLine('무적 ' + (D.god ? 'ON' : 'OFF'));
+        return;
+      case 'fly':
+        D.fly = !D.fly;
+        toast(D.fly ? '🪽 비행 ON' : '🪽 비행 OFF', 'lucky', D.fly ? '점프 키를 누르면 올라가고 떼면 멈춰요' : '다시 원래대로', 2000);
+        logLine('비행 ' + (D.fly ? 'ON' : 'OFF'));
+        return;
+      case 'skip': cmdSkip(); return;
+      case 'unlockall': cmdUnlockAll(); return;
+      case 'bossskip': cmdBossSkip(); return;
+      default:
+        toast('없는 명령어야', 'danger', '/top · /god · /fly · /skip · /unlockall · /bossskip 만 쓸 수 있어요', 2200);
+        logLine('없는 명령어야');
+        return;
+    }
+  }
+
+  var D = {
+    /* 세션 전용 토글 (저장 안 함) — 엔진 패치 지점에서 window.JWDEV.god / .fly로 읽음 */
+    god: false,
+    fly: false,
+    /* 개발자 모드 상태 (jw51_cfg_v1) */
+    isDev: function () {
+      var c = cfg();
+      if (c) return !!c.dev;
+      return readRaw().dev;
+    },
+    isUnlocked: function () {
+      var c = cfg();
+      if (c) return !!c.devUnlock;
+      return readRaw().devUnlock;
+    },
+    setDev: function (on) {
+      var c = cfg();
+      if (c) { c.dev = !!on; saveCfg(); }
+      else {
+        try { var raw = lsGet(KEY_CFG, {}) || {}; raw.dev = !!on; lsSet(KEY_CFG, raw); } catch (e) {}
+      }
+      return !!on;
+    },
+    unlock: function (pin) {
+      if (String(pin == null ? '' : pin).trim() !== PIN) return false;
+      var c = cfg();
+      if (c) { c.devUnlock = true; c.dev = true; saveCfg(); }
+      else {
+        try { var raw = lsGet(KEY_CFG, {}) || {}; raw.devUnlock = true; raw.dev = true; lsSet(KEY_CFG, raw); } catch (e) {}
+      }
+      return true;
+    },
+    inMultiRace: inMultiRace,
+    openPanel: openPanel,
+    closePanel: closePanel,
+    togglePanel: togglePanel,
+    run: run,
+    toast: toast
+  };
+  root.JWDEV = D;
+})(window);
+
+
+/* ===== v59 inline block #67 (was index.html L64794-65258) ===== */
 
 /* ==========================================================================
    v5.1-tutorial (재작성) : 진짜 게임 화면·진짜 발판·진짜 재우·진짜 ◀ ▶ ⏫ 로 배우는 튜토리얼
@@ -62023,9 +63690,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 65 (muse-v5-9/index.html 65298줄) ── */
+/* ===== v59 inline block #68 (was index.html L65259-65507) ===== */
 
 /* ==========================================================================
    v5.1-trajectory : 점프 사정거리(예상 궤적) = 실제 물리 엔진 그대로
@@ -62275,9 +63940,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 66 (muse-v5-9/index.html 65547줄) ── */
+/* ===== v59 inline block #69 (was index.html L65508-66203) ===== */
 
 /* ==========================================================================
    v5.1-platart (v3 · IMG_1076 복원 + 더 깔끔하게)
@@ -62343,6 +64006,25 @@ if (typeof module !== 'undefined' && module.exports) {
     fireworks:{ k: 'stage', b: '#38323f', d: '#141119', t: '#e8cf6a', a: '#7aa6d8' },
     baseball: { k: 'turf', b: '#8a6440', d: '#3a2818', t: '#e9e0cf', a: '#e8e8e8' },
     retro20:  { k: 'brick', b: '#a8743c', d: '#452a12', t: '#7ee07e', a: '#ffd166' },
+    alley:     { k: 'wood', b: '#8a6440', d: '#4a3524', t: '#c79a6a', a: '#ffd88a' },
+    pond:      { k: 'moss', b: '#5f8f4a', d: '#33512c', t: '#8fb96a', a: '#f7b6c8' },
+    hatchery:  { k: 'desk', b: '#b8904e', d: '#6b5127', t: '#e3c07a', a: '#ffd75e' },
+    burrow:    { k: 'wood', b: '#8a5527', d: '#4a2c16', t: '#b57b45', a: '#f28a3c' },
+    wheatfield: { k: 'sand', b: '#b3813a', d: '#66491f', t: '#dfae5c', a: '#ffe9a3' },
+    octocave:  { k: 'coral', b: '#47706c', d: '#24413f', t: '#6c9a92', a: '#f6a89c' },
+    fruitfarm: { k: 'honey', b: '#92603a', d: '#54371f', t: '#c08a52', a: '#ffd75e' },
+    savanna:   { k: 'sand', b: '#8d6337', d: '#4f371d', t: '#bb8b52', a: '#e8833f' },
+    halloween: { k: 'candy', b: '#74471f', d: '#3f2610', t: '#a06a33', a: '#ffa042' },
+    slimemarsh: { k: 'moss', b: '#639440', d: '#33521f', t: '#8ec25e', a: '#d4f57e' },
+    boxing:    { k: 'stage', b: '#b8ae9a', d: '#6b6455', t: '#e4dccc', a: '#e56a5e' },
+    mansionclean: { k: 'marble', b: '#c0b29c', d: '#6e6354', t: '#e9e0cf', a: '#ffd98a' },
+    oldinn:    { k: 'brick', b: '#70402e', d: '#3d2218', t: '#9a5a44', a: '#ffb44a' },
+    hospital:  { k: 'tile', b: '#a6b7bd', d: '#5f7076', t: '#cfdde1', a: '#8fe6c2' },
+    ruins:     { k: 'stone', b: '#8d8b6c', d: '#4f4e3a', t: '#b5b393', a: '#8fe0d8' },
+    sharkbay:  { k: 'coral', b: '#3a7185', d: '#1e4353', t: '#5a9cb0', a: '#a6f0e2' },
+    trench:    { k: 'metal', b: '#22445a', d: '#0f2532', t: '#35617a', a: '#6ff0d0' },
+    vcastle:   { k: 'stone', b: '#544a58', d: '#2e2833', t: '#7a6a7a', a: '#f76a72' },
+    demonking: { k: 'basalt', b: '#55291c', d: '#2e1009', t: '#7a4530', a: '#ff7a33' },
     custom:   { k: 'stone', b: '#6e7688', d: '#2f3440', t: '#dbe2ec', a: '#9aa4b8' }
   };
   var TYPEICON = {
@@ -62974,9 +64656,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 67 (muse-v5-9/index.html 66243줄) ── */
+/* ===== v59 inline block #70 (was index.html L66204-66296) ===== */
 
 /* ==========================================================================
    v5.1-retro : ✨ 2.0 오리지널(retro20) = 실제 v2.0 맵 그대로
@@ -63070,9 +64750,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 68 (muse-v5-9/index.html 66336줄) ── */
+/* ===== v59 inline block #71 (was index.html L66297-66857) ===== */
 
 /* ==========================================================================
    v5.1-titles : 칭호 대개편 — 등급 · 일러스트 배지 · 45맵 클리어/1위 칭호
@@ -63635,9 +65313,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 69 (muse-v5-9/index.html 66897줄) ── */
+/* ===== v59 inline block #72 (was index.html L66858-67525) ===== */
 
 /* ==========================================================================
    v5.1-qol11 : 편의성 11종 + 설정(햅틱·UI 크기·공략·궤적)
@@ -64306,9 +65982,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 70 (muse-v5-9/index.html 67565줄) ── */
+/* ===== v59 inline block #73 (was index.html L67526-67818) ===== */
 
 /* ==========================================================================
    v5.1-friends : 친구창 정돈 + 1:1 채팅(DM) + 읽지 않음 배지 + 친구 검색
@@ -64602,9 +66276,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 71 (muse-v5-9/index.html 67858줄) ── */
+/* ===== v59 inline block #74 (was index.html L67819-68253) ===== */
 
 /* ==========================================================================
    v5.1-spec : 관전 정리 — 친구 싱글 관전 + 판 종료 결과 안내 + 멀티 관전 바 정돈
@@ -65041,9 +66713,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 72 (muse-v5-9/index.html 68293줄) ── */
+/* ===== v59 inline block #75 (was index.html L68254-68381) ===== */
 
 /* ==========================================================================
    v5.1-perf : 전체 최적화 — 프레임·메모리·DOM·타이머
@@ -65127,10 +66797,8 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   function markIdle() {
-    /* v5.15: 값이 그대로인데 0.7초마다 classList 를 다시 쓰면 매번 스타일 재계산이 걸린다. */
-    var idle = !!isIdle();
-    if (ST.lastIdle === idle) return;
-    doc.body.classList.toggle('v51idle', idle);
+    var idle = isIdle();
+    doc.body.classList.toggle('v51idle', !!idle);
     ST.lastIdle = idle;
   }
 
@@ -65174,9 +66842,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 73 (muse-v5-9/index.html 68421줄) ── */
+/* ===== v59 inline block #76 (was index.html L68382-68596) ===== */
 
 /* ==========================================================================
    v5.1-skins (hotfix2) : 캐릭터(스킨)마다 다른 대사
@@ -65392,9 +67058,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 74 (muse-v5-9/index.html 68636줄) ── */
+/* ===== v59 inline block #77 (was index.html L68597-68846) ===== */
 
 /* ==========================================================================
    v5.1-fav (hotfix2) : ★ 즐겨찾기 — 누르면 즉시 맨 위로 + '★ 즐겨찾기' 카테고리 탭
@@ -65645,9 +67309,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 75 (muse-v5-9/index.html 68886줄) ── */
+/* ===== v59 inline block #78 (was index.html L68847-68933) ===== */
 
 /* ==========================================================================
    v5.1-bgm : BGM 사고 방지 — 끄면 즉시 정지 · 한 번에 한 곡만 · 주크박스 충돌 0
@@ -65735,9 +67397,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 76 (muse-v5-9/index.html 68973줄) ── */
+/* ===== v59 inline block #79 (was index.html L68934-69118) ===== */
 
 /* ==========================================================================
    v5.1-titlelux : 칭호 비주얼 업그레이드 + 칭호 도감 UI 정돈
@@ -65923,9 +67583,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 77 (muse-v5-9/index.html 69158줄) ── */
+/* ===== v59 inline block #80 (was index.html L69119-69178) ===== */
 
 /* ==========================================================================
    v5.1-flicker (단순화) : 정적 CSS + 모달 스와이프 스크롤 허용
@@ -65986,9 +67644,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 78 (muse-v5-9/index.html 69218줄) ── */
+/* ===== v59 inline block #81 (was index.html L69179-69298) ===== */
 
 /* ==========================================================================
    v5.1-fullscreen (재작성) : '버튼을 눌렀을 때만' 전체 화면 — 자동 진입/재진입 없음
@@ -66109,9 +67765,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 79 (muse-v5-9/index.html 69338줄) ── */
+/* ===== v59 inline block #82 (was index.html L69299-69582) ===== */
 
 /* ==========================================================================
    v5.1-boss24 : 새 맵 24종 전용 보스 — 이름·도발·체력·전용 패턴 3종
@@ -66396,9 +68050,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 80 (muse-v5-9/index.html 69622줄) ── */
+/* ===== v59 inline block #83 (was index.html L69583-70206) ===== */
 
 /* ==========================================================================
    v5.1-bossart24 : 새 맵 24종 전용 보스 픽셀 아트 (96×96 로컬 좌표계)
@@ -67023,9 +68675,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 81 (muse-v5-9/index.html 70246줄) ── */
+/* ===== v59 inline block #84 (was index.html L70207-70409) ===== */
 
 /* ==========================================================================
    v5.1-modepure : 🎯 모드별 부가요소 차단
@@ -67229,9 +68879,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 82 (muse-v5-9/index.html 70449줄) ── */
+/* ===== v59 inline block #85 (was index.html L70410-70674) ===== */
 
 /* ==========================================================================
    v5.6-titles5 : 🏅 칭호를 5곳 모두에 —
@@ -67497,9 +69145,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 83 (muse-v5-9/index.html 70714줄) ── */
+/* ===== v59 inline block #86 (was index.html L70675-70974) ===== */
 
 /* ==========================================================================
    v5.6-friends-ui : 👥 친구창 · 친구 프로필 정돈
@@ -67790,7 +69436,7 @@ if (typeof module !== 'undefined' && module.exports) {
   function boot() {
     css();
     tick();
-    setInterval(function () { if (__jwIP()) return; tick(); }, 900);
+    setInterval(tick, 900);
   }
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 700); });
   else setTimeout(boot, 700);
@@ -67800,9 +69446,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 84 (muse-v5-9/index.html 71014줄) ── */
+/* ===== v59 inline block #87 (was index.html L70975-71076) ===== */
 
 /* ==========================================================================
    v5.6-hearts : ❤️ 하트 HUD 는 "하트를 실제로 쓰는 모드"에서만
@@ -67905,9 +69549,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 85 (muse-v5-9/index.html 71116줄) ── */
+/* ===== v59 inline block #88 (was index.html L71077-71237) ===== */
 
 /* ==========================================================================
    v5.6-tag : 🏅 인게임 내 캐릭터 위 닉네임 + 칭호 배지
@@ -68070,9 +69712,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 86 (muse-v5-9/index.html 71277줄) ── */
+/* ===== v59 inline block #89 (was index.html L71238-71305) ===== */
 
 /* ==========================================================================
    v5.6-clearguard : 🏁 "안 깼는데 클리어" 방지
@@ -68141,9 +69781,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 87 (muse-v5-9/index.html 71345줄) ── */
+/* ===== v59 inline block #90 (was index.html L71306-71387) ===== */
 
 /* ==========================================================================
    v5.7-noflick : 창 전환 깜빡임 0
@@ -68218,7 +69856,7 @@ if (typeof module !== 'undefined' && module.exports) {
       }
     } catch (e) {}
   }
-  setInterval(function () { if (__jwIP()) return; sweep(); }, 700);
+  setInterval(sweep, 700);
   setTimeout(sweep, 900);
 
   root.JW57NF = { sel: SEL, settle: settle };
@@ -68226,9 +69864,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 88 (muse-v5-9/index.html 71427줄) ── */
+/* ===== v59 inline block #91 (was index.html L71388-71521) ===== */
 
 /* ==========================================================================
    v5.7-plate : 🌈 이름표 · 🖼️ 테두리를 칭호와 똑같이 5곳 전체에
@@ -68353,7 +69989,7 @@ if (typeof module !== 'undefined' && module.exports) {
   function boot() {
     css();
     apply();
-    setInterval(function () { if (__jwIP()) return; try { apply(); } catch (e) {} }, 900);
+    setInterval(function () { try { apply(); } catch (e) {} }, 900);
   }
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 800); });
   else setTimeout(boot, 800);
@@ -68363,9 +69999,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 89 (muse-v5-9/index.html 71561줄) ── */
+/* ===== v59 inline block #92 (was index.html L71522-71774) ===== */
 
 /* ==========================================================================
    v5.8-plates : 🌈 이름표 · 🖼️ 테두리 해금 시스템 (칭호와 같은 결)
@@ -68630,9 +70264,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 90 (muse-v5-9/index.html 71814줄) ── */
+/* ===== v59 inline block #93 (was index.html L71775-72032) ===== */
 
 /* ==========================================================================
    v5.9-profile : 👤 내 프로필 하나로 통합 (스킨 · 테두리 · 이름표 · 칭호)
@@ -68891,9 +70523,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 91 (muse-v5-9/index.html 72072줄) ── */
+/* ===== v59 inline block #94 (was index.html L72033-72220) ===== */
 
 /* ==========================================================================
    v5.9-2 (90_fix) : 실기기 전수 버그 사냥 — UI 겹침 · 잘림 · 죽은 카드 · HUD 정리
@@ -69082,9 +70712,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })();
 
 
-;
-
-/* ── block 92 (muse-v5-9/index.html 72260줄) ── */
+/* ===== v59 inline block #95 (was index.html L72221-72490) ===== */
 
 /* ==========================================================================
    v4.8.6-extra : ① 해금 축하 팝업 + NEW 빨간 점  ② 결과창 [다음 맵]
@@ -69355,9 +70983,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 93 (muse-v5-9/index.html 72530줄) ── */
+/* ===== v59 inline block #96 (was index.html L72491-72593) ===== */
 
 /* ==========================================================================
    v4.8.6-guard : ① 거짓 클리어 2차 차단(고도 검증)  ② 하트 사망 이중 차단
@@ -69461,9 +71087,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 94 (muse-v5-9/index.html 72633줄) ── */
+/* ===== v59 inline block #97 (was index.html L72594-73049) ===== */
 
 /* ==========================================================================
    v4.8.6-lobbyx : 🕶️ 멀티 대기실 '어두운 막' 제거 + 참가자 카드 대개편
@@ -69920,9 +71544,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 95 (muse-v5-9/index.html 73089줄) ── */
+/* ===== v59 inline block #98 (was index.html L73050-73230) ===== */
 
 /* ==========================================================================
    v4.8.6-titlefix : 🏠 메인(타이틀) 화면 정리
@@ -70104,9 +71726,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 96 (muse-v5-9/index.html 73270줄) ── */
+/* ===== v59 inline block #99 (was index.html L73231-73476) ===== */
 
 /* ==========================================================================
    v5.1-game : 인게임 정리
@@ -70364,9 +71984,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 97 (muse-v5-9/index.html 73516줄) ── */
+/* ===== v59 inline block #100 (was index.html L73477-73570) ===== */
 
 /* ==========================================================================
    v5.1-codex : 📖 재우 도감 정리
@@ -70461,9 +72079,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 98 (muse-v5-9/index.html 73610줄) ── */
+/* ===== v59 inline block #101 (was index.html L73571-73638) ===== */
 
 /* ==========================================================================
    v5.1-font : ⚙️ 모달·방 설정 글씨/버튼 통일
@@ -70532,9 +72148,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 99 (muse-v5-9/index.html 73678줄) ── */
+/* ===== v59 inline block #102 (was index.html L73639-73730) ===== */
 
 /* ==========================================================================
    v5.1-balance : 맵 난이도 체감 맞추기 (✨ 2.0 오리지널 retro20 은 100% 보존)
@@ -70627,9 +72241,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 100 (muse-v5-9/index.html 73770줄) ── */
+/* ===== v59 inline block #103 (was index.html L73731-73858) ===== */
 
 /* ==========================================================================
    v5.1-friends : 🕒 친구창 '마지막 접속' 상대시간 복구
@@ -70758,9 +72370,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 101 (muse-v5-9/index.html 73898줄) ── */
+/* ===== v59 inline block #104 (was index.html L73859-74470) ===== */
 
 /* ==========================================================================
    v5.1-UI (99b) : 실기기 10건 제보 전면 개편
@@ -70988,7 +72598,7 @@ if (typeof module !== 'undefined' && module.exports) {
       var id = (root.JW56T5 && root.JW56T5.myTitleId) ? root.JW56T5.myTitleId() : 'auto';
       if (id && id !== 'auto' && root.JW51TITLES && root.JW51TITLES.badge) {
         var b = root.JW51TITLES.badge(id, true);
-        if (b) return { html: '<span class="v50badge-holder">' + b + '</span>', plain: '', id: id };
+        if (b) return { html: '<span class="v50badge-holder">' + b + '</span>', plain: '' };
       }
     } catch (e) {}
     var t = '';
@@ -71002,7 +72612,7 @@ if (typeof module !== 'undefined' && module.exports) {
       } catch (e) {}
     }
     if (!t) t = '🌱 도전자';
-    return { html: '<span class="tt">' + esc(t) + '</span>', plain: t, id: '' };
+    return { html: '<span class="tt">' + esc(t) + '</span>', plain: t };
   }
   function tagFrame() {
     var el = $('v97Tag');
@@ -71351,9 +72961,7 @@ if (typeof module !== 'undefined' && module.exports) {
     var playing = function () { try { var g = root.__jwg && root.__jwg.game; return !!(g && g.inPlay); } catch (e) { return false; } };
     var pbT = 0;
     setInterval(function () {
-      /* v5.15-r4: afterRender(매 프레임)가 이미 tagFrame()을 부른다.
-         16ms 간격으로 또 부르면 같은 이름표 DOM 을 프레임당 두 번 갱신한다. */
-      if (!__jwIP()) { try { if (playing()) tagFrame(); } catch (e) {} }
+      try { if (playing()) tagFrame(); } catch (e) {}
       /* v5.13-perf: 타이틀 프로필 배너는 인게임에서 쓰지 않는다. 타이틀이 보일 때만 0.5초에 한 번만.
          (전에는 16ms 마다 돌면서 .nmrow/.stline 을 매번 다시 붙였다) */
       var t = Date.now();
@@ -71387,9 +72995,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 102 (muse-v5-9/index.html 74510줄) ── */
+/* ===== v59 inline block #105 (was index.html L74471-74999) ===== */
 
 /* ==========================================================================
    v5.1-final (99c) : v5.1 실기기 2차 제보 — 싱글/멀티 잔존 · 말풍선 · 일시정지 ·
@@ -71889,7 +73495,7 @@ if (typeof module !== 'undefined' && module.exports) {
     try { wipeSession(); } catch (e) {}
     hookEndSolo();
     slowTick();
-    setInterval(function () { if (__jwIP()) return; slowTick(); }, 900);
+    setInterval(slowTick, 900);
     /* 인게임 프레임 부담을 줄이기 위해 초당 4회만 검사 */
     var n = 0;
     (function loop() {
@@ -71919,9 +73525,7 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
-;
-
-/* ── block 103 (muse-v5-9/index.html 75040줄) ── */
+/* ===== v59 inline block #106 (was index.html L75001-75026) ===== */
 
 /* ==========================================================================
    muse-v5-8 : 공용 헬퍼 — 타이틀 화면 판정 (보상 알림 연기용)
@@ -71948,9 +73552,7 @@ if (typeof module !== 'undefined' && module.exports) {
   root.JW58 = { inPlay: inPlay, atTitle: atTitle, platSeed: platSeed };
 })(window);
 
-;
-
-/* ── block 104 (muse-v5-9/index.html 75066줄) ── */
+/* ===== v59 inline block #107 (was index.html L75027-75145) ===== */
 
 /* v5.10 설정 허브 — #settingsModal을 6섹션 허브로 승격. 저장 키는 그대로(jw51_cfg_v1 등 이동 없음).
    #v43QolBody·#sgRulesBox·#v51TutReBtn은 요소 자체를 허브 안으로 옮긴다(리스너·id 그대로).
@@ -72070,9 +73672,7 @@ if (typeof module !== 'undefined' && module.exports) {
   setInterval(function () { rewireBgm(); moveTut(); }, 700);
 })(window);
 
-;
-
-/* ── block 105 (muse-v5-9/index.html 75185줄) ── */
+/* ===== v59 inline block #108 (was index.html L75146-75162) ===== */
 
 /* v5.10 친구 허브 검색 — 닉네임으로 친구 행만 가린다. 목록이 다시 그려져도 필터를 유지한다. */
 (function () {
@@ -72090,9 +73690,7 @@ if (typeof module !== 'undefined' && module.exports) {
   new MutationObserver(apply).observe(box, { childList: true, subtree: true });
 })();
 
-;
-
-/* ── block 106 (muse-v5-9/index.html 75202줄) ── */
+/* ===== v59 inline block #109 (was index.html L75163-75182) ===== */
 
 /* v5.11 카드·로비 수정 — 최후순위 오버라이드 (구체성 높은 셀렉터 + !important).
    (a) 모드 카드 설명 2줄 + 카테고리 라벨 별도 줄 — v52fixCss의 max-height:21px 캡(2줄 20.64px에 0.36px 여유)을 뚫음
@@ -72113,9 +73711,7 @@ if (typeof module !== 'undefined' && module.exports) {
   document.head.appendChild(st);
 })();
 
-;
-
-/* ── block 107 (muse-v5-9/index.html 75222줄) ── */
+/* ===== v59 inline block #110 (was index.html L75183-75245) ===== */
 
 /* v5.11 컬렉션 허브 재구축 — 최후순위 오버라이드 (구체성 높은 셀렉터 + !important).
    탭 4개(도감/업적/트로피/칭호) + 랭킹 링크 행, 도감 필터, 업적 행, 트로피·칭호 — 글자 잘림·겹침 방지
@@ -72179,9 +73775,7 @@ if (typeof module !== 'undefined' && module.exports) {
   document.head.appendChild(st);
 })();
 
-;
-
-/* ── block 108 (muse-v5-9/index.html 75285줄) ── */
+/* ===== v59 inline block #111 (was index.html L75246-75444) ===== */
 
 /* ==========================================================================
    v5.14-spectate : 폰 실기기 제보 — 인게임 이름표·순위표·미니맵·관전 정돈
@@ -72380,138 +73974,7 @@ if (typeof module !== 'undefined' && module.exports) {
   root.JW514 = { paint: paint, step: step, racers: racers };
   console.log('[v5.14] tag/rank/minimap/spectate patch ready');
 })(window);
-
 ;
-
-/* ── block 109 (v5.15-r3: 순간렉 마무리 + 조작 버튼 투명도) ── */
-/* ==========================================================================
-   v5.15-r3
-   ① 그라데이션 캐시 V.gc ② 모바일 인게임 shadowBlur=0
-  ③ 조작 버튼(◀ ▶ 점프) 투명도 0~100% — 값은 기존 조작 에디터(jw49_ctrl_v1.alpha)와 같다
-   ========================================================================== */
-(function (root) {
-  'use strict';
-  var V = root.JW43;
-  if (!V) return;
-
-  /* ---------------------------------------------------------------- ① 그라데이션 캐시 */
-  V.gc = function (ctx, x0, y0, x1, y1, stops) {
-    try {
-      var key = [x0, y0, x1, y1].join(',') + '|' + (stops || []).join(';') + '|' + (ctx.canvas ? (ctx.canvas.width + 'x' + ctx.canvas.height) : '');
-      var C = V._gc;
-      if (!C) { C = V._gc = {}; }
-      if (C[key]) return C[key];
-      var g = ctx.createLinearGradient(x0, y0, x1, y1);
-      for (var i = 0; i < (stops || []).length; i++) g.addColorStop(stops[i][0], stops[i][1]);
-      /* 캐시가 무한히 자라지 않게 (좌표가 계속 바뀌는 연출 대비) */
-      var n = 0; for (var k in C) n++;
-      if (n > 160) { V._gc = C = {}; }
-      C[key] = g;
-      return g;
-    } catch (e) { return null; }
-  };
-
-  /* ---------------------------------------------------------------- ② 모바일 shadowBlur */
-  /* iOS Safari 는 캔버스 그림자 블러가 프레임마다 GPU 를 크게 잡아먹는다.
-     모바일(<=560px 또는 DPR>=2) 인게임 렌더 중에는 shadowBlur 를 0 으로 낸다. */
-  (function () {
-    try {
-      var C2 = root.CanvasRenderingContext2D;
-      if (!C2 || !C2.prototype) return;
-      var d = Object.getOwnPropertyDescriptor(C2.prototype, 'shadowBlur');
-      if (!d || !d.set || d.set.__jw515) return;
-      var mob = -1, mobAt = 0;
-      function isMob() {
-        var t = Date.now();
-        if (mob >= 0 && t - mobAt < 1500) return mob === 1;
-        try { mob = ((root.innerWidth || 0) <= 560 || (root.devicePixelRatio || 1) >= 2) ? 1 : 0; } catch (e) { mob = 0; }
-        mobAt = t;
-        return mob === 1;
-      }
-      function inPlay() {
-        try { var j = root.__jwg; return !!(j && j.game && j.game.inPlay && !j.game.paused); } catch (e) { return false; }
-      }
-      var setter = function (v) {
-        if (v) { try { if (isMob() && inPlay()) v = 0; } catch (e) {} }
-        return d.set.call(this, v);
-      };
-      setter.__jw515 = 1;
-      Object.defineProperty(C2.prototype, 'shadowBlur', {
-        get: d.get, set: setter, enumerable: d.enumerable, configurable: true
-      });
-    } catch (e) {}
-  })();
-
-  /* ---------------------------------------------------------------- ③ 조작 버튼 투명도 */
-  /* 값은 기존 조작 에디터와 같은 저장소(jw49_ctrl_v1.alpha)를 쓴다 — 슬라이더·0% 버튼·
-     재접속 후 상태가 모두 한 곳에서 맞는다. 1 = 100%, 0 = 완전 투명. */
-  var IDS = ['touchBtnLeft', 'touchBtnRight', 'touchBtnJump'];
-  function readCtrl() {
-    try {
-      var c = JSON.parse(localStorage.getItem('jw49_ctrl_v1') || 'null');
-      if (c && c.alpha !== undefined && isFinite(Number(c.alpha))) return Math.max(0, Math.min(1, Number(c.alpha)));
-    } catch (e) {}
-    return 1;
-  }
-  function paintCtrl(alpha) {
-    var a = Math.max(0, Math.min(1, Number(alpha)));
-    if (!isFinite(a)) a = 1;
-    var doc = root.document;
-    for (var i = 0; i < IDS.length; i++) {
-      var el = doc.getElementById(IDS[i]);
-      if (!el) continue;
-      /* opacity 만 바꾼다 — pointer-events·display·visibility·히트영역은 그대로.
-         0%에서도 터치·조작이 그대로 먹어야 한다. */
-      el.style.setProperty('opacity', String(a), 'important');
-    }
-    var rng = doc.getElementById('v49Alpha');
-    if (rng) { var pv = String(Math.round(a * 100)); if (rng.value !== pv) rng.value = pv; }
-    var lbl = doc.getElementById('v49AlphaV');
-    if (lbl) { var t = Math.round(a * 100) + '%'; if (lbl.textContent !== t) lbl.textContent = t; }
-    var b0 = doc.getElementById('v515Alpha0');
-    if (b0) {
-      var z = Math.round(a * 100) === 0;
-      if (b0.classList.contains('on') !== z) b0.classList.toggle('on', z);
-    }
-    return a;
-  }
-  root.__jw515Op = paintCtrl;
-  V.ctrlOpacity = { get: readCtrl, set: function (v) { paintCtrl(v); } };
-
-  /* 랭킹이 저장되면(어느 모듈이 쓰든) 랭킹 캐시를 즉시 비운다 — 1등 칭호 판정이
-     캐시된 옛 랭킹을 보고 잠깐 틀리지 않도록. */
-  (function () {
-    try {
-      var SP = root.Storage && root.Storage.prototype;
-      if (!SP || !SP.setItem || SP.setItem.__jw515) return;
-      var oSet = SP.setItem;
-      var w = function (k, v) {
-        var r = oSet.apply(this, arguments);
-        try { if (k === 'jw43_rank_v1' && V.__rankCacheClear) V.__rankCacheClear(); } catch (e) {}
-        return r;
-      };
-      w.__jw515 = 1;
-      SP.setItem = w;
-    } catch (e) {}
-  })();
-
-  /* 부팅 때 저장값 반영 + 다른 모듈이 버튼을 다시 만졌을 때를 대비해 몇 번 더 확인 */
-  function bootOp() {
-    try { paintCtrl(readCtrl()); } catch (e) {}
-  }
-  var doc0 = root.document;
-  if (doc0.readyState === 'loading') doc0.addEventListener('DOMContentLoaded', bootOp);
-  else bootOp();
-  try {
-    var n = 0;
-    var timer = setInterval(function () {
-      n++;
-      try { paintCtrl(readCtrl()); } catch (e) {}
-      if (n >= 8) clearInterval(timer);
-    }, 700);
-  } catch (e) {}
-  root.addEventListener('pageshow', bootOp);
-})(window);
 
 /* v5.15-r4 TITLES16 */
 /* 칭호 16비트 도트 명패 — 12×12 픽셀 아이콘 + 일체형 명패 */
@@ -73258,9 +74721,6 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 })(window);
 
-
-;
-
 /* ── skins20 v2 : 신규 캐릭터 20종 — 기존 24종과 같은 그림체 ─────────────────
    기존 24종(game.js skinCanvas)이 쓰는 방식 그대로 그린다:
      ① 스킨 채우기는 globalCompositeOperation='source-atop' → 실루엣 안쪽만,
@@ -73424,6 +74884,136 @@ if (typeof module !== 'undefined' && module.exports) {
 
 ;
 
+/* ── block 109 (v5.15-r3: 순간렉 마무리 + 조작 버튼 투명도) ── */
+/* ==========================================================================
+   v5.15-r3
+   ① 그라데이션 캐시 V.gc ② 모바일 인게임 shadowBlur=0
+  ③ 조작 버튼(◀ ▶ 점프) 투명도 0~100% — 값은 기존 조작 에디터(jw49_ctrl_v1.alpha)와 같다
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+
+  /* ---------------------------------------------------------------- ① 그라데이션 캐시 */
+  V.gc = function (ctx, x0, y0, x1, y1, stops) {
+    try {
+      var key = [x0, y0, x1, y1].join(',') + '|' + (stops || []).join(';') + '|' + (ctx.canvas ? (ctx.canvas.width + 'x' + ctx.canvas.height) : '');
+      var C = V._gc;
+      if (!C) { C = V._gc = {}; }
+      if (C[key]) return C[key];
+      var g = ctx.createLinearGradient(x0, y0, x1, y1);
+      for (var i = 0; i < (stops || []).length; i++) g.addColorStop(stops[i][0], stops[i][1]);
+      /* 캐시가 무한히 자라지 않게 (좌표가 계속 바뀌는 연출 대비) */
+      var n = 0; for (var k in C) n++;
+      if (n > 160) { V._gc = C = {}; }
+      C[key] = g;
+      return g;
+    } catch (e) { return null; }
+  };
+
+  /* ---------------------------------------------------------------- ② 모바일 shadowBlur */
+  /* iOS Safari 는 캔버스 그림자 블러가 프레임마다 GPU 를 크게 잡아먹는다.
+     모바일(<=560px 또는 DPR>=2) 인게임 렌더 중에는 shadowBlur 를 0 으로 낸다. */
+  (function () {
+    try {
+      var C2 = root.CanvasRenderingContext2D;
+      if (!C2 || !C2.prototype) return;
+      var d = Object.getOwnPropertyDescriptor(C2.prototype, 'shadowBlur');
+      if (!d || !d.set || d.set.__jw515) return;
+      var mob = -1, mobAt = 0;
+      function isMob() {
+        var t = Date.now();
+        if (mob >= 0 && t - mobAt < 1500) return mob === 1;
+        try { mob = ((root.innerWidth || 0) <= 560 || (root.devicePixelRatio || 1) >= 2) ? 1 : 0; } catch (e) { mob = 0; }
+        mobAt = t;
+        return mob === 1;
+      }
+      function inPlay() {
+        try { var j = root.__jwg; return !!(j && j.game && j.game.inPlay && !j.game.paused); } catch (e) { return false; }
+      }
+      var setter = function (v) {
+        if (v) { try { if (isMob() && inPlay()) v = 0; } catch (e) {} }
+        return d.set.call(this, v);
+      };
+      setter.__jw515 = 1;
+      Object.defineProperty(C2.prototype, 'shadowBlur', {
+        get: d.get, set: setter, enumerable: d.enumerable, configurable: true
+      });
+    } catch (e) {}
+  })();
+
+  /* ---------------------------------------------------------------- ③ 조작 버튼 투명도 */
+  /* 값은 기존 조작 에디터와 같은 저장소(jw49_ctrl_v1.alpha)를 쓴다 — 슬라이더·0% 버튼·
+     재접속 후 상태가 모두 한 곳에서 맞는다. 1 = 100%, 0 = 완전 투명. */
+  var IDS = ['touchBtnLeft', 'touchBtnRight', 'touchBtnJump'];
+  function readCtrl() {
+    try {
+      var c = JSON.parse(localStorage.getItem('jw49_ctrl_v1') || 'null');
+      if (c && c.alpha !== undefined && isFinite(Number(c.alpha))) return Math.max(0, Math.min(1, Number(c.alpha)));
+    } catch (e) {}
+    return 1;
+  }
+  function paintCtrl(alpha) {
+    var a = Math.max(0, Math.min(1, Number(alpha)));
+    if (!isFinite(a)) a = 1;
+    var doc = root.document;
+    for (var i = 0; i < IDS.length; i++) {
+      var el = doc.getElementById(IDS[i]);
+      if (!el) continue;
+      /* opacity 만 바꾼다 — pointer-events·display·visibility·히트영역은 그대로.
+         0%에서도 터치·조작이 그대로 먹어야 한다. */
+      el.style.setProperty('opacity', String(a), 'important');
+    }
+    var rng = doc.getElementById('v49Alpha');
+    if (rng) { var pv = String(Math.round(a * 100)); if (rng.value !== pv) rng.value = pv; }
+    var lbl = doc.getElementById('v49AlphaV');
+    if (lbl) { var t = Math.round(a * 100) + '%'; if (lbl.textContent !== t) lbl.textContent = t; }
+    var b0 = doc.getElementById('v515Alpha0');
+    if (b0) {
+      var z = Math.round(a * 100) === 0;
+      if (b0.classList.contains('on') !== z) b0.classList.toggle('on', z);
+    }
+    return a;
+  }
+  root.__jw515Op = paintCtrl;
+  V.ctrlOpacity = { get: readCtrl, set: function (v) { paintCtrl(v); } };
+
+  /* 랭킹이 저장되면(어느 모듈이 쓰든) 랭킹 캐시를 즉시 비운다 — 1등 칭호 판정이
+     캐시된 옛 랭킹을 보고 잠깐 틀리지 않도록. */
+  (function () {
+    try {
+      var SP = root.Storage && root.Storage.prototype;
+      if (!SP || !SP.setItem || SP.setItem.__jw515) return;
+      var oSet = SP.setItem;
+      var w = function (k, v) {
+        var r = oSet.apply(this, arguments);
+        try { if (k === 'jw43_rank_v1' && V.__rankCacheClear) V.__rankCacheClear(); } catch (e) {}
+        return r;
+      };
+      w.__jw515 = 1;
+      SP.setItem = w;
+    } catch (e) {}
+  })();
+
+  /* 부팅 때 저장값 반영 + 다른 모듈이 버튼을 다시 만졌을 때를 대비해 몇 번 더 확인 */
+  function bootOp() {
+    try { paintCtrl(readCtrl()); } catch (e) {}
+  }
+  var doc0 = root.document;
+  if (doc0.readyState === 'loading') doc0.addEventListener('DOMContentLoaded', bootOp);
+  else bootOp();
+  try {
+    var n = 0;
+    var timer = setInterval(function () {
+      n++;
+      try { paintCtrl(readCtrl()); } catch (e) {}
+      if (n >= 8) clearInterval(timer);
+    }, 700);
+  } catch (e) {}
+  root.addEventListener('pageshow', bootOp);
+})(window);
+
 /* ── skins_more20 v1 : 2차 신규 캐릭터 20종 — 기존 24종과 같은 그림체 ────────
    1차 skins20 과 같은 방식:
      ① 스킨 채우기는 globalCompositeOperation='source-atop' → 실루엣 안쪽만,
@@ -73584,4 +75174,1590 @@ if (typeof module !== 'undefined' && module.exports) {
     root.addEventListener('load', function () { try { V.initSkinsMore20(); } catch (e) {} });
     setTimeout(function () { try { V.initSkinsMore20(); } catch (e) {} }, 1500);
   }
+})(window);
+/* ── 스토리 모드 v5.19 (미션 판정 + 보스전 + 인게임 표시) ─────────────────────────────────────────────
+   진짜 데이터: assets/story-data.json (v1, 8챕터·64스테이지·64스킨·64맵·
+   신규 19맵·보스 64명·대사 448줄·미션 8종, lockPolicy lock_all_except_default_4)
+   + story-lines.md (읽기용 대사표).
+   저장 키(데이터 integration.saveKeys):
+     jw64_story_v1 = { v:1, cleared:{'map:ID': stageIndex}, boss:{'map:ID': true} }
+     jw64_char_v1  = { v:1, unlocked:{'skin:ID': stageIndex} }
+   skin:/map: 접두어는 namespaceWarn(alien/pirate/dino/santa/mushroom 5쌍 id 겹침) 때문.
+   규칙:
+   - 기본 4종(jaeu/cat/frog/robot)만 처음부터 열림. 나머지 60종은 스토리 클리어로 해금.
+     기존 해금 스킨도 예외 없이 잠금 (구 숨김 스킨 조건은 스토리 해금으로 대체).
+   - 스테이지 N은 startUnlocked 이거나 N-1번 클리어 시 열림.
+   - 스토리 판은 그 스테이지 주인공 스킨으로만 뛴다 (판 동안만 임시 해금).
+     클리어하면 그 스킨이 정식 해금 + 다음 스테이지 개방.
+   - 신규 19맵은 아직 엔진 맵이 없어 '준비 중' (배경 그림만 보여줌).
+   - 미션 판정(v5.19): 승리 시점에 검사 — 낙하·콤보·코인 수·점프 수·피격.
+     타임어택 제한 시간만 스테이지 target으로 맞춘다 (엔진 기본 120초 고정이라).
+   - 보스전(v5.19): 전 스테이지 공통 최종 관문. 85% 높이 아레나에서 스폰,
+     머리 밟기 1회당 HP 1 감소(스토리 hp 3~8). 보스 격파 전에는 정상 불가.
+   - 승리 훅(v5.19 수정): __jwg에는 onReachVictory가 없어서 기존 훅은 동작
+     안 했음. window.JWG.onReachVictory를 래핑한다 (아래 v5.19 절 참조).
+   - 인게임 표시(v5.19): 왼쪽에 미션 배너(시작 5.5초) + '스토리 모드' 뱃지(판 내내).
+   ========================================================================= */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  var $ = V.$, J = function () { return root.__jwg; }, W = function () { return root.__jwg; },
+      MD = function () { return root.JWMode; }, MP = function () { return root.JWMap; };
+  var DATA_URLS = ['assets/story-data.json'];
+  var KEY_STORY = 'jw64_story_v1';
+  var KEY_CHAR = 'jw64_char_v1';
+  var DEFAULT_SKINS = ['jaeu', 'cat', 'frog', 'robot'];
+  var ENGINE_MAPS = ['default', 'dessert', 'site', 'space', 'bamboo', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano',
+    'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji',
+    'london', 'skycastle', 'pirate', 'carnival', 'mushroom', 'cyberpunk', 'olympus', 'lab', 'canyon', 'santa',
+    'stadium', 'rockfest', 'onsen', 'honey', 'library', 'cheese', 'dino', 'alien', 'gyeongju', 'venice',
+    'snowclock', 'fireworks', 'baseball', 'retro20',
+    'alley', 'pond', 'hatchery', 'burrow', 'wheatfield', 'octocave', 'fruitfarm', 'savanna', 'halloween', 'slimemarsh',
+    'boxing', 'mansionclean', 'oldinn', 'hospital', 'ruins', 'sharkbay', 'trench', 'vcastle', 'demonking'];
+  var DATA = null, STAGE_BY_IDX = {}, STAGE_BY_MAP = {}, STORY_SKIN_IDS = {};
+  var STORY_RUN_SKIN = null;
+  var curCh = 0, curDetail = null;
+  var dlgTimer = null, dlgLines = null, dlgIdx = 0, dlgDone = null, dlgTyping = false, dlgFull = '';
+
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function sfxMp3(name, vol) {
+    try {
+      var s = J() && J().sfx;
+      if (s && s.mp3) { if (s.mp3(name, vol == null ? 0.9 : vol)) return; }
+    } catch (e) {}
+    try { if (V.beep) V.beep(880, 0.06, 0.08, 'square', 1200); } catch (e) {}
+  }
+
+  /* ---------------- 데이터 로드 ---------------- */
+  var dataLoading = false, dataCbs = [];
+  function loadData(cb) {
+    if (DATA) { if (cb) cb(DATA); return; }
+    if (cb) dataCbs.push(cb);
+    if (dataLoading) return;
+    dataLoading = true;
+    var i = 0;
+    (function next() {
+      if (i >= DATA_URLS.length) {
+        dataLoading = false;
+        var cbs = dataCbs; dataCbs = [];
+        cbs.forEach(function (f) { try { f(null); } catch (e) {} });
+        return;
+      }
+      var url = DATA_URLS[i++];
+      try {
+        fetch(url, { cache: 'no-cache' }).then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        }).then(function (d) {
+          DATA = d;
+          (d.stages || []).forEach(function (s) {
+            STAGE_BY_IDX[s.index] = s;
+            STAGE_BY_MAP['map:' + s.mapId] = s;
+            STORY_SKIN_IDS[s.skinId] = true;
+          });
+          /* 기본 챕터: 아직 안 깬 스테이지가 있는 첫 챕터 */
+          var firstOpen = 0;
+          (d.chapters || []).forEach(function (c) {
+            var anyOpen = false;
+            (d.stages || []).forEach(function (s) { if (s.chapter === c.num && !isCleared(s)) anyOpen = true; });
+            if (anyOpen && firstOpen === 0 && c.num !== 0) firstOpen = c.num;
+          });
+          if (firstOpen) curCh = firstOpen;
+          try { console.log('[story] data loaded: ' + (d.stages || []).length + ' stages'); } catch (e) {}
+          dataLoading = false;
+          updateStoryTitleProg();
+          var cbs2 = dataCbs; dataCbs = [];
+          cbs2.forEach(function (f) { try { f(DATA); } catch (e) {} });
+        }).catch(function () { next(); });
+      } catch (e) { next(); }
+    })();
+  }
+
+  /* ---------------- 저장 ---------------- */
+  function storySave() {
+    var s = lsGet(KEY_STORY, null);
+    if (!s || typeof s !== 'object') s = { v: 1, cleared: {}, boss: {} };
+    if (!s.cleared) s.cleared = {};
+    if (!s.boss) s.boss = {};
+    return s;
+  }
+  function charSave() {
+    var s = lsGet(KEY_CHAR, null);
+    if (!s || typeof s !== 'object') s = { v: 1, unlocked: {} };
+    if (!s.unlocked) s.unlocked = {};
+    return s;
+  }
+  function isCleared(stage) {
+    if (!stage) return false;
+    return !!storySave().cleared['map:' + stage.mapId];
+  }
+  function clearedCount() { return Object.keys(storySave().cleared).length; }
+  function unlockedSkinSet() {
+    var set = {};
+    DEFAULT_SKINS.forEach(function (id) { set[id] = true; });
+    var cv = charSave().unlocked;
+    Object.keys(cv).forEach(function (k) { if (k.indexOf('skin:') === 0) set[k.slice(5)] = true; });
+    /* 파생: 클리어한 스테이지의 해금 스킨도 열림 */
+    if (DATA) (DATA.stages || []).forEach(function (s) {
+      if (s.unlockSkin && isCleared(s)) set[s.unlockSkin] = true;
+    });
+    return set;
+  }
+  function unlockedSkinCount() { return Object.keys(unlockedSkinSet()).length; }
+  function isSkinUnlocked(id) {
+    if (!id) return false;
+    if (DEFAULT_SKINS.indexOf(id) >= 0) return true;
+    if (charSave().unlocked['skin:' + id]) return true;
+    if (DATA) {
+      var stages = DATA.stages || [];
+      for (var i = 0; i < stages.length; i++) {
+        if (stages[i].unlockSkin === id && isCleared(stages[i])) return true;
+      }
+    }
+    return false;
+  }
+  function isStagePlayable(stage) {
+    if (!stage) return false;
+    if (stage.startUnlocked) return true;
+    if (stage.index <= 1) return true;
+    return isCleared(STAGE_BY_IDX[stage.index - 1]);
+  }
+  function isEngineMap(mapId) {
+    try {
+      var list = MP() && MP().list;
+      if (list && list.length) {
+        for (var i = 0; i < list.length; i++) if (list[i].id === mapId) return true;
+        return false;
+      }
+    } catch (e) {}
+    return ENGINE_MAPS.indexOf(mapId) >= 0;
+  }
+
+  /* ---------------- 스킨 잠금 (기본 4종 외 전부 잠금) ---------------- */
+  var __origSkinLocked = V.skinLocked;
+  V.skinLocked = function (id) {
+    try {
+      if (id && id === STORY_RUN_SKIN) return false; /* 스토리 판 주인공은 판 동안만 열림 */
+      if (DATA && STORY_SKIN_IDS[id]) return !isSkinUnlocked(id);
+      if (!DATA) {
+        /* 데이터 로드 전: 엔진 스킨 목록에 있는 건 기본 4종 규칙으로 잠금 */
+        var list = null;
+        try { list = V.api() && V.api().skins ? V.api().skins() : null; } catch (e) {}
+        if (list) {
+          for (var i = 0; i < list.length; i++) {
+            if (list[i].id === id) return DEFAULT_SKINS.indexOf(id) < 0;
+          }
+        }
+      }
+    } catch (e) {}
+    return __origSkinLocked ? __origSkinLocked(id) : false;
+  };
+  /* 장착 중인 스킨이 잠겼으면 재우로 되돌림 (한 번만 알림) */
+  var __migrated = false;
+  function migrateSkin() {
+    if (__migrated) return;
+    try {
+      var api = V.api();
+      if (!api || !api.meSkin) return; /* 아직 준비 안 됨 — 나중에 다시 시도 */
+      __migrated = true;
+      var cur = api.meSkin();
+      if (cur && V.skinLocked(cur)) {
+        try { api.setSkin('jaeu'); } catch (e) {}
+        try { V.toast('🔒 스킨이 잠겼어요', 'chat', '스토리 모드 업데이트로 기본 4종만 열려 있어요. 스테이지를 깨서 해금하세요!', 3400); } catch (e) {}
+      }
+    } catch (e) {}
+  }
+
+  /* ---------------- 타이틀 진행 표시 ---------------- */
+  function updateStoryTitleProg() {
+    var txt = DATA ? ('클리어 ' + clearedCount() + '/64 · 스킨 ' + unlockedSkinCount() + '/64') : '64 스테이지 · 8 챕터';
+    var el = document.getElementById('storyTitleProg');
+    if (el) el.textContent = txt;
+    var sub = document.getElementById('storyProgSub');
+    if (sub) sub.textContent = DATA ? ('클리어 ' + clearedCount() + '/64 · 스킨 ' + unlockedSkinCount() + '/64 — 스테이지를 깨면 주인공 캐릭터가 해금돼요.') : '64 스테이지 · 8 챕터 — 스테이지를 깨면 주인공 캐릭터가 해금돼요.';
+  }
+
+  /* ---------------- 스토리 모달 ---------------- */
+  function openStory() {
+    var m = $('storyModal');
+    if (!m) return;
+    loadData(function () { renderStory(); });
+    renderStory();
+    m.classList.remove('hidden');
+    try { sfxMp3('dlg_tick', 0.4); } catch (e) {}
+  }
+  function renderStory() {
+    var tabs = $('storyChTabs'), list = $('storyStageList'), det = $('storyDetail'), rc = $('storyRecall');
+    if (!tabs || !list) return;
+    if (!DATA) {
+      list.innerHTML = '<div style="padding:14px;font-size:12px;font-weight:700;color:#fca5a5">스토리 데이터를 불러오지 못했어요. 다시 열어보거나, 잠시 뒤에 다시 시도해 주세요.</div>';
+      return;
+    }
+    if (det) det.classList.add('hidden');
+    if (rc) rc.classList.add('hidden'); /* v5.21: 회상 모드에서 돌아오면 회상 화면 닫기 */
+    list.classList.remove('hidden');
+    tabs.classList.remove('hidden');
+    var chs = DATA.chapters || [];
+    tabs.innerHTML = chs.map(function (c) {
+      var done = 0;
+      (DATA.stages || []).forEach(function (s) { if (s.chapter === c.num && isCleared(s)) done++; });
+      return '<button type="button" class="v42-chip' + (c.num === curCh ? ' on' : '') + '" data-ch="' + c.num + '" style="' + (c.num === curCh ? 'background:' + c.themeColor + ';color:#0b1020;border-color:#fff' : '') + '">' + (c.num + 1) + '장 · ' + esc(c.title) + ' (' + done + '/' + c.stageCount + ')</button>';
+    }).join('');
+    tabs.querySelectorAll('[data-ch]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        curCh = parseInt(b.getAttribute('data-ch'), 10) || 0;
+        curDetail = null;
+        renderStory();
+        try { if (V.beep) V.beep(760, 0.05, 0.07, 'square', 980); } catch (e) {}
+      });
+    });
+    var stages = (DATA.stages || []).filter(function (s) { return s.chapter === curCh; });
+    list.innerHTML = stages.map(function (st) {
+      var locked = !isStagePlayable(st);
+      var cleared = isCleared(st);
+      var newMap = !isEngineMap(st.mapId);
+      var badge = cleared ? '✅' : (locked ? '🔒' : (newMap ? '🛠️' : '▶'));
+      var sub = esc(st.title) + ' · ' + esc(st.mission.label);
+      return '<button type="button" class="m41-map" data-stage="' + st.index + '" style="' + (locked ? 'opacity:.6' : '') + '">' +
+        '<span style="position:relative;flex:none;width:30px;height:53px;display:block">' +
+        '<img src="assets/maps/t/' + esc(st.mapId) + '.jpg" alt="" style="width:30px;height:53px;object-fit:cover;border:2px solid #334155;display:block" onerror="this.style.display=\'none\';var e=this.nextElementSibling;if(e)e.style.display=\'\'">' +
+        '<span class="em" style="display:none;font-size:22px;line-height:53px;text-align:center;width:30px">' + esc(st.skinEmoji) + '</span></span>' +
+        '<span class="flex-1 min-w-0"><span class="nm block">' + st.index + '. ' + esc(st.mapName) + (st.mapIsNew ? ' <span style="color:#fbbf24">NEW</span>' : '') + '</span>' +
+        '<span class="ds block">' + sub + '</span></span>' +
+        '<span class="df" style="font-size:14px">' + badge + '</span></button>';
+    }).join('');
+    list.querySelectorAll('[data-stage]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var st = STAGE_BY_IDX[parseInt(b.getAttribute('data-stage'), 10)];
+        if (st) showStageDetail(st);
+      });
+    });
+  }
+  function showStageDetail(st) {
+    var list = $('storyStageList'), tabs = $('storyChTabs'), det = $('storyDetail');
+    if (!det) return;
+    curDetail = st;
+    if (list) list.classList.add('hidden');
+    if (tabs) tabs.classList.add('hidden');
+    det.classList.remove('hidden');
+    var locked = !isStagePlayable(st);
+    var cleared = isCleared(st);
+    var newMap = !isEngineMap(st.mapId);
+    var skinOpen = isSkinUnlocked(st.skinId);
+    var prev = st.index > 1 ? STAGE_BY_IDX[st.index - 1] : null;
+    var stateHtml;
+    if (locked) {
+      stateHtml = '<div style="padding:8px;background:#3b0816;border:2px solid #fb7185;font-size:12px;font-weight:700;color:#fecdd3">🔒 잠긴 스테이지 — ' + (prev ? ('이전 ' + prev.index + '번 \'' + esc(prev.title) + '\'을 먼저 깨세요.') : '이전 스테이지를 먼저 깨세요.') + '</div>';
+    } else if (newMap) {
+      stateHtml = '<div style="padding:8px;background:#1e293b;border:2px solid #fbbf24;font-size:12px;font-weight:700;color:#fde68a">🛠️ 이 맵은 아직 만드는 중이에요. 배경 그림만 먼저 볼 수 있어요.</div>';
+    } else {
+      stateHtml = '<div style="padding:8px;background:#053328;border:2px solid #34d399;font-size:12px;font-weight:700;color:#a7f3d0">' + (cleared ? '✅ 클리어 완료 — 다시 도전할 수 있어요.' : '▶ 지금 바로 도전할 수 있어요.') + '</div>';
+    }
+    det.innerHTML =
+      '<img src="assets/maps/' + esc(st.mapId) + '.jpg" alt="" style="width:100%;max-height:200px;object-fit:cover;border:2px solid #334155;display:block" onerror="this.style.display=\'none\'">' +
+      '<div><div class="v42-t">' + esc(st.skinEmoji) + ' ' + esc(st.mapName) + '</div>' +
+      '<div class="v42-sub">' + st.index + '번 · ' + esc(st.title) + ' · ' + esc(st.diff) + ' · ' + st.total + '층</div></div>' +
+      '<div class="v42-row"><span class="v42-lbl">🎯 미션</span><span style="font-size:11px;font-weight:700;color:#dbe7f7;text-align:right">' + esc(st.mission.label) + '</span></div>' +
+      '<div class="v42-row"><span class="v42-lbl">' + esc(st.boss.emoji) + ' 보스</span><span style="font-size:11px;font-weight:700;color:#dbe7f7;text-align:right">' + esc(st.boss.name) + ' · 체력 ' + st.boss.hp + '</span></div>' +
+      '<div class="v42-row"><span class="v42-lbl">🧑 주인공</span><span style="font-size:11px;font-weight:700;color:#dbe7f7;text-align:right">' + esc(st.skinEmoji) + ' ' + esc(st.skinName) + ' · ' + (skinOpen ? '해금됨' : '클리어 시 해금') + '</span></div>' +
+      '<div style="font-size:11.5px;font-weight:700;line-height:1.6;color:#cbd5e1;background:#0b1222;border:2px solid #24304a;padding:8px">“' + esc((st.introLines && st.introLines[0]) || '') + '”</div>' +
+      stateHtml +
+      '<div style="display:flex;gap:6px">' +
+      '<button type="button" id="storyStartBtn" class="mp-btn green" style="flex:2;padding:10px;font-size:13px;' + ((locked || newMap) ? 'opacity:.45' : '') + '"' + ((locked || newMap) ? ' disabled' : '') + '>▶ 스테이지 시작</button>' +
+      '<button type="button" id="storyBackBtn" class="v42-chip" style="flex:1;padding:10px">← 목록</button>' +
+      '</div>';
+    var back = $('storyBackBtn');
+    if (back) back.addEventListener('click', function () { curDetail = null; renderStory(); });
+    var go = $('storyStartBtn');
+    if (go && !locked && !newMap) go.addEventListener('click', function () { playIntroThenStart(st); });
+  }
+
+  /* ---------------- 대사 장면 (비주얼 노벨식) ----------------
+     장면 = 스테이지 맵 배경 + 말하는 캐릭터 모습 + 대사(타자기) + 음성.
+     배경: assets/maps/{mapId}.jpg (신규 19맵은 v2 16비트 픽셀아트).
+     캐릭터: 게임에 이미 있는 스킨 이미지 재사용 (W().spriteFor → 4배 확대).
+     음성: assets/voices/s{stage 3자리}_t{턴 1~7}.mp3
+     턴 번호는 voice-index.json 순서 그대로: 1~3 인트로, 4~5 클리어, 6~7 보스. */
+  var dlgStage = null, dlgAudio = null;
+  var dlgVoicePre = null, dlgVoicePreUrl = ''; /* v5.20: 다음 줄 음성 미리 받아두기 */
+
+  /* ---- 스토리 대사 장면 전용 BGM (v5.19) ----
+     규칙(태겸 결정): 대사 장면에서는 메인 BGM 완전 일시정지(덕킹 아님) + 스토리 BGM만 재생.
+     대사 끝나면 스토리 BGM 정지 + 메인 BGM 재개. 두 BGM이 겹쳐서 섞이는 일 없음.
+     파일: assets/audio/story_bgm.mp3 (28.003초 루프, Cmaj7-Am7-Fmaj7-G)
+     URL은 루트 기준 상대경로('assets/...') — 정식 루트에서는 base 없이 그대로 통한다. */
+  var storyBgm = null, storyBgmOn = false, storyBgmWasOn = true, storyBgmPrevFlag = true;
+  var storyBgmFade = null, storyBgmFadeGen = 0;
+  var STORY_BGM_URL = 'assets/audio/story_bgm.mp3';
+  var STORY_BGM_VOL = 0.25; /* 대사 음성(volume 1, 발화 RMS -20.5~-12.9dBFS)보다 확실히 뒤:
+    파일 RMS -18.0dBFS x 0.25 = 실효 -30.0dBFS → 가장 조용한 대사보다 9.5dB 아래.
+    안전 밴드 0.20~0.30, 상한 0.30 (0.35는 가장 조용한 대사와 6.6dB밖에 안 벌어져서 제외). */
+  /* v5.21: BGM 페이드 켜짐 여부 (QOL.bgmFade, 기본 ON) — 스토리 BGM 시작/끝에도 적용 */
+  function dlgBgmFadeOn() { try { return !(V.QOL && V.QOL.bgmFade === false); } catch (e) { return true; } }
+  function storyBgmFadeTo(target, ms, done) {
+    if (!storyBgm) { if (done) { try { done(); } catch (e) {} } return; }
+    var gen = ++storyBgmFadeGen;
+    if (storyBgmFade) { clearInterval(storyBgmFade); storyBgmFade = null; }
+    var from = storyBgm.volume || 0, t0 = Date.now();
+    if (ms <= 0 || from === target) {
+      try { storyBgm.volume = target; } catch (e) {}
+      if (done) { try { done(); } catch (e) {} }
+      return;
+    }
+    storyBgmFade = setInterval(function () {
+      if (gen !== storyBgmFadeGen) { clearInterval(storyBgmFade); storyBgmFade = null; return; }
+      var k = Math.min(1, (Date.now() - t0) / ms);
+      try { storyBgm.volume = from + (target - from) * k; } catch (e) {}
+      if (k >= 1) {
+        clearInterval(storyBgmFade); storyBgmFade = null;
+        if (done) { try { done(); } catch (e) {} }
+      }
+    }, 50);
+  }
+  /* 메인 BGM 완전 일시정지: bgmPauseAll()만으로는 900ms 틱의 bgmSync가 다시 틀어버리므로
+     단일 상태 V.QOL.bgm을 false로 뒤집어 want=0을 만든다. saveQol()은 부르지 않음(임시 변경). */
+  function storyMainBgmPause() {
+    try {
+      var q = V.QOL || {};
+      storyBgmPrevFlag = q.bgm; /* 원래 값 그대로 저장 */
+      storyBgmWasOn = q.bgm !== false && (q.bgmVol == null || q.bgmVol > 0);
+      if (V.QOL) V.QOL.bgm = false;
+      if (root.JW43MP3 && root.JW43MP3.sync) root.JW43MP3.sync();
+      else if (root.JW43MP3 && root.JW43MP3.pauseAll) root.JW43MP3.pauseAll();
+    } catch (e) {}
+  }
+  /* 메인 BGM 재개: 원래 값으로 복원 후 sync(). pause()는 currentTime을 유지하므로
+     처음부터가 아니라 멈춘 지점부터 이어서 재생된다. (bgmRestart()는 호출하지 않음) */
+  function storyMainBgmResume() {
+    try {
+      if (V.QOL) V.QOL.bgm = storyBgmPrevFlag; /* 꺼져 있었으면 계속 꺼진 채로 복원 */
+      if (root.JW43MP3 && root.JW43MP3.sync) root.JW43MP3.sync();
+    } catch (e) {}
+  }
+  function storyBgmStart() {
+    try {
+      if (storyBgmOn) return;
+      if (!storyBgmWasOn) return; /* 사용자가 메인 BGM을 꺼놨으면 스토리 BGM도 안 틀음(음소거 존중) */
+      if (!storyBgm) {
+        storyBgm = new Audio(STORY_BGM_URL);
+        storyBgm.loop = true;
+        storyBgm.preload = 'auto';
+        storyBgm.volume = 0;
+      }
+      storyBgmOn = true;
+      var p = storyBgm.play();
+      if (p && p.catch) p.catch(function () { storyBgmOn = false; });
+      /* v5.21: BGM 페이드 설정이 꺼져 있으면 페이드 없이 바로 목표 볼륨으로 */
+      if (dlgBgmFadeOn()) storyBgmFadeTo(STORY_BGM_VOL, 600); /* 0 -> 0.25 서서히 페이드인 (파일 자체엔 페이드 없음) */
+      else { try { storyBgm.volume = STORY_BGM_VOL; } catch (e) {} }
+    } catch (e) { storyBgmOn = false; }
+  }
+  function storyBgmStop() {
+    try {
+      if (!storyBgmOn && !storyBgm) return; /* 멱등: startStoryStage의 중복 dlgHide()에도 안전 */
+      storyBgmOn = false;
+      if (!storyBgm) return;
+      var a = storyBgm;
+      if (!dlgBgmFadeOn()) { /* v5.21: 페이드 OFF면 즉시 정지 (대기 중인 페이드 취소) */
+        storyBgmFadeGen++;
+        if (storyBgmFade) { clearInterval(storyBgmFade); storyBgmFade = null; }
+        try { a.pause(); a.currentTime = 0; } catch (e2) {}
+        return;
+      }
+      storyBgmFadeTo(0, 300, function () {
+        try { a.pause(); a.currentTime = 0; } catch (e2) {} /* 다음 대사 장면은 루프 처음부터 */
+      });
+    } catch (e) {}
+  }
+  function dlgVoiceUrl(stageIdx, turn) {
+    var s = ('00' + stageIdx).slice(-3);
+    return 'assets/voices/s' + s + '_t' + turn + '.mp3';
+  }
+  function dlgPlayVoice(url) {
+    try {
+      if (dlgAudio) { dlgAudio.pause(); dlgAudio = null; }
+      if (!url) return;
+      /* v5.20: 미리 받아둔 다음 줄 음성이 있으면 그대로 재생 (새로 만들지 않음) */
+      var a = null;
+      if (dlgVoicePre && dlgVoicePreUrl === url) { a = dlgVoicePre; dlgVoicePre = null; dlgVoicePreUrl = ''; }
+      else { a = new Audio(url); }
+      a.volume = 1;
+      try { a.currentTime = 0; } catch (e) {}
+      var p = a.play();
+      if (p && p.catch) p.catch(function () {});
+      dlgAudio = a;
+    } catch (e) {}
+  }
+  function dlgStopVoice() {
+    try { if (dlgAudio) { dlgAudio.pause(); dlgAudio = null; } } catch (e) {}
+  }
+  /* v5.20: 다음 줄 초상 URL 계산 (dlgPortrait와 같은 규칙, DOM은 안 건드림) */
+  function dlgPortraitUrlFor(line, st) {
+    try {
+      if (!st) return '';
+      if (line.kind === 'boss') return dlgBossPortraitUrl(st);
+      if (line.speaker === '재우') return dlgSkinPortraitUrl('jaeu');
+      return dlgSkinPortraitUrl(st.skinId);
+    } catch (e) { return ''; }
+  }
+  /* v5.20: 다음 줄 미리 받아두기 — 음성 MP3 + 초상. 다음 누르자마자 바로 나오게. */
+  function dlgPrefetchNext() {
+    try {
+      if (!dlgLines || dlgIdx + 1 >= dlgLines.length) return;
+      var nx = dlgLines[dlgIdx + 1];
+      if (!nx) return;
+      if (nx.audio && nx.audio !== dlgVoicePreUrl) {
+        var a = new Audio(nx.audio);
+        a.preload = 'auto';
+        try { a.load(); } catch (e) {}
+        dlgVoicePre = a; dlgVoicePreUrl = nx.audio;
+      }
+      var u = dlgPortraitUrlFor(nx, dlgStage);
+      if (u && u.indexOf('data:') !== 0) { var im = new Image(); im.src = u; }
+    } catch (e) {}
+  }
+  function dlgSetScene(st) {
+    var bg = $('storyDlgBg');
+    if (!bg || !st) return;
+    var url = 'assets/maps/' + st.mapId + '.jpg';
+    if (bg.dataset.cur === url) { bg.style.display = ''; bg.style.opacity = '1'; return; }
+    bg.dataset.cur = url;
+    bg.style.opacity = '0'; /* 크로스페이드: 어두워졌다가 새 배경으로 밝아짐 */
+    var show = function () { bg.style.display = ''; bg.style.opacity = '1'; };
+    bg.onload = show;
+    bg.src = url;
+    setTimeout(function () { if (bg.complete && bg.naturalWidth) show(); }, 80);
+  }
+  function dlgSkinPortraitUrl(skinId) {
+    try {
+      /* v5.18: W()는 root.__jwg(코어 엔진, spriteFor 없음)를 돌려줘서 항상 ''이
+         되어 이모지 폴백이 떴다. 스프라이트 API는 V.api()(= root.JWG)에 있다. */
+      var api = V.api ? V.api() : null;
+      if (!api || !api.spriteFor) return '';
+      var col = (api.meColor && api.meColor()) || 'blue';
+      var sp = api.spriteFor(col, 'idle1', skinId);
+      if (!sp || !sp.width) return '';
+      var cv = document.createElement('canvas');
+      var sc = 4;
+      cv.width = sp.width * sc; cv.height = sp.height * sc;
+      var g = cv.getContext('2d');
+      g.imageSmoothingEnabled = false;
+      g.drawImage(sp, 0, 0, cv.width, cv.height);
+      return cv.toDataURL('image/png');
+    } catch (e) { return ''; }
+  }
+  var dlgBossCache = {};
+  function dlgBossPortraitUrl(st) {
+    /* 스토리 보스 초상 — 전부 실제 게임 이미지, 이모지 금지:
+       ① 엔진 맵이면 그 맵의 보스 아트(B.art[form]를 384 캔버스에 렌더링,
+       결과창 hero 이미지와 같은 방식) ② 신규 19맵은 엔진 보스가 없어서
+       보스와 같은 종족인 스테이지 주인공 스킨으로 표시 ③ 최후 수단은
+       boss-king.png 파일. */
+    try {
+      if (!st) return 'assets/boss-king.png';
+      var JB = root.JW48B;
+      if (JB && JB.specOf && JB.art && ENGINE_MAPS.indexOf(st.mapId) >= 0) {
+        var spec = JB.specOf(st.mapId);
+        if (spec && spec.form && JB.art[spec.form]) {
+          if (dlgBossCache[spec.form]) return dlgBossCache[spec.form];
+          var cv = document.createElement('canvas');
+          cv.width = 384; cv.height = 384;
+          var c = cv.getContext('2d');
+          c.clearRect(0, 0, 384, 384);
+          JB.art[spec.form](c, 0, 0, 4, spec, { ai: { t: 0.4 } });
+          var u = cv.toDataURL('image/png');
+          dlgBossCache[spec.form] = u;
+          return u;
+        }
+      }
+      var skinUrl = dlgSkinPortraitUrl(st.skinId);
+      if (skinUrl) return skinUrl;
+    } catch (e) {}
+    return 'assets/boss-king.png';
+  }
+  var dlgLastWho = '', dlgPortraitTimer = null;
+  function dlgPortrait(line, st) {
+    var chara = $('storyDlgChara'), boss = $('storyDlgBoss');
+    if (!chara || !boss) return;
+    if (dlgPortraitTimer) { clearTimeout(dlgPortraitTimer); dlgPortraitTimer = null; }
+    /* 화자 식별: 같은 화자 연속 대사는 그대로 두어 깜빡임 방지 */
+    var who = (line.kind === 'boss')
+      ? ('boss:' + (st && st.boss ? st.boss.name : ''))
+      : ('skin:' + (line.speaker === '재우' ? 'jaeu' : (st ? st.skinId : '')));
+    if (who === dlgLastWho) return;
+    dlgLastWho = who;
+    var apply = function () {
+      chara.style.display = 'none'; boss.style.display = 'none';
+      if (!st) return;
+      /* 화자 초상은 전부 실제 게임 이미지로 표시한다 (이모지 금지):
+         주인공 대사 → 그 캐릭터 스킨 스프라이트, 보스 대사 → 보스 아트. */
+      var url = null;
+      if (line.kind === 'boss') { url = dlgBossPortraitUrl(st); }
+      else if (line.speaker === '재우') { url = dlgSkinPortraitUrl('jaeu'); }
+      else { url = dlgSkinPortraitUrl(st.skinId); }
+      if (!url) url = 'assets/boss-king.png';
+      chara.src = url; chara.style.display = 'block';
+      var shown = chara;
+      /* 페이드인: 살짝 아래에서 떠오르며 등장 */
+      shown.style.opacity = '0';
+      shown.style.transform = 'translateX(-50%) translateY(12px)';
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        shown.style.opacity = '1';
+        shown.style.transform = 'translateX(-50%) translateY(0)';
+      }); });
+    };
+    /* 이전 캐릭터 페이드아웃 후 교체 (빠른 탭에도 최신 것만 적용) */
+    chara.style.opacity = '0'; boss.style.opacity = '0';
+    dlgPortraitTimer = setTimeout(apply, 180);
+  }
+  /* v5.20: 타이핑 타이머 정리 — rAF(지금 방식) + setInterval(옛 잔재) 둘 다 끊기 */
+  function dlgClearTimer() {
+    try { if (dlgTimer) { cancelAnimationFrame(dlgTimer); clearInterval(dlgTimer); dlgTimer = null; } } catch (e) { dlgTimer = null; }
+  }
+  function dlgStop() {
+    dlgClearTimer();
+    if (dlgPortraitTimer) { clearTimeout(dlgPortraitTimer); dlgPortraitTimer = null; }
+    dlgLines = null; dlgDone = null; dlgTyping = false; dlgStage = null; dlgLastWho = '';
+    dlgVoicePre = null; dlgVoicePreUrl = '';
+    dlgStopVoice();
+  }
+  function dlgShow() {
+    var m = $('storyDlg');
+    if (!m) return;
+    m.classList.remove('hidden');
+    try { storyMainBgmPause(); storyBgmStart(); } catch (e) {}
+    var sc = $('storyDlgScene');
+    if (sc) {
+      sc.style.opacity = '0';
+      sc.style.transform = 'translateY(14px)';
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        sc.style.opacity = '1';
+        sc.style.transform = 'translateY(0)';
+      }); });
+    }
+  }
+  function dlgHide() {
+    var m = $('storyDlg');
+    try { storyBgmStop(); storyMainBgmResume(); } catch (e) {}
+    /* 입력 즉시 차단 후 장면 페이드아웃; 숨김은 애니메이션 뒤에 */
+    dlgLines = null; dlgDone = null; dlgTyping = false;
+    dlgClearTimer();
+    dlgStopVoice();
+    var sc = $('storyDlgScene');
+    if (sc) { sc.style.opacity = '0'; sc.style.transform = 'translateY(10px)'; }
+    setTimeout(function () {
+      if (m) m.classList.add('hidden');
+      if (sc) { sc.style.opacity = ''; sc.style.transform = ''; }
+      dlgStop();
+    }, 320);
+  }
+  function dlgNext() {
+    if (!dlgLines) { dlgHide(); return; }
+    if (dlgTyping) {
+      /* 타이핑 중이면 한 번에 다 보여주기 */
+      dlgTyping = false;
+      dlgClearTimer();
+      var t = $('storyDlgText');
+      if (t) t.textContent = dlgFull;
+      return;
+    }
+    dlgIdx++;
+    if (dlgIdx >= dlgLines.length) {
+      var cb = dlgDone;
+      dlgHide();
+      if (cb) { try { cb(); } catch (e) {} }
+      return;
+    }
+    dlgTypeLine(dlgLines[dlgIdx]);
+  }
+  function dlgPrev() {
+    if (!dlgLines) return;
+    /* v5.21: 바로 전 줄로 돌아가서 음성까지 다시 재생. 첫 줄이면 첫 줄을 다시 재생.
+       (dlgTypeLine이 이전 음성을 멈추고 새 줄 음성을 틀어주므로 여기선 인덱스만 옮긴다) */
+    if (dlgIdx > 0) dlgIdx--;
+    dlgTypeLine(dlgLines[dlgIdx]);
+  }
+  function dlgSkipAll() {
+    if (!dlgLines) { dlgHide(); return; }
+    /* v5.20: 대사 전부 건너뛰고 바로 스테이지 시작 (끝 ▶ 과 같은 흐름) */
+    var cb = dlgDone;
+    dlgClearTimer();
+    dlgHide();
+    if (cb) { try { cb(); } catch (e) {} }
+  }
+  function dlgTypeLine(line) {
+    var who = $('storyDlgWho'), txt = $('storyDlgText'), next = $('storyDlgNext');
+    if (typeof line === 'string') {
+      var i = line.indexOf(':');
+      line = { text: line, speaker: i > 0 ? line.slice(0, i).trim() : '???', body: i > 0 ? line.slice(i + 1).trim() : line, kind: 'intro', turn: 0, audio: '' };
+    }
+    var speaker = line.speaker || '???';
+    var body = line.body || '';
+    if (who) who.textContent = speaker;
+    if (next) next.textContent = (dlgIdx === dlgLines.length - 1) ? '끝 ▶' : '다음 ▶';
+    dlgPortrait(line, dlgStage);
+    dlgPlayVoice(line.audio || '');
+    dlgSaveLine(line); /* v5.21: 본 대사를 회상 모드용으로 저장 */
+    dlgFull = body;
+    dlgTyping = true;
+    if (txt) {
+      txt.textContent = '';
+      txt.style.opacity = '0';
+      requestAnimationFrame(function () { requestAnimationFrame(function () { txt.style.opacity = '1'; }); });
+    }
+    dlgClearTimer();
+    /* v5.20: 타이핑은 경과 시간 기준으로 돌린다. rAF가 늦게 돌아와도 지난 시간만큼
+       글자를 한 번에 채워서 속도가 절대 느려지지 않음 — 소리가 늦어져도 글자는 제 속도.
+       (옛날 방식: setInterval 22ms + 세 글자마다 mp3 틱. 아이패드 사파리에서 같은
+       오디오 엘리먼트를 currentTime=0으로 되돌려 다시 트는 게 메인 스레드를 멈춰
+       22ms 타이머가 굶주려 글자당 0.5초까지 느려졌음) */
+    var start = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    var lastN = 0, lastTick = 0;
+    var step = function (now) {
+      if (!dlgTyping) return;
+      var t = (now || 0) - start;
+      if (t < 0) t = 0;
+      /* v5.21: 대사 속도 슬라이더 (QOL.dlgSpeed, 기본 1 = 22ms/글자). 프레임마다 다시 읽어
+         설정에서 바꾸면 바로 다음 글자부터 적용된다. 2×면 11ms/글자, 0.5×면 44ms/글자. */
+      var sp = 1;
+      try { sp = Number(V.QOL && V.QOL.dlgSpeed) || 1; } catch (e) {}
+      if (!(sp >= 0.25)) sp = 0.25;
+      if (sp > 3) sp = 3;
+      var n = Math.floor(t / (22 / sp)) + 1;
+      if (n > body.length) n = body.length;
+      if (n > lastN) {
+        if (txt) txt.textContent = body.slice(0, n);
+        /* 틱: 3글자마다 한 번, 가벼운 합성음. mp3 엘리먼트 재생은 쓰지 않음 */
+        var tk = Math.floor(n / 3);
+        if (tk > lastTick) {
+          lastTick = tk;
+          try { var s = J() && J().sfx; if (s && s.tone) s.tone(1500, 'sine', 0.03, 0.05); } catch (e) {}
+        }
+        lastN = n;
+      }
+      if (n >= body.length) {
+        dlgTyping = false;
+        dlgTimer = null;
+        return;
+      }
+      dlgTimer = requestAnimationFrame(step);
+    };
+    dlgTimer = requestAnimationFrame(step);
+    /* 다음 줄 미리 받아두기 (음성 + 초상) — 다음 누르자마자 바로 나오게 */
+    dlgPrefetchNext();
+  }
+  /* v5.21: 본 대사 저장 + 회상 모드.
+     대사 장면에서 한 줄이 시작될 때마다 dlgTypeLine이 dlgSaveLine을 부른다.
+     저장 위치: localStorage 'jw64_dlglog_v1' (같은 스테이지·종류·턴은 한 번만 저장, 최대 600줄).
+     QOL.dlgSavePause가 켜져 있으면 새 대사는 저장하지 않는다. */
+  var KEY_DLGLOG = 'jw64_dlglog_v1';
+  var DLGLOG_MAX = 600;
+  function dlgLogLoad() {
+    try {
+      var s = lsGet(KEY_DLGLOG, null);
+      if (!s || typeof s !== 'object' || !Array.isArray(s.lines)) return { v: 1, lines: [] };
+      return s;
+    } catch (e) { return { v: 1, lines: [] }; }
+  }
+  function dlgSaveLine(line) {
+    try {
+      var q = V.QOL || {};
+      if (q.dlgSavePause) return; /* 일시정지 중이면 저장 안 함 */
+      var st = dlgStage;
+      if (!st || !line) return;
+      var s = dlgLogLoad();
+      var key = st.index + '|' + (line.kind || '') + '|' + (line.turn || 0);
+      var exists = false;
+      s.lines.forEach(function (e) { if (e.k === key) exists = true; });
+      if (exists) return; /* 같은 줄은 한 번만 저장 (되감기·재시청은 중복 저장 안 함) */
+      var chName = '';
+      try {
+        (DATA.chapters || []).forEach(function (c) { if (c.num === st.chapter) chName = c.title || ''; });
+      } catch (e) {}
+      s.lines.push({ k: key, st: st.index, ch: st.chapter, chn: chName, map: st.mapId, mapn: st.mapName || '', sp: line.speaker || '???', tx: line.body || '', kind: line.kind || 'intro', turn: line.turn || 0, ts: Date.now() });
+      while (s.lines.length > DLGLOG_MAX) s.lines.shift();
+      lsSet(KEY_DLGLOG, s);
+    } catch (e) {}
+  }
+  /* v5.21: 저장된 대사에 챕터 태그 자동 표시 — "N장" + "보스전"/"클리어" */
+  function dlgTagHtml(kind, ch) {
+    var tags = [((ch == null ? 0 : ch) + 1) + '장'];
+    if (kind === 'boss') tags.push('보스전');
+    else if (kind === 'clear') tags.push('클리어');
+    return tags.map(function (t) { return '<span style="display:inline-block;padding:1px 6px;margin-right:4px;font-size:10px;font-weight:800;color:#fde68a;background:#451a03;border:1px solid #f59e0b;border-radius:999px">' + esc(t) + '</span>'; }).join('');
+  }
+  /* v5.21: 회상 모드 — 스토리 목록에서 📖 버튼으로 진입. 저장된 대사를 스테이지
+     순서대로 묶어서 보여준다. QOL.dlgTags가 꺼져 있으면 태그는 안 보인다. */
+  function renderRecall() {
+    var tabs = $('storyChTabs'), list = $('storyStageList'), det = $('storyDetail'), rc = $('storyRecall');
+    if (!rc) return;
+    if (tabs) tabs.classList.add('hidden');
+    if (list) list.classList.add('hidden');
+    if (det) det.classList.add('hidden');
+    rc.classList.remove('hidden');
+    var s = dlgLogLoad();
+    var showTags = true;
+    try { showTags = !(V.QOL && V.QOL.dlgTags === false); } catch (e) {}
+    var h = '<div style="display:flex;gap:6px;align-items:center"><button type="button" class="v42-chip" id="storyRecallBack">← 스테이지 목록으로</button><span style="font-size:11px;font-weight:700;color:#94a3b8">본 대사 ' + s.lines.length + '줄</span></div>';
+    if (!s.lines.length) {
+      h += '<div style="padding:14px;font-size:12px;font-weight:700;color:#94a3b8">아직 본 대사가 없어요. 스토리 스테이지에 들어가면 대사가 여기에 차곡차곡 모여요.</div>';
+    } else {
+      var byStage = {}, order = [];
+      s.lines.forEach(function (e) {
+        if (!byStage[e.st]) { byStage[e.st] = []; order.push(e.st); }
+        byStage[e.st].push(e);
+      });
+      order.sort(function (a, b) { return a - b; });
+      order.forEach(function (stIdx) {
+        var arr = byStage[stIdx];
+        var first = arr[0];
+        h += '<div style="background:#0d1526;border:2px solid #334155;padding:8px"><div style="font-size:12px;font-weight:900;color:#fbbf24;margin-bottom:6px">' + first.st + '번 · ' + esc(first.mapn || '') + (showTags ? ' ' + dlgTagHtml('intro', first.ch) : '') + '</div>';
+        arr.forEach(function (e) {
+          h += '<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:800;color:#93c5fd">' + esc(e.sp) + (showTags && (e.kind === 'boss' || e.kind === 'clear') ? ' ' + dlgTagHtml(e.kind, e.ch) : '') + '</div><div style="font-size:13px;font-weight:700;line-height:1.6;color:#fff;white-space:pre-wrap">' + esc(e.tx) + '</div></div>';
+        });
+        h += '</div>';
+      });
+    }
+    rc.innerHTML = h;
+    var bk = $('storyRecallBack');
+    if (bk) bk.addEventListener('click', function () { renderStory(); });
+  }
+  function playLines(lines, onDone, st) {
+    if (!lines || !lines.length) { if (onDone) onDone(); return; }
+    dlgLines = lines.slice(); dlgIdx = 0; dlgDone = onDone || null; dlgStage = st || null;
+    dlgSetScene(st);
+    dlgShow();
+    dlgTypeLine(dlgLines[0]);
+  }
+  function dlgLine(text, kind, turn) {
+    var i = text.indexOf(':');
+    var speaker = i > 0 ? text.slice(0, i).trim() : '???';
+    var body = i > 0 ? text.slice(i + 1).trim() : text;
+    return { text: text, speaker: speaker, body: body, kind: kind, turn: turn, audio: '' };
+  }
+  function playIntroThenStart(st) {
+    var m = $('storyModal');
+    if (m) m.classList.add('hidden');
+    var lines = (st.introLines || []).map(function (t, i) { return dlgLine(t, 'intro', i + 1); });
+    if (st.mission && st.mission.type === 'boss_clear' && st.boss && st.boss.dialogue) {
+      lines = lines.concat(st.boss.dialogue.map(function (t, j) { return dlgLine(t, 'boss', 6 + j); }));
+    }
+    lines.forEach(function (l) { l.audio = dlgVoiceUrl(st.index, l.turn); });
+    playLines(lines, function () { startStoryStage(st); }, st);
+  }
+
+  /* ---------------- 스테이지 시작 / 클리어 ---------------- */
+  function startStoryStage(st) {
+    var api = null;
+    try { api = V.api(); } catch (e) {}
+    var prevSkin = null;
+    try { prevSkin = api && api.meSkin ? api.meSkin() : null; } catch (e) {}
+    V.storyRun = { index: st.index, mapId: st.mapId, skinId: st.skinId, prevSkin: prevSkin, mode: st.mission.engineMode, done: false, timeSet: false };
+    STORY_RUN_SKIN = st.skinId;
+    resetStoryRunState(); /* v5.19: 이전 판 보스·스탯·HUD 잔재 제거 */
+    try { storyHudHide(); } catch (e) {}
+    try { if (api && api.setSkin) api.setSkin(st.skinId); } catch (e) {}
+    try { if (MP()) MP().current = st.mapId; } catch (e) {}
+    try {
+      if (MD()) {
+        MD().rules.map = st.mapId;
+        MD().rules.mode = st.mission.engineMode;
+      }
+    } catch (e) {}
+    var m = $('storyModal');
+    if (m) m.classList.add('hidden');
+    dlgHide();
+    var b = document.getElementById('btnStartGame');
+    if (b) {
+      /* 스토리 시작은 위저드(맵·모드·규칙 고르기)를 거치지 않는다: 맵·모드가
+         스테이지 값으로 이미 정해져 있다. 위저드 자체의 시작 방식과 똑같이
+         __v43skip 플래그를 세우고 눌러서 바로 등반을 시작한다. 일반 시작 흐름은 그대로. */
+      b.__v43skip = true;
+      b.click();
+      setTimeout(function () { b.__v43skip = false; }, 500);
+    }
+    else { try { V.toast('시작 버튼을 찾지 못했어요', 'danger', '타이틀 화면으로 돌아가 다시 시도해 주세요', 2000); } catch (e) {} }
+  }
+  function onStoryClear() {
+    var run = V.storyRun;
+    if (!run || run.done) return;
+    var st = STAGE_BY_IDX[run.index];
+    if (!st) return;
+    run.done = true;
+    var sv = storySave();
+    sv.cleared['map:' + st.mapId] = st.index;
+    if (st.boss) sv.boss['map:' + st.mapId] = true;
+    lsSet(KEY_STORY, sv);
+    var unlockedSkin = null;
+    if (st.unlockSkin) {
+      var cv = charSave();
+      if (!cv.unlocked['skin:' + st.unlockSkin]) {
+        cv.unlocked['skin:' + st.unlockSkin] = st.index;
+        lsSet(KEY_CHAR, cv);
+        unlockedSkin = st.unlockSkin;
+      }
+    }
+    sfxMp3('unlock', 0.9);
+    if (unlockedSkin) {
+      try { V.toast('🎉 캐릭터 해금!', 'lucky', st.skinEmoji + ' ' + st.skinName + ' · ' + st.index + '번 스테이지 클리어', 3400); } catch (e) {}
+    } else {
+      try { V.toast('✅ 스테이지 클리어!', 'lucky', st.index + '번 ' + st.mapName + ' · 다음 스테이지 개방', 2600); } catch (e) {}
+    }
+    updateStoryTitleProg();
+    /* 클리어 대사: 승리창 위에 잠깐 뒤에 띄움 (이미 다른 판을 시작했으면 건너뜀) */
+    if (st.clearLines && st.clearLines.length) {
+      var lines = st.clearLines.map(function (t, i) { return dlgLine(t, 'clear', 4 + i); });
+      lines.forEach(function (l) { l.audio = dlgVoiceUrl(st.index, l.turn); });
+      setTimeout(function () {
+        try {
+          if (V.inRun) return;
+          playLines(lines, null, st);
+        } catch (e) {}
+      }, 900);
+    }
+  }
+  var __victoryHooked = false;
+  function hookVictory() {
+    /* v5.19 수정: W() (= root.__jwg)에는 onReachVictory가 없어서 기존 훅은
+       절대 설치되지 않았다. 실제 승리 진입점인 window.JWG.onReachVictory를
+       래핑한다. 스토리 래퍼가 최외곽이라 미션·보스 게이트가 엔진 승리 처리
+       (v44 게이트 → v42 → 코어)보다 먼저 돈다. */
+    if (__victoryHooked) return;
+    var w = null;
+    try { w = root.JWG; } catch (e) {}
+    if (!w || typeof w.onReachVictory !== 'function') {
+      /* 폴백: 혹시 __jwg에 생겼다면 그쪽도 시도 (현재 코드에는 없음) */
+      try { w = W(); } catch (e) {}
+      if (!w || typeof w.onReachVictory !== 'function') return;
+    }
+    if (w.__storyHooked) { __victoryHooked = true; return; }
+    w.__storyHooked = true;
+    __victoryHooked = true;
+    var orig = w.onReachVictory;
+    w.onReachVictory = function () {
+      var gate = 'pass';
+      try { gate = storyVictoryGate(); } catch (e) { gate = 'pass'; }
+      /* block/fail이면 orig를 부르지 않고 true 반환 → 코어 승리 처리 차단 */
+      if (gate === 'block' || gate === 'fail') return true;
+      var r;
+      try { r = orig.apply(this, arguments); } catch (e) { try { console.warn('[story] victory orig', e); } catch (e2) {} }
+      try { onStoryClear(); } catch (e) {}
+      return r;
+    };
+  }
+
+  /* ---------------- v5.19 미션 판정 + 보스전 + 인게임 표시 ----------------
+     [승리 훅 경로 — 조사팀 확인 2026-11-21]
+     root.__jwg 리터럴(822-839)에는 onReachVictory가 없고 파일 어디에도
+     __jwg.onReachVictory = ... 할당이 없다. 그래서 v5.16 hookVictory()는
+     typeof 검사에서 항상 early-return했고, onStoryClear()는 절대 불리지
+     않았다(스토리 클리어 저장·해금·클리어 대사가 동작하지 않던 버그).
+     유일한 승리 진입점은 window.JWG.onReachVictory(8881)이며, 코어
+     정상 도달(1633-1634)이 이걸 호출한다. v5.19부터 JWG를 래핑한다.
+     래핑 순서: 스토리(최외곽) → v44 승리 게이트 → v42 → … → 코어 JWG.
+     스토리 래퍼는 orig를 부르기 전에 게이트를 검사해서, 미션 실패나
+     보스 생존 시 orig를 부르지 않고 true를 반환해 코어 승리 처리를 막는다.
+     [개발자 모드 인터페이스 — C팀용]
+     - V.storyBossKill(): 스토리 보스가 떠 있으면 즉시 격파(HP 0 + 격파 연출
+       + 게이트 해제). 보스가 없으면 조용히 no-op.
+     - V.storyDevSkip: C팀이 /skip 실행 시 true로 세우고 승리 처리를 부르면,
+       승리 게이트가 미션·보스 조건을 전부 우회해 무조건 클리어한다(1회용,
+       게이트 통과 시 자동 false로 복귀). onStoryClear의 run.done 가드가
+       중복 저장을 막는다.
+     [미션 판정] 승리 시점(hookVictory 래퍼)에 검사. 엔진 카운터 우선 사용.
+     [보스전] 전 스테이지 공통 최종 관문. 85% 높이 아레나에서 스폰, 머리
+       밟기 1회당 HP 1 감소(스토리 hp 3~8), 느린 투사체 + 돌풍.
+     [인게임 표시] 왼쪽에 미션 배너(시작 시 5.5초) + '스토리 모드' 뱃지(판 내내).
+     오른쪽은 일시정지·개발자 버튼 자리라 비워둔다.  */
+  var SB = null; /* 스토리 보스 상태 (판마다 초기화) */
+  var ST = null; /* 스토리 판 스탯 (판마다 초기화) */
+  var ST_RUN = null; /* 스탯이 속한 V.storyRun 객체 */
+  var __bossImgCache = {};
+  var __bossBlockT = 0;
+  var __coinGateT = 0;
+  V.storyDevSkip = false;
+
+  function resetStoryRunState() {
+    SB = null;
+    ST = null;
+    ST_RUN = null;
+  }
+  function freshStoryStats() {
+    return { falls: 0, hits: 0, combo: 0, maxCombo: 0, lastTime: 0,
+      lastPlat: null, lastLandPlat: null, lastLandIdx: 0, prevHurtT: 0,
+      warnFalls: false, warnHit: false, warnJumps: false };
+  }
+
+  /* ---------------- 인게임 표시 (왼쪽) ----------------
+     #gameHud(absolute inset-0) 안에 붙인다. gameHud가 숨겨지면 같이 숨겨지고,
+     토스트(#mpToasts, 오른쪽)와 안 겹친다. 뱃지는 판 내내, 배너는 시작 5.5초. */
+  var __storyHudEls = null;
+  function storyHudEls() {
+    if (__storyHudEls) return __storyHudEls;
+    var hud = document.getElementById('gameHud');
+    if (!hud) return null;
+    var badge = document.getElementById('storyHudBadge');
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = 'storyHudBadge';
+      badge.style.cssText = 'position:absolute;left:8px;top:116px;z-index:21;pointer-events:none;display:none;max-width:calc(100vw - 16px);';
+      hud.appendChild(badge);
+    }
+    var banner = document.getElementById('storyHudBanner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'storyHudBanner';
+      banner.style.cssText = 'position:absolute;left:8px;top:146px;z-index:21;pointer-events:none;display:none;width:min(320px,calc(100vw - 16px));background:rgba(7,10,23,.92);border:2px solid #fbbf24;padding:8px 10px;text-align:left;';
+      hud.appendChild(banner);
+    }
+    __storyHudEls = { badge: badge, banner: banner, hud: hud };
+    return __storyHudEls;
+  }
+  function storyHudShowBanner(st) {
+    var els = storyHudEls();
+    if (!els || !st) return;
+    var run = V.storyRun;
+    els.banner.innerHTML =
+      '<div style="font-size:12px;font-weight:900;color:#fde68a;line-height:1.4;">🎯 ' + st.index + '번 · ' + esc(st.mapName) + '</div>' +
+      '<div style="font-size:11px;font-weight:700;color:#e2e8f0;line-height:1.5;margin-top:2px;">미션: ' + esc((st.mission && st.mission.label) || '') + '</div>' +
+      '<div style="font-size:10px;font-weight:700;color:#c4b5fd;line-height:1.5;margin-top:2px;">👑 보스: ' + esc(st.boss ? st.boss.name : '') + ' · 체력 ' + (st.boss ? st.boss.hp : 0) + '</div>';
+    els.banner.style.display = 'block';
+    setTimeout(function () {
+      try { if (V.storyRun === run && els.banner) els.banner.style.display = 'none'; } catch (e) {}
+    }, 5500);
+  }
+  function storyHudEnsureBadge(st) {
+    var els = storyHudEls();
+    if (!els || !st) return;
+    var sig = st.index + '|' + st.mapName;
+    if (els.badge.__sig === sig && els.badge.style.display === 'block') return;
+    els.badge.__sig = sig;
+    els.badge.innerHTML = '<span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100vw - 16px);background:rgba(88,28,135,.92);border:2px solid #c084fc;color:#f3e8ff;font-size:11px;font-weight:900;padding:3px 8px;line-height:1.5;">📖 스토리 모드 · ' + st.index + '번 ' + esc(st.mapName) + '</span>';
+    els.badge.style.display = 'block';
+  }
+  function storyHudHide() {
+    try {
+      var els = storyHudEls();
+      if (!els) return;
+      els.badge.style.display = 'none';
+      els.banner.style.display = 'none';
+    } catch (e) {}
+  }
+
+  /* ---------------- 런 중 스탯 추적 (매 프레임, JWG.tick 래핑) ---------------- */
+  function storyTick(dt) {
+    var run = V.storyRun;
+    if (!run || run.done || run.failed) { if (SB) SB = null; return; }
+    var jw = null, g = null, p = null;
+    try { jw = J(); g = jw && jw.game; p = jw && jw.player; } catch (e) {}
+    if (!g || !p || !g.inPlay || g.victory || !V.inRun) return;
+    var st = STAGE_BY_IDX[run.index];
+    /* 새 판 감지: run 객체 교체 또는 game.time 되감김(결과창 재시작) */
+    if (ST_RUN !== run || (ST && g.time < (ST.lastTime || 0) - 0.5)) {
+      ST = freshStoryStats();
+      ST_RUN = run;
+      SB = null;
+      try { storyHudShowBanner(st); } catch (e) {}
+    }
+    if (!ST) { ST = freshStoryStats(); ST_RUN = run; }
+    ST.lastTime = g.time;
+    /* v5.19: 레거시 수문장(V.boss) 억제 — boss_clear 스테이지의 engineMode가
+       'boss'라 bossShouldRun()이 항상 true가 돼 스토리 보스와 별개로
+       수문장이 같이 뜨는(보스 2개) 현상을 막는다. 스토리 보스가 이 판의
+       보스다. 일반 'boss' 모드 판에는 storyTick이 안 돌아서 영향 없음. */
+    try {
+      if (V.boss) { V.boss.awake = false; V.boss.phase = 'idle'; V.boss.phaseT = 1.2; V.boss.bullets = []; V.boss.warn = []; V.boss.gust = 0; }
+    } catch (e) {}
+    /* 낙하: 심연 바닥(abyss_floor) 착지 — 코어 추락 리스폰 지점(1440행대).
+       같은 바닥에 계속 서 있어도 1회만 셈 (객체 identity 엣지). */
+    try {
+      var plat = p.plat;
+      if (plat && plat.type === 'abyss_floor' && ST.lastPlat !== plat) {
+        ST.falls++;
+        ST.combo = 0;
+        if (st && st.mission && st.mission.type === 'max_falls' && ST.falls > st.mission.target && !ST.warnFalls) {
+          ST.warnFalls = true;
+          try { V.toast('💥 낙하 ' + ST.falls + '회', 'danger', '미션은 ' + st.mission.target + '회 이하 — 이번 판은 실패했어요. 다시 도전해 보세요!', 3200); } catch (e) {}
+        }
+      }
+      ST.lastPlat = plat || null;
+      /* 콤보 폴백 추적 (V.fever가 없을 때 사용): 더 높은 발판 연속 착지 */
+      if (plat && plat.index > 0) {
+        if (plat !== ST.lastLandPlat) {
+          if (plat.index > (ST.lastLandIdx || 0)) { ST.combo++; if (ST.combo > ST.maxCombo) ST.maxCombo = ST.combo; }
+          else if (plat.index < (ST.lastLandIdx || 0)) { ST.combo = 0; }
+          ST.lastLandPlat = plat; ST.lastLandIdx = plat.index;
+        }
+      }
+    } catch (e) {}
+    /* 피격: hurtT 상승 엣지. 방패 방어는 hurtT가 안 올라가서 제외되고,
+       무적 1초가 있어 같은 피격이 두 번 안 세진다. */
+    try {
+      var ht = p.hurtT || 0;
+      if (ht > 0 && !(ST.prevHurtT > 0)) {
+        ST.hits++;
+        if (st && st.mission && st.mission.type === 'no_damage' && !ST.warnHit) {
+          ST.warnHit = true;
+          try { V.toast('💥 피격!', 'danger', '노데미지 미션 실패 — 이번 판은 실패했어요. 다시 도전해 보세요!', 3200); } catch (e) {}
+        }
+      }
+      ST.prevHurtT = ht;
+    } catch (e) {}
+    /* 점프 수 초과 미리 알림 (판정은 승리 시점) */
+    try {
+      if (st && st.mission && st.mission.type === 'min_jump' && !ST.warnJumps && (g.jumps || 0) > st.mission.target) {
+        ST.warnJumps = true;
+        try { V.toast('👟 점프 ' + (g.jumps || 0) + '회', 'danger', '미션은 ' + st.mission.target + '회 이하 — 이번 판은 실패했어요.', 3200); } catch (e) {}
+      }
+    } catch (e) {}
+    /* 보스 */
+    try { storyBossTick(dt, st); } catch (e) {}
+  }
+
+  /* ---------------- 미션 판정 (승리 시점) ---------------- */
+  function storyMissionCheck(st) {
+    var m = (st && st.mission) || { type: 'clear', target: 1 };
+    var tgt = m.target;
+    var g = null;
+    try { g = J() && J().game; } catch (e) {}
+    var G = null;
+    try { G = V.G; } catch (e) {}
+    if (m.type === 'clear') return { ok: true };
+    if (m.type === 'time_limit') return { ok: true }; /* 엔진이 시간 초과 실패를 강제 */
+    if (m.type === 'max_falls') {
+      var f = ST ? ST.falls : 0;
+      if (f <= tgt) return { ok: true };
+      return { ok: false, msg: '❌ 미션 실패', sub: '낙하 ' + f + '회 — ' + tgt + '회 이하로 깨야 해!', recoverable: false };
+    }
+    if (m.type === 'combo') {
+      /* 피버 콤보(V.fever.best, 판마다 startRun에서 초기화)가 기준.
+         없으면 폴백 추적값 사용. */
+      var best = 0;
+      try { if (V.fever && typeof V.fever.best === 'number') best = V.fever.best; } catch (e) {}
+      if (ST && ST.maxCombo > best) best = ST.maxCombo;
+      if (best >= tgt) return { ok: true };
+      return { ok: false, msg: '❌ 미션 실패', sub: '최대 콤보 ' + best + ' — ' + tgt + '콤보 이상이 필요해! 아래로 내려가 콤보를 다시 쌓아 봐.', recoverable: true, retry: 'combo' };
+    }
+    if (m.type === 'no_damage') {
+      var h = ST ? ST.hits : 0;
+      if (h <= 0) return { ok: true };
+      return { ok: false, msg: '❌ 미션 실패', sub: '피격 ' + h + '회 — 한 번도 안 맞고 깨야 해!', recoverable: false };
+    }
+    if (m.type === 'coins') {
+      var got = (G && G.coinsGot) || 0;
+      if (got >= tgt) return { ok: true };
+      return { ok: false, msg: '❌ 미션 실패', sub: '코인 ' + got + '/' + tgt + '개 — 아래로 내려가 남은 코인을 모아 봐!', recoverable: true, retry: 'coins' };
+    }
+    if (m.type === 'min_jump') {
+      var j = (g && g.jumps) || 0;
+      if (j <= tgt) return { ok: true };
+      return { ok: false, msg: '❌ 미션 실패', sub: '점프 ' + j + '회 — ' + tgt + '회 이하로 깨야 해!', recoverable: false };
+    }
+    if (m.type === 'boss_clear') {
+      if (SB && SB.bossDead) return { ok: true };
+      return { ok: false, msg: '👊 보스를 먼저 잡아야 해!', sub: '보스를 격파해야 정상이 열려!', recoverable: true, retry: 'boss' };
+    }
+    return { ok: true };
+  }
+
+  /* ---------------- 승리 게이트 ---------------- */
+  function storyVictoryGate() {
+    var run = V.storyRun;
+    if (!run || run.done || run.failed) return 'pass';
+    try { if (!V.inRun) return 'pass'; } catch (e) {}
+    /* 개발자 스킵(C팀 /skip): 미션·보스 조건 전부 우회, 1회용 */
+    try {
+      if (V.storyDevSkip) { V.storyDevSkip = false; return 'pass'; }
+    } catch (e) {}
+    var st = STAGE_BY_IDX[run.index];
+    if (!st) return 'pass';
+    /* 보스 게이트 (전 스테이지 공통 최종 관문) */
+    try {
+      if (!SB || !SB.boss) storyBossEnsure(st);
+      if (SB && SB.boss && !SB.boss.dead) {
+        storyBossBlock(st);
+        return 'block';
+      }
+    } catch (e) {}
+    /* 미션 판정 */
+    var chk = null;
+    try { chk = storyMissionCheck(st); } catch (e) { chk = { ok: true }; }
+    if (chk && !chk.ok) {
+      try { V.toast(chk.msg || '❌ 미션 실패', 'danger', chk.sub || '', 3200); } catch (e) {}
+      if (chk.recoverable) {
+        try { storyRetryTeleport(chk.retry || 'boss', st); } catch (e) {}
+        return 'block';
+      }
+      /* 되돌릴 수 없는 실패(낙하·점프·피격 초과): 실패 결과창으로 판 종료 */
+      try {
+        run.failed = true;
+        if (MD() && MD().endSolo) MD().endSolo('mission');
+      } catch (e) {}
+      return 'fail';
+    }
+    return 'pass';
+  }
+  function storyBossBlock(st) {
+    var now = 0;
+    try { now = performance.now(); } catch (e) { now = Date.now(); }
+    if (now - __bossBlockT > 2500) {
+      __bossBlockT = now;
+      try { V.toast('👊 보스를 먼저 잡아야 해!', 'danger', (st && st.boss ? st.boss.name : '보스') + '를 격파해야 정상이 열려!', 2600); } catch (e) {}
+    }
+    try { storyTeleportTo(storyBossArena(st).idx); } catch (e) {}
+  }
+  function storyRetryTeleport(kind, st) {
+    var a = null;
+    try { a = storyBossArena(st); } catch (e) {}
+    var total = (a && a.total) || 88;
+    var idx;
+    if (kind === 'boss') idx = a ? a.idx : Math.round(total * 0.85);
+    else if (kind === 'combo') idx = Math.round(total * 0.6);
+    else idx = Math.round(total * 0.4); /* coins: 아래로 내려가 남은 코인 수집 */
+    storyTeleportTo(idx);
+  }
+  function storyTeleportTo(idx) {
+    var jw = J(), p = jw && jw.player, ps = jw && jw.platforms;
+    if (!p || !ps || !ps.length) return false;
+    var q = null;
+    for (var i = 0; i < ps.length; i++) if (ps[i] && ps[i].index === idx) { q = ps[i]; break; }
+    if (!q) q = ps[ps.length - 1];
+    if (!q) return false;
+    p.plat = q;
+    p.x = q.x + q.w / 2 - (p.w || 28) / 2;
+    p.y = q.y - (p.h || 34);
+    p.vx = 0; p.vy = 0; p.onGround = true;
+    try { if (ST) { ST.lastPlat = q; ST.lastLandPlat = q; ST.lastLandIdx = q.index || 0; ST.combo = 0; } } catch (e) {}
+    try { if (jw.addParticles) jw.addParticles(p.x + 14, p.y + 16, '#38bdf8', 20, 160); } catch (e) {}
+    return true;
+  }
+
+  /* ---------------- 보스전 ---------------- */
+  function storyBossArena(st) {
+    var jw = J();
+    if (!jw || !jw.platforms) return null;
+    var ps = jw.platforms;
+    var total = 88;
+    try { total = (jw.TOTAL_PLATS || ps.length - 1) || 88; } catch (e) {}
+    var ai = Math.max(10, Math.round(total * 0.85));
+    var q = null;
+    for (var i = 0; i < ps.length; i++) if (ps[i] && ps[i].index === ai) { q = ps[i]; break; }
+    if (!q) q = ps[ps.length - 1];
+    return { plat: q, idx: ai, total: total };
+  }
+  function storyBossEnsure(st) {
+    if (SB && SB.boss) return;
+    if (!st || !st.boss) return;
+    var a = storyBossArena(st);
+    if (!a || !a.plat) return;
+    var p = J() && J().player;
+    if (!p) return;
+    var best = p.runBestPlat || (p.plat && p.plat.index) || 0;
+    /* 아직 아레나 아래면 스폰하지 않음 */
+    if (best < a.idx - 2 && p.y > a.plat.y + 200) return;
+    storyBossSpawn(st, a);
+  }
+  function storyBossImage(st) {
+    try {
+      if (!st) return null;
+      if (__bossImgCache[st.index]) return __bossImgCache[st.index];
+      var url = dlgBossPortraitUrl(st);
+      if (!url) return null;
+      var im = new Image();
+      im.src = url;
+      __bossImgCache[st.index] = im;
+      return im;
+    } catch (e) { return null; }
+  }
+  function storyBossSpawn(st, a) {
+    var hp = Math.max(1, st.boss.hp || 3);
+    SB = {
+      boss: {
+        name: st.boss.name, emoji: st.boss.emoji, hp: hp, max: hp,
+        x: a.plat.x + a.plat.w / 2 - 48, y: a.plat.y - 150, w: 96, h: 96,
+        baseX: a.plat.x + a.plat.w / 2 - 48, baseY: a.plat.y - 150,
+        arenaIdx: a.idx, arenaPlat: a.plat,
+        t: 0, phase: 'idle', phaseT: 2.2, next: 'shot',
+        warn: [], projs: [], gust: 0, gdir: 1, hitT: 0, flash: 0,
+        dead: false, deathT: 0
+      },
+      bossDead: false, img: storyBossImage(st)
+    };
+    try { V.toast('👑 ' + st.boss.name + ' 등장!', 'danger', '머리를 밟아 격파하세요 · 체력 ' + hp, 2800); } catch (e) {}
+    try {
+      var sx = J() && J().sfx;
+      if (sx && sx.bossIntro) sx.bossIntro();
+      else if (V.beep) V.beep(160, 0.3, 0.14, 'sawtooth', 90);
+    } catch (e) {}
+  }
+  function storyBossDefeat(st) {
+    var b = SB && SB.boss;
+    if (!b || b.dead) return;
+    b.dead = true; b.deathT = 0; b.projs = []; b.warn = []; b.gust = 0;
+    if (SB) SB.bossDead = true;
+    try {
+      var jw = J();
+      if (jw && jw.addParticles) {
+        jw.addParticles(b.x + b.w / 2, b.y + b.h / 2, '#f472b6', 70, 340);
+        jw.addParticles(b.x + b.w / 2, b.y + b.h / 2, '#fde047', 40, 280);
+      }
+      var line = (st && st.boss && st.boss.dialogue && st.boss.dialogue[1]) || '보스를 격파했다!';
+      V.toast('🎉 보스 격파!', 'lucky', line, 3400);
+      var sx = jw && jw.sfx;
+      if (sx && sx.bossDefeat) sx.bossDefeat();
+      else if (V.beep) V.beep(1046, 0.2, 0.16, 'square', 1568);
+    } catch (e) {}
+  }
+  /* 개발자 모드 인터페이스 (C팀 /bossskip용): 보스가 떠 있을 때만 격파 */
+  V.storyBossKill = function () {
+    try {
+      if (!SB || !SB.boss || SB.boss.dead) return;
+      var run = V.storyRun;
+      var st = run ? STAGE_BY_IDX[run.index] : null;
+      SB.boss.hp = 0;
+      storyBossDefeat(st);
+    } catch (e) {}
+  };
+  function storyBossTick(dt, st) {
+    if (!st || !st.boss) return;
+    try { storyBossEnsure(st); } catch (e) {}
+    if (!SB || !SB.boss) return;
+    var b = SB.boss;
+    var jw = J(), p = jw && jw.player;
+    if (!p) return;
+    if (b.dead) {
+      b.deathT += dt;
+      if (b.deathT > 1.2) { SB.boss = null; }
+      return;
+    }
+    b.t += dt;
+    if (b.flash > 0) b.flash -= dt;
+    /* 보스는 아레나 근처에 머문다: 플레이어 쪽으로 천천히 이동 */
+    var targetX = Math.max(b.arenaPlat.x - 40, Math.min(b.arenaPlat.x + b.arenaPlat.w - b.w + 40, (p.x + 14) - b.w / 2));
+    b.baseX += (targetX - b.baseX) * Math.min(1, dt * 0.55);
+    b.x = b.baseX + Math.sin(b.t * 0.9) * 46;
+    b.y = b.baseY + Math.sin(b.t * 1.4) * 14;
+    var near = Math.abs((p.y + 17) - (b.y + b.h / 2)) < 700;
+    /* 공격 사이클: idle(2.4초) → warn(0.9초 예고) → fire → idle …
+       체력 절반 이하면 1.9초 간격·3발. 투사체 속도 135로 느리게. */
+    if (near) {
+      b.phaseT -= dt;
+      if (b.phase === 'idle' && b.phaseT <= 0) {
+        b.phase = 'warn'; b.phaseT = 0.9;
+        b.warn = [];
+        if (b.next === 'gust') {
+          b.gdir = (p.x + 14) < (b.x + b.w / 2) ? -1 : 1;
+          b.warn.push({ x: p.x + 14, y: p.y + 17, t: 0.9, kind: 'gust', dir: b.gdir });
+        } else {
+          var n = b.hp <= Math.ceil(b.max / 2) ? 3 : (b.max >= 6 ? 2 : 1);
+          for (var i = 0; i < n; i++) b.warn.push({ x: p.x + 14 + (i - (n - 1) / 2) * 64, y: p.y + 30, t: 0.9, kind: 'shot' });
+        }
+        try { if (V.beep) V.beep(520, 0.1, 0.1, 'square', 700); } catch (e) {}
+      } else if (b.phase === 'warn' && b.phaseT <= 0) {
+        b.phase = 'fire'; b.phaseT = 0.55;
+        if (b.next === 'gust') {
+          b.gust = 0.8;
+          try { V.toast('🌪️ 돌풍!', 'danger', '보스가 밀어냅니다 — 반대쪽으로 버텨!', 1500); } catch (e) {}
+          try { if (V.beep) V.beep(240, 0.25, 0.12, 'sawtooth', 120); } catch (e) {}
+        } else {
+          for (var k = 0; k < b.warn.length; k++) {
+            var w = b.warn[k];
+            var dx = w.x - (b.x + b.w / 2), dy = w.y - (b.y + b.h / 2);
+            var len = Math.sqrt(dx * dx + dy * dy) || 1;
+            var sp = 135;
+            b.projs.push({ x: b.x + b.w / 2, y: b.y + b.h / 2, vx: dx / len * sp, vy: dy / len * sp, life: 5, r: 7 });
+          }
+          try { if (V.beep) V.beep(760, 0.1, 0.12, 'square', 420); } catch (e) {}
+        }
+        b.warn = [];
+        b.next = (b.next === 'gust') ? 'shot' : (Math.random() < 0.3 ? 'gust' : 'shot');
+      } else if (b.phase === 'fire' && b.phaseT <= 0) {
+        b.phase = 'idle';
+        b.phaseT = b.hp <= Math.ceil(b.max / 2) ? 1.9 : 2.4;
+      }
+    }
+    /* 돌풍: 플레이어를 밀어냄 (지상 220·공중 300 — 레거시 300/420보다 약하게) */
+    if (b.gust > 0) {
+      b.gust -= dt;
+      p.vx += b.gdir * (p.onGround ? 220 : 300) * dt;
+    }
+    /* 투사체 이동·피격 (엔진 hitPlayerWithKnockback 재사용: 방패·무적 처리 포함) */
+    for (var i = b.projs.length - 1; i >= 0; i--) {
+      var pr = b.projs[i];
+      pr.x += pr.vx * dt; pr.y += pr.vy * dt; pr.life -= dt;
+      if (pr.life <= 0 || pr.y > p.y + 700 || pr.y < b.y - 900) { b.projs.splice(i, 1); continue; }
+      if (Math.abs(pr.x - (p.x + 14)) < 18 && Math.abs(pr.y - (p.y + 16)) < 22) {
+        b.projs.splice(i, 1);
+        try { if (jw.hitPlayerWithKnockback) jw.hitPlayerWithKnockback((p.x + 14) < pr.x ? -260 : 260, -300, '👊 보스 탄환!'); } catch (e) {}
+        continue;
+      }
+    }
+    /* 머리 밟기 (bossrush 방식): 발이 보스 상단 밴드 안 + 하강 중일 때 1 데미지,
+       밟으면 위로 튕기고 보스 무적 500ms */
+    var feet = p.y + (p.h || 34);
+    if (p.x + (p.w || 28) > b.x + 6 && p.x < b.x + b.w - 6 && feet > b.y - 6 && feet < b.y + 26 && (p.vy || 0) > 120) {
+      var now = 0;
+      try { now = performance.now(); } catch (e) { now = Date.now(); }
+      if (!b.hitT || now - b.hitT > 500) {
+        b.hitT = now;
+        b.hp = Math.max(0, b.hp - 1);
+        b.flash = 0.18;
+        p.vy = -700; p.onGround = false; p.plat = null;
+        try {
+          if (jw.addParticles) { jw.addParticles(p.x + 14, b.y, '#fde047', 26, 240); jw.addParticles(p.x + 14, b.y + 6, '#f472b6', 14, 200); }
+          if (jw.addText) jw.addText(p.x + 14, b.y - 26, '-1', '#fde047');
+          if (V.beep) { V.beep(620, 0.1, 0.16, 'square', 940); V.beep(980, 0.08, 0.1, 'triangle', 1240); }
+        } catch (e) {}
+        if (b.hp <= 0) storyBossDefeat(st);
+      }
+    }
+  }
+  function storyBossDraw(ctx, camY, lh) {
+    if (!SB || !SB.boss) return;
+    var b = SB.boss;
+    if (b.dead && b.deathT > 1.2) return;
+    try {
+      var top = b.y - camY;
+      var H = lh || 800;
+      if (top >= -220 && top <= H + 220) {
+        var i;
+        /* 경고 마커 (예고 0.9초) */
+        for (i = 0; i < (b.warn || []).length; i++) {
+          var w = b.warn[i];
+          var wx = w.x, wy = w.y - camY;
+          ctx.save();
+          ctx.globalAlpha = 0.55 + 0.35 * Math.sin((b.t || 0) * 14);
+          ctx.strokeStyle = w.kind === 'gust' ? '#38bdf8' : '#f87171';
+          ctx.lineWidth = 3;
+          ctx.beginPath(); ctx.arc(wx, wy, 22, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = w.kind === 'gust' ? 'rgba(56,189,248,.25)' : 'rgba(248,113,113,.25)';
+          ctx.beginPath(); ctx.arc(wx, wy, 22, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = w.kind === 'gust' ? '#bae6fd' : '#fecaca';
+          ctx.font = 'bold 14px "Galmuri11", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(w.kind === 'gust' ? (w.dir < 0 ? '◀' : '▶') : '!', wx, wy + 5);
+          ctx.restore();
+        }
+        /* 보스 본체: dlgBossPortraitUrl 이미지 (실제 게임 이미지, 이모지 아님) */
+        var bx = b.x, by = b.y - camY;
+        ctx.save();
+        if (b.flash > 0) ctx.globalAlpha = 0.6;
+        var im = SB.img;
+        if (im && im.complete && im.naturalWidth) {
+          ctx.drawImage(im, bx, by, b.w, b.h);
+        } else {
+          ctx.fillStyle = '#7c3aed';
+          ctx.beginPath(); ctx.arc(bx + b.w / 2, by + b.h / 2, b.w / 2, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.beginPath(); ctx.arc(bx + b.w / 2 - 16, by + b.h / 2 - 8, 7, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(bx + b.w / 2 + 16, by + b.h / 2 - 8, 7, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#1e1b4b';
+          ctx.beginPath(); ctx.arc(bx + b.w / 2 - 16, by + b.h / 2 - 8, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(bx + b.w / 2 + 16, by + b.h / 2 - 8, 3, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+        /* 이름 + HP 바 */
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 10px "Galmuri11", monospace';
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(2,6,23,.9)';
+        var label = b.name + '  ' + b.hp + '/' + b.max;
+        ctx.strokeText(label, bx + b.w / 2, by - 12);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(label, bx + b.w / 2, by - 12);
+        ctx.fillStyle = 'rgba(2,6,23,.75)';
+        ctx.fillRect(bx + 8, by - 8, b.w - 16, 6);
+        ctx.fillStyle = b.hp <= Math.ceil(b.max / 2) ? '#f87171' : '#4ade80';
+        ctx.fillRect(bx + 8, by - 8, (b.w - 16) * Math.max(0, b.hp / b.max), 6);
+        ctx.restore();
+      }
+      /* 돌풍 표시 */
+      if (b.gust > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.strokeStyle = '#bae6fd'; ctx.lineWidth = 4;
+        for (var s = 0; s < 3; s++) {
+          var gy = b.y - camY + 20 + s * 26;
+          ctx.beginPath();
+          ctx.moveTo(b.x + (b.gdir > 0 ? -30 : b.w + 30), gy);
+          ctx.lineTo(b.x + (b.gdir > 0 ? b.w + 90 : -90), gy);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      /* 투사체 */
+      for (var j = 0; j < (b.projs || []).length; j++) {
+        var pr = b.projs[j];
+        var py = pr.y - camY;
+        if (py < -40 || py > H + 40) continue;
+        ctx.save();
+        ctx.fillStyle = '#fb923c';
+        ctx.beginPath(); ctx.arc(pr.x, py, pr.r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fde68a';
+        ctx.beginPath(); ctx.arc(pr.x, py, pr.r * 0.45, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+    } catch (e) {}
+  }
+
+  /* ---------------- 훅 설치 (JWG.tick / G.canWin / V.onDrawFx) ---------------- */
+  var __storyTickHooked = false;
+  function hookStoryTick() {
+    if (__storyTickHooked) return;
+    var w = null;
+    try { w = root.JWG; } catch (e) {}
+    if (!w || typeof w.tick !== 'function') return;
+    if (w.__storyTickHooked) { __storyTickHooked = true; return; }
+    w.__storyTickHooked = true;
+    __storyTickHooked = true;
+    var orig = w.tick;
+    w.tick = function (dt) {
+      var r = orig.apply(this, arguments);
+      try { storyTick(dt); } catch (e) { try { console.warn('[story] tick', e); } catch (e2) {} }
+      return r;
+    };
+  }
+  function hookCoinGate() {
+    /* 코인 모드 승리 임계값 30 고정 → 스토리 판에만 스테이지 target 적용.
+       G.canWin은 v44 승리 게이트(29659행)에서만 불린다. */
+    var G = null;
+    try { G = V.G; } catch (e) {}
+    if (!G || typeof G.canWin !== 'function' || G.canWin.__storyCoin) return;
+    var orig = G.canWin;
+    var wrapped = function () {
+      try {
+        var run = V.storyRun;
+        if (run && !run.done && !run.failed) {
+          var st = STAGE_BY_IDX[run.index];
+          if (st && st.mission && st.mission.type === 'coins') {
+            var tgt = st.mission.target || 30;
+            var got = (V.G && V.G.coinsGot) || 0;
+            if (got < tgt) {
+              var now = 0;
+              try { now = performance.now(); } catch (e) { now = Date.now(); }
+              if (now - __coinGateT > 2500) {
+                __coinGateT = now;
+                try { V.toast('🪙 코인 ' + got + ' / ' + tgt, 'danger', tgt + '개를 모두 모아야 승리!', 2200); } catch (e) {}
+              }
+              return false;
+            }
+            return true;
+          }
+        }
+      } catch (e) {}
+      return orig.apply(this, arguments);
+    };
+    wrapped.__storyCoin = true;
+    G.canWin = wrapped;
+  }
+  function hookStoryDraw() {
+    /* V.onDrawFx 체인(다른 IIFE들과 같은 패턴). 나중에 교체되면 다시 걸림. */
+    try {
+      var cur = V.onDrawFx;
+      if (cur && cur.__storyDraw) return;
+      var prev = cur || function () {};
+      var next = function (ctx, camY, lh) {
+        try { prev(ctx, camY, lh); } catch (e) {}
+        try { storyBossDraw(ctx, camY, lh); } catch (e) {}
+      };
+      next.__storyDraw = true;
+      V.onDrawFx = next;
+    } catch (e) {}
+  }
+
+  /* ---------------- 주기 작업: 승리 훅 유지 + 타임어택 시간 + 판 종료 복원 ---------------- */
+  setInterval(function () {
+    try { hookVictory(); } catch (e) {}
+    try { hookStoryTick(); } catch (e) {}
+    try { hookCoinGate(); } catch (e) {}
+    try { hookStoryDraw(); } catch (e) {}
+    try {
+      var __sr = V.storyRun;
+      if (__sr && !__sr.done && !__sr.failed && V.inRun) {
+        var __sst = STAGE_BY_IDX[__sr.index];
+        if (__sst) storyHudEnsureBadge(__sst);
+      } else {
+        storyHudHide();
+      }
+    } catch (e) {}
+    try { if (!__migrated) migrateSkin(); } catch (e) {}
+    try {
+      var run = V.storyRun;
+      if (!run) return;
+      /* 타임어택: 스테이지 제한 시간으로 맞춤 (엔진은 120초 고정) */
+      if (run.mode === 'timeattack' && !run.timeSet) {
+        var st = STAGE_BY_IDX[run.index];
+        var tgt = st && st.mission ? st.mission.target : 0;
+        var solo = MD() && MD().solo;
+        if (st && tgt && tgt !== 120 && solo && solo.active && solo.mode === 'timeattack' && solo.timeLeft >= 118) {
+          solo.timeLeft = tgt;
+          run.timeSet = true;
+        } else if (solo && solo.active) {
+          run.timeSet = true;
+        }
+      }
+      /* 타이틀로 돌아왔으면 판 전 스킨으로 복원 (해금된 스킨은 그대로 둠) */
+      if (!V.inRun) {
+        var ts = document.getElementById('titleScreen');
+        if (ts && !ts.classList.contains('hidden')) {
+          var api = null;
+          try { api = V.api(); } catch (e) {}
+          var cur = null;
+          try { cur = api && api.meSkin ? api.meSkin() : null; } catch (e) {}
+          if (cur && V.skinLocked(cur)) {
+            try { if (api && api.setSkin) api.setSkin(run.prevSkin || 'jaeu'); } catch (e) {}
+          }
+          STORY_RUN_SKIN = null;
+          V.storyRun = null;
+          try { storyHudHide(); } catch (e) {}
+          updateStoryTitleProg();
+        }
+      }
+    } catch (e) {}
+  }, 500);
+
+  /* ---------------- 부팅 ---------------- */
+  function boot() {
+    var b = document.getElementById('btnStoryMode');
+    if (b && !b.__storyBound) {
+      b.__storyBound = true;
+      b.addEventListener('click', function () { openStory(); });
+    }
+    var nx = document.getElementById('storyDlgNext');
+    if (nx && !nx.__storyBound) {
+      nx.__storyBound = true;
+      nx.addEventListener('click', function () { dlgNext(); });
+    }
+    var pv = document.getElementById('storyDlgPrev');
+    if (pv && !pv.__storyBound) {
+      pv.__storyBound = true;
+      pv.addEventListener('click', function (e) { try { e.stopPropagation(); } catch (err) {} dlgPrev(); });
+    }
+    var rb = document.getElementById('storyRecallBtn');
+    if (rb && !rb.__storyBound) {
+      rb.__storyBound = true;
+      rb.addEventListener('click', function () { renderRecall(); });
+    }
+    var sk = document.getElementById('storyDlgSkip');
+    if (sk && !sk.__storyBound) {
+      sk.__storyBound = true;
+      sk.addEventListener('click', function (e) { try { e.stopPropagation(); } catch (err) {} dlgSkipAll(); });
+    }
+    var dt = document.getElementById('storyDlgText');
+    if (dt && !dt.__storyBound) {
+      dt.__storyBound = true;
+      dt.addEventListener('click', function () { dlgNext(); });
+    }
+    updateStoryTitleProg();
+    loadData(function () { migrateSkin(); });
+    setTimeout(function () { try { migrateSkin(); } catch (e) {} }, 2000);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+  if (root.document) root.addEventListener('load', function () { try { boot(); } catch (e) {} });
+
+  try { console.log('[story] v5.21 dlg-speed+rewind+recall+fade ready'); } catch (e) {}
 })(window);

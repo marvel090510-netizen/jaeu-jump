@@ -19,9 +19,9 @@
 </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>성공하고싶은 재우 - 한 번 더, 정상까지!</title>
-  
+    <link rel="stylesheet" href="tw.css?v=521tw">
+  <script src="game.js?v=521tw1" defer></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
-  <script src="game.js?v=515tw6" defer></script>
   <style>
     * {
       box-sizing: border-box;
@@ -339,107 +339,6 @@ html body #titleScreen {
   padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
 }
 </style>
-<script id="v515cam">/* v5.15 폰 시야: 화면이 세로로 길수록 카메라를 캐릭터 아래로 내려
-   위쪽(올라갈 곳)을 더 보여 준다. 기준 740(패드 높이)에서는 기존 240 그대로. */
-window.__v515CamOffRaw=function(){
-  try{
-    var vw=window.innerWidth||0, vh=window.innerHeight||0;
-    var H=window.__jwCamH||0;
-    if(!H&&vw&&vh) H=Math.max(740,540*vh/vw);
-    if(!H) return 240;
-    if(H<=800) return 240;
-    var off=Math.round(H*0.60);
-    if(off>H-240) off=H-240;
-    return off<240?240:off;
-  }catch(e){ return 240; }
-};
-/* v5.15-r3: 카메라 오프셋은 창 크기가 바뀔 때만 다시 계산한다 (프레임마다 호출됨). */
-window.v515CamOff=function(){
-  try{
-    var k=(window.innerWidth||0)+"x"+(window.innerHeight||0)+"|"+(window.__jwCamH||0);
-    if(window.__jwCamK===k && typeof window.__jwCamV==="number") return window.__jwCamV;
-    var v=window.__v515CamOffRaw();
-    window.__jwCamK=k; window.__jwCamV=v;
-    return v;
-  }catch(e){ return 240; }
-};
-</script>
-<link rel="stylesheet" href="tw.css?v=515tw">
-  <!-- ===== v5.15 폰 UI 3종 (390x844 기준) — 패드/데스크톱(561px~)은 건드리지 않는다 ===== -->
-  <style id="v515phone">
-  @media (max-width: 560px) {
-    /* ── ① 타이틀: 배너 위쪽부터 '다른 AI 테스트 버전'까지 스크롤 없이 한 화면에 ── */
-    html body #titleScreen { padding-bottom: max(4px, env(safe-area-inset-bottom)) !important; }
-    html body #titleScreen > div.relative.z-10 {
-      justify-content: flex-start !important;   /* 가운데 정렬이면 넘칠 때 위아래가 같이 잘린다 */
-      gap: 5px !important;
-      padding: calc(env(safe-area-inset-top, 0px) + 6px) 12px 4px !important;
-    }
-    html body #titleScreen .inline-flex.items-center.gap-2 {
-      padding: 2px 9px !important; margin-bottom: 3px !important;
-    }
-    html body #titleScreen .inline-flex.items-center.gap-2 > span {
-      font-size: 9.5px !important; line-height: 1.35 !important;
-    }
-    /* 배너: 로고가 잘리지 않게 위쪽 기준으로 낮춘다 */
-    html body #titleScreen #v43Cover {
-      aspect-ratio: 16 / 5.0 !important; object-position: center 34% !important;
-      border-radius: 12px !important;
-    }
-    /* 내 재우 카드 */
-    html body #titleScreen .mt-3.flex.items-center.gap-3.p-3 {
-      padding: 6px 9px !important; margin-top: 4px !important;
-      grid-template-columns: 36px 1fr !important; gap: 1px 8px !important; border-radius: 13px !important;
-    }
-    html body #titleScreen #titlePortraitImg { width: 36px !important; height: 36px !important; border-radius: 9px !important; }
-    html body #titleScreen #v43TitleProf .tn { font-size: 15px !important; }
-    html body #titleScreen #v43ProfEdit { padding: 2px 7px !important; font-size: 9.5px !important; }
-    html body #titleScreen #titleBestHeight { font-size: 16px !important; }
-    html body #titleScreen #titleBestPlat { font-size: 9px !important; padding: 1px 6px !important; }
-    html body #titleScreen .mt-3.flex.items-center.gap-3.p-3 span.px-2,
-    html body #titleScreen .mt-3.flex.items-center.gap-3.p-3 .px-2 { padding: 0 5px !important; }
-    /* 도전 시작 / 멀티 레이스 */
-    html body #titleScreen .grid.grid-cols-2 { margin-top: 4px !important; gap: 6px !important; }
-    html body #titleScreen .grid.grid-cols-2 > #btnStartGame,
-    html body #titleScreen .grid.grid-cols-2 > #btnMultiplayer {
-      padding: 3px 8px !important; border-radius: 12px !important;
-      min-height: 68px !important; height: 68px !important;
-    }
-    html body #titleScreen #btnStartGame .v50-b-tx b, html body #titleScreen #btnMultiplayer .v50-b-tx b { font-size: 14px !important; }
-    html body #titleScreen #btnStartGame .v50-b-ico img { width: 24px !important; height: 24px !important; }
-    /* 퀵 메뉴 6칸 (탭 크기 44px 는 유지) */
-    html body #titleScreen #v51Quick { gap: 3px !important; margin-top: 3px !important; }
-    html body #titleScreen #v51Quick .v51q { padding: 3px 8px !important; border-radius: 9px !important; }
-    html body #titleScreen #v51Quick .v51q b { font-size: 11px !important; }
-    html body #titleScreen #v51Quick .v51q i { font-size: 8px !important; }
-    html body #titleScreen #v51Quick .v51q .ic {
-      flex: 0 0 18px !important; width: 18px !important; height: 18px !important; font-size: 12px !important;
-    }
-    /* BGM 주크박스 */
-    html body #titleScreen #v48mgTitleWrap { margin-top: 3px !important; }
-    html body #titleScreen #v48mgTitleWrap #v48mgJuke {
-      height: 30px !important; min-height: 30px !important; font-size: 11px !important;
-    }
-    /* 하단 독 */
-    html body #titleScreen #v43TitleRow { margin-top: 4px !important; gap: 5px !important; }
-    html body #titleScreen #v43TitleRow.v42-trow > button {
-      height: 48px !important; min-height: 48px !important; font-size: 8.5px !important; gap: 1px !important;
-    }
-    html body #titleScreen #v43TitleRow.v42-trow > button span:first-child { font-size: 16px !important; height: 17px !important; }
-    /* 다른 AI 테스트 버전 */
-    html body #titleScreen #v43TestLink {
-      height: 28px !important; min-height: 28px !important; line-height: 28px !important;
-      font-size: 11px !important; padding: 0 !important;
-    }
-
-    /* ── ② 인게임 좌상단 HUD: 폰에서는 한 단계 더 작게 (발판·사다리 가림 최소화) ──
-       HUD 내부 크기는 --hc(UI 배율) 하나로 비례해서 줄어든다. */
-    html body #v49Hud {
-      width: min(46vw, 168px) !important;
-      --hc: 0.82 !important;
-    }
-  }
-  </style>
 </head>
 <body class="relative w-full h-full overflow-hidden select-none">
   <!-- muse-v5-13-perf: 같은 값을 다시 쓰는 DOM 변이를 무효화하는 최소 가드.
@@ -540,7 +439,7 @@ window.v515CamOff=function(){
     <div style="font-family:'Galmuri11',monospace;font-size:26px;font-weight:900;color:#fde68a;text-shadow:0 3px 0 #7c2d12;">성공하고싶은 재우</div>
     <div id="v59VeilSub" style="font-family:'Galmuri11',monospace;font-size:13px;color:#93c5fd;">로딩 중…</div>
   </div>
-  <script id="v515veil">/* v5.15 정식 루트: 베일은 '타이틀이 실제로 그려진 뒤' 걷는다.
+  <script id="v515veil">/* v5.16 테스트판: 베일은 '타이틀이 실제로 그려진 뒤' 걷는다. (정식 루트 v5.15-r4 방식과 동일)
   기존 v5.9 는 load 또는 3초 뒤 무조건 걷어서, 스크립트가 아직 도는 동안
   스타일 없는 반쪽 화면이 얼어붙은 것처럼 보였다. 준비 판정 + 최대 15초 + 경과 초 표시. */
 (function(){
@@ -655,6 +554,13 @@ window.v515CamOff=function(){
             </span>
           </button>
         </div>
+        <button id="btnStoryMode" type="button" class="pixel-btn-gold w-full py-2 px-4 font-bold text-sm flex items-center justify-between">
+          <span class="flex items-center gap-3">
+            <span class="text-xl leading-none">📖</span>
+            <span class="text-slate-950">스토리 모드</span>
+          </span>
+          <span id="storyTitleProg" class="text-xs" style="color:#4a2a05">64 스테이지 · 8 챕터</span>
+        </button>
         <div class="text-[10px] font-bold text-slate-400 -mt-1 px-1">싱글은 혼자 기록 도전 · 멀티는 방 코드/초대로 최대 6명 실시간 레이스</div>
 
         <button id="btnOpenSettingsTitle" type="button" class="pixel-btn-blue w-full py-2.5 px-4 font-bold text-base sm:text-lg text-white flex items-center justify-between">
@@ -990,7 +896,7 @@ window.v515CamOff=function(){
         <div class="text-xs font-black text-amber-300 mb-2">🏠 혼자 하기 규칙</div>
         <div id="v51HubSoloHost"></div>
       </div>
-      <div class="flex gap-2">
+      <div class="flex gap-2" style="position:sticky;bottom:0;z-index:5;background:#0b1020;padding:10px 0 2px;border-top:2px solid #1e293b">
         <button id="btnResetSettings" type="button" class="flex-1 py-2.5 font-bold text-xs sm:text-sm bg-slate-800 text-slate-300 border-2 border-slate-600 cursor-pointer">
           기본값 초기화
         </button>
@@ -1078,8 +984,7 @@ window.v515CamOff=function(){
   </div>
 
   <!-- ==================== CORE ENGINE SCRIPT ==================== -->
-  <!-- v5.15 split: 본문 인라인 <script> 108개(3.1MB)를 game.js 로 분리. iPad Safari 메인 스레드 정지(로딩 중… 멈춤) 해결 -->
-  
+  <!-- v59 inline block #4 -> game.js (was L940-3433) -->
 
 
 <!-- ================= 재우 4.0 멀티 레이스 UI ================= -->
@@ -1633,10 +1538,10 @@ window.v515CamOff=function(){
 
 
 <!-- ==================== 재우 4.1 멀티 레이스 엔진 ==================== -->
-
-
-
-
+<!-- v59 inline block #5 -> game.js (was L3987-4284) -->
+<!-- v59 inline block #6 -> game.js (was L4285-5165) -->
+<!-- v59 inline block #7 -> game.js (was L5166-6251) -->
+<!-- v59 inline block #8 -> game.js (was L6252-10480) -->
 <!-- ==================== 재우 4.2: 10종 신기능 (줄묶기·폭탄·고스트·보스·에디터·피버·랭킹·봇·날씨·하이라이트) ==================== -->
 <!-- ==================== 재우 4.2 UI: 10종 신기능 (모달·칩으로만, 플레이 화면은 그대로) ==================== -->
 <style>
@@ -1884,13 +1789,51 @@ window.v515CamOff=function(){
         <div class="v42-sub" style="margin-top:4px">미리보기는 게임에 나오는 그 도트 그림이에요.</div>
       </div>
     </div>
-    <div class="v42-sub" id="v43SkinCnt">스킨 64종 · 탭해서 바로 변경</div>
+    <div class="v42-sub" id="v43SkinCnt">스킨 20종 · 탭해서 바로 변경</div>
     <div id="v42SkinGrid" class="v42-skgrid"></div>
     <div class="v42-sub">캐릭터 색상</div>
     <div id="v42SkinColors" class="v42-colors"></div>
     <div style="display:flex;gap:5px">
       <button type="button" id="v42SkinRandom" class="v42-chip" style="flex:1;padding:8px">🎲 랜덤</button>
       <button type="button" id="v42SkinDone" class="mp-btn green" style="flex:1.6;padding:8px;font-size:12px">✅ 적용 완료</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 스토리 모드: 스테이지 선택 (v5.16) ============ -->
+<div id="storyModal" class="v42-modal hidden">
+  <div class="v42-card" style="max-width:26rem">
+    <div class="v42-h">
+      <div><div class="v42-t">📖 스토리 모드</div><div class="v42-sub" id="storyProgSub">64 스테이지 · 8 챕터 — 스테이지를 깨면 주인공 캐릭터가 해금돼요.</div></div>
+      <button type="button" class="v42-chip" data-v42close="storyModal">닫기 ✕</button>
+    </div>
+    <div id="storyChTabs" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+    <button type="button" id="storyRecallBtn" class="mp-btn" style="width:100%;padding:10px;font-size:14px;margin-top:6px">📖 대사 회상 — 본 대사 다시 보기</button>
+    <div id="storyStageList" style="display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+    <div id="storyDetail" class="hidden" style="display:flex;flex-direction:column;gap:7px"></div>
+    <div id="storyRecall" class="hidden" style="display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+  </div>
+</div>
+
+<!-- ============ 스토리 모드: 대사 장면 (비주얼 노벨식, v5.18 전체화면) ============ -->
+<div id="storyDlg" class="v42-modal hidden" style="padding:0;overflow:hidden">
+  <div id="storyDlgScene" style="position:relative;width:100%;height:100%;overflow:hidden;background:#0b1020;align-self:stretch;transition:opacity .35s ease,transform .35s ease">
+    <img id="storyDlgBg" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;transition:opacity .5s ease" onerror="this.style.display='none'">
+    <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,8,16,.10) 0%,rgba(5,8,16,.30) 45%,rgba(5,8,16,.80) 72%,rgba(5,8,16,.93) 100%)"></div>
+    <img id="storyDlgChara" src="" alt="" style="position:absolute;left:50%;bottom:238px;transform:translateX(-50%);height:min(50vh,520px);image-rendering:pixelated;display:none;transition:opacity .3s ease,transform .3s ease">
+    <div id="storyDlgBoss" style="position:absolute;left:50%;bottom:238px;transform:translateX(-50%);display:none"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;padding:14px;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))">
+      <div style="background:rgba(8,14,26,.92);border:2px solid #64748b;border-radius:14px;padding:14px">
+        <div class="v42-h" style="margin-bottom:8px">
+          <div><div class="v42-t" id="storyDlgWho">재우</div><div class="v42-sub">터치하면 다음 대사로 넘어가요.</div></div>
+        </div>
+        <div id="storyDlgText" style="min-height:76px;font-size:16px;font-weight:700;line-height:1.7;color:#fff;white-space:pre-wrap;transition:opacity .18s ease"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button type="button" id="storyDlgPrev" class="mp-btn" style="flex:1;padding:12px;font-size:15px">◀ 되감기</button>
+          <button type="button" id="storyDlgSkip" class="mp-btn" style="flex:1;padding:12px;font-size:15px">⏭ 대사 스킵</button>
+          <button type="button" id="storyDlgNext" class="mp-btn green" style="flex:2;padding:12px;font-size:15px">다음 ▶</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1925,7 +1868,7 @@ window.v515CamOff=function(){
   </div>
 </div>
 
-
+<!-- v59 inline block #9 -> game.js (was L10769-13456) -->
 <!-- ==================== 재우 4.3 UI ==================== -->
 <style>
   /* ---- 4.3 공통 ---- */
@@ -2199,7 +2142,7 @@ window.v515CamOff=function(){
       <input id="v43ProfNick" class="mp-in" maxlength="10" placeholder="닉네임" />
     </div>
     <div class="v43-block"><b>색상 12종</b><div id="v43ProfColors" class="v42-colors"></div></div>
-    <div class="v43-block"><b>스킨 64종</b><div id="v43ProfSkins" class="v42-skgrid"></div></div>
+    <div class="v43-block"><b>스킨 20종</b><div id="v43ProfSkins" class="v42-skgrid"></div></div>
     <div class="v43-block"><b>칭호</b><div id="v43ProfTitles" class="v43-opts"></div></div>
     <div class="v43-block"><b>🏅 내 기록 칭호 (맵·모드 최고 기록)</b>
       <div id="v43ProfRecTitles" class="v43-opts"></div>
@@ -2985,21 +2928,21 @@ window.v515CamOff=function(){
 </div>
 
 <!-- ==================== 재우 4.3 엔진 ==================== -->
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+<!-- v59 inline block #10 -> game.js (was L14516-15150) -->
+<!-- v59 inline block #11 -> game.js (was L15151-15251) -->
+<!-- v59 inline block #12 -> game.js (was L15252-15535) -->
+<!-- v59 inline block #13 -> game.js (was L15536-17325) -->
+<!-- v59 inline block #14 -> game.js (was L17326-19538) -->
+<!-- v59 inline block #15 -> game.js (was L19539-20775) -->
+<!-- v59 inline block #16 -> game.js (was L20776-20895) -->
+<!-- v59 inline block #17 -> game.js (was L20896-21127) -->
+<!-- v59 inline block #18 -> game.js (was L21128-21551) -->
+<!-- v59 inline block #19 -> game.js (was L21552-22836) -->
+<!-- v59 inline block #20 -> game.js (was L22837-23005) -->
+<!-- v59 inline block #21 -> game.js (was L23006-23376) -->
+<!-- v59 inline block #22 -> game.js (was L23377-23983) -->
+<!-- v59 inline block #23 -> game.js (was L23984-26929) -->
+<!-- v59 inline block #24 -> game.js (was L26930-43559) -->
 
 <!-- ===== v4.8.5 : 버그 수정 레이어 + 한눈에 보이는 UI (게임 분위기 유지) ===== -->
 <style id="v485css">
@@ -3478,10 +3421,10 @@ button, [role="button"]{touch-action:manipulation;}
 .v44-codextabs button, #v50CxTabs button{min-height:36px !important;padding:7px 4px !important;}
 #v44SideQuick button{min-height:44px !important;}
 </style>
-
+<!-- v59 inline block #25 -> game.js (was L44038-44465) -->
 
 <!-- ===== v4.8.5-2 PATCH START ===== -->
-
+<!-- v59 inline block #26 -> game.js (was L44468-46410) -->
 <!-- ===== v4.8.5-2 PATCH END ===== -->
 
 
@@ -3507,10 +3450,10 @@ button, [role="button"]{touch-action:manipulation;}
 
 
 <!-- ===== v4.8.5-3 PATCH START ===== -->
-
-
-
-
+<!-- v59 inline block #27 -> game.js (was L46436-46849) -->
+<!-- v59 inline block #28 -> game.js (was L46850-47236) -->
+<!-- v59 inline block #29 -> game.js (was L47237-47494) -->
+<!-- v59 inline block #30 -> game.js (was L47495-47679) -->
 <!-- ===== v4.8.5-3 PATCH END ===== -->
 
 
@@ -3666,7 +3609,7 @@ button, [role="button"]{touch-action:manipulation;}
 
 
 <!-- LP-GUARD-JS:START -->
-
+<!-- v59 inline block #31 -> game.js (was L47835-47853) -->
 <!-- LP-GUARD-JS:END -->
 
 
@@ -3728,86 +3671,86 @@ button, [role="button"]{touch-action:manipulation;}
 
 
 <!-- ===== v4.8-boss PATCH START ===== -->
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+<!-- v59 inline block #32 -> game.js (was L47915-48722) -->
+<!-- v59 inline block #33 -> game.js (was L48723-48856) -->
+<!-- v59 inline block #34 -> game.js (was L48857-49611) -->
+<!-- v59 inline block #35 -> game.js (was L49612-50219) -->
+<!-- v59 inline block #36 -> game.js (was L50220-50526) -->
+<!-- v59 inline block #37 -> game.js (was L50527-50853) -->
+<!-- v59 inline block #38 -> game.js (was L50854-51368) -->
+<!-- v59 inline block #39 -> game.js (was L51369-51781) -->
+<!-- v59 inline block #40 -> game.js (was L51782-52262) -->
+<!-- v59 inline block #41 -> game.js (was L52263-52935) -->
+<!-- v59 inline block #42 -> game.js (was L52936-53196) -->
+<!-- v59 inline block #43 -> game.js (was L53197-53546) -->
+<!-- v59 inline block #44 -> game.js (was L53547-53877) -->
+<!-- v59 inline block #45 -> game.js (was L53878-54046) -->
+<!-- v59 inline block #46 -> game.js (was L54047-54802) -->
+<!-- v59 inline block #47 -> game.js (was L54803-54822) -->
+<!-- v59 inline block #48 -> game.js (was L54823-57481) -->
+<!-- v59 inline block #49 -> game.js (was L57482-58170) -->
+<!-- v59 inline block #50 -> game.js (was L58171-58660) -->
+<!-- v59 inline block #51 -> game.js (was L58661-59159) -->
+<!-- v59 inline block #52 -> game.js (was L59160-59475) -->
+<!-- v59 inline block #53 -> game.js (was L59476-59775) -->
+<!-- v59 inline block #54 -> game.js (was L59776-60343) -->
+<!-- v59 inline block #55 -> game.js (was L60344-61235) -->
+<!-- v59 inline block #56 -> game.js (was L61236-61444) -->
+<!-- v59 inline block #57 -> game.js (was L61445-61612) -->
+<!-- v59 inline block #58 -> game.js (was L61613-61739) -->
+<!-- v59 inline block #59 -> game.js (was L61740-61846) -->
+<!-- v59 inline block #60 -> game.js (was L61847-61915) -->
+<!-- v59 inline block #61 -> game.js (was L61916-63231) -->
+<!-- v59 inline block #62 -> game.js (was L63232-63775) -->
+<!-- v59 inline block #63 -> game.js (was L63776-63827) -->
+<!-- v59 inline block #64 -> game.js (was L63828-63956) -->
+<!-- v59 inline block #65 -> game.js (was L63957-64454) -->
+<!-- v59 inline block #66 -> game.js (was L64455-64793) -->
+<!-- v59 inline block #67 -> game.js (was L64794-65258) -->
+<!-- v59 inline block #68 -> game.js (was L65259-65507) -->
+<!-- v59 inline block #69 -> game.js (was L65508-66203) -->
+<!-- v59 inline block #70 -> game.js (was L66204-66296) -->
+<!-- v59 inline block #71 -> game.js (was L66297-66857) -->
+<!-- v59 inline block #72 -> game.js (was L66858-67525) -->
+<!-- v59 inline block #73 -> game.js (was L67526-67818) -->
+<!-- v59 inline block #74 -> game.js (was L67819-68253) -->
+<!-- v59 inline block #75 -> game.js (was L68254-68381) -->
+<!-- v59 inline block #76 -> game.js (was L68382-68596) -->
+<!-- v59 inline block #77 -> game.js (was L68597-68846) -->
+<!-- v59 inline block #78 -> game.js (was L68847-68933) -->
+<!-- v59 inline block #79 -> game.js (was L68934-69118) -->
+<!-- v59 inline block #80 -> game.js (was L69119-69178) -->
+<!-- v59 inline block #81 -> game.js (was L69179-69298) -->
+<!-- v59 inline block #82 -> game.js (was L69299-69582) -->
+<!-- v59 inline block #83 -> game.js (was L69583-70206) -->
+<!-- v59 inline block #84 -> game.js (was L70207-70409) -->
+<!-- v59 inline block #85 -> game.js (was L70410-70674) -->
+<!-- v59 inline block #86 -> game.js (was L70675-70974) -->
+<!-- v59 inline block #87 -> game.js (was L70975-71076) -->
+<!-- v59 inline block #88 -> game.js (was L71077-71237) -->
+<!-- v59 inline block #89 -> game.js (was L71238-71305) -->
+<!-- v59 inline block #90 -> game.js (was L71306-71387) -->
+<!-- v59 inline block #91 -> game.js (was L71388-71521) -->
+<!-- v59 inline block #92 -> game.js (was L71522-71774) -->
+<!-- v59 inline block #93 -> game.js (was L71775-72032) -->
+<!-- v59 inline block #94 -> game.js (was L72033-72220) -->
+<!-- v59 inline block #95 -> game.js (was L72221-72490) -->
+<!-- v59 inline block #96 -> game.js (was L72491-72593) -->
+<!-- v59 inline block #97 -> game.js (was L72594-73049) -->
+<!-- v59 inline block #98 -> game.js (was L73050-73230) -->
+<!-- v59 inline block #99 -> game.js (was L73231-73476) -->
+<!-- v59 inline block #100 -> game.js (was L73477-73570) -->
+<!-- v59 inline block #101 -> game.js (was L73571-73638) -->
+<!-- v59 inline block #102 -> game.js (was L73639-73730) -->
+<!-- v59 inline block #103 -> game.js (was L73731-73858) -->
+<!-- v59 inline block #104 -> game.js (was L73859-74470) -->
+<!-- v59 inline block #105 -> game.js (was L74471-74999) -->
 <!-- ===== v4.8-boss PATCH END ===== -->
-
-
-
-
-
-
+<!-- v59 inline block #106 -> game.js (was L75001-75026) -->
+<!-- v59 inline block #107 -> game.js (was L75027-75145) -->
+<!-- v59 inline block #108 -> game.js (was L75146-75162) -->
+<!-- v59 inline block #109 -> game.js (was L75163-75182) -->
+<!-- v59 inline block #110 -> game.js (was L75183-75245) -->
+<!-- v59 inline block #111 -> game.js (was L75246-75444) -->
 </body>
 </html>
