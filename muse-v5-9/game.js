@@ -42140,7 +42140,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v5.23 · 64 MAPS';
+      sp[1].textContent = '★ v5.24 · 64 MAPS';
     }
   }
 
@@ -67940,6 +67940,8 @@ if (typeof module !== 'undefined' && module.exports) {
 
 
 /* ===== v5.23: 타이틀 전체화면 프롬프트 + 실제 보이는 높이에 맞춤 + 구 타이틀 UI 제거 ===== */
+/* v5.24: 갤럭시에서 프롬프트가 안 뜨던 문제 수정 — (1) 캐시버스터 v524tw1로 올려서 옛날 game.js(v523tw1, 프롬프트 없음) 캐시가 계속 뜨는 문제 해결.
+   (2) 프롬프트가 막히면 2초마다 다시 시도(최대 60초). (3) 거절은 24시간 뒤 다시 물어봄 + v1 'yes'만 이어받음. */
 /* - 타이틀 화면이 뜰 때 "전체화면 하시겠습니까?" 1회 질문 (수락/거절 기억, 매번 안 물음)
    - 수락: Fullscreen API (JW51FULL.enter). 아이폰(미지원)은 홈 화면 추가 안내 + 레이아웃 맞춤
    - 타이틀 맞춤: 실제 보이는 높이(visualViewport.height || innerHeight)에 맞춰 내용이 넘치면
@@ -67957,8 +67959,11 @@ if (typeof module !== 'undefined' && module.exports) {
   root.JW523TITLE = true;
   var doc = document;
   var $ = function (id) { return doc.getElementById(id); };
-  var KEY = 'jw_fs_prompt_v1';
+  var KEY = 'jw_fs_prompt_v2';
+  var OLD_KEY = 'jw_fs_prompt_v1';
   var promptOpen = false;
+  var retryTimer = null;
+  var NO_EXPIRE_MS = 24 * 60 * 60 * 1000; /* 거절은 24시간 뒤 다시 물어봄 */
 
   /* ---------- CSS (타이틀만) ---------- */
   function injectCss() {
@@ -67987,11 +67992,32 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   /* ---------- 저장된 선택 ---------- */
+  /* v5.24: v1에서 'yes'만 이어받음 (수락한 사람은 다시 안 물어봄). 'no'는 이어받지 않음 — 다시 물어봄.
+     거절은 'no:<시간>'으로 저장하고 24시간 지나면 만료돼서 다시 물어봄. */
+  function migrateChoice() {
+    try {
+      if (localStorage.getItem(KEY)) return;
+      if (localStorage.getItem(OLD_KEY) === 'yes') localStorage.setItem(KEY, 'yes');
+    } catch (e) {}
+  }
   function choice() {
-    try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; }
+    try {
+      var v = localStorage.getItem(KEY) || '';
+      if (!v) return '';
+      if (v === 'yes') return 'yes';
+      if (v.indexOf('no:') === 0) {
+        var t = parseInt(v.slice(3), 10);
+        if (!t || isNaN(t) || (Date.now() - t) > NO_EXPIRE_MS) return '';
+        return 'no';
+      }
+      return '';
+    } catch (e) { return ''; }
   }
   function saveChoice(v) {
-    try { localStorage.setItem(KEY, v); } catch (e) {}
+    try {
+      if (v === 'no') localStorage.setItem(KEY, 'no:' + Date.now());
+      else localStorage.setItem(KEY, v);
+    } catch (e) {}
   }
 
   /* ---------- 기기 판별 / 전체화면 ---------- */
@@ -68095,12 +68121,36 @@ if (typeof module !== 'undefined' && module.exports) {
     var m = buildPrompt();
     if (!m) return;
     promptOpen = true;
+    stopRetry();
     m.classList.remove('hidden');
   }
   function hidePrompt() {
     var m = $('v523FsPrompt');
     if (m) m.classList.add('hidden');
     promptOpen = false;
+    stopRetry();
+  }
+  /* v5.24: 프롬프트가 막히면(다른 모달 열림/타이틀 숨김) 2초마다 다시 시도 — 최대 60초.
+     갤럭시에서 모달·느린 로딩 때문에 한 번 놓치면 다시 안 뜨던 문제 방지. */
+  function tryPrompt() {
+    fitTitle();
+    showPrompt();
+    if (!promptOpen && !choice()) startRetry();
+  }
+  function startRetry() {
+    if (retryTimer) return;
+    var n = 0;
+    retryTimer = setInterval(function () {
+      n++;
+      if (promptOpen || choice() || n > 30) { stopRetry(); return; }
+      var ts = $('titleScreen');
+      if (!ts || ts.classList.contains('hidden')) { stopRetry(); return; }
+      showPrompt();
+      if (promptOpen) stopRetry();
+    }, 2000);
+  }
+  function stopRetry() {
+    if (retryTimer) { clearInterval(retryTimer); retryTimer = null; }
   }
   function onAccept() {
     saveChoice('yes');
@@ -68164,7 +68214,7 @@ if (typeof module !== 'undefined' && module.exports) {
     try { addTitleFsBtn(); } catch (e) {}
     fitTitle();
     setTimeout(fitTitle, 120);
-    setTimeout(function () { fitTitle(); showPrompt(); }, 600);
+    setTimeout(tryPrompt, 600);
   }
   function watchTitle() {
     var ts = $('titleScreen');
@@ -68199,6 +68249,7 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   /* ---------- 부트 ---------- */
+  try { migrateChoice(); } catch (e) {}
   try { injectCss(); } catch (e) {}
   try { removeOldTitleUI(); } catch (e) {}
   try { addTitleFsBtn(); } catch (e) {}
@@ -68210,6 +68261,13 @@ if (typeof module !== 'undefined' && module.exports) {
       if (ts && !ts.classList.contains('hidden')) onTitleVisible();
     } catch (e) {}
   }, 900);
+  /* v5.24: 느린 기기(갤럭시) 대비 — 3초 뒤 한 번 더 확인 */
+  setTimeout(function () {
+    try {
+      var ts = $('titleScreen');
+      if (ts && !ts.classList.contains('hidden') && !choice() && !promptOpen) onTitleVisible();
+    } catch (e) {}
+  }, 3000);
   console.log('[JW523TITLE] fullscreen prompt + title fit ready');
 })(window);
 
