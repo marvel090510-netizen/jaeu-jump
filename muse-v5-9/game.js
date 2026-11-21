@@ -10890,7 +10890,7 @@ extends CanvasLayer
       '<div class="v42-row"><span class="v42-lbl">🥊 78층부터 수문장</span><button type="button" class="v42-chip" id="v42CfgBoss">OFF</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">⛓️ 사슬 최대 거리</span><input type="range" id="v42CfgChain" min="120" max="340" step="10" style="width:96px" /></div>' +
       '<div class="v42-row"><span class="v42-lbl">🛠️ 개발자 모드</span><button type="button" class="v42-chip" id="v42CfgDev">OFF</button></div>' +
-      '<div class="v42-row" id="v42DevPinRow"><span class="v42-lbl">🔑 PIN 4자리</span><input type="text" class="mp-in" id="v42DevPin" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="0209" style="width:84px;text-align:center;letter-spacing:.2em;padding:6px 4px;font-size:14px" /><button type="button" class="v42-chip" id="v42DevPinOk">해금</button></div>' +
+      '<div class="v42-row" id="v42DevPinRow"><span class="v42-lbl">🔑 PIN 4자리</span><input type="password" class="mp-in" id="v42DevPin" maxlength="4" inputmode="numeric" autocomplete="off" style="width:84px;text-align:center;letter-spacing:.2em;padding:6px 4px;font-size:14px" /><button type="button" class="v42-chip" id="v42DevPinOk">해금</button></div>' +
       '<div class="v42-sub">날씨·수문장은 새로 시작하는 판부터 적용됩니다. 고스트는 이 기기에 저장된 내 기록으로 재생됩니다.</div>' +
       '<button type="button" id="v42GodotLink" hidden aria-hidden="true" tabindex="-1" style="display:none!important;margin-top:2px;font-size:10px;font-weight:800;color:#c4b5fd;text-decoration:underline;background:none;border:0;text-align:left;padding:2px 0;opacity:.75">📦 Godot 4 코드 · 도트 PNG 에셋 내보내기</button>';
     card.appendChild(box);
@@ -25077,12 +25077,34 @@ extends CanvasLayer
   /* 맵별 전용 트랙: 파일 audio/bgm-<id>.mp3 가 있으면 그 맵에서 재생 */
   var MAP_TRACKS = ['default', 'dessert', 'site', 'space', 'bamboo', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano',
     'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji', 'london', 'skycastle', 'pirate', 'carnival', 'mushroom', 'cyberpunk', 'olympus', 'lab', 'canyon', 'santa', 'stadium', 'rockfest', 'onsen', 'honey', 'library', 'cheese', 'dino', 'alien', 'gyeongju', 'venice', 'snowclock', 'fireworks', 'baseball', 'retro20'];
+  /* v5.20: 신규 19맵 챕터 BGM (마누스 제작, 챕터별 1트랙 · 파일 muse-v5-9/assets/audio/chapter-bgm-01~08.mp3).
+     story-data.json newMaps19의 chapter(0~7) 순서대로 매칭 — 트랙 01이 1장(데이터 ch0 프롤로그),
+     …, 트랙 08이 8장(데이터 ch7 심연의 문). 같은 챕터 맵끼리 같은 트랙 공유.
+     (마누스 README 분위기 표기와 데이터 챕터명은 일부 다름 — 순번 기준 매칭) */
+  var CHAPTER_BGM = {
+    alley: 'ch0', pond: 'ch0',
+    hatchery: 'ch1', burrow: 'ch1', wheatfield: 'ch1',
+    octocave: 'ch2', fruitfarm: 'ch2', savanna: 'ch2', halloween: 'ch2', slimemarsh: 'ch2',
+    boxing: 'ch3', mansionclean: 'ch3',
+    oldinn: 'ch4',
+    hospital: 'ch5', ruins: 'ch5',
+    sharkbay: 'ch6',
+    trench: 'ch7', vcastle: 'ch7', demonking: 'ch7'
+  };
   var BGM = { main: null, boss: null, lobby: null, cur: '', unlocked: false, target: 0 };
   function bgmAudio(file) {
     var a = new Audio();
     /* v4.8.4: 24곡을 한꺼번에 받지 않는다 — 실제로 틀 곡만 preload='auto' 로 전환 */
     a.preload = 'none';
     a.src = subPath() + 'audio/' + file;
+    a.loop = true; a.volume = 0;
+    return a;
+  }
+  /* v5.20: 챕터 BGM은 스토리 애셋 폴더에 있음 (스토리 BGM·음성과 같은 경로 규칙) */
+  function bgmChapterAudio(ci) {
+    var a = new Audio();
+    a.preload = 'none';
+    a.src = 'muse-v5-9/assets/audio/chapter-bgm-0' + (ci + 1) + '.mp3';
     a.loop = true; a.volume = 0;
     return a;
   }
@@ -25093,6 +25115,7 @@ extends CanvasLayer
       BGM.boss = bgmAudio('bgm-boss.mp3');
       BGM.lobby = bgmAudio('bgm-lobby.mp3');
       MAP_TRACKS.forEach(function (k) { BGM[k] = bgmAudio('bgm-' + k + '.mp3'); });
+      for (var ci = 0; ci < 8; ci++) { BGM['ch' + ci] = bgmChapterAudio(ci); }
     } catch (e) {}
   }
   function bgmCurMap() {
@@ -25145,9 +25168,10 @@ extends CanvasLayer
     var _bossAlive = false;
     try { var _G = V.G; _bossAlive = !!(_G && _G.boss && !(_G.boss.dead || _G.boss.gone)); } catch (e) {}
     var boss = inPlay && (_bm === 'boss' || _bm === 'bossrush' || _bm === 'raid' || _bossAlive);
-    /* 라우팅: 타이틀·로비 → 로비 / 보스·80%↑ → 보스 / 맵 전용 → 그 맵 / 나머지 → 메인 */
+    /* 라우팅: 타이틀·로비 → 로비 / 보스·80%↑ → 보스 / 맵 전용 → 그 맵 / 신규 19맵 → 챕터 BGM / 나머지 → 메인 */
     var mapId = bgmCurMap();
-    var wantTrack = !inPlay ? 'lobby' : (boss ? 'boss' : (MAP_TRACKS.indexOf(mapId) >= 0 ? mapId : 'main'));
+    var chTrack = CHAPTER_BGM[mapId]; /* v5.20: 신규 19맵은 챕터 BGM (같은 챕터끼리 공유) */
+    var wantTrack = !inPlay ? 'lobby' : (boss ? 'boss' : (MAP_TRACKS.indexOf(mapId) >= 0 ? mapId : (chTrack ? chTrack : 'main')));
     if (BGM.cur !== wantTrack) {
       var old = BGM[BGM.cur];
       if (old) { try { old.pause(); } catch (e) {} }
@@ -41875,7 +41899,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v5.19 · 64 MAPS';
+      sp[1].textContent = '★ v5.20 · 64 MAPS';
     }
   }
 
@@ -75338,6 +75362,7 @@ if (typeof module !== 'undefined' && module.exports) {
      음성: muse-v5-9/assets/voices/s{stage 3자리}_t{턴 1~7}.mp3
      턴 번호는 voice-index.json 순서 그대로: 1~3 인트로, 4~5 클리어, 6~7 보스. */
   var dlgStage = null, dlgAudio = null;
+  var dlgVoicePre = null, dlgVoicePreUrl = ''; /* v5.20: 다음 줄 음성 미리 받아두기 */
 
   /* ---- 스토리 대사 장면 전용 BGM (v5.19) ----
      규칙(태겸 결정): 대사 장면에서는 메인 BGM 완전 일시정지(덕킹 아님) + 스토리 BGM만 재생.
@@ -75426,8 +75451,12 @@ if (typeof module !== 'undefined' && module.exports) {
     try {
       if (dlgAudio) { dlgAudio.pause(); dlgAudio = null; }
       if (!url) return;
-      var a = new Audio(url);
+      /* v5.20: 미리 받아둔 다음 줄 음성이 있으면 그대로 재생 (새로 만들지 않음) */
+      var a = null;
+      if (dlgVoicePre && dlgVoicePreUrl === url) { a = dlgVoicePre; dlgVoicePre = null; dlgVoicePreUrl = ''; }
+      else { a = new Audio(url); }
       a.volume = 1;
+      try { a.currentTime = 0; } catch (e) {}
       var p = a.play();
       if (p && p.catch) p.catch(function () {});
       dlgAudio = a;
@@ -75435,6 +75464,31 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   function dlgStopVoice() {
     try { if (dlgAudio) { dlgAudio.pause(); dlgAudio = null; } } catch (e) {}
+  }
+  /* v5.20: 다음 줄 초상 URL 계산 (dlgPortrait와 같은 규칙, DOM은 안 건드림) */
+  function dlgPortraitUrlFor(line, st) {
+    try {
+      if (!st) return '';
+      if (line.kind === 'boss') return dlgBossPortraitUrl(st);
+      if (line.speaker === '재우') return dlgSkinPortraitUrl('jaeu');
+      return dlgSkinPortraitUrl(st.skinId);
+    } catch (e) { return ''; }
+  }
+  /* v5.20: 다음 줄 미리 받아두기 — 음성 MP3 + 초상. 다음 누르자마자 바로 나오게. */
+  function dlgPrefetchNext() {
+    try {
+      if (!dlgLines || dlgIdx + 1 >= dlgLines.length) return;
+      var nx = dlgLines[dlgIdx + 1];
+      if (!nx) return;
+      if (nx.audio && nx.audio !== dlgVoicePreUrl) {
+        var a = new Audio(nx.audio);
+        a.preload = 'auto';
+        try { a.load(); } catch (e) {}
+        dlgVoicePre = a; dlgVoicePreUrl = nx.audio;
+      }
+      var u = dlgPortraitUrlFor(nx, dlgStage);
+      if (u && u.indexOf('data:') !== 0) { var im = new Image(); im.src = u; }
+    } catch (e) {}
   }
   function dlgSetScene(st) {
     var bg = $('storyDlgBg');
@@ -75530,10 +75584,15 @@ if (typeof module !== 'undefined' && module.exports) {
     chara.style.opacity = '0'; boss.style.opacity = '0';
     dlgPortraitTimer = setTimeout(apply, 180);
   }
+  /* v5.20: 타이핑 타이머 정리 — rAF(지금 방식) + setInterval(옛 잔재) 둘 다 끊기 */
+  function dlgClearTimer() {
+    try { if (dlgTimer) { cancelAnimationFrame(dlgTimer); clearInterval(dlgTimer); dlgTimer = null; } } catch (e) { dlgTimer = null; }
+  }
   function dlgStop() {
-    if (dlgTimer) { clearInterval(dlgTimer); dlgTimer = null; }
+    dlgClearTimer();
     if (dlgPortraitTimer) { clearTimeout(dlgPortraitTimer); dlgPortraitTimer = null; }
     dlgLines = null; dlgDone = null; dlgTyping = false; dlgStage = null; dlgLastWho = '';
+    dlgVoicePre = null; dlgVoicePreUrl = '';
     dlgStopVoice();
   }
   function dlgShow() {
@@ -75556,7 +75615,7 @@ if (typeof module !== 'undefined' && module.exports) {
     try { storyBgmStop(); storyMainBgmResume(); } catch (e) {}
     /* 입력 즉시 차단 후 장면 페이드아웃; 숨김은 애니메이션 뒤에 */
     dlgLines = null; dlgDone = null; dlgTyping = false;
-    if (dlgTimer) { clearInterval(dlgTimer); dlgTimer = null; }
+    dlgClearTimer();
     dlgStopVoice();
     var sc = $('storyDlgScene');
     if (sc) { sc.style.opacity = '0'; sc.style.transform = 'translateY(10px)'; }
@@ -75571,7 +75630,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (dlgTyping) {
       /* 타이핑 중이면 한 번에 다 보여주기 */
       dlgTyping = false;
-      if (dlgTimer) { clearInterval(dlgTimer); dlgTimer = null; }
+      dlgClearTimer();
       var t = $('storyDlgText');
       if (t) t.textContent = dlgFull;
       return;
@@ -75584,6 +75643,14 @@ if (typeof module !== 'undefined' && module.exports) {
       return;
     }
     dlgTypeLine(dlgLines[dlgIdx]);
+  }
+  function dlgSkipAll() {
+    if (!dlgLines) { dlgHide(); return; }
+    /* v5.20: 대사 전부 건너뛰고 바로 스테이지 시작 (끝 ▶ 과 같은 흐름) */
+    var cb = dlgDone;
+    dlgClearTimer();
+    dlgHide();
+    if (cb) { try { cb(); } catch (e) {} }
   }
   function dlgTypeLine(line) {
     var who = $('storyDlgWho'), txt = $('storyDlgText'), next = $('storyDlgNext');
@@ -75599,22 +75666,45 @@ if (typeof module !== 'undefined' && module.exports) {
     dlgPlayVoice(line.audio || '');
     dlgFull = body;
     dlgTyping = true;
-    var n = 0;
     if (txt) {
       txt.textContent = '';
       txt.style.opacity = '0';
       requestAnimationFrame(function () { requestAnimationFrame(function () { txt.style.opacity = '1'; }); });
     }
-    if (dlgTimer) clearInterval(dlgTimer);
-    dlgTimer = setInterval(function () {
-      n++;
-      if (txt) txt.textContent = body.slice(0, n);
-      if (n % 3 === 0) { try { var s = J() && J().sfx; if (s && s.mp3) s.mp3('dlg_tick', 0.25); } catch (e) {} }
+    dlgClearTimer();
+    /* v5.20: 타이핑은 경과 시간 기준으로 돌린다. rAF가 늦게 돌아와도 지난 시간만큼
+       글자를 한 번에 채워서 속도가 절대 느려지지 않음 — 소리가 늦어져도 글자는 제 속도.
+       (옛날 방식: setInterval 22ms + 세 글자마다 mp3 틱. 아이패드 사파리에서 같은
+       오디오 엘리먼트를 currentTime=0으로 되돌려 다시 트는 게 메인 스레드를 멈춰
+       22ms 타이머가 굶주려 글자당 0.5초까지 느려졌음) */
+    var start = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    var lastN = 0, lastTick = 0;
+    var step = function (now) {
+      if (!dlgTyping) return;
+      var t = (now || 0) - start;
+      if (t < 0) t = 0;
+      var n = Math.floor(t / 22) + 1;
+      if (n > body.length) n = body.length;
+      if (n > lastN) {
+        if (txt) txt.textContent = body.slice(0, n);
+        /* 틱: 3글자마다 한 번, 가벼운 합성음. mp3 엘리먼트 재생은 쓰지 않음 */
+        var tk = Math.floor(n / 3);
+        if (tk > lastTick) {
+          lastTick = tk;
+          try { var s = J() && J().sfx; if (s && s.tone) s.tone(1500, 'sine', 0.03, 0.05); } catch (e) {}
+        }
+        lastN = n;
+      }
       if (n >= body.length) {
         dlgTyping = false;
-        clearInterval(dlgTimer); dlgTimer = null;
+        dlgTimer = null;
+        return;
       }
-    }, 22);
+      dlgTimer = requestAnimationFrame(step);
+    };
+    dlgTimer = requestAnimationFrame(step);
+    /* 다음 줄 미리 받아두기 (음성 + 초상) — 다음 누르자마자 바로 나오게 */
+    dlgPrefetchNext();
   }
   function playLines(lines, onDone, st) {
     if (!lines || !lines.length) { if (onDone) onDone(); return; }
@@ -76422,6 +76512,11 @@ if (typeof module !== 'undefined' && module.exports) {
       nx.__storyBound = true;
       nx.addEventListener('click', function () { dlgNext(); });
     }
+    var sk = document.getElementById('storyDlgSkip');
+    if (sk && !sk.__storyBound) {
+      sk.__storyBound = true;
+      sk.addEventListener('click', function (e) { try { e.stopPropagation(); } catch (err) {} dlgSkipAll(); });
+    }
     var dt = document.getElementById('storyDlgText');
     if (dt && !dt.__storyBound) {
       dt.__storyBound = true;
@@ -76435,5 +76530,5 @@ if (typeof module !== 'undefined' && module.exports) {
   else boot();
   if (root.document) root.addEventListener('load', function () { try { boot(); } catch (e) {} });
 
-  try { console.log('[story] v5.19 mission+boss ready'); } catch (e) {}
+  try { console.log('[story] v5.20 dlg-speed+skip ready'); } catch (e) {}
 })(window);

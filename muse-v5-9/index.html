@@ -20,7 +20,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>성공하고싶은 재우 - 한 번 더, 정상까지!</title>
     <link rel="stylesheet" href="muse-v5-9/tw.css?v=519tw">
-  <script src="muse-v5-9/game.js?v=519tw1" defer></script>
+  <script src="muse-v5-9/game.js?v=520tw1" defer></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
   <style>
     * {
@@ -1826,7 +1826,10 @@ html body #titleScreen {
           <div><div class="v42-t" id="storyDlgWho">재우</div><div class="v42-sub">터치하면 다음 대사로 넘어가요.</div></div>
         </div>
         <div id="storyDlgText" style="min-height:76px;font-size:16px;font-weight:700;line-height:1.7;color:#fff;white-space:pre-wrap;transition:opacity .18s ease"></div>
-        <button type="button" id="storyDlgNext" class="mp-btn green" style="width:100%;padding:12px;font-size:15px">다음 ▶</button>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button type="button" id="storyDlgSkip" class="mp-btn" style="flex:1;padding:12px;font-size:15px">⏭ 대사 스킵</button>
+          <button type="button" id="storyDlgNext" class="mp-btn green" style="flex:2;padding:12px;font-size:15px">다음 ▶</button>
+        </div>
       </div>
     </div>
   </div>
