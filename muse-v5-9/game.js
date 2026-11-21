@@ -42131,7 +42131,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v5.21 · 64 MAPS';
+      sp[1].textContent = '★ v5.23 · 64 MAPS';
     }
   }
 
@@ -64893,9 +64893,9 @@ if (typeof module !== 'undefined' && module.exports) {
 /* ===== v59 inline block #71 (was index.html L66297-66857) ===== */
 
 /* ==========================================================================
-   v5.1-titles : 칭호 대개편 — 등급 · 일러스트 배지 · 45맵 클리어/1위 칭호
+   v5.1-titles : 칭호 대개편 — 등급 · 일러스트 배지 · 64맵 클리어/1위 칭호 (v5.23: 신규 19맵 추가)
    - 등급: 일반 / 희귀(블루) / 영웅(퍼플 네온) / 전설(골드·무지개) / 👑 1위 한정
-   - 45맵 각각 '클리어 칭호' + '랭킹 1위 전용 칭호'(맵별 고유 멘트, 1위 유지 시에만)
+   - 64맵 각각 '클리어 칭호' + '랭킹 1위 전용 칭호'(맵별 고유 멘트, 1위 유지 시에만)
    - 배지는 16×16 픽셀 아트를 canvas 로 구워 dataURL 로 어디서나 사용
    - 1위를 내주면 자동 잠금 + 장착 중이면 해제 안내
    ========================================================================== */
@@ -64955,13 +64955,34 @@ if (typeof module !== 'undefined' && module.exports) {
     fireworks:['불꽃놀이', '축제의 왕'],
     baseball: ['야간 경기', '나이트 게임 MVP'],
     retro20:  ['추억의 등반', '태초의 레전드'],
+    alley: ['골목길 등반가', '지붕 위의 왕'],
+    pond: ['연잎의 개구리', '연못의 왕'],
+    hatchery: ['병아리 친구', '양계장의 주인'],
+    burrow: ['토끼 굴 탐험가', '당근밭의 왕'],
+    wheatfield: ['밀밭의 수확자', '바람개비의 왕'],
+    octocave: ['항아리 동굴 탐험가', '문어의 왕'],
+    fruitfarm: ['바나나 농부', '과일 시장의 왕'],
+    savanna: ['사바나의 질주자', '초원의 왕'],
+    halloween: ['사탕 거리 탐험가', '할로윈의 왕'],
+    slimemarsh: ['슬라임 친구', '늪의 군주'],
+    boxing: ['링 위의 도전자', '링의 챔피언'],
+    mansionclean: ['대청소의 달인', '호화 저택의 주인'],
+    oldinn: ['강시 마을 탐험가', '객잔의 주인'],
+    hospital: ['응급실의 수호자', '병원의 원장'],
+    ruins: ['고대 폐허 탐험가', '돌 신전의 왕'],
+    sharkbay: ['상어 해류의 생존자', '바다의 사냥왕'],
+    trench: ['난파선 탐험가', '심해의 지배자'],
+    vcastle: ['지하 묘지의 탐험가', '뱀파이어의 왕'],
+    demonking: ['마왕성 도전자', '지옥의 지배자'],
     custom:   ['나만의 길', '창조의 지배자']
   };
   var ORDER = ['default', 'dessert', 'site', 'space', 'bamboo', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano',
     'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji',
     'london', 'skycastle', 'pirate', 'carnival', 'mushroom', 'cyberpunk', 'olympus', 'lab', 'canyon', 'santa',
     'stadium', 'rockfest', 'onsen', 'honey', 'library', 'cheese', 'dino', 'alien', 'gyeongju', 'venice',
-    'snowclock', 'fireworks', 'baseball', 'retro20'];
+    'snowclock', 'fireworks', 'baseball', 'retro20',
+    'alley', 'pond', 'hatchery', 'burrow', 'wheatfield', 'octocave', 'fruitfarm', 'savanna', 'halloween', 'slimemarsh',
+    'boxing', 'mansionclean', 'oldinn', 'hospital', 'ruins', 'sharkbay', 'trench', 'vcastle', 'demonking'];
 
   /* ---------- 등급 ---------- */
   /* common | rare | epic | legend | champion */
@@ -65025,7 +65046,11 @@ if (typeof module !== 'undefined' && module.exports) {
     carnival: 'star', mushroom: 'tree', cyberpunk: 'tower', olympus: 'dome', lab: 'wave', canyon: 'pyramid',
     santa: 'tree', stadium: 'dome', rockfest: 'star', onsen: 'tower', honey: 'dome', library: 'dome',
     cheese: 'pyramid', dino: 'skull', alien: 'star', gyeongju: 'dome', venice: 'boat', snowclock: 'tower',
-    fireworks: 'star', baseball: 'dome', retro20: 'tower', custom: 'gear'
+    fireworks: 'star', baseball: 'dome', retro20: 'tower',
+    alley: 'tower', pond: 'wave', hatchery: 'dome', burrow: 'tree', wheatfield: 'gear', octocave: 'wave',
+    fruitfarm: 'tree', savanna: 'tree', halloween: 'ghost', slimemarsh: 'wave', boxing: 'dome', mansionclean: 'dome',
+    oldinn: 'ghost', hospital: 'dome', ruins: 'pyramid', sharkbay: 'wave', trench: 'boat', vcastle: 'ghost',
+    demonking: 'fire', custom: 'gear'
   };
 
   /* ---------- 칭호 등록 ---------- */
@@ -65422,7 +65447,7 @@ if (typeof module !== 'undefined' && module.exports) {
       b.type = 'button';
       b.className = 'v51btn gold sm';
       b.style.marginTop = '6px';
-      b.textContent = '🏅 칭호 도감 (45맵 · 1위 전용)';
+      b.textContent = '🏅 칭호 도감 (64맵 · 1위 전용)';
       b.addEventListener('click', function () { ensure(); doc.getElementById('v51Titles').classList.remove('hide'); paint(); });
       host.parentElement.appendChild(b);
     });
