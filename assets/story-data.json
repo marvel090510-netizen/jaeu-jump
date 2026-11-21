@@ -3,37 +3,19 @@
  "title": "성공하고싶은 재우 · 스토리 모드 64 스테이지",
  "generatedAt": "2026-11-21",
  "sourceOfTruth": "jaeu-jump-site/game.js (v5.15-r5, 읽기 전용 확인 · 코드 수정 없음)",
- "lockPolicy": "lock_all_except_default_4",
- "lockPolicyDesc": "스토리 모드·일반 모드·스킨 선택창 모두 기본 4종만 열려 있고, 스토리 클리어로 해금",
+ "lockPolicy": "lock_all_except_default_1",
+ "lockPolicyDesc": "스토리 모드·일반 모드·스킨 선택창 모두 기본재우만 열려 있고, 스토리 클리어로 해금",
  "defaultUnlockedSkins": [
-  "jaeu",
-  "cat",
-  "frog",
-  "robot"
+  "jaeu"
  ],
  "defaultUnlockedSkinNames": [
   {
    "id": "jaeu",
    "name": "기본 재우",
    "emoji": "🧑"
-  },
-  {
-   "id": "cat",
-   "name": "고양이",
-   "emoji": "🐱"
-  },
-  {
-   "id": "frog",
-   "name": "개구리",
-   "emoji": "🐸"
-  },
-  {
-   "id": "robot",
-   "name": "로봇",
-   "emoji": "🤖"
   }
  ],
- "unlockRule": "스테이지 클리어 → 그 스테이지 주인공 캐릭터 해금 + 다음 스테이지 개방. 기본 4종은 처음부터 보유(1~4번은 해금 대신 다음 챕터 개방).",
+ "unlockRule": "스테이지 클리어 → 그 스테이지 주인공 캐릭터 해금 + 다음 스테이지 개방. 기본재우는 처음부터 보유. 고양이(2번)·개구리(3번)·로봇(4번)은 해당 스테이지 클리어 시 해금.",
  "chapters": [
   {
    "id": "ch0",
@@ -153,12 +135,13 @@
     "type": "clear",
     "target": 1,
     "label": "교실 창문을 넘어 옥상 계단까지 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "야간 당직 선생님 철수쌤",
     "emoji": "🔦",
-    "hp": 3,
+    "hp": 2,
     "pattern": "손전등 불빛을 좌우로 훑으며 다가온다. 불빛에 닿으면 1회 피격.",
     "dialogue": [
      "철수쌤: 거기 서! 아직 하교 시간 안 됐어!",
@@ -189,18 +172,19 @@
    "skinEmoji": "🐱",
    "hidden": false,
    "startUnlocked": true,
-   "unlockSkin": null,
+   "unlockSkin": "cat",
    "title": "비 갠 뒤, 지붕 위로",
    "mission": {
     "type": "max_falls",
-    "target": 3,
-    "label": "골목 길고양이에게 생선 3개 나눠주기 — 낙하 3회 이하로 완등",
-    "engineMode": "normal"
+    "target": 5,
+    "label": "골목 길고양이에게 생선 3개 나눠주기 — 낙하 5회 이하로 완등",
+    "engineMode": "normal",
+    "clearMode": "both"
    },
    "boss": {
     "name": "골목 대장 냥",
     "emoji": "😾",
-    "hp": 3,
+    "hp": 2,
     "pattern": "고양이 그림자가 발판을 옆으로 밀고, 풍선 발판이 터진다.",
     "dialogue": [
      "골목 대장 냥: 이 골목 지붕은 내 구역이다, 냐옹.",
@@ -231,18 +215,19 @@
    "skinEmoji": "🐸",
    "hidden": false,
    "startUnlocked": true,
-   "unlockSkin": null,
+   "unlockSkin": "frog",
    "title": "연잎 하나, 두 개",
    "mission": {
     "type": "time_limit",
-    "target": 150,
-    "label": "연못에 빠진 병아리 2마리 구하기 — 2분 30초 안에 완등",
-    "engineMode": "timeattack"
+    "target": 225,
+    "label": "연못에 빠진 병아리 2마리 구하기 — 3분 45초 안에 완등",
+    "engineMode": "timeattack",
+    "clearMode": "both"
    },
    "boss": {
     "name": "황소개구리 왕눈이",
     "emoji": "🐸",
-    "hp": 3,
+    "hp": 2,
     "pattern": "혀로 발판을 낚아채고, 물결로 연잎을 뒤집는다.",
     "dialogue": [
      "황소개구리 왕눈이: 개굴! 내 연못에서 물장구 치지 마라!",
@@ -273,18 +258,19 @@
    "skinEmoji": "🤖",
    "hidden": false,
    "startUnlocked": true,
-   "unlockSkin": null,
+   "unlockSkin": "robot",
    "title": "태엽이 멈추기 전에",
    "mission": {
     "type": "boss_clear",
     "target": 1,
-    "label": "시계탑 꼭대기의 태엽기사를 이기고 정상까지 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "label": "시계탑 꼭대기의 태엽기사를 이기면 클리어!",
+    "engineMode": "boss",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "태엽기사",
     "emoji": "⚙️",
-    "hp": 4,
+    "hp": 3,
     "pattern": "진자처럼 좌우로 돌진하고, 톱니 탄막을 3발씩 발사한다.",
     "dialogue": [
      "태엽기사: 태엽이 다 감기기 전엔 못 지나간다, 삐걱.",
@@ -319,14 +305,15 @@
    "title": "버섯 갓을 디디고",
    "mission": {
     "type": "combo",
-    "target": 6,
-    "label": "세계수 꼭대기까지 손 놓지 않고 오르기 — 6콤보 이상 달성",
-    "engineMode": "normal"
+    "target": 4,
+    "label": "세계수 꼭대기까지 손 놓지 않고 오르기 — 4콤보만 달성하면 클리어!",
+    "engineMode": "normal",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "포자 왕",
     "emoji": "🍄",
-    "hp": 3,
+    "hp": 2,
     "pattern": "포자를 뿌려 화면을 뿌옇게 하고, 갓 발판을 폭신하게 만들어 점프를 흔든다.",
     "dialogue": [
      "포자 왕: 포자야, 내 포자를 두려워하거라.",
@@ -361,14 +348,15 @@
    "title": "벌집의 층층 계단",
    "mission": {
     "type": "coins",
-    "target": 18,
-    "label": "벌집 왕국 곳곳의 꿀단지를 모으기 — 코인 18개 수집 후 완등",
-    "engineMode": "coins"
+    "target": 12,
+    "label": "벌집 왕국 곳곳의 꿀단지를 모으기 — 코인 12개만 모으면 클리어!",
+    "engineMode": "coins",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "경호대장 말벌",
     "emoji": "🐝",
-    "hp": 3,
+    "hp": 2,
     "pattern": "좌우로 순찰하며 찌르고, 밀랍 발판을 끈적하게 만든다.",
     "dialogue": [
      "경호대장 말벌: 윙! 벌집에 무단 침입이다!",
@@ -405,12 +393,13 @@
     "type": "clear",
     "target": 1,
     "label": "구멍투성이 치즈 탑 꼭대기까지 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "치즈 도둑 쥐왕",
     "emoji": "🐭",
-    "hp": 3,
+    "hp": 2,
     "pattern": "치즈 벽을 갉아 새 발판을 만들고, 부스러기를 떨어뜨린다.",
     "dialogue": [
      "치즈 도둑 쥐왕: 내 치즈다! 구멍마다 다 내 거야!",
@@ -445,14 +434,15 @@
    "title": "삐약, 아직 안 깨졌어",
    "mission": {
     "type": "max_falls",
-    "target": 3,
-    "label": "굴러오는 알을 피해 둥지까지 — 낙하 3회 이하로 완등",
-    "engineMode": "normal"
+    "target": 5,
+    "label": "굴러오는 알을 피해 둥지까지 — 낙하 5회 이하로 완등",
+    "engineMode": "normal",
+    "clearMode": "both"
    },
    "boss": {
     "name": "수탉 새벽대왕",
     "emoji": "🐓",
-    "hp": 3,
+    "hp": 2,
     "pattern": "새벽 울음으로 화면을 흔들고, 닭벼슬 발판을 뒤집는다.",
     "dialogue": [
      "수탉 새벽대왕: 꼬끼오! 아직 새벽인데 왜 깨어 있느냐!",
@@ -487,14 +477,15 @@
    "title": "당근 뽑고 굴로",
    "mission": {
     "type": "min_jump",
-    "target": 68,
-    "label": "당근 5개를 뽑아 굴 입구에 쌓기 — 점프 68회 이하로 완등",
-    "engineMode": "minjump"
+    "target": 90,
+    "label": "당근 5개를 뽑아 굴 입구에 쌓기 — 점프 90회 이하로 완등",
+    "engineMode": "minjump",
+    "clearMode": "both"
    },
    "boss": {
     "name": "여우 허수아비",
     "emoji": "🦊",
-    "hp": 3,
+    "hp": 2,
     "pattern": "가짜 발판을 세우고, 밟으면 사라진다.",
     "dialogue": [
      "여우 허수아비: 내 밭에서 뭘 뽑는 거야.",
@@ -529,14 +520,15 @@
    "title": "밀 이랑 위의 노을",
    "mission": {
     "type": "combo",
-    "target": 6,
-    "label": "바람개비를 타고 언덕 오르기 — 6콤보 이상 달성",
-    "engineMode": "normal"
+    "target": 4,
+    "label": "바람개비를 타고 언덕 오르기 — 4콤보만 달성하면 클리어!",
+    "engineMode": "normal",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "까마귀 대장 검은부리",
     "emoji": "🐦‍⬛",
-    "hp": 3,
+    "hp": 2,
     "pattern": "발판을 쪼아 흔들고, 떼를 불러 시야를 가린다.",
     "dialogue": [
      "까마귀 대장 검은부리: 까악! 이 밭은 우리 사냥터다!",
@@ -571,14 +563,15 @@
    "title": "선물 공장 야간 근무",
    "mission": {
     "type": "time_limit",
-    "target": 150,
-    "label": "선물 포장 라인을 통과 — 2분 30초 안에 완등",
-    "engineMode": "timeattack"
+    "target": 225,
+    "label": "선물 포장 라인을 통과 — 3분 45초 안에 완등",
+    "engineMode": "timeattack",
+    "clearMode": "both"
    },
    "boss": {
     "name": "장난감 정비공 엘프 대장",
     "emoji": "🧝",
-    "hp": 3,
+    "hp": 2,
     "pattern": "태엽 장난감을 굴려 발판을 밀고, 리본으로 길을 묶는다.",
     "dialogue": [
      "엘프 대장: 리본! 리본을 다시 묶어야 해!",
@@ -615,12 +608,13 @@
     "type": "clear",
     "target": 1,
     "label": "과자 탑 꼭대기, 초콜릿이 녹기 전에 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "설탕 마녀",
     "emoji": "🍬",
-    "hp": 4,
+    "hp": 3,
     "pattern": "솜사탕 바람으로 밀고, 캐러멜을 부어 발판을 굳힌다.",
     "dialogue": [
      "설탕 마녀: 달콤한 건 원래 위험한 거야, 얘야.",
@@ -655,14 +649,15 @@
    "title": "2분의 전설",
    "mission": {
     "type": "time_limit",
-    "target": 120,
-    "label": "가장 짧은 맵, 2분의 전설을 따라 — 2분 안에 완등",
-    "engineMode": "timeattack"
+    "target": 180,
+    "label": "가장 짧은 맵, 2분의 전설을 따라 — 3분 안에 완등",
+    "engineMode": "timeattack",
+    "clearMode": "both"
    },
    "boss": {
     "name": "픽셀 수문장",
     "emoji": "🕹️",
-    "hp": 3,
+    "hp": 2,
     "pattern": "8비트 탄막을 일정한 리듬으로 뿌리고, 화면 끝으로 밀어낸다.",
     "dialogue": [
      "픽셀 수문장: 리듬을 맞춰라. 삐- 빅- 삐-",
@@ -699,12 +694,13 @@
     "type": "clear",
     "target": 1,
     "label": "문어 항아리 동굴의 여덟 팔 왕좌까지 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "거대 문어 여덟팔",
     "emoji": "🐙",
-    "hp": 4,
+    "hp": 3,
     "pattern": "먹물로 시야를 가리고, 다리로 발판을 좌우로 옮긴다.",
     "dialogue": [
      "거대 문어 여덟팔: 내 항아리들을 뒤지지 마라.",
@@ -740,13 +736,14 @@
    "mission": {
     "type": "boss_clear",
     "target": 1,
-    "label": "아틀란티스 종탑의 수호자를 이기고 정상까지 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "label": "아틀란티스 종탑의 수호자를 이기면 클리어!",
+    "engineMode": "boss",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "심해 종지기 크라켄 주니어",
     "emoji": "🦑",
-    "hp": 4,
+    "hp": 3,
     "pattern": "촉수로 발판을 감아 부수고, 물기둥으로 밀어올린다.",
     "dialogue": [
      "크라켄 주니어: 종은 내가 지킨다, 뿌우우.",
@@ -781,14 +778,15 @@
    "title": "과일 수레 대소동",
    "mission": {
     "type": "coins",
-    "target": 18,
-    "label": "시장 수레 사이에서 과일 배달 — 코인 18개 수집 후 완등",
-    "engineMode": "coins"
+    "target": 12,
+    "label": "시장 수레 사이에서 과일 배달 — 코인 12개만 모으면 클리어!",
+    "engineMode": "coins",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "킹 바나나",
     "emoji": "🍌",
-    "hp": 4,
+    "hp": 3,
     "pattern": "껍질을 뿌려 미끄럽게 만들고, 수레를 굴려 발판을 민다.",
     "dialogue": [
      "킹 바나나: 껍질 조심해. 내가 다 뿌려놨거든.",
@@ -825,12 +823,13 @@
     "type": "clear",
     "target": 1,
     "label": "마른 사바나를 지나 바오밥 언덕까지 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "뿔코뿔소",
     "emoji": "🦏",
-    "hp": 4,
+    "hp": 3,
     "pattern": "돌진으로 발판을 부수고, 흙먼지로 시야를 가린다.",
     "dialogue": [
      "뿔코뿔소: 쿵! 쿵! 내 물길이다!",
@@ -865,14 +864,15 @@
    "title": "사탕 거리의 밤",
    "mission": {
     "type": "combo",
-    "target": 8,
-    "label": "호박이 켜질 때만 발판이 보인다 — 8콤보 이상 달성",
-    "engineMode": "normal"
+    "target": 5,
+    "label": "호박이 켜질 때만 발판이 보인다 — 5콤보만 달성하면 클리어!",
+    "engineMode": "normal",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "킹 펌킨",
     "emoji": "🎃",
-    "hp": 4,
+    "hp": 3,
     "pattern": "호박 폭탄을 던지고, 불빛이 꺼지면 암전이 온다.",
     "dialogue": [
      "킹 펌킨: 불이 꺼지면 아무것도 안 보여. 후후.",
@@ -908,13 +908,14 @@
    "mission": {
     "type": "boss_clear",
     "target": 1,
-    "label": "점액 늪을 건너 반란 슬라임을 꺾기 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "label": "점액 늪을 건너 반란 슬라임을 꺾기 — 보스만 격파하면 클리어!",
+    "engineMode": "boss",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "반란 슬라임 검은젤리",
     "emoji": "🫧",
-    "hp": 4,
+    "hp": 3,
     "pattern": "발판을 통째로 삼켜 구멍을 만들고, 점액을 튀긴다.",
     "dialogue": [
      "검은젤리: 왕좌는 내 거다. 늪도 내 거다.",
@@ -949,14 +950,15 @@
    "title": "가면 무도회의 밤",
    "mission": {
     "type": "time_limit",
-    "target": 210,
-    "label": "카니발이 끝나기 전 종탑까지 — 3분 30초 안에 완등",
-    "engineMode": "timeattack"
+    "target": 315,
+    "label": "카니발이 끝나기 전 종탑까지 — 5분 15초 안에 완등",
+    "engineMode": "timeattack",
+    "clearMode": "both"
    },
    "boss": {
     "name": "가면 무도회의 주인",
     "emoji": "🎭",
-    "hp": 4,
+    "hp": 3,
     "pattern": "가면을 바꿔 패턴을 바꾸고, 곤돌라 발판을 흔든다.",
     "dialogue": [
      "가면 무도회의 주인: 가면 없이 온 손님은 없습니다.",
@@ -991,14 +993,15 @@
    "title": "증기를 피해 오르기",
    "mission": {
     "type": "max_falls",
-    "target": 2,
-    "label": "끓는 온천 김을 피해 목조 탑 정상까지 — 낙하 2회 이하로 완등",
-    "engineMode": "normal"
+    "target": 4,
+    "label": "끓는 온천 김을 피해 목조 탑 정상까지 — 낙하 4회 이하로 완등",
+    "engineMode": "normal",
+    "clearMode": "both"
    },
    "boss": {
     "name": "온천 주인 유키온나",
     "emoji": "👘",
-    "hp": 4,
+    "hp": 3,
     "pattern": "증기를 뿜어 발판을 숨기고, 얼음 발판을 미끄럽게 만든다.",
     "dialogue": [
      "유키온나: 증기를 마시면 길을 잃는다. 후우.",
@@ -1035,12 +1038,13 @@
     "type": "clear",
     "target": 1,
     "label": "남산타워까지, 한강 바람을 맞으며 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "한강 갈매기 대장",
     "emoji": "🐦",
-    "hp": 4,
+    "hp": 3,
     "pattern": "급강하로 발판을 낚아채고, 라면 김에 시야를 가린다.",
     "dialogue": [
      "한강 갈매기 대장: 끼룩! 발판은 내 사냥터다!",
@@ -1075,14 +1079,15 @@
    "title": "빅벤의 12시",
    "mission": {
     "type": "no_damage",
-    "target": 0,
-    "label": "수상한 안개 속, 빅벤을 넘어 — 피격 0회로 완등",
-    "engineMode": "normal"
+    "target": 1,
+    "label": "수상한 안개 속, 빅벤을 넘어 — 피격 1회 이하로 완등",
+    "engineMode": "normal",
+    "clearMode": "both"
    },
    "boss": {
     "name": "안개 사냥꾼 모리어티",
     "emoji": "🎩",
-    "hp": 4,
+    "hp": 3,
     "pattern": "안개를 불러 발판을 가리고, 시계추를 흔들어 밀어낸다.",
     "dialogue": [
      "모리어티: 안개 속에서는 아무도 날 못 봐.",
@@ -1117,14 +1122,15 @@
    "title": "토스터가 켜졌다",
    "mission": {
     "type": "time_limit",
-    "target": 180,
-    "label": "터지기 직전의 토스터, 그 위층까지 — 3분 안에 완등",
-    "engineMode": "timeattack"
+    "target": 270,
+    "label": "터지기 직전의 토스터, 그 위층까지 — 4분 30초 안에 완등",
+    "engineMode": "timeattack",
+    "clearMode": "both"
    },
    "boss": {
     "name": "조수 냄비봇",
     "emoji": "🍳",
-    "hp": 4,
+    "hp": 3,
     "pattern": "끓는 물을 쏟고, 프라이팬을 던져 발판을 뒤집는다.",
     "dialogue": [
      "조수 냄비봇: 삐- 조리 중. 통행 금지.",
@@ -1159,14 +1165,15 @@
    "title": "네온 픽셀 속으로",
    "mission": {
     "type": "coins",
-    "target": 30,
-    "label": "오락실 곳곳의 코인을 모으고 정상까지 — 코인 30개 수집 후 완등",
-    "engineMode": "coins"
+    "target": 20,
+    "label": "오락실 곳곳의 코인을 모으기 — 코인 20개만 모으면 클리어!",
+    "engineMode": "coins",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "오락실 주인 네온 마스터",
     "emoji": "👾",
-    "hp": 4,
+    "hp": 3,
     "pattern": "픽셀 탄막을 뿌리고, 발판을 순간이동시킨다.",
     "dialogue": [
      "네온 마스터: 코인은 내 거다. 하나도 못 가져가.",
@@ -1201,14 +1208,15 @@
    "title": "한밤중의 퍼레이드",
    "mission": {
     "type": "no_damage",
-    "target": 0,
-    "label": "퍼레이드 조명과 풍선 사이를 지나 — 피격 0회로 완등",
-    "engineMode": "normal"
+    "target": 1,
+    "label": "퍼레이드 조명과 풍선 사이를 지나 — 피격 1회 이하로 완등",
+    "engineMode": "normal",
+    "clearMode": "both"
    },
    "boss": {
     "name": "놀이공원 지배인 미스터 웃음",
     "emoji": "🎪",
-    "hp": 4,
+    "hp": 3,
     "pattern": "풍선을 터뜨려 발판을 흔들고, 회전목마를 돌려 길을 바꾼다.",
     "dialogue": [
      "미스터 웃음: 웃지 않으면 풍선이 터진다아-",
@@ -1245,12 +1253,13 @@
     "type": "clear",
     "target": 1,
     "label": "마스코트 곰, 빈 관중석을 지나 조명탑까지 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "응원단장 붐붐",
     "emoji": "🥁",
-    "hp": 4,
+    "hp": 3,
     "pattern": "북소리로 발판을 흔들고, 응원 깃발로 시야를 가린다.",
     "dialogue": [
      "응원단장 붐붐: 두구두구- 오늘의 도전자!",
@@ -1285,14 +1294,15 @@
    "title": "야간 시합, 포수석까지",
    "mission": {
     "type": "combo",
-    "target": 8,
-    "label": "글러브 집게로 공을 받으며 — 8콤보 이상 달성",
-    "engineMode": "normal"
+    "target": 5,
+    "label": "글러브 집게로 공을 받으며 — 5콤보만 달성하면 클리어!",
+    "engineMode": "normal",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "야간 투수 그림자",
     "emoji": "⚾",
-    "hp": 4,
+    "hp": 3,
     "pattern": "강속구를 던져 발판을 부수고, 견제구로 밀어낸다.",
     "dialogue": [
      "야간 투수 그림자: 스트라이크! 넌 아웃이야.",
@@ -1328,13 +1338,14 @@
    "mission": {
     "type": "boss_clear",
     "target": 1,
-    "label": "링 위에서 챔피언을 꺾고 벨트까지 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "label": "링 위에서 챔피언을 꺾고 벨트까지 — 보스만 격파하면 클리어!",
+    "engineMode": "boss",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "챔피언 강철주먹",
     "emoji": "🥊",
-    "hp": 5,
+    "hp": 4,
     "pattern": "3연타를 날리고, 링 로프로 밀어내 떨어뜨린다.",
     "dialogue": [
      "챔피언 강철주먹: 3라운드. 숨이 차면 넌 끝이야.",
@@ -1371,12 +1382,13 @@
     "type": "clear",
     "target": 1,
     "label": "다락 창가까지, 먼지를 쓸며 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "까다로운 영감님",
     "emoji": "🕯️",
-    "hp": 4,
+    "hp": 3,
     "pattern": "촛대를 떨어뜨려 불을 붙이고, 먼지를 일으켜 발판을 가린다.",
     "dialogue": [
      "까다로운 영감님: 이봐! 촛대에 먼지 앉았어!",
@@ -1412,13 +1424,14 @@
    "mission": {
     "type": "boss_clear",
     "target": 1,
-    "label": "한옥 지붕을 넘어 첨성대의 도깨비를 꺾기 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "label": "한옥 지붕을 넘어 첨성대의 도깨비를 꺾기 — 보스만 격파하면 클리어!",
+    "engineMode": "boss",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "도깨비 장수 쇠뿔이",
     "emoji": "👹",
-    "hp": 5,
+    "hp": 4,
     "pattern": "방망이로 지붕을 내리치고, 도깨비불을 뿌린다.",
     "dialogue": [
      "도깨비 장수 쇠뿔이: 달이 밝다! 이런 밤엔 내가 제일 세지!",
@@ -1455,12 +1468,13 @@
     "type": "clear",
     "target": 1,
     "label": "피라미드의 저주를 피해 태양 문까지 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "미라 대사제 아눕",
     "emoji": "🪦",
-    "hp": 4,
+    "hp": 3,
     "pattern": "붕대로 발판을 묶고, 모래바람으로 시야를 가린다.",
     "dialogue": [
      "아눕: 이 계단은 수천 년을 지켜 왔다.",
@@ -1497,12 +1511,13 @@
     "type": "clear",
     "target": 1,
     "label": "공룡 박물관 밤, 용의 골격을 지나 옥상까지 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "화석 용의 그림자",
     "emoji": "🐲",
-    "hp": 4,
+    "hp": 3,
     "pattern": "뼈 발판을 부수고, 밤의 울음으로 화면을 흔든다.",
     "dialogue": [
      "화석 용의 그림자: 크아아… 아직 내 뼈는 살아있다.",
@@ -1537,14 +1552,15 @@
    "title": "무지개 다리 위에서",
    "mission": {
     "type": "no_damage",
-    "target": 0,
-    "label": "구름 발판이 사라지는 다리 위에서 — 피격 0회로 완등",
-    "engineMode": "normal"
+    "target": 1,
+    "label": "구름 발판이 사라지는 다리 위에서 — 피격 1회 이하로 완등",
+    "engineMode": "normal",
+    "clearMode": "both"
    },
    "boss": {
     "name": "구름 도둑",
     "emoji": "☁️",
-    "hp": 4,
+    "hp": 3,
     "pattern": "구름을 데려가 발판을 없애고, 번개를 흘린다.",
     "dialogue": [
      "구름 도둑: 구름은 내 거야. 다 가져갈 거야.",
@@ -1579,14 +1595,15 @@
    "title": "여신상의 밤 순찰",
    "mission": {
     "type": "time_limit",
-    "target": 250,
-    "label": "NYPD 야간 순찰, 여신상 횃불까지 — 4분 10초 안에 완등",
-    "engineMode": "timeattack"
+    "target": 375,
+    "label": "NYPD 야간 순찰, 여신상 횃불까지 — 6분 15초 안에 완등",
+    "engineMode": "timeattack",
+    "clearMode": "both"
    },
    "boss": {
     "name": "밀수 두목 셰이디",
     "emoji": "🕶️",
-    "hp": 5,
+    "hp": 4,
     "pattern": "부두 상자를 던지고, 사다리를 끊어 길을 막는다.",
     "dialogue": [
      "셰이디: 이 부두엔 내 물건만 있어.",
@@ -1621,14 +1638,15 @@
    "title": "철골 위의 구조",
    "mission": {
     "type": "max_falls",
-    "target": 2,
-    "label": "무너지는 공사장에서 사람을 구조 — 낙하 2회 이하로 완등",
-    "engineMode": "normal"
+    "target": 4,
+    "label": "무너지는 공사장에서 사람을 구조 — 낙하 4회 이하로 완등",
+    "engineMode": "normal",
+    "clearMode": "both"
    },
    "boss": {
     "name": "붕괴 크레인",
     "emoji": "🏗️",
-    "hp": 5,
+    "hp": 4,
     "pattern": "크레인 팔을 휘둘러 발판을 부수고, 철골을 떨어뜨린다.",
     "dialogue": [
      "붕괴 크레인: 경고. 위험 지역. 접근 금지.",
@@ -1663,14 +1681,15 @@
    "title": "달리는 지붕 위",
    "mission": {
     "type": "time_limit",
-    "target": 180,
-    "label": "기차가 터널로 들어가기 전 — 3분 안에 완등",
-    "engineMode": "timeattack"
+    "target": 270,
+    "label": "기차가 터널로 들어가기 전 — 4분 30초 안에 완등",
+    "engineMode": "timeattack",
+    "clearMode": "both"
    },
    "boss": {
     "name": "기차 강도 두목 블랙잭",
     "emoji": "🤠",
-    "hp": 5,
+    "hp": 4,
     "pattern": "지붕을 달리며 총을 쏘고, 터널 입구로 강제로 밀어낸다.",
     "dialogue": [
      "블랙잭: 이 기차는 내 거야. 지붕 위에선 내가 왕이지.",
@@ -1707,12 +1726,13 @@
     "type": "clear",
     "target": 1,
     "label": "얼음 계단을 지나 북극의 성문까지 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "빙하 거인",
     "emoji": "🧊",
-    "hp": 5,
+    "hp": 4,
     "pattern": "얼음 주먹으로 발판을 깨고, 눈보라로 밀어낸다.",
     "dialogue": [
      "빙하 거인: 이 성은 얼음으로 지켜진다.",
@@ -1748,13 +1768,14 @@
    "mission": {
     "type": "boss_clear",
     "target": 1,
-    "label": "객잔 지붕 위 강시 대장을 봉인 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "label": "객잔 지붕 위 강시 대장을 봉인 — 보스만 격파하면 클리어!",
+    "engineMode": "boss",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "강시 대장 푸른송곳니",
     "emoji": "🧟",
-    "hp": 5,
+    "hp": 4,
     "pattern": "팔을 뻗어 뛰어오르고, 부적을 떼어내 공격을 되돌린다.",
     "dialogue": [
      "푸른송곳니: …쿵… 쿵… 쿵…",
@@ -1789,14 +1810,15 @@
    "title": "저택의 촛불",
    "mission": {
     "type": "no_damage",
-    "target": 0,
-    "label": "촛불이 꺼지는 저택을 지나 — 피격 0회로 완등",
-    "engineMode": "normal"
+    "target": 1,
+    "label": "촛불이 꺼지는 저택을 지나 — 피격 1회 이하로 완등",
+    "engineMode": "normal",
+    "clearMode": "both"
    },
    "boss": {
     "name": "저택의 주인 백작 부인",
     "emoji": "🕯️",
-    "hp": 5,
+    "hp": 4,
     "pattern": "촛불을 꺼 암전을 만들고, 갑옷을 움직여 발판을 막는다.",
     "dialogue": [
      "백작 부인: 이 저택에서 촛불은 내 허락 없이 못 켠다.",
@@ -1831,14 +1853,15 @@
    "title": "무대 조명 사이로",
    "mission": {
     "type": "combo",
-    "target": 9,
-    "label": "무대 조명을 가로질러 — 9콤보 이상 달성",
-    "engineMode": "normal"
+    "target": 6,
+    "label": "무대 조명을 가로질러 — 6콤보만 달성하면 클리어!",
+    "engineMode": "normal",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "무대 지배인 라우드",
     "emoji": "🎸",
-    "hp": 5,
+    "hp": 4,
     "pattern": "스피커로 발판을 흔들고, 조명을 터뜨려 시야를 가린다.",
     "dialogue": [
      "라우드: 무대 위에선 소리가 왕이다!",
@@ -1873,14 +1896,15 @@
    "title": "야간 응급실",
    "mission": {
     "type": "time_limit",
-    "target": 240,
-    "label": "응급 환자를 옥상 헬기까지 — 4분 안에 완등",
-    "engineMode": "timeattack"
+    "target": 360,
+    "label": "응급 환자를 옥상 헬기까지 — 6분 안에 완등",
+    "engineMode": "timeattack",
+    "clearMode": "both"
    },
    "boss": {
     "name": "그림자 의사",
     "emoji": "🩺",
-    "hp": 5,
+    "hp": 4,
     "pattern": "들것을 발판 삼아 추격하고, 경보로 조명을 어둡게 만든다.",
     "dialogue": [
      "그림자 의사: 환자는 내가 데려간다.",
@@ -1916,13 +1940,14 @@
    "mission": {
     "type": "boss_clear",
     "target": 1,
-    "label": "실험실 지붕까지, 과학자를 막고 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "label": "실험실 지붕까지, 과학자를 막고 — 보스만 격파하면 클리어!",
+    "engineMode": "boss",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "미친 과학자 박사",
     "emoji": "⚡",
-    "hp": 5,
+    "hp": 4,
     "pattern": "번개를 끌어내려 발판을 태우고, 시험관을 던진다.",
     "dialogue": [
      "미친 과학자 박사: 번개! 번개를 다시!",
@@ -1957,14 +1982,15 @@
    "title": "재가 내리는 숲",
    "mission": {
     "type": "max_falls",
-    "target": 2,
-    "label": "화산재 내리는 숲을 지나 — 낙하 2회 이하로 완등",
-    "engineMode": "normal"
+    "target": 4,
+    "label": "화산재 내리는 숲을 지나 — 낙하 4회 이하로 완등",
+    "engineMode": "normal",
+    "clearMode": "both"
    },
    "boss": {
     "name": "용암 랩터 우두머리",
     "emoji": "🦖",
-    "hp": 5,
+    "hp": 4,
     "pattern": "돌진으로 발판을 부수고, 불씨를 흩뿌린다.",
     "dialogue": [
      "용암 랩터: 크르르… 여긴 내 사냥터다.",
@@ -1999,14 +2025,15 @@
    "title": "그랜드 캐니언의 바람",
    "mission": {
     "type": "min_jump",
-    "target": 102,
-    "label": "붉은 절벽을 따라 서쪽 끝까지 — 점프 102회 이하로 완등",
-    "engineMode": "minjump"
+    "target": 135,
+    "label": "붉은 절벽을 따라 서쪽 끝까지 — 점프 135회 이하로 완등",
+    "engineMode": "minjump",
+    "clearMode": "both"
    },
    "boss": {
     "name": "독수리 그림자",
     "emoji": "🦅",
-    "hp": 5,
+    "hp": 4,
     "pattern": "급강하로 발판을 차고, 모래바람으로 밀어낸다.",
     "dialogue": [
      "독수리 그림자: 이 협곡은 내 하늘이다.",
@@ -2041,14 +2068,15 @@
    "title": "둥둥 떠다니는 책",
    "mission": {
     "type": "combo",
-    "target": 9,
-    "label": "책 발판을 밟고 도서관 꼭대기까지 — 9콤보 이상 달성",
-    "engineMode": "normal"
+    "target": 6,
+    "label": "책 발판을 밟고 도서관 꼭대기까지 — 6콤보만 달성하면 클리어!",
+    "engineMode": "normal",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "금서의 수호자",
     "emoji": "📖",
-    "hp": 5,
+    "hp": 4,
     "pattern": "책장을 넘겨 발판을 바꾸고, 글자로 길을 막는다.",
     "dialogue": [
      "금서의 수호자: 이 책은 읽는 게 아니야. 지키는 거야.",
@@ -2084,13 +2112,14 @@
    "mission": {
     "type": "boss_clear",
     "target": 1,
-    "label": "룬 3개를 순서대로 밝히고 수호자를 꺾기 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "label": "룬 3개를 순서대로 밝히고 수호자를 꺾기 — 보스만 격파하면 클리어!",
+    "engineMode": "boss",
+    "clearMode": "mission"
    },
    "boss": {
     "name": "태고의 수호자",
     "emoji": "🗿",
-    "hp": 5,
+    "hp": 4,
     "pattern": "돌주먹으로 발판을 부수고, 룬 순서를 뒤집는다.",
     "dialogue": [
      "태고의 수호자: 룬의 순서를 틀리면 돌이 너를 삼킨다.",
@@ -2127,12 +2156,13 @@
     "type": "boss_clear",
     "target": 1,
     "label": "올림포스의 시험을 통과하고 신전 꼭대기까지 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "engineMode": "boss",
+    "clearMode": "both"
    },
    "boss": {
     "name": "신전의 문지기 타이탄",
     "emoji": "🏛️",
-    "hp": 6,
+    "hp": 5,
     "pattern": "번개를 떨어뜨리고, 신전 기둥을 뽑아 던진다.",
     "dialogue": [
      "타이탄: 이 신전은 신도 못 넘는다.",
@@ -2167,14 +2197,15 @@
    "title": "불꽃이 꺼지기 전",
    "mission": {
     "type": "time_limit",
-    "target": 260,
-    "label": "축제 불꽃 아래, 황금 빌딩 옥상까지 — 4분 20초 안에 완등",
-    "engineMode": "timeattack"
+    "target": 390,
+    "label": "축제 불꽃 아래, 황금 빌딩 옥상까지 — 6분 30초 안에 완등",
+    "engineMode": "timeattack",
+    "clearMode": "both"
    },
    "boss": {
     "name": "불꽃 마술사",
     "emoji": "🎆",
-    "hp": 5,
+    "hp": 4,
     "pattern": "불꽃이 사방으로 터져 발판을 태우고, 연기로 시야를 가린다.",
     "dialogue": [
      "불꽃 마술사: 불꽃은 손끝에서 태어나 손끝에서 죽는다.",
@@ -2211,12 +2242,13 @@
     "type": "clear",
     "target": 1,
     "label": "우주 정거장 바깥에서 별까지 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "관리 AI 오르빗",
     "emoji": "🛰️",
-    "hp": 5,
+    "hp": 4,
     "pattern": "중력을 꺼 발판을 띄우고, 레이저로 길을 끊는다.",
     "dialogue": [
      "오르빗: 관리 모드. 무단 침입자 감지.",
@@ -2253,12 +2285,13 @@
     "type": "boss_clear",
     "target": 1,
     "label": "돛대를 오르고 크라켄을 몰아내기 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "engineMode": "boss",
+    "clearMode": "both"
    },
    "boss": {
     "name": "크라켄",
     "emoji": "🦑",
-    "hp": 5,
+    "hp": 4,
     "pattern": "촉수로 돛대를 감아 흔들고, 물기둥을 세운다.",
     "dialogue": [
      "크라켄: 이 바다는 내 영역이다. 뿌우우.",
@@ -2293,14 +2326,15 @@
    "title": "해류를 거슬러",
    "mission": {
     "type": "max_falls",
-    "target": 2,
-    "label": "상어 순찰로를 지나 상어 왕의 바다까지 — 낙하 2회 이하로 완등",
-    "engineMode": "normal"
+    "target": 4,
+    "label": "상어 순찰로를 지나 상어 왕의 바다까지 — 낙하 4회 이하로 완등",
+    "engineMode": "normal",
+    "clearMode": "both"
    },
    "boss": {
     "name": "메갈로돈",
     "emoji": "🦈",
-    "hp": 5,
+    "hp": 4,
     "pattern": "돌진하며 발판을 물어뜯고, 해류를 반대로 돌린다.",
     "dialogue": [
      "메갈로돈: 이 해류는 내 사냥길이다.",
@@ -2335,14 +2369,15 @@
    "title": "후지산에서 시부야까지",
    "mission": {
     "type": "time_limit",
-    "target": 300,
-    "label": "닌자처럼 산을 넘어 네온 거리까지 — 5분 안에 완등",
-    "engineMode": "timeattack"
+    "target": 450,
+    "label": "닌자처럼 산을 넘어 네온 거리까지 — 7분 30초 안에 완등",
+    "engineMode": "timeattack",
+    "clearMode": "both"
    },
    "boss": {
     "name": "그림자 닌자 두목",
     "emoji": "🥷",
-    "hp": 6,
+    "hp": 5,
     "pattern": "연막으로 시야를 가리고, 표창을 흩뿌린다.",
     "dialogue": [
      "그림자 닌자 두목: 그림자 속에선 내가 유일한 빛이다.",
@@ -2379,12 +2414,13 @@
     "type": "clear",
     "target": 1,
     "label": "조명층을 하나씩 지나 꼭대기까지 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "빛의 사냥꾼",
     "emoji": "🔦",
-    "hp": 6,
+    "hp": 5,
     "pattern": "조명을 꺼 발판을 숨기고, 빛줄기로 밀어낸다.",
     "dialogue": [
      "빛의 사냥꾼: 빛이 꺼지면 아무도 날 못 봐.",
@@ -2421,12 +2457,13 @@
     "type": "clear",
     "target": 1,
     "label": "대나무를 타고 구름 위 신사까지 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "대나무 정령",
     "emoji": "🎋",
-    "hp": 6,
+    "hp": 5,
     "pattern": "대나무를 자라게 해 길을 막고, 잎을 칼처럼 날린다.",
     "dialogue": [
      "대나무 정령: 대나무는 하루에 한 뼘씩 자란다. 너보다 빠르지.",
@@ -2463,12 +2500,13 @@
     "type": "boss_clear",
     "target": 1,
     "label": "꽃잎이 떨어지기 전, 절벽 위 검객과 결투 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "engineMode": "boss",
+    "clearMode": "both"
    },
    "boss": {
     "name": "절벽의 검객 청랑",
     "emoji": "🗡️",
-    "hp": 6,
+    "hp": 5,
     "pattern": "칼바람으로 발판을 베고, 순간이동해 뒤를 노린다.",
     "dialogue": [
      "청랑: 벚꽃이 떨어지기 전에 끝내겠다.",
@@ -2503,14 +2541,15 @@
    "title": "네온 빌딩 300초",
    "mission": {
     "type": "time_limit",
-    "target": 300,
-    "label": "해킹당한 빌딩, 옥상 서버까지 — 5분 안에 완등",
-    "engineMode": "timeattack"
+    "target": 450,
+    "label": "해킹당한 빌딩, 옥상 서버까지 — 7분 30초 안에 완등",
+    "engineMode": "timeattack",
+    "clearMode": "both"
    },
    "boss": {
     "name": "보안 프로그램 블랙아이스",
     "emoji": "🦾",
-    "hp": 6,
+    "hp": 5,
     "pattern": "발판을 재배치하고, 레이저 격자를 펼친다.",
     "dialogue": [
      "블랙아이스: 접근 차단. 삭제합니다.",
@@ -2547,12 +2586,13 @@
     "type": "clear",
     "target": 1,
     "label": "울리는 수정을 피해 동굴 밖으로 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "수정 여왕",
     "emoji": "💎",
-    "hp": 6,
+    "hp": 5,
     "pattern": "수정을 자라게 해 길을 막고, 초음파로 발판을 흔든다.",
     "dialogue": [
      "수정 여왕: 이 노래는 우리 것. 너는 못 들어.",
@@ -2587,14 +2627,15 @@
    "title": "눈보라 종탑",
    "mission": {
     "type": "max_falls",
-    "target": 1,
-    "label": "눈보라 속 종탑을 올라 — 낙하 1회 이하로 완등",
-    "engineMode": "normal"
+    "target": 3,
+    "label": "눈보라 속 종탑을 올라 — 낙하 3회 이하로 완등",
+    "engineMode": "normal",
+    "clearMode": "both"
    },
    "boss": {
     "name": "눈보라의 지배자",
     "emoji": "❄️",
-    "hp": 6,
+    "hp": 5,
     "pattern": "눈보라로 시야를 지우고, 종소리로 발판을 얼린다.",
     "dialogue": [
      "눈보라의 지배자: 눈보라는 내 숨결이다.",
@@ -2631,12 +2672,13 @@
     "type": "boss_clear",
     "target": 1,
     "label": "산소가 남아 있는 동안 심해의 눈을 꺾기 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "engineMode": "boss",
+    "clearMode": "both"
    },
    "boss": {
     "name": "심해의 눈 아비스",
     "emoji": "👁️",
-    "hp": 6,
+    "hp": 5,
     "pattern": "물기포를 터뜨려 밀어올리고, 수압으로 점프를 깎는다.",
     "dialogue": [
      "아비스: 여기는 아무도 오지 않는 곳이다.",
@@ -2671,14 +2713,15 @@
    "title": "핏빛 달의 성",
    "mission": {
     "type": "no_damage",
-    "target": 0,
-    "label": "촛불을 다시 밝히며 성 꼭대기까지 — 피격 0회로 완등",
-    "engineMode": "normal"
+    "target": 1,
+    "label": "촛불을 다시 밝히며 성 꼭대기까지 — 피격 1회 이하로 완등",
+    "engineMode": "normal",
+    "clearMode": "both"
    },
    "boss": {
     "name": "백작",
     "emoji": "🧛",
-    "hp": 6,
+    "hp": 5,
     "pattern": "박쥐로 변신해 사라지고, 암전 속에서 덮친다.",
     "dialogue": [
      "백작: 한 번만 물리면 넌 내 것이 된다.",
@@ -2715,12 +2758,13 @@
     "type": "boss_clear",
     "target": 1,
     "label": "용암이 차오르는 동안 마왕의 인장을 부수기 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "engineMode": "boss",
+    "clearMode": "both"
    },
    "boss": {
     "name": "그림자 군주",
     "emoji": "😈",
-    "hp": 7,
+    "hp": 6,
     "pattern": "용암을 소환하고, 번개로 발판을 부순다.",
     "dialogue": [
      "그림자 군주: 이 문은 너를 위해 열렸다.",
@@ -2757,12 +2801,13 @@
     "type": "boss_clear",
     "target": 1,
     "label": "구름 위 성벽, 황금 용과 마지막 결투 — 보스 격파 후 완등",
-    "engineMode": "boss"
+    "engineMode": "boss",
+    "clearMode": "both"
    },
    "boss": {
     "name": "황금 용",
     "emoji": "🐉",
-    "hp": 8,
+    "hp": 7,
     "pattern": "비늘 발판을 부수고, 구름 돌풍과 불꽃 숨결을 번갈아 쓴다.",
     "dialogue": [
      "황금 용: 여기까지 오른 인간은 아주 오래도록 없었다.",
@@ -2799,12 +2844,13 @@
     "type": "clear",
     "target": 1,
     "label": "구름 계곡에서 별빛 정상까지, 모든 친구와 함께 — 완등",
-    "engineMode": "normal"
+    "engineMode": "normal",
+    "clearMode": "summit"
    },
    "boss": {
     "name": "그림자 재우",
     "emoji": "🌑",
-    "hp": 8,
+    "hp": 7,
     "pattern": "재우와 똑같이 움직이며 점프 타이밍을 빼앗고, 별빛 탄막을 뿌린다.",
     "dialogue": [
      "그림자 재우: 네가 나를 이기면, 나는 네가 돼.",
@@ -3711,5 +3757,6 @@
   "zonesIndex": "zones 배열은 index 0~5 (0 = 지하/예비, 1~5 = 구간). zoneOf()가 1~5를 반환한다.",
   "assets": "신규 19맵은 assets/maps/t/{id}.jpg + assets/maps/{id}.jpg 19쌍 필요(없으면 default 썸네일로 폴백)",
   "totalsNote": "기존 24개(JW50 레이어) 맵은 total을 넘기지 않아 난이도 기본층수(60/76/90/100)로 생성된다. 표의 total은 그 실제 생성값 기준."
- }
+ },
+ "clearModeDesc": "스테이지별 클리어 조건(v5.22): summit=정상 도달만으로 클리어(미션은 보너스), mission=미션 완료만으로 클리어(정상 불필요), both=미션+정상 둘 다 필요"
 }

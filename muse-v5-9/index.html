@@ -561,6 +561,13 @@ html body #titleScreen {
           </span>
           <span id="storyTitleProg" class="text-xs" style="color:#4a2a05">64 스테이지 · 8 챕터</span>
         </button>
+        <button id="btnPatchNotes" type="button" class="pixel-btn-gold w-full py-2 px-4 font-bold text-sm flex items-center justify-between">
+          <span class="flex items-center gap-3">
+            <span class="text-xl leading-none">📋</span>
+            <span class="text-slate-950">패치 노트</span>
+          </span>
+          <span id="patchNotesLatest" class="text-xs" style="color:#4a2a05"></span>
+        </button>
         <div class="text-[10px] font-bold text-slate-400 -mt-1 px-1">싱글은 혼자 기록 도전 · 멀티는 방 코드/초대로 최대 6명 실시간 레이스</div>
 
         <button id="btnOpenSettingsTitle" type="button" class="pixel-btn-blue w-full py-2.5 px-4 font-bold text-base sm:text-lg text-white flex items-center justify-between">
@@ -1797,6 +1804,17 @@ html body #titleScreen {
       <button type="button" id="v42SkinRandom" class="v42-chip" style="flex:1;padding:8px">🎲 랜덤</button>
       <button type="button" id="v42SkinDone" class="mp-btn green" style="flex:1.6;padding:8px;font-size:12px">✅ 적용 완료</button>
     </div>
+  </div>
+</div>
+
+<!-- ============ 패치 노트 (v5.22) ============ -->
+<div id="patchNotesModal" class="v42-modal hidden">
+  <div class="v42-card" style="max-width:26rem">
+    <div class="v42-h">
+      <div><div class="v42-t">📋 패치 노트</div><div class="v42-sub">버전이 오를 때마다 여기에 기록돼요. 최신 순으로 보여요.</div></div>
+      <button type="button" class="v42-chip" data-v42close="patchNotesModal">닫기 ✕</button>
+    </div>
+    <div id="patchNotesList" style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
   </div>
 </div>
 

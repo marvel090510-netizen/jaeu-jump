@@ -10925,7 +10925,7 @@ extends CanvasLayer
       if (!window.JWDEV) return;
       if (!JWDEV.isUnlocked()) { JWDEV.toast('🔒 먼저 PIN을 입력해 해금해요', 'danger', 'PIN 4자리를 입력하고 해금을 눌러요', 2000); return; }
       JWDEV.setDev(!JWDEV.isDev());
-      JWDEV.toast(JWDEV.isDev() ? '🛠️ 개발자 모드 ON' : '🛠️ 개발자 모드 OFF', 'lucky', JWDEV.isDev() ? '게임 화면 오른쪽 위에 🛠️ 버튼이 떠요' : '🛠️ 버튼이 사라져요', 1800);
+      JWDEV.toast(JWDEV.isDev() ? '🛠️ 개발자 모드 ON' : '🛠️ 개발자 모드 OFF', 'lucky', JWDEV.isDev() ? '일시정지 메뉴(⏸) 안에 🛠️ 버튼이 생겨요' : '🛠️ 버튼이 사라져요', 1800);
       paint();
     });
     if (pinOk) pinOk.addEventListener('click', () => {
@@ -10934,7 +10934,7 @@ extends CanvasLayer
       const v = inp ? inp.value.trim() : '';
       if (JWDEV.unlock(v)) {
         if (inp) inp.value = '';
-        JWDEV.toast('🛠️ 개발자 모드 해금!', 'lucky', '개발자 모드를 켰어요 · 게임 화면 오른쪽 위에 🛠️ 버튼이 떠요', 2600);
+        JWDEV.toast('🛠️ 개발자 모드 해금!', 'lucky', '개발자 모드를 켰어요 · 일시정지 메뉴(⏸) 안에 🛠️ 버튼이 생겨요', 2600);
       } else {
         JWDEV.toast('PIN이 틀렸어요', 'danger', '4자리 PIN을 다시 입력해요', 2000);
         if (inp) inp.select();
@@ -24293,6 +24293,11 @@ extends CanvasLayer
     '#v43GhostPause b { font-size:10px; padding:1px 6px; border:2px solid #475569; color:#94a3b8; }',
     '#v43GhostPause.on { border-color:#a78bfa; }',
     '#v43GhostPause.on b { background:#6d28d9; border-color:#c4b5fd; color:#fff; }',
+    /* 개발자 명령 버튼(일시정지 메뉴 안, v5.22: HUD 🛠️ 버튼을 여기로 이동) */
+    '#v44DevPause { width:100%; display:flex; align-items:center; justify-content:space-between; gap:6px;',
+    '  padding:7px 9px; font-size:11px; font-weight:900; cursor:pointer; background:#2e1065; color:#ede9fe;',
+    '  border:2px solid #a78bfa; }',
+    '#v44DevPause.hidden { display:none !important; }',
     '.v43-pauserow { display:grid; grid-template-columns:1fr 1fr; gap:6px; }',
     /* iPad/가로: 일시정지 버튼 왼쪽에 상태 박스를 같이, 우측 여백을 일정하게 */
     '#gameHud > div:first-child { padding-right:0 !important; }',
@@ -24375,9 +24380,45 @@ extends CanvasLayer
   }
 
   /* ================================================================ 2. 일시정지 메뉴 */
+  /* v5.22: 개발자 버튼 — 일시정지 메뉴 안으로 이동 (HUD 🛠️ 버튼 삭제).
+     개발자 모드 ON + 싱글 인게임일 때만 보임. 누르면 메뉴를 닫고 게임을 재개한 뒤
+     명령 입력창을 띄운다 (기존 HUD 버튼과 같은 동작). */
+  function syncPauseDevBtn(pm) {
+    var card = pm.querySelector('.flex.flex-col.gap-2\\.5') || pm.querySelector('.pixel-panel');
+    var btn = $('v44DevPause');
+    if (!btn) {
+      if (!card) return;
+      btn = doc.createElement('button');
+      btn.type = 'button';
+      btn.id = 'v44DevPause';
+      btn.className = 'hidden';
+      btn.innerHTML = '<span>🛠️ 개발자 명령</span><span style="font-size:9px;color:#c4b5fd">/top · /god · /fly · /skip · /unlockall · /bossskip</span>';
+      var anchor = $('btnOpenSettingsPause') || card.firstChild;
+      card.insertBefore(btn, anchor);
+      btn.addEventListener('click', function () {
+        try {
+          var m = $('pauseModal');
+          if (m) m.classList.add('hidden');
+          var g = J() && J().game;
+          if (g) g.paused = false;
+        } catch (e) {}
+        try { if (window.JWDEV) JWDEV.togglePanel(); } catch (e2) {}
+      });
+    }
+    var show = false;
+    try {
+      var g2 = J() && J().game;
+      var inPlay = !!(g2 && g2.inPlay && !g2.victory);
+      var multi = !!(window.JWDEV && JWDEV.inMultiRace && JWDEV.inMultiRace());
+      show = !!(inPlay && window.JWDEV && JWDEV.isDev && JWDEV.isDev() && !multi);
+    } catch (e) {}
+    btn.classList.toggle('hidden', !show);
+  }
   function pauseTools() {
     var pm = $('pauseModal');
-    if (!pm || $('v43GhostPause')) return;
+    if (!pm) return;
+    try { syncPauseDevBtn(pm); } catch (e) {}
+    if ($('v43GhostPause')) return;
     var card = pm.querySelector('.flex.flex-col.gap-2\\.5') || pm.querySelector('.pixel-panel');
     if (!card) return;
     var btn = doc.createElement('button');
@@ -25779,6 +25820,18 @@ extends CanvasLayer
     } catch (e) { return null; }
   })();
   G.bossImg = BOSSIMG;
+  /* ---------- 보스 오버홀 1단계 (v5.22): 호랑이·유령 전용 아트 ---------- */
+  function bossFileImg(src) {
+    try {
+      const im = new Image();
+      im.src = src;
+      return im;
+    } catch (e) { return null; }
+  }
+  const BOSSTIGERIMG = bossFileImg('assets/boss-tiger.png');
+  const BOSSGHOSTIMG = bossFileImg('assets/boss-ghost.png');
+  G.bossTigerImg = BOSSTIGERIMG;
+  G.bossGhostImg = BOSSGHOSTIMG;
 
   function spawnBoss(kind) {
     const ps = plats();
@@ -26704,7 +26757,13 @@ extends CanvasLayer
       const sy = b.y - camY;
       if (sy > -260 && sy < lh + 260) {
         const bob = Math.sin((b.t || 0) * 2) * 3;
-        const img = (BOSSIMG && BOSSIMG.complete && BOSSIMG.naturalWidth) ? BOSSIMG : null;
+        /* v5.22: 보스 종족별 전용 아트 — 호랑이·유령은 생성 이미지, 나머지는 기존 boss-king.png */
+        const bform = (b.spec && b.spec.form) ? b.spec.form : null;
+        let bimg = BOSSIMG;
+        if (bform === 'tiger') bimg = BOSSTIGERIMG;
+        else if (bform === 'ghost') bimg = BOSSGHOSTIMG;
+        const img = (bimg && bimg.complete && bimg.naturalWidth) ? bimg
+          : ((BOSSIMG && BOSSIMG.complete && BOSSIMG.naturalWidth) ? BOSSIMG : null);
         /* 위험 오라 · 예고 붉은 기운 */
         const rage = (b.beam && b.beam.phase === 'warn') || b.weak;
         if (rage) {
@@ -30020,19 +30079,6 @@ extends CanvasLayer
       if (pause && pause.parentNode) pause.parentNode.insertBefore(b, pause);
       else body.appendChild(b);
     }
-    /* v5.19-dev: 개발자 명령 버튼 (개발자 모드 ON일 때만 syncPlayButtons가 표시) */
-    if (!$('v44DevBtn')) {
-      const b = document.createElement('button');
-      b.id = 'v44DevBtn';
-      b.type = 'button';
-      b.className = 'v44-pausebtn hidden';
-      b.textContent = '🛠️';
-      b.title = '개발자 명령';
-      b.addEventListener('click', () => { try { if (window.JWDEV) JWDEV.togglePanel(); } catch (e) {} });
-      const pause = $('btnPauseHud');
-      if (pause && pause.parentNode) pause.parentNode.insertBefore(b, pause);
-      else body.appendChild(b);
-    }
     if (!$('v44Dnd')) {
       /* 🔔 알림 토글은 인게임 하단 조작부에서 빼고 일시정지(설정) 안으로 */
       const b = document.createElement('button');
@@ -30102,13 +30148,6 @@ extends CanvasLayer
     const inPlay = !!(g && g.inPlay && !g.victory);
     const fr = $('v44FastRestart');
     if (fr) fr.classList.toggle('hidden', !inPlay);
-    /* v5.19-dev: 개발자 버튼은 싱글 인게임 + 개발자 모드 ON일 때만 (멀티 레이스 중 숨김) */
-    const dv = $('v44DevBtn');
-    if (dv) {
-      let dvMulti = false;
-      try { dvMulti = !!(window.JWDEV && JWDEV.inMultiRace && JWDEV.inMultiRace()); } catch (e) {}
-      dv.classList.toggle('hidden', !(inPlay && window.JWDEV && JWDEV.isDev && JWDEV.isDev() && !dvMulti));
-    }
     const dd = $('v44Dnd');
     if (dd) {
       dd.classList.toggle('hidden', !inPlay);
@@ -40384,14 +40423,23 @@ extends CanvasLayer
       '  font-size:13px;font-weight:900;line-height:1;color:#eaf3ff;background:rgba(255,255,255,.07);',
       '  border:1px solid rgba(160,195,245,.3);}',
       '#v50BotCtl button:active{background:rgba(125,211,252,.25);}',
-      /* 빈 자리 슬롯 */
-      '#mpLobby .mps-slot{padding:6px 8px !important;gap:6px !important;justify-content:flex-start !important;',
+      /* 빈 자리 슬롯 — v5.22: 버튼 하나로 합치고 자리 너비를 채움 (+ N은 왼쪽 고정, 버튼이 나머지 너비 차지·가운데 정렬) */
+      '#mpLobby .mps-slot{padding:6px 8px !important;gap:6px !important;justify-content:flex-start !important;align-items:center !important;',
       '  background:rgba(11,27,54,.55) !important;border:1px dashed rgba(96,165,250,.45) !important;border-radius:12px !important;}',
-      '#mpLobby .mps-slot .v50-slot-no{font-size:11px;font-weight:900;color:#8fb3e0;opacity:.9;margin-right:2px;}',
-      '#mpLobby .v50-slot-b{margin-left:auto;display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;',
+      '#mpLobby .mps-slot .v50-slot-no{flex:0 0 auto;font-size:11px;font-weight:900;color:#8fb3e0;opacity:.9;margin-right:2px;}',
+      '#mpLobby .v50-slot-b{flex:1 1 auto;min-width:0;justify-content:center;display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;',
       '  font-size:10.5px;font-weight:900;color:#dceaff;background:rgba(255,255,255,.07);border:1px solid rgba(150,190,255,.28);}',
-      '#mpLobby .v50-slot-b + .v50-slot-b{margin-left:4px;}',
       '#mpLobby .v50-slot-b:active{background:rgba(125,211,252,.24);}',
+      /* 빈 자리 추가 선택 팝업 (v5.22) */
+      '#v50SlotDim{position:fixed;inset:0;z-index:13010;background:transparent;}',
+      '#v50SlotDim.hidden{display:none !important;}',
+      '#v50SlotPick{position:fixed;z-index:13020;min-width:180px;display:flex;flex-direction:column;gap:6px;',
+      '  padding:8px;border-radius:14px;background:linear-gradient(180deg,rgba(30,42,68,.99),rgba(13,19,34,.99));',
+      '  border:1px solid rgba(150,190,255,.35);box-shadow:0 16px 40px rgba(0,0,0,.65);}',
+      '#v50SlotPick.hidden{display:none !important;}',
+      '#v50SlotPick button{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;',
+      '  font-size:13px;font-weight:900;color:#eaf3ff;background:rgba(255,255,255,.06);border:1px solid rgba(150,190,255,.22);text-align:left;}',
+      '#v50SlotPick button:active{background:rgba(125,211,252,.24);}',
       /* 하단 바 */
       '#mpLobby .sticky > #mpLobbyStatus:empty{display:none !important;}',
       '#mpLobby .sticky{padding-top:8px !important;}',
@@ -40757,20 +40805,32 @@ extends CanvasLayer
         phead.insertBefore(ctl, $('mpRoomCount'));
       }
     }
-    /* 빈 자리: [🤖 봇] [📩 초대] */
-    var list = $('mpRoomPlayers');
-    if (list) {
-      Array.prototype.forEach.call(list.querySelectorAll('.mps-slot'), function (slot) {
-        if (slot.getAttribute('data-v50') === '1') return;
-        slot.setAttribute('data-v50', '1');
-        var no = (slot.textContent || '').match(/\d+/);
-        slot.innerHTML = '<span class="v50-slot-no">＋ ' + (no ? no[0] : '') + '</span>' +
-          '<button type="button" class="v50-slot-b" data-v50slot="bot">' + svg('bot', 14) + ' 봇</button>' +
-          '<button type="button" class="v50-slot-b" data-v50slot="inv">' + svg('mail', 14) + ' 초대</button>';
-        slot.querySelectorAll('[data-v50slot]').forEach(function (bb) {
+    /* 빈 자리: 버튼 하나로 합치고 누르면 [🤖 봇 추가 / 📩 친구 초대] 선택 팝업 (v5.22) */
+    function closeSlotPick() {
+      var d = $('v50SlotDim'), p = $('v50SlotPick');
+      if (d) d.classList.add('hidden');
+      if (p) p.classList.add('hidden');
+    }
+    function openSlotPick(anchorBtn) {
+      var d = $('v50SlotDim'), p = $('v50SlotPick');
+      if (!d) {
+        d = doc.createElement('div');
+        d.id = 'v50SlotDim';
+        d.className = 'hidden';
+        d.addEventListener('click', function () { closeSlotPick(); });
+        doc.body.appendChild(d);
+      }
+      if (!p) {
+        p = doc.createElement('div');
+        p.id = 'v50SlotPick';
+        p.className = 'hidden';
+        p.innerHTML = '<button type="button" data-pick="bot">🤖 봇 추가</button>' +
+          '<button type="button" data-pick="inv">📩 친구 초대</button>';
+        p.querySelectorAll('[data-pick]').forEach(function (bb) {
           bb.addEventListener('click', function (ev) {
             ev.preventDefault(); ev.stopPropagation();
-            if (bb.getAttribute('data-v50slot') === 'bot') {
+            closeSlotPick();
+            if (bb.getAttribute('data-pick') === 'bot') {
               try { V.addBot(1); } catch (e) {}
               setTimeout(paintSummary, 240);
             } else {
@@ -40778,6 +40838,41 @@ extends CanvasLayer
             }
           });
         });
+        doc.body.appendChild(p);
+      }
+      /* 버튼 아래에 띄우되 화면 아래가 모자라면 위로, 좌우는 화면 안에 맞춤 */
+      var r = anchorBtn.getBoundingClientRect();
+      p.classList.remove('hidden');
+      d.classList.remove('hidden');
+      var pw = Math.max(180, Math.min(r.width, window.innerWidth - 16));
+      var ph = p.offsetHeight || 110;
+      var left = Math.max(8, Math.min(r.left, window.innerWidth - pw - 8));
+      var top = (r.bottom + 6 + ph <= window.innerHeight) ? (r.bottom + 6) : Math.max(8, r.top - 6 - ph);
+      p.style.left = left + 'px';
+      p.style.top = top + 'px';
+      p.style.width = pw + 'px';
+    }
+    if (!doc.__v50SlotEsc) {
+      doc.__v50SlotEsc = true;
+      doc.addEventListener('keydown', function (e) {
+        if (e && e.key === 'Escape') closeSlotPick();
+      });
+    }
+    var list = $('mpRoomPlayers');
+    if (list) {
+      Array.prototype.forEach.call(list.querySelectorAll('.mps-slot'), function (slot) {
+        if (slot.getAttribute('data-v50') === '1') return;
+        slot.setAttribute('data-v50', '1');
+        var no = (slot.textContent || '').match(/\d+/);
+        slot.innerHTML = '<span class="v50-slot-no">＋ ' + (no ? no[0] : '') + '</span>' +
+          '<button type="button" class="v50-slot-b v50-slot-add" data-v50slot="add">' + svg('bot', 14) + ' 봇 · 초대</button>';
+        var ab = slot.querySelector('[data-v50slot="add"]');
+        if (ab) {
+          ab.addEventListener('click', function (ev) {
+            ev.preventDefault(); ev.stopPropagation();
+            openSlotPick(ab);
+          });
+        }
       });
     }
   }
@@ -41698,6 +41793,24 @@ extends CanvasLayer
       '  #titleScreen #v43SideArt .sa-card{height:auto !important;max-height:calc(100dvh - 60px) !important;}',
       '  #v50SideMapImg{max-height:44dvh !important;}',
       '  #titleScreen #v43SideArt #v43SideMap{max-height:44dvh !important;}',
+      '}',
+      /* --- 폰 타이틀 한 화면 (v5.22): 759px 이하에서 배너·프로필·버튼·간격 축소 —
+         스토리 모드·하단 메뉴까지 스크롤 없이 보이게. 맵 패널은 건드리지 않음. --- */
+      '@media (max-width:759px){',
+      '  #titleScreen > div.relative.z-10{padding:calc(env(safe-area-inset-top,0px) + 6px) 12px 10px !important;gap:6px !important;}',
+      '  #titleScreen .inline-flex.items-center.gap-2{margin-bottom:6px !important;padding:4px 10px !important;}',
+      '  #titleScreen #v43Cover{max-height:120px !important;}',
+      '  #titleScreen .mt-3.flex.items-center.gap-3.p-3{padding:9px 12px !important;margin-top:8px !important;gap:6px 10px !important;}',
+      '  #titleScreen #titlePortraitImg{width:44px !important;height:44px !important;}',
+      '  #titleScreen #titleBestHeight{font-size:18px !important;}',
+      '  #titleScreen .grid.grid-cols-2.gap-2{gap:8px !important;margin-top:8px !important;}',
+      '  #titleScreen #btnStartGame,#titleScreen #btnMultiplayer{min-height:60px !important;padding:9px 12px !important;}',
+      '  #titleScreen #btnStoryMode,#titleScreen #btnPatchNotes{padding:7px 12px !important;font-size:13px !important;}',
+      '  #titleScreen .mt-3.mb-2.flex.flex-col.gap-2{margin-top:8px !important;margin-bottom:4px !important;gap:6px !important;}',
+      '  #titleScreen #v43TitleRow{margin-top:8px !important;gap:6px !important;}',
+      '  #titleScreen #v43TitleRow button{height:52px !important;font-size:9px !important;}',
+      '  #titleScreen #v43TitleRow button span:first-child{font-size:17px !important;}',
+      '  #titleScreen #v43TestLink{margin:6px auto 0 !important;}',
       '}'
     ].join('\n');
     doc.head.appendChild(st0);
@@ -55257,7 +55370,8 @@ if (typeof module !== 'undefined' && module.exports) {
         ctx.save();
         ctx.globalAlpha = 0.55;
         try {
-          if (typeof drawBossSprite === 'function' && drawBossSprite(ctx, h.spec.form, h.x, cy2, (h.w / 96) * 6, { mood: 'idle' })) { /* muse-v5.9: 분신도 v2 스프라이트 */ }
+          if (drawBossFile(ctx, h.spec.form, h.x, cy2, h.w, h.w)) { /* v5.22: 분신도 생성 이미지 */ }
+          else if (typeof drawBossSprite === 'function' && drawBossSprite(ctx, h.spec.form, h.x, cy2, (h.w / 96) * 6, { mood: 'idle' })) { /* muse-v5.9: 분신도 v2 스프라이트 */ }
           else if (B.art && B.art[h.spec.form]) B.art[h.spec.form](ctx, h.x, cy2, h.w / 96, h.spec, 0.5);
         } catch (e) {}
         ctx.restore();
@@ -55317,6 +55431,26 @@ if (typeof module !== 'undefined' && module.exports) {
     }
   }
 
+  /* v5.22: 호랑이·유령 전용 생성 이미지 — 로드됐으면 파일 이미지를 쓰고,
+     아니면 기존 픽셀 스프라이트로 폴백 (이미지는 G.bossTigerImg/G.bossGhostImg에 프리로드됨) */
+  function bossFileImage(form) {
+    try {
+      var g = G();
+      var im = form === 'tiger' ? (g && g.bossTigerImg) : form === 'ghost' ? (g && g.bossGhostImg) : null;
+      return (im && im.complete && im.naturalWidth) ? im : null;
+    } catch (e) { return null; }
+  }
+  function drawBossFile(ctx, form, x, y, w, h) {
+    var im = bossFileImage(form);
+    if (!im) return false;
+    try {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(im, Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+      ctx.restore();
+      return true;
+    } catch (e) { return false; }
+  }
   function drawBoss(ctx, b, camY, lh) {
     var sy = b.y - camY;
     /* 화면 위로 벗어나 있으면 위치 표식 */
@@ -55367,11 +55501,14 @@ if (typeof module !== 'undefined' && module.exports) {
       /* muse-v5.9: 보스 v2 픽셀 스프라이트 (없으면 기존 도형 아트로 폴백) */
       var __bt = (b.ai ? b.ai.t : 0);
       var __mood = (b.ai && b.ai.act && !b.ai.act.fired1) ? 'angry' : (b.flash > 0 ? 'hurt' : ((__bt % 3.7) < 0.12 ? 'blink' : 'idle'));
-      if (typeof drawBossSprite === 'function' && drawBossSprite(ctx, b.spec.form, b.x, sy + bob, u * 6, { mood: __mood })) {
-        /* v2 스프라이트로 그림 */
-      } else if (B.art && B.art[b.spec.form]) B.art[b.spec.form](ctx, b.x, sy + bob, u, b.spec, b);
-      else {
-        ctx.fillStyle = c[0]; ctx.fillRect(b.x, sy + bob, b.w, b.h);
+      /* v5.22: 호랑이·유령은 생성 이미지 파일로 그리고, 그 외는 기존 픽셀 스프라이트 */
+      if (!drawBossFile(ctx, b.spec.form, b.x, sy + bob, b.w, b.h)) {
+        if (typeof drawBossSprite === 'function' && drawBossSprite(ctx, b.spec.form, b.x, sy + bob, u * 6, { mood: __mood })) {
+          /* v2 스프라이트로 그림 */
+        } else if (B.art && B.art[b.spec.form]) B.art[b.spec.form](ctx, b.x, sy + bob, u, b.spec, b);
+        else {
+          ctx.fillStyle = c[0]; ctx.fillRect(b.x, sy + bob, b.w, b.h);
+        }
       }
     } catch (e) { console.warn('v48b art', e); }
     ctx.restore();
@@ -56455,6 +56592,9 @@ if (typeof module !== 'undefined' && module.exports) {
   var heroCache = {};
   function bossPng(spec) {
     try {
+      /* v5.22: 호랑이·유령은 생성 이미지 파일을 그대로 쓴다 */
+      if (spec && spec.form === 'tiger') return 'assets/boss-tiger.png';
+      if (spec && spec.form === 'ghost') return 'assets/boss-ghost.png';
       if (heroCache[spec.form]) return heroCache[spec.form];
       var cv = doc.createElement('canvas');
       cv.width = 384; cv.height = 384;
@@ -62850,7 +62990,7 @@ if (typeof module !== 'undefined' && module.exports) {
 /* ===== v5.19-dev : 개발자 모드 + 치트 명령어 (태겸 확정 스펙, 2026-11-21) =====
    - 설정 → PIN '0209'(문자열 비교) 입력 시 해금. 해금·ON/OFF는 jw51_cfg_v1의
      JW51U.CFG.dev / .devUnlock에 저장 (DEF 화이트리스트 포함이라 와이프에도 유지).
-   - 개발자 모드 ON일 때만 게임 화면 오른쪽 위에 🛠️ 버튼이 뜨고, 누르면 명령 입력창.
+   - 개발자 모드 ON일 때만 일시정지 메뉴(⏸) 안에 🛠️ 버튼이 뜨고, 누르면 명령 입력창.
    - 명령어(영어만, 슬래시 유무·대소문자 무관): /top /god /fly /skip /unlockall /bossskip.
      없는 명령어는 "없는 명령어야". 멀티 레이스 중에는 버튼 숨김 + 명령어 전부 차단.
    - god/fly는 세션 전용 토글(저장 안 함). 스토리 클리어 기록은 onStoryClear 훅에
@@ -71246,7 +71386,7 @@ if (typeof module !== 'undefined' && module.exports) {
     '  border-radius:13px !important;border:1px dashed rgba(96,165,250,.45) !important;background:rgba(23,37,64,.55) !important;',
     '  font-size:11.5px !important;justify-content:space-between !important;gap:8px !important;}',
     'html body #mpLobby #mpRoomPlayers .v50-slot-no{font-size:11.5px !important;font-weight:900 !important;color:#9ec5f7 !important;}',
-    'html body #mpLobby #mpRoomPlayers .v50-slot-b{min-height:32px !important;height:32px !important;padding:0 10px !important;',
+    'html body #mpLobby #mpRoomPlayers .v50-slot-b{flex:1 1 auto !important;justify-content:center !important;min-height:32px !important;height:32px !important;padding:0 10px !important;',
     '  font-size:11px !important;border-radius:999px !important;}',
 
     /* ── ⑥ 참가자 헤더(봇 +/- · 인원) ── */
@@ -73706,7 +73846,7 @@ if (typeof module !== 'undefined' && module.exports) {
     'html body #v43Wiz #v53ModeGrid .v53mm .tx > .cat{display:block !important;font-size:9px !important;line-height:1.25 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;flex-shrink:0 !important;margin-top:2px !important;}',
     'html body #v43Wiz #v53MapGrid .v53m > .ds{font-size:9px !important;line-height:1.35 !important;height:auto !important;max-height:none !important;display:-webkit-box !important;-webkit-line-clamp:2 !important;-webkit-box-orient:vertical !important;overflow:hidden !important;}',
     'html body #mpLobby #mpRoomPlayers > .mps-row{grid-column:1 / -1 !important;}',
-    '@media (max-width:480px){html body #mpLobby .mps-slot .v50-slot-b{font-size:0 !important;padding:4px 7px !important;gap:0 !important;}}'
+    '@media (max-width:480px){html body #mpLobby .mps-slot .v50-slot-b{font-size:11px !important;padding:6px 10px !important;}}'
   ].join('\n');
   document.head.appendChild(st);
 })();
@@ -75177,21 +75317,23 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 /* ── 스토리 모드 v5.19 (미션 판정 + 보스전 + 인게임 표시) ─────────────────────────────────────────────
    진짜 데이터: assets/story-data.json (v1, 8챕터·64스테이지·64스킨·64맵·
-   신규 19맵·보스 64명·대사 448줄·미션 8종, lockPolicy lock_all_except_default_4)
+   신규 19맵·보스 64명·대사 448줄·미션 8종, lockPolicy lock_all_except_default_1)
    + story-lines.md (읽기용 대사표).
    저장 키(데이터 integration.saveKeys):
      jw64_story_v1 = { v:1, cleared:{'map:ID': stageIndex}, boss:{'map:ID': true} }
      jw64_char_v1  = { v:1, unlocked:{'skin:ID': stageIndex} }
    skin:/map: 접두어는 namespaceWarn(alien/pirate/dino/santa/mushroom 5쌍 id 겹침) 때문.
    규칙:
-   - 기본 4종(jaeu/cat/frog/robot)만 처음부터 열림. 나머지 60종은 스토리 클리어로 해금.
+   - 기본재우(jaeu)만 처음부터 열림. 나머지 63종은 스토리 클리어로 해금.
      기존 해금 스킨도 예외 없이 잠금 (구 숨김 스킨 조건은 스토리 해금으로 대체).
+     고양이(2번)·개구리(3번)·로봇(4번)도 스테이지 클리어 보상 — 처음엔 잠김.
    - 스테이지 N은 startUnlocked 이거나 N-1번 클리어 시 열림.
    - 스토리 판은 그 스테이지 주인공 스킨으로만 뛴다 (판 동안만 임시 해금).
      클리어하면 그 스킨이 정식 해금 + 다음 스테이지 개방.
    - 신규 19맵은 아직 엔진 맵이 없어 '준비 중' (배경 그림만 보여줌).
-   - 미션 판정(v5.19): 승리 시점에 검사 — 낙하·콤보·코인 수·점프 수·피격.
-     타임어택 제한 시간만 스테이지 target으로 맞춘다 (엔진 기본 120초 고정이라).
+   - 미션 판정(v5.19, v5.22 스테이지별 clearMode): 승리 시점에 검사 — 낙하·콤보·코인 수·점프 수·피격.
+     clearMode summit=정상만 오르면 클리어, mission=미션 완료만으로 판 중간 조기 클리어,
+     both=미션+정상 둘 다. 시간 제한·낙하·피격·점프 요구치는 스테이지마다 완화됨.
    - 보스전(v5.19): 전 스테이지 공통 최종 관문. 85% 높이 아레나에서 스폰,
      머리 밟기 1회당 HP 1 감소(스토리 hp 3~8). 보스 격파 전에는 정상 불가.
    - 승리 훅(v5.19 수정): __jwg에는 onReachVictory가 없어서 기존 훅은 동작
@@ -75207,7 +75349,7 @@ if (typeof module !== 'undefined' && module.exports) {
   var DATA_URLS = ['assets/story-data.json', 'muse-v5-9/assets/story-data.json'];
   var KEY_STORY = 'jw64_story_v1';
   var KEY_CHAR = 'jw64_char_v1';
-  var DEFAULT_SKINS = ['jaeu', 'cat', 'frog', 'robot'];
+  var DEFAULT_SKINS = ['jaeu'];
   var ENGINE_MAPS = ['default', 'dessert', 'site', 'space', 'bamboo', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano',
     'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji',
     'london', 'skycastle', 'pirate', 'carnival', 'mushroom', 'cyberpunk', 'olympus', 'lab', 'canyon', 'santa',
@@ -75336,14 +75478,14 @@ if (typeof module !== 'undefined' && module.exports) {
     return ENGINE_MAPS.indexOf(mapId) >= 0;
   }
 
-  /* ---------------- 스킨 잠금 (기본 4종 외 전부 잠금) ---------------- */
+  /* ---------------- 스킨 잠금 (기본재우 외 전부 잠금) ---------------- */
   var __origSkinLocked = V.skinLocked;
   V.skinLocked = function (id) {
     try {
       if (id && id === STORY_RUN_SKIN) return false; /* 스토리 판 주인공은 판 동안만 열림 */
       if (DATA && STORY_SKIN_IDS[id]) return !isSkinUnlocked(id);
       if (!DATA) {
-        /* 데이터 로드 전: 엔진 스킨 목록에 있는 건 기본 4종 규칙으로 잠금 */
+        /* 데이터 로드 전: 엔진 스킨 목록에 있는 건 기본재우 규칙으로 잠금 */
         var list = null;
         try { list = V.api() && V.api().skins ? V.api().skins() : null; } catch (e) {}
         if (list) {
@@ -75366,7 +75508,7 @@ if (typeof module !== 'undefined' && module.exports) {
       var cur = api.meSkin();
       if (cur && V.skinLocked(cur)) {
         try { api.setSkin('jaeu'); } catch (e) {}
-        try { V.toast('🔒 스킨이 잠겼어요', 'chat', '스토리 모드 업데이트로 기본 4종만 열려 있어요. 스테이지를 깨서 해금하세요!', 3400); } catch (e) {}
+        try { V.toast('🔒 스킨이 잠겼어요', 'chat', '스토리 모드 업데이트로 기본재우만 열려 있어요. 스테이지를 깨서 해금하세요!', 3400); } catch (e) {}
       }
     } catch (e) {}
   }
@@ -75388,6 +75530,56 @@ if (typeof module !== 'undefined' && module.exports) {
     renderStory();
     m.classList.remove('hidden');
     try { sfxMp3('dlg_tick', 0.4); } catch (e) {}
+  }
+  /* ---------- 패치 노트 (v5.22): assets/patch-notes.json 읽기 ---------- */
+  var patchNotesCache = null;
+  function openPatchNotes() {
+    var m = $('patchNotesModal'), list = $('patchNotesList');
+    if (!m || !list) return;
+    m.classList.remove('hidden');
+    list.innerHTML = '<div style="padding:14px;font-size:12px;font-weight:700;color:#9fb0cc">패치 노트를 불러오는 중…</div>';
+    var render = function (d) {
+      var es = (d && d.entries) || [];
+      if (!es.length) {
+        list.innerHTML = '<div style="padding:14px;font-size:12px;font-weight:700;color:#fca5a5">패치 노트를 불러오지 못했어요. 다시 열어보거나, 잠시 뒤에 다시 시도해 주세요.</div>';
+        return;
+      }
+      list.innerHTML = es.slice().reverse().map(function (e) {
+        var hs = (e.highlights || []).map(function (h) {
+          return '<li style="margin:2px 0 2px 14px;font-size:12px;line-height:1.55;color:#dbe7fb;list-style:disc">' + esc(h) + '</li>';
+        }).join('');
+        return '<div style="border:1px solid rgba(150,190,255,.22);border-radius:12px;padding:10px 12px;background:rgba(9,14,26,.55)">' +
+          '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:12px;font-weight:900;color:#fbbf24;background:rgba(251,191,36,.14);border:1px solid rgba(251,191,36,.4);border-radius:999px;padding:2px 8px">' + esc(e.version) + '</span>' +
+          '<span style="font-size:11px;font-weight:800;color:#9fb0cc">' + esc(e.date || '') + '</span></div>' +
+          '<div style="font-size:13px;font-weight:900;color:#f4f8ff;margin-top:6px;line-height:1.4">' + esc(e.title || '') + '</div>' +
+          (hs ? '<ul style="margin:6px 0 0;padding:0">' + hs + '</ul>' : '') + '</div>';
+      }).join('');
+    };
+    if (patchNotesCache) { render(patchNotesCache); return; }
+    try {
+      fetch('assets/patch-notes.json', { cache: 'no-cache' }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(function (d) {
+        patchNotesCache = d;
+        render(d);
+        var lb = $('patchNotesLatest');
+        if (lb && d.latest) lb.textContent = d.latest;
+      }).catch(function () { render(null); });
+    } catch (e) { render(null); }
+  }
+  function updatePatchNotesLabel() {
+    var lb = $('patchNotesLatest');
+    if (!lb || patchNotesCache) return;
+    try {
+      fetch('assets/patch-notes.json', { cache: 'no-cache' }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(function (d) {
+        patchNotesCache = d;
+        if (d.latest) lb.textContent = d.latest;
+      }).catch(function () {});
+    } catch (e) {}
   }
   function renderStory() {
     var tabs = $('storyChTabs'), list = $('storyStageList'), det = $('storyDetail'), rc = $('storyRecall');
@@ -75462,7 +75654,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '<div class="v42-sub">' + st.index + '번 · ' + esc(st.title) + ' · ' + esc(st.diff) + ' · ' + st.total + '층</div></div>' +
       '<div class="v42-row"><span class="v42-lbl">🎯 미션</span><span style="font-size:11px;font-weight:700;color:#dbe7f7;text-align:right">' + esc(st.mission.label) + '</span></div>' +
       '<div class="v42-row"><span class="v42-lbl">' + esc(st.boss.emoji) + ' 보스</span><span style="font-size:11px;font-weight:700;color:#dbe7f7;text-align:right">' + esc(st.boss.name) + ' · 체력 ' + st.boss.hp + '</span></div>' +
-      '<div class="v42-row"><span class="v42-lbl">🧑 주인공</span><span style="font-size:11px;font-weight:700;color:#dbe7f7;text-align:right">' + esc(st.skinEmoji) + ' ' + esc(st.skinName) + ' · ' + (skinOpen ? '해금됨' : '클리어 시 해금') + '</span></div>' +
+      '<div class="v42-row"><span class="v42-lbl">🧑 주인공</span><span style="font-size:11px;font-weight:700;color:#dbe7f7;text-align:right">' + esc(st.skinEmoji) + ' ' + esc(st.skinName) + ' · ' + (skinOpen ? '해금됨' : '🔒 클리어 시 해금') + '</span></div>' +
       '<div style="font-size:11.5px;font-weight:700;line-height:1.6;color:#cbd5e1;background:#0b1222;border:2px solid #24304a;padding:8px">“' + esc((st.introLines && st.introLines[0]) || '') + '”</div>' +
       stateHtml +
       '<div style="display:flex;gap:6px">' +
@@ -75595,16 +75787,9 @@ if (typeof module !== 'undefined' && module.exports) {
   function dlgStopVoice() {
     try { if (dlgAudio) { dlgAudio.pause(); dlgAudio = null; } } catch (e) {}
   }
-  /* v5.20: 다음 줄 초상 URL 계산 (dlgPortrait와 같은 규칙, DOM은 안 건드림) */
-  function dlgPortraitUrlFor(line, st) {
-    try {
-      if (!st) return '';
-      if (line.kind === 'boss') return dlgBossPortraitUrl(st);
-      if (line.speaker === '재우') return dlgSkinPortraitUrl('jaeu');
-      return dlgSkinPortraitUrl(st.skinId);
-    } catch (e) { return ''; }
-  }
-  /* v5.20: 다음 줄 미리 받아두기 — 음성 MP3 + 초상. 다음 누르자마자 바로 나오게. */
+  /* v5.20: 다음 줄 미리 받아두기 — 음성 MP3 + 초상. 다음 누르자마자 바로 나오게.
+     v5.22: 초상은 비동기 워밍만 (동기 toDataURL 금지 — 아이패드에서 탭할 때
+     메인 스레드를 막아 글자가 ~7초 늦게 뜨던 원인). 파일 URL 보스 초상만 <img> 프리로드. */
   function dlgPrefetchNext() {
     try {
       if (!dlgLines || dlgIdx + 1 >= dlgLines.length) return;
@@ -75616,8 +75801,38 @@ if (typeof module !== 'undefined' && module.exports) {
         try { a.load(); } catch (e) {}
         dlgVoicePre = a; dlgVoicePreUrl = nx.audio;
       }
-      var u = dlgPortraitUrlFor(nx, dlgStage);
-      if (u && u.indexOf('data:') !== 0) { var im = new Image(); im.src = u; }
+      if (nx.kind === 'boss') {
+        var bu = dlgBossPortraitUrlCached(dlgStage);
+        if (bu && bu.indexOf('data:') !== 0) { var im = new Image(); im.src = bu; }
+        else dlgWarmBossPortrait(dlgStage);
+      } else {
+        var sid = (nx.speaker === '재우') ? 'jaeu' : (dlgStage ? dlgStage.skinId : '');
+        if (sid) dlgWarmSkinPortrait(sid);
+      }
+    } catch (e) {}
+  }
+  /* v5.22: 장면의 서로 다른 화자 초상을 차례로 백그라운드 워밍
+     (한 번에 몰아서 막지 않게 60ms 간격) — 탭할 때 캐시 히트 */
+  function dlgWarmScenePortraits(lines, st) {
+    try {
+      if (!lines || !st) return;
+      var seen = {};
+      var jobs = [];
+      lines.forEach(function (l) {
+        if (!l) return;
+        var k = (l.kind === 'boss') ? 'boss:' + st.mapId : 'skin:' + ((l.speaker === '재우') ? 'jaeu' : st.skinId);
+        if (seen[k]) return;
+        seen[k] = true;
+        jobs.push(l);
+      });
+      jobs.forEach(function (l, i) {
+        setTimeout(function () {
+          try {
+            if (l.kind === 'boss') dlgWarmBossPortrait(st);
+            else dlgWarmSkinPortrait((l.speaker === '재우') ? 'jaeu' : st.skinId);
+          } catch (e) {}
+        }, i * 60);
+      });
     } catch (e) {}
   }
   function dlgSetScene(st) {
@@ -75632,23 +75847,62 @@ if (typeof module !== 'undefined' && module.exports) {
     bg.src = url;
     setTimeout(function () { if (bg.complete && bg.naturalWidth) show(); }, 80);
   }
+  /* v5.22: 스킨 초상 data URL 캐시 — 화자/스킨별로 한 번만 계산해서 재사용.
+     아이패드 사파리는 toDataURL이 느려서 탭마다 다시 계산하면 메인 스레드가 막혀
+     타자기가 멈추고 초상도 늦게 뜸. 키에 플레이어 색상도 포함. */
+  var dlgSkinCache = {};
+  function dlgSkinCacheKey(skinId) {
+    try {
+      var api = V.api ? V.api() : null;
+      var col = (api && api.meColor && api.meColor()) || 'blue';
+      return skinId + ':' + col;
+    } catch (e) { return skinId + ':blue'; }
+  }
   function dlgSkinPortraitUrl(skinId) {
     try {
+      var key = dlgSkinCacheKey(skinId);
+      if (dlgSkinCache.hasOwnProperty(key)) return dlgSkinCache[key];
       /* v5.18: W()는 root.__jwg(코어 엔진, spriteFor 없음)를 돌려줘서 항상 ''이
          되어 이모지 폴백이 떴다. 스프라이트 API는 V.api()(= root.JWG)에 있다. */
       var api = V.api ? V.api() : null;
       if (!api || !api.spriteFor) return '';
       var col = (api.meColor && api.meColor()) || 'blue';
       var sp = api.spriteFor(col, 'idle1', skinId);
-      if (!sp || !sp.width) return '';
+      if (!sp || !sp.width) { dlgSkinCache[key] = ''; return ''; }
       var cv = document.createElement('canvas');
       var sc = 4;
       cv.width = sp.width * sc; cv.height = sp.height * sc;
       var g = cv.getContext('2d');
       g.imageSmoothingEnabled = false;
       g.drawImage(sp, 0, 0, cv.width, cv.height);
-      return cv.toDataURL('image/png');
+      var u = cv.toDataURL('image/png');
+      dlgSkinCache[key] = u;
+      return u;
     } catch (e) { return ''; }
+  }
+  /* v5.22: 캐시에 있는 초상 URL만 반환 — 없으면 null (탭 경로에서 동기 toDataURL 금지) */
+  function dlgSkinPortraitUrlCached(skinId) {
+    try {
+      var key = dlgSkinCacheKey(skinId);
+      return dlgSkinCache.hasOwnProperty(key) ? dlgSkinCache[key] : null;
+    } catch (e) { return null; }
+  }
+  /* v5.22: 스킨 초상을 백그라운드에서 미리 계산 — 같은 키 중복 계산은 콜백 큐로 합침 */
+  function dlgWarmSkinPortrait(skinId, done) {
+    try {
+      var key = dlgSkinCacheKey(skinId);
+      if (dlgSkinCache.hasOwnProperty(key)) { if (done) { try { done(dlgSkinCache[key]); } catch (e) {} } return; }
+      var q = dlgWarmSkinPortrait._q || (dlgWarmSkinPortrait._q = {});
+      if (q[key]) { if (done) q[key].push(done); return; }
+      q[key] = done ? [done] : [];
+      setTimeout(function () {
+        var u = '';
+        try { u = dlgSkinPortraitUrl(skinId); } catch (e) {}
+        var cbs = q[key] || [];
+        try { delete q[key]; } catch (e) {}
+        cbs.forEach(function (f) { try { f(u); } catch (e2) {} });
+      }, 0);
+    } catch (e) {}
   }
   var dlgBossCache = {};
   function dlgBossPortraitUrl(st) {
@@ -75662,6 +75916,9 @@ if (typeof module !== 'undefined' && module.exports) {
       var JB = root.JW48B;
       if (JB && JB.specOf && JB.art && ENGINE_MAPS.indexOf(st.mapId) >= 0) {
         var spec = JB.specOf(st.mapId);
+        /* v5.22: 호랑이·유령은 생성 이미지 파일을 그대로 쓴다 */
+        if (spec && spec.form === 'tiger') return 'assets/boss-tiger.png';
+        if (spec && spec.form === 'ghost') return 'assets/boss-ghost.png';
         if (spec && spec.form && JB.art[spec.form]) {
           if (dlgBossCache[spec.form]) return dlgBossCache[spec.form];
           var cv = document.createElement('canvas');
@@ -75679,6 +75936,33 @@ if (typeof module !== 'undefined' && module.exports) {
     } catch (e) {}
     return 'assets/boss-king.png';
   }
+  /* v5.22: 보스 초상 — 캐시/파일 URL만 반환. 384 캔버스 동기 인코딩은 탭 경로에서 금지 */
+  function dlgBossPortraitUrlCached(st) {
+    try {
+      if (!st) return null;
+      var JB = root.JW48B;
+      if (JB && JB.specOf && ENGINE_MAPS.indexOf(st.mapId) >= 0) {
+        var spec = JB.specOf(st.mapId);
+        if (spec && spec.form === 'tiger') return 'assets/boss-tiger.png';
+        if (spec && spec.form === 'ghost') return 'assets/boss-ghost.png';
+        if (spec && spec.form && dlgBossCache[spec.form]) return dlgBossCache[spec.form];
+        return null;
+      }
+      return dlgSkinPortraitUrlCached(st.skinId);
+    } catch (e) { return null; }
+  }
+  /* v5.22: 보스 초상을 백그라운드에서 미리 계산 — 계산이 끝나면 콜백에 URL 전달 */
+  function dlgWarmBossPortrait(st, done) {
+    try {
+      var u0 = dlgBossPortraitUrlCached(st);
+      if (u0) { if (done) { try { done(u0); } catch (e) {} } return; }
+      setTimeout(function () {
+        var u = '';
+        try { u = dlgBossPortraitUrl(st); } catch (e) {}
+        if (done) { try { done(u); } catch (e2) {} }
+      }, 0);
+    } catch (e) {}
+  }
   var dlgLastWho = '', dlgPortraitTimer = null;
   function dlgPortrait(line, st) {
     var chara = $('storyDlgChara'), boss = $('storyDlgBoss');
@@ -75691,24 +75975,37 @@ if (typeof module !== 'undefined' && module.exports) {
     if (who === dlgLastWho) return;
     dlgLastWho = who;
     var apply = function () {
-      chara.style.display = 'none'; boss.style.display = 'none';
       if (!st) return;
       /* 화자 초상은 전부 실제 게임 이미지로 표시한다 (이모지 금지):
          주인공 대사 → 그 캐릭터 스킨 스프라이트, 보스 대사 → 보스 아트. */
-      var url = null;
-      if (line.kind === 'boss') { url = dlgBossPortraitUrl(st); }
-      else if (line.speaker === '재우') { url = dlgSkinPortraitUrl('jaeu'); }
-      else { url = dlgSkinPortraitUrl(st.skinId); }
-      if (!url) url = 'assets/boss-king.png';
-      chara.src = url; chara.style.display = 'block';
-      var shown = chara;
-      /* 페이드인: 살짝 아래에서 떠오르며 등장 */
-      shown.style.opacity = '0';
-      shown.style.transform = 'translateX(-50%) translateY(12px)';
-      requestAnimationFrame(function () { requestAnimationFrame(function () {
-        shown.style.opacity = '1';
-        shown.style.transform = 'translateX(-50%) translateY(0)';
-      }); });
+      var myWho = who;
+      var show = function (url) {
+        if (myWho !== dlgLastWho) return; /* 이미 다음 줄로 넘어감 */
+        if (!url) url = 'assets/boss-king.png';
+        chara.style.display = 'none'; boss.style.display = 'none';
+        chara.src = url; chara.style.display = 'block';
+        var shown = chara;
+        /* 페이드인: 살짝 아래에서 떠오르며 등장 */
+        shown.style.opacity = '0';
+        shown.style.transform = 'translateX(-50%) translateY(12px)';
+        requestAnimationFrame(function () { requestAnimationFrame(function () {
+          shown.style.opacity = '1';
+          shown.style.transform = 'translateX(-50%) translateY(0)';
+        }); });
+      };
+      /* v5.22: 캐시에 있는 초상은 바로 표시. 없으면 이전 초상을 그대로 두고
+         백그라운드에서 계산한 뒤 지금 화자일 때만 교체 — 탭 경로에서 동기
+         toDataURL을 절대 하지 않아 타자기가 안 멈춤. */
+      if (line.kind === 'boss') {
+        var bu = dlgBossPortraitUrlCached(st);
+        if (bu) { show(bu); return; }
+        dlgWarmBossPortrait(st, show);
+        return;
+      }
+      var skinId = (line.speaker === '재우') ? 'jaeu' : st.skinId;
+      var su = dlgSkinPortraitUrlCached(skinId);
+      if (su) { show(su); return; }
+      dlgWarmSkinPortrait(skinId, show);
     };
     /* 이전 캐릭터 페이드아웃 후 교체 (빠른 탭에도 최신 것만 적용) */
     chara.style.opacity = '0'; boss.style.opacity = '0';
@@ -75799,9 +76096,6 @@ if (typeof module !== 'undefined' && module.exports) {
     var body = line.body || '';
     if (who) who.textContent = speaker;
     if (next) next.textContent = (dlgIdx === dlgLines.length - 1) ? '끝 ▶' : '다음 ▶';
-    dlgPortrait(line, dlgStage);
-    dlgPlayVoice(line.audio || '');
-    dlgSaveLine(line); /* v5.21: 본 대사를 회상 모드용으로 저장 */
     dlgFull = body;
     dlgTyping = true;
     if (txt) {
@@ -75847,6 +76141,11 @@ if (typeof module !== 'undefined' && module.exports) {
       dlgTimer = requestAnimationFrame(step);
     };
     dlgTimer = requestAnimationFrame(step);
+    /* v5.22: 타자기 rAF를 먼저 예약한 뒤에 초상/음성 작업을 돌린다 —
+       초상·음성 작업이 타자기 시작을 막지 않게. (초상은 캐시 우선 + 비동기 워밍) */
+    dlgPortrait(line, dlgStage);
+    dlgPlayVoice(line.audio || '');
+    dlgSaveLine(line); /* v5.21: 본 대사를 회상 모드용으로 저장 */
     /* 다음 줄 미리 받아두기 (음성 + 초상) — 다음 누르자마자 바로 나오게 */
     dlgPrefetchNext();
   }
@@ -75931,6 +76230,8 @@ if (typeof module !== 'undefined' && module.exports) {
     dlgLines = lines.slice(); dlgIdx = 0; dlgDone = onDone || null; dlgStage = st || null;
     dlgSetScene(st);
     dlgShow();
+    /* v5.22: 이 장면의 모든 화자 초상을 백그라운드에서 미리 계산 (탭할 때 캐시 히트) */
+    try { dlgWarmScenePortraits(lines, st); } catch (e) {}
     dlgTypeLine(dlgLines[0]);
   }
   function dlgLine(text, kind, turn) {
@@ -76080,6 +76381,7 @@ if (typeof module !== 'undefined' && module.exports) {
   var __bossBlockT = 0;
   var __coinGateT = 0;
   V.storyDevSkip = false;
+  V.storyMissionClear = false; V.storyMissionClearRun = null; /* v5.22: 미션 완료 조기 클리어 1회용 플래그 */
 
   function resetStoryRunState() {
     SB = null;
@@ -76216,6 +76518,46 @@ if (typeof module !== 'undefined' && module.exports) {
     } catch (e) {}
     /* 보스 */
     try { storyBossTick(dt, st); } catch (e) {}
+    /* v5.22: 미션 완료 조기 클리어 — clearMode 'mission' 스테이지만 (코인/콤보/보스) */
+    try { storyMissionEarlyClear(st); } catch (e) {}
+  }
+
+  /* ---------------- 미션 완료 조기 클리어 (v5.22, 스테이지별) ----------------
+     clearMode가 'mission'인 스테이지에서만: 코인 수집·콤보 달성·보스 격파를
+     판 중간에 마치면 정상에 안 올라도 바로 클리어. 승리 훅(JWG.onReachVictory)을
+     직접 부르고, 게이트의 1회용 플래그가 보스 게이트를 우회해 통과시킨다.
+     'both'/'summit' 스테이지는 여기서 클리어하지 않는다. */
+  function storyMissionEarlyClear(st) {
+    var run = V.storyRun;
+    if (!run || run.done || run.failed) return;
+    var m = (st && st.mission) || {};
+    if (m.clearMode !== 'mission') return;
+    var done = false, why = '';
+    if (m.type === 'coins') {
+      var got = 0;
+      try { got = (V.G && V.G.coinsGot) || 0; } catch (e) {}
+      if (got >= (m.target || 1)) { done = true; why = '코인 ' + got + '개 수집!'; }
+    } else if (m.type === 'combo') {
+      var best = 0;
+      try { if (V.fever && typeof V.fever.best === 'number') best = V.fever.best; } catch (e) {}
+      if (ST && ST.maxCombo > best) best = ST.maxCombo;
+      if (best >= (m.target || 1)) { done = true; why = best + '콤보 달성!'; }
+    } else if (m.type === 'boss_clear') {
+      if (SB && SB.bossDead) { done = true; why = '보스 격파!'; }
+    }
+    if (!done) return;
+    try { V.storyMissionClear = true; V.storyMissionClearRun = run; } catch (e) {}
+    /* 보스는 격파 토스트가 이미 떴으니 중복 토스트 없이 클리어만 알림 */
+    if (m.type !== 'boss_clear') {
+      try { V.toast('🎉 미션 완료!', 'lucky', why + ' 스테이지 클리어!', 3000); } catch (e) {}
+    }
+    /* 틱 스택 밖에서 승리 처리 (재진입 방지용 짧은 지연) */
+    setTimeout(function () {
+      try {
+        if (V.storyRun !== run || run.done || run.failed) { V.storyMissionClear = false; V.storyMissionClearRun = null; return; }
+        if (root.JWG && root.JWG.onReachVictory) root.JWG.onReachVictory();
+      } catch (e) {}
+    }, 60);
   }
 
   /* ---------------- 미션 판정 (승리 시점) ---------------- */
@@ -76244,8 +76586,9 @@ if (typeof module !== 'undefined' && module.exports) {
     }
     if (m.type === 'no_damage') {
       var h = ST ? ST.hits : 0;
-      if (h <= 0) return { ok: true };
-      return { ok: false, msg: '❌ 미션 실패', sub: '피격 ' + h + '회 — 한 번도 안 맞고 깨야 해!', recoverable: false };
+      var lim = (typeof tgt === 'number') ? tgt : 0; /* v5.22: 데이터 target 사용 (1회까지 허용으로 완화) */
+      if (h <= lim) return { ok: true };
+      return { ok: false, msg: '❌ 미션 실패', sub: '피격 ' + h + '회 — ' + lim + '회 이하로 깨야 해!', recoverable: false };
     }
     if (m.type === 'coins') {
       var got = (G && G.coinsGot) || 0;
@@ -76275,6 +76618,13 @@ if (typeof module !== 'undefined' && module.exports) {
     } catch (e) {}
     var st = STAGE_BY_IDX[run.index];
     if (!st) return 'pass';
+    /* v5.22: 미션 완료 조기 클리어 (1회용 플래그) — 보스 게이트보다 먼저 통과 */
+    try {
+      if (V.storyMissionClear && V.storyMissionClearRun === run) {
+        V.storyMissionClear = false; V.storyMissionClearRun = null;
+        return 'pass';
+      }
+    } catch (e) {}
     /* 보스 게이트 (전 스테이지 공통 최종 관문) */
     try {
       if (!SB || !SB.boss) storyBossEnsure(st);
@@ -76283,11 +76633,16 @@ if (typeof module !== 'undefined' && module.exports) {
         return 'block';
       }
     } catch (e) {}
-    /* 미션 판정 */
+    /* 미션 판정 — 스테이지별 clearMode(v5.22):
+       summit = 정상만 오르면 클리어 (미션은 보너스, 판정 안 함),
+       mission/both = 정상에서 미션도 검사 (mission은 미완료 시 아래로 텔레포트해 재도전). */
+    var cm = (st.mission && st.mission.clearMode) || 'both';
+    if (cm === 'summit') return 'pass';
     var chk = null;
     try { chk = storyMissionCheck(st); } catch (e) { chk = { ok: true }; }
     if (chk && !chk.ok) {
-      try { V.toast(chk.msg || '❌ 미션 실패', 'danger', chk.sub || '', 3200); } catch (e) {}
+      var tmsg = (cm === 'mission') ? '🎯 미션을 마치면 클리어!' : (chk.msg || '❌ 미션 실패');
+      try { V.toast(tmsg, 'danger', chk.sub || '', 3200); } catch (e) {}
       if (chk.recoverable) {
         try { storyRetryTeleport(chk.retry || 'boss', st); } catch (e) {}
         return 'block';
@@ -76727,6 +77082,12 @@ if (typeof module !== 'undefined' && module.exports) {
       b.__storyBound = true;
       b.addEventListener('click', function () { openStory(); });
     }
+    var pn = document.getElementById('btnPatchNotes');
+    if (pn && !pn.__pnBound) {
+      pn.__pnBound = true;
+      pn.addEventListener('click', function () { openPatchNotes(); });
+    }
+    try { updatePatchNotesLabel(); } catch (e) {}
     var nx = document.getElementById('storyDlgNext');
     if (nx && !nx.__storyBound) {
       nx.__storyBound = true;
