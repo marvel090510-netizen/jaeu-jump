@@ -455,7 +455,9 @@ html body #titleScreen {
       /* v51 퀵메뉴는 타이틀 초기화가 끝나야 그려진다 = '실제로 준비됨' 신호
          (btnStartGame 은 정적 마크업이라 준비 신호로 쓸 수 없다) */
       var painted=!!document.getElementById('v51Quick');
-      return painted && (covOk || sideOk);
+      /* v5.23: 새 타이틀 줄(v43TitleRow)이 그려진 뒤에야 베일을 걷는다 — 옛날 UI가 보였다가 새 UI로 덮이는 느낌을 줄인다 */
+      var rowOk=!!document.getElementById('v43TitleRow');
+      return painted && rowOk && (covOk || sideOk);
     }catch(e){ return false; }
   }
   function off(){

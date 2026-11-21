@@ -11037,6 +11037,9 @@ extends CanvasLayer
     edLoad(); edRenderTypes(); edDraw();
     $('v42Editor').classList.remove('hidden');
   }
+  /* v5.23: v4.3 에디터 버튼이 숨은 v42 버튼을 거치지 않고 직접 열 수 있게 전역으로 내보낸다
+     (v42 IIFE와 v4.3 IIFE는 스코프가 달라서 V/root.JW43 경유는 안 됨) */
+  try { window.__jwOpenEditor = openEditor; } catch (e) {}
   function bindUI() {
     document.querySelectorAll('[data-v42close]').forEach((b) => b.addEventListener('click', () => {
       const id = b.getAttribute('data-v42close');
@@ -11669,6 +11672,9 @@ extends CanvasLayer
 
   /* ================================================================ 15. 타이틀 액션 그리드 (2 + 3 + 3) */
   function injectTitleRow() {
+    /* v5.23: 구 타이틀 줄(v4.2) 폐기 — 만들지 않는다. 숨기기만 하면 DOM에 남아 렉·버그 원인이 되므로,
+       v42TitleRow/2 + v42World를 아예 생성하지 않는다. 버튼은 v4.3 줄(v43TitleRow)이 담당한다. */
+    return;
     const menu = $('btnOpenSettingsTitle') && $('btnOpenSettingsTitle').closest('div');
     if (!menu || $('v42TitleRow')) return;
     const mk = (id, kind, label) => '<button type="button" id="' + id + '"><canvas class="v42-tico" data-ico="' + kind + '" width="24" height="24"></canvas><span>' + label + '</span></button>';
@@ -23402,7 +23408,7 @@ extends CanvasLayer
       if (b) b.click(); else if (V.openProfile) V.openProfile();
     });
     const ed = $('v43OpenEditor');
-    if (ed) ed.addEventListener('click', () => { closeAll(); const b = $('v42OpenEditor2') || $('v42OpenEditor'); if (b) b.click(); });
+    if (ed) ed.addEventListener('click', () => { closeAll(); try { if (window.__jwOpenEditor) window.__jwOpenEditor(); else { var b = $('v42OpenEditor2') || $('v42OpenEditor'); if (b) b.click(); } } catch (e) {} });
     const rk = $('v43OpenRank');
     if (rk) rk.addEventListener('click', () => {
       closeAll();
@@ -24161,12 +24167,14 @@ extends CanvasLayer
     try { st = (root.JW43 && root.JW43.achState) ? root.JW43.achState() : {}; } catch (e) {}
     const done = ach.filter((a) => st[a.id]).length;
     const min = Math.round((Number(stats.playSec) || 0) / 60);
-    sg.innerHTML = [
+    /* v5.23: 900ms마다 innerHTML을 다시 만들지 않는다 — 값이 바뀔 때만 갱신 (타이틀 렉 줄이기) */
+    var sgHtml = [
       ['완등', (Number(stats.clears) || 0) + '회'],
       ['최고 층', String(Number(stats.bestPlat) || 1).padStart(3, '0')],
       ['플레이', min + '분'],
       ['업적', done + ' / ' + (ach.length || 0)]
     ].map((x) => '<div class="sa-stat"><span>' + x[0] + '</span><b>' + x[1] + '</b></div>').join('');
+    if (sg.__v523html !== sgHtml) { sg.__v523html = sgHtml; sg.innerHTML = sgHtml; }
     const q = $('v44SideQuick');
     if (q) {
       const lt = document.documentElement.classList.contains('theme-light');
@@ -40712,7 +40720,8 @@ extends CanvasLayer
     if (!id) return '';
     /* v4.8.3: 1번 기본 맵도 전용 썸네일(default.jpg)을 쓴다 (인게임 맵은 그대로) */
     /* v4.8.5: 커스텀 맵 등 썸네일 파일이 없는 맵은 404 대신 기본 썸네일 */
-    var HAS = {'arcade':1,'arctic':1,'atlantis':1,'bamboo':1,'clock':1,'default':1,'dessert':1,'egypt':1,'fuji':1,'kitchen':1,'mansion':1,'newyork':1,'paris':1,'rainbow':1,'school':1,'seoul':1,'site':1,'space':1,'train':1,'volcano':1,'wuxia':1,'london':1,'skycastle':1,'pirate':1,'carnival':1,'mushroom':1,'cyberpunk':1,'olympus':1,'lab':1,'canyon':1,'santa':1,'stadium':1,'rockfest':1,'onsen':1,'honey':1,'library':1,'cheese':1,'dino':1,'alien':1,'gyeongju':1,'venice':1,'snowclock':1,'fireworks':1,'baseball':1,'retro20':1};
+    /* v5.23: 신규 19맵 추가 — '지금 고른 맵' 패널에 신규 맵 썸네일이 뜨게 (기본 썸네일 대신) */
+    var HAS = {'arcade':1,'arctic':1,'atlantis':1,'bamboo':1,'clock':1,'default':1,'dessert':1,'egypt':1,'fuji':1,'kitchen':1,'mansion':1,'newyork':1,'paris':1,'rainbow':1,'school':1,'seoul':1,'site':1,'space':1,'train':1,'volcano':1,'wuxia':1,'london':1,'skycastle':1,'pirate':1,'carnival':1,'mushroom':1,'cyberpunk':1,'olympus':1,'lab':1,'canyon':1,'santa':1,'stadium':1,'rockfest':1,'onsen':1,'honey':1,'library':1,'cheese':1,'dino':1,'alien':1,'gyeongju':1,'venice':1,'snowclock':1,'fireworks':1,'baseball':1,'retro20':1,'alley':1,'pond':1,'hatchery':1,'burrow':1,'wheatfield':1,'octocave':1,'fruitfarm':1,'savanna':1,'halloween':1,'slimemarsh':1,'boxing':1,'mansionclean':1,'oldinn':1,'hospital':1,'ruins':1,'sharkbay':1,'trench':1,'vcastle':1,'demonking':1};
     return 'assets/maps/t/' + (HAS[id] ? id : 'default') + '.jpg';
   }
 
@@ -67927,6 +67936,281 @@ if (typeof module !== 'undefined' && module.exports) {
     state: function () { return { supported: supported(), on: !!fsEl(), tried: ST.tried, denied: ST.denied }; }
   };
   console.log('[JW51FULL] manual fullscreen ready');
+})(window);
+
+
+/* ===== v5.23: 타이틀 전체화면 프롬프트 + 실제 보이는 높이에 맞춤 + 구 타이틀 UI 제거 ===== */
+/* - 타이틀 화면이 뜰 때 "전체화면 하시겠습니까?" 1회 질문 (수락/거절 기억, 매번 안 물음)
+   - 수락: Fullscreen API (JW51FULL.enter). 아이폰(미지원)은 홈 화면 추가 안내 + 레이아웃 맞춤
+   - 타이틀 맞춤: 실제 보이는 높이(visualViewport.height || innerHeight)에 맞춰 내용이 넘치면
+     단계별 압축(tf1~tf3). fullscreenchange·resize·visualViewport·회전 때 다시 맞춤.
+     타이틀만 건드린다 (인게임·설정 안 건드림). 스크롤은 막지 않는다 — 길면 스크롤은 되게 둔다.
+   - 구 타이틀 UI 제거: v42 줄/월드 스트립은 숨기지 않고 DOM에서 완전히 제거한다.
+     (숨기기만 하면 DOM에 남아 렉·버그 원인이 됨 — "가리는 게 아니라 없애는 거")
+     ※ btnOpenSettingsTitle은 정적 버튼이라 로드 시 리스너가 붙으므로 DOM에 둔다 (display:none, 비용 없음).
+     v4.2 injectTitleRow는 v5.23에서 아예 만들지 않게 바꿨다 (위쪽 참조). */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW523TITLE) return;
+  root.JW523TITLE = true;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var KEY = 'jw_fs_prompt_v1';
+  var promptOpen = false;
+
+  /* ---------- CSS (타이틀만) ---------- */
+  function injectCss() {
+    if ($('v523TitleCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v523TitleCss';
+    s.textContent = [
+      '#titleScreen{height:100dvh;max-height:100dvh;}',
+      '@media (max-width:759px){',
+      '  #titleScreen.tf1 #v43Cover{max-height:80px !important;}',
+      '  #titleScreen.tf1 > div.relative.z-10 > div:first-child > p:nth-of-type(2){display:none !important;}',
+      '  #titleScreen.tf1 h1{font-size:24px !important;}',
+      '  #titleScreen.tf1 > div.relative.z-10 > div:first-child > p:nth-of-type(1){font-size:15px !important;}',
+      '  #titleScreen.tf2 #v43Cover{display:none !important;}',
+      '  #titleScreen.tf2 #titlePortraitImg{width:36px !important;height:36px !important;}',
+      '  #titleScreen.tf2 #btnStartGame,#titleScreen.tf2 #btnMultiplayer{min-height:52px !important;}',
+      '  #titleScreen.tf2 #titleBestHeight{font-size:16px !important;}',
+      '  #titleScreen.tf3 #v43TitleRow button{height:44px !important;}',
+      '  #titleScreen.tf3 #v43TestLink{display:none !important;}',
+      '}',
+      '#v523FsYes{background:linear-gradient(180deg,#fde047,#f59e0b);border:3px solid #78350f;color:#451a03;font-weight:900;border-radius:12px;padding:10px 14px;font-size:14px;cursor:pointer;flex:1;}',
+      '#v523FsNo{background:#1e293b;border:3px solid #475569;color:#e2e8f0;font-weight:900;border-radius:12px;padding:10px 14px;font-size:14px;cursor:pointer;flex:1;}',
+      '#v523FsTitleBtn{margin-left:auto;padding:2px 6px;font-size:12px;font-weight:900;color:#bfdbfe;background:#1e3a5f;border:1px solid #60a5fa;border-radius:8px;cursor:pointer;white-space:nowrap;flex:0 0 auto;}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+
+  /* ---------- 저장된 선택 ---------- */
+  function choice() {
+    try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; }
+  }
+  function saveChoice(v) {
+    try { localStorage.setItem(KEY, v); } catch (e) {}
+  }
+
+  /* ---------- 기기 판별 / 전체화면 ---------- */
+  function fsSupported() {
+    var e = doc.documentElement;
+    return !!(e.requestFullscreen || e.webkitRequestFullscreen || e.webkitRequestFullScreen || e.mozRequestFullScreen || e.msRequestFullscreen);
+  }
+  function fsOn() {
+    return !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+  }
+  function enterFs() {
+    try {
+      if (root.JW51FULL && root.JW51FULL.enter) { root.JW51FULL.enter(); return true; }
+    } catch (e) {}
+    try {
+      var el = doc.documentElement;
+      var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+      if (!fn) return false;
+      var p = fn.call(el);
+      if (p && p.catch) p.catch(function () {});
+      return true;
+    } catch (e) { return false; }
+  }
+  function exitFs() {
+    try {
+      if (root.JW51FULL && root.JW51FULL.exit) { root.JW51FULL.exit(); return; }
+    } catch (e) {}
+    try {
+      var fn = doc.exitFullscreen || doc.webkitExitFullscreen || doc.webkitCancelFullScreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+      if (fn) fn.call(doc);
+    } catch (e) {}
+  }
+
+  /* ---------- 타이틀 맞춤: 실제 보이는 높이에 맞게 압축 (스크롤은 막지 않음) ---------- */
+  function visibleH() {
+    try {
+      if (window.visualViewport && window.visualViewport.height) return Math.round(window.visualViewport.height);
+    } catch (e) {}
+    return window.innerHeight || 0;
+  }
+  function fitTitle() {
+    var ts = $('titleScreen');
+    if (!ts || ts.classList.contains('hidden')) return;
+    var vh = visibleH();
+    if (vh > 0) {
+      ts.style.height = vh + 'px';
+      ts.style.maxHeight = vh + 'px';
+    }
+    /* 내용이 넘치면 단계별로 압축. 스크롤은 막지 않는다 (overflow-y-auto 그대로) —
+       tf3까지 해도 넘치면 그냥 스크롤이 된다. */
+    var lvl = 0, guard = 0;
+    ts.classList.remove('tf1', 'tf2', 'tf3');
+    try {
+      while (ts.scrollHeight > ts.clientHeight + 1 && lvl < 3 && guard < 5) {
+        lvl++; guard++;
+        ts.classList.add('tf' + lvl);
+      }
+    } catch (e) {}
+    try { doc.body.classList.toggle('v523-fs', fsOn()); } catch (e) {}
+  }
+
+  /* ---------- 구 타이틀 UI 제거 (숨기지 않고 DOM에서 완전히 제거) ---------- */
+  function removeOldTitleUI() {
+    ['v42TitleRow', 'v42TitleRow2', 'v42World'].forEach(function (id) {
+      try {
+        var el = $(id);
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      } catch (e) {}
+    });
+  }
+
+  /* ---------- 전체화면 프롬프트 ---------- */
+  function buildPrompt() {
+    var m = $('v523FsPrompt');
+    if (m) return m;
+    m = doc.createElement('div');
+    m.id = 'v523FsPrompt';
+    m.className = 'v42-modal hidden';
+    m.innerHTML =
+      '<div class="v42-card" style="max-width:22rem;text-align:center">' +
+        '<div class="v42-t">⛶ 전체화면 하시겠습니까?</div>' +
+        '<div class="v42-sub" style="margin-top:6px">전체화면으로 보면 타이틀이 한 화면에 다 보여요.<br>나중에 설정에서도 바꿀 수 있어요.</div>' +
+        '<div style="display:flex;gap:8px;margin-top:14px">' +
+          '<button type="button" id="v523FsYes">전체화면으로 보기</button>' +
+          '<button type="button" id="v523FsNo">그냥 보기</button>' +
+        '</div>' +
+      '</div>';
+    doc.body.appendChild(m);
+    var yes = $('v523FsYes'), no = $('v523FsNo');
+    if (yes) yes.addEventListener('click', onAccept);
+    if (no) no.addEventListener('click', onDecline);
+    return m;
+  }
+  function showPrompt() {
+    if (promptOpen || choice()) return;
+    var ts = $('titleScreen');
+    if (!ts || ts.classList.contains('hidden')) return;
+    try {
+      if (doc.querySelector('.v42-modal:not(.hidden), .v43-modal:not(.hidden), .v44-modal:not(.hidden), #pauseModal:not(.hidden)')) return;
+    } catch (e) {}
+    var m = buildPrompt();
+    if (!m) return;
+    promptOpen = true;
+    m.classList.remove('hidden');
+  }
+  function hidePrompt() {
+    var m = $('v523FsPrompt');
+    if (m) m.classList.add('hidden');
+    promptOpen = false;
+  }
+  function onAccept() {
+    saveChoice('yes');
+    hidePrompt();
+    if (fsSupported()) {
+      enterFs();
+      setTimeout(fitTitle, 300);
+      setTimeout(fitTitle, 800);
+    } else {
+      showIphoneGuide();
+      fitTitle();
+    }
+  }
+  function onDecline() {
+    saveChoice('no');
+    hidePrompt();
+    fitTitle();
+  }
+  function showIphoneGuide() {
+    var m = buildPrompt();
+    if (!m) return;
+    var card = m.querySelector('.v42-card');
+    if (!card) return;
+    card.innerHTML =
+      '<div class="v42-t">📱 아이폰 전체화면 안내</div>' +
+      '<div class="v42-sub" style="margin-top:6px">아이폰 사파리는 전체화면 버튼이 안 돼요.<br>공유 버튼 → “홈 화면에 추가”를 하면<br>앱처럼 전체화면으로 열려요.</div>' +
+      '<div style="display:flex;gap:8px;margin-top:14px">' +
+        '<button type="button" id="v523FsYes" style="flex:1">확인</button>' +
+      '</div>';
+    var ok = $('v523FsYes');
+    if (ok) ok.addEventListener('click', function () { hidePrompt(); });
+    promptOpen = true;
+    m.classList.remove('hidden');
+  }
+
+  /* ---------- 타이틀 ⛶ 버튼 (버전 배지 줄 오른쪽) ---------- */
+  function addTitleFsBtn() {
+    try {
+      var row = doc.querySelector('#titleScreen .relative.z-10 .inline-flex.items-center.gap-2');
+      if (!row || $('v523FsTitleBtn')) return;
+      var b = doc.createElement('button');
+      b.type = 'button';
+      b.id = 'v523FsTitleBtn';
+      b.textContent = '⛶';
+      b.title = '전체화면';
+      b.addEventListener('click', function () {
+        try {
+          if (fsOn()) exitFs();
+          else if (fsSupported()) enterFs();
+          else showIphoneGuide();
+          setTimeout(fitTitle, 300);
+        } catch (e) {}
+      });
+      row.appendChild(b);
+    } catch (e) {}
+  }
+
+  /* ---------- 타이틀 표시 감지 (보일 때 맞춤 + 프롬프트 + 구 UI 제거) ---------- */
+  function onTitleVisible() {
+    try { removeOldTitleUI(); } catch (e) {}
+    try { addTitleFsBtn(); } catch (e) {}
+    fitTitle();
+    setTimeout(fitTitle, 120);
+    setTimeout(function () { fitTitle(); showPrompt(); }, 600);
+  }
+  function watchTitle() {
+    var ts = $('titleScreen');
+    if (!ts) return;
+    try {
+      var ob = new MutationObserver(function () {
+        try {
+          if (ts.classList.contains('hidden')) { hidePrompt(); return; }
+          onTitleVisible();
+        } catch (e) {}
+      });
+      ob.observe(ts, { attributes: true, attributeFilter: ['class'] });
+    } catch (e) {}
+  }
+
+  /* ---------- 리사이즈/전체화면 전환 때 다시 맞춤 ---------- */
+  function bindResize() {
+    var t = 0;
+    function debounced() {
+      var now = Date.now();
+      if (now - t < 120) return;
+      t = now;
+      fitTitle();
+    }
+    try { doc.addEventListener('fullscreenchange', function () { setTimeout(fitTitle, 60); setTimeout(fitTitle, 400); }); } catch (e) {}
+    try { doc.addEventListener('webkitfullscreenchange', function () { setTimeout(fitTitle, 60); setTimeout(fitTitle, 400); }); } catch (e) {}
+    try { window.addEventListener('resize', debounced); } catch (e) {}
+    try { window.addEventListener('orientationchange', function () { setTimeout(fitTitle, 300); setTimeout(fitTitle, 700); }); } catch (e) {}
+    try {
+      if (window.visualViewport) window.visualViewport.addEventListener('resize', debounced);
+    } catch (e) {}
+  }
+
+  /* ---------- 부트 ---------- */
+  try { injectCss(); } catch (e) {}
+  try { removeOldTitleUI(); } catch (e) {}
+  try { addTitleFsBtn(); } catch (e) {}
+  try { watchTitle(); } catch (e) {}
+  try { bindResize(); } catch (e) {}
+  setTimeout(function () {
+    try {
+      var ts = $('titleScreen');
+      if (ts && !ts.classList.contains('hidden')) onTitleVisible();
+    } catch (e) {}
+  }, 900);
+  console.log('[JW523TITLE] fullscreen prompt + title fit ready');
 })(window);
 
 
