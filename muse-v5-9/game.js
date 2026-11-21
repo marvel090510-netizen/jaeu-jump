@@ -10883,15 +10883,15 @@ extends CanvasLayer
     const box = document.createElement('div');
     box.id = 'v42SetBox';
     box.innerHTML =
-      '<div class="text-xs font-black" style="color:#c4b5fd">4.2 신기능</div>' +
+      '<details><summary class="text-xs font-black" style="color:#c4b5fd;cursor:pointer">4.2 신기능</summary>' +
       '<div class="v42-row"><span class="v42-lbl">🌧️ 실시간 날씨 변화</span><button type="button" class="v42-chip" id="v42CfgWeather">OFF</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">👻 고스트 리플레이</span><button type="button" class="v42-chip" id="v42CfgGhost">자동</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">🔥 연속 착지 피버</span><button type="button" class="v42-chip" id="v42CfgFever">ON</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">🥊 78층부터 수문장</span><button type="button" class="v42-chip" id="v42CfgBoss">OFF</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">⛓️ 사슬 최대 거리</span><input type="range" id="v42CfgChain" min="120" max="340" step="10" style="width:96px" /></div>' +
+      '<div class="v42-sub">날씨·수문장은 새로 시작하는 판부터 적용됩니다. 고스트는 이 기기에 저장된 내 기록으로 재생됩니다.</div></details>' +
       '<div class="v42-row"><span class="v42-lbl">🛠️ 개발자 모드</span><button type="button" class="v42-chip" id="v42CfgDev">OFF</button></div>' +
       '<div class="v42-row" id="v42DevPinRow"><span class="v42-lbl">🔑 PIN 4자리</span><input type="password" class="mp-in" id="v42DevPin" maxlength="4" inputmode="numeric" autocomplete="off" style="width:84px;text-align:center;letter-spacing:.2em;padding:6px 4px;font-size:14px" /><button type="button" class="v42-chip" id="v42DevPinOk">해금</button></div>' +
-      '<div class="v42-sub">날씨·수문장은 새로 시작하는 판부터 적용됩니다. 고스트는 이 기기에 저장된 내 기록으로 재생됩니다.</div>' +
       '<button type="button" id="v42GodotLink" hidden aria-hidden="true" tabindex="-1" style="display:none!important;margin-top:2px;font-size:10px;font-weight:800;color:#c4b5fd;text-decoration:underline;background:none;border:0;text-align:left;padding:2px 0;opacity:.75">📦 Godot 4 코드 · 도트 PNG 에셋 내보내기</button>';
     card.appendChild(box);
     const wb = $('v42CfgWeather'), gb = $('v42CfgGhost'), fb = $('v42CfgFever'), bb = $('v42CfgBoss'), cs = $('v42CfgChain');
@@ -10947,6 +10947,52 @@ extends CanvasLayer
       const sm = $('settingsModal'); if (sm) sm.classList.add('hidden');
       const gb2 = $('btnOpenGodotCode'); if (gb2) gb2.click();
     });
+    paint();
+  }
+  /* v5.21: 자주 쓰는 설정 — 설정창 최상단에 고정 (탭과 무관하게 항상 보임).
+     BGM 켜기/볼륨 · 대사 속도 · BGM 페이드 · 대사 태그 보기 · 대사 저장 일시정지.
+     값은 V.QOL(4.3)에 저장 — 대사 장면·BGM 코드가 같은 QOL을 읽는다. */
+  function injectTopFav() {
+    const card = document.querySelector('#settingsModal .pixel-panel');
+    if (!card || $('v51TopFav')) return;
+    var V43 = window.JW43 || null;
+    var Q = (V43 && V43.QOL) || {};
+    const box = document.createElement('div');
+    box.id = 'v51TopFav';
+    box.style.cssText = 'background:#0d1526;border:2px solid #f59e0b;padding:10px;display:flex;flex-direction:column;gap:6px';
+    box.innerHTML =
+      '<div class="text-xs font-black" style="color:#fbbf24">⭐ 자주 쓰는 설정</div>' +
+      '<div class="v42-row"><span class="v42-lbl">🎵 BGM</span><button type="button" class="v42-chip" id="v51FavBgm">ON</button><input type="range" id="v51FavBgmVol" min="0" max="100" step="1" style="width:96px" /><span id="v51FavBgmVolV" style="font-size:11px;font-weight:800;color:#93c5fd;min-width:32px;text-align:right">32%</span></div>' +
+      '<div class="v42-row"><span class="v42-lbl">💬 대사 속도</span><input type="range" id="v51FavDlgSpd" min="0.5" max="2" step="0.25" style="width:120px" /><span id="v51FavDlgSpdV" style="font-size:11px;font-weight:800;color:#93c5fd;min-width:40px;text-align:right">1×</span></div>' +
+      '<div class="v42-row"><span class="v42-lbl">🎵 BGM 페이드</span><button type="button" class="v42-chip" id="v51FavFade">ON</button></div>' +
+      '<div class="v42-row"><span class="v42-lbl">🏷️ 대사 태그 보기</span><button type="button" class="v42-chip" id="v51FavTags">ON</button></div>' +
+      '<div class="v42-row"><span class="v42-lbl">⏸ 대사 저장 일시정지</span><button type="button" class="v42-chip" id="v51FavSavePause">저장 중</button></div>';
+    var first = card.querySelector('.v51-sec');
+    if (first) card.insertBefore(box, first); else card.appendChild(box);
+    /* v5.21: 저장 버튼을 카드 맨 아래로 — sticky bottom과 함께 스크롤 중에도 항상 보이게 */
+    try {
+      var sv = document.getElementById('btnSaveSettings');
+      if (sv && sv.parentElement) card.appendChild(sv.parentElement);
+    } catch (e) {}
+    var saveQ = function () { try { if (V43 && V43.saveQol) V43.saveQol(); } catch (e) {} };
+    var syncBgm = function () { try { if (window.JW43MP3 && window.JW43MP3.sync) window.JW43MP3.sync(); } catch (e) {} };
+    const paint = () => {
+      var bgmOn = !(Q.bgm === false);
+      var bg = $('v51FavBgm'); if (bg) { bg.textContent = bgmOn ? 'ON' : 'OFF'; bg.classList.toggle('on', bgmOn); }
+      var bv = $('v51FavBgmVol'); if (bv) bv.value = Math.round((Q.bgmVol == null ? 0.32 : Q.bgmVol) * 100);
+      var bvv = $('v51FavBgmVolV'); if (bvv) bvv.textContent = Math.round((Q.bgmVol == null ? 0.32 : Q.bgmVol) * 100) + '%';
+      var sp = $('v51FavDlgSpd'); if (sp) sp.value = (Q.dlgSpeed == null ? 1 : Q.dlgSpeed);
+      var spv = $('v51FavDlgSpdV'); if (spv) spv.textContent = (Q.dlgSpeed == null ? 1 : Q.dlgSpeed) + '×';
+      var fd = $('v51FavFade'); if (fd) { var f = Q.bgmFade !== false; fd.textContent = f ? 'ON' : 'OFF'; fd.classList.toggle('on', f); }
+      var tg = $('v51FavTags'); if (tg) { var t = Q.dlgTags !== false; tg.textContent = t ? 'ON' : 'OFF'; tg.classList.toggle('on', t); }
+      var ps = $('v51FavSavePause'); if (ps) { var p = !!Q.dlgSavePause; ps.textContent = p ? '일시정지 중' : '저장 중'; ps.classList.toggle('on', p); }
+    };
+    var bg = $('v51FavBgm'); if (bg) bg.addEventListener('click', () => { var on = Q.bgm === false; try { if (window.JW43MP3) window.JW43MP3.on = on; } catch (e) {} Q.bgm = on; saveQ(); syncBgm(); paint(); });
+    var bv = $('v51FavBgmVol'); if (bv) bv.addEventListener('input', () => { Q.bgmVol = Number(bv.value) / 100; saveQ(); syncBgm(); paint(); });
+    var sp = $('v51FavDlgSpd'); if (sp) sp.addEventListener('input', () => { Q.dlgSpeed = Number(sp.value); saveQ(); paint(); });
+    var fd = $('v51FavFade'); if (fd) fd.addEventListener('click', () => { Q.bgmFade = !(Q.bgmFade !== false); saveQ(); paint(); });
+    var tg = $('v51FavTags'); if (tg) tg.addEventListener('click', () => { Q.dlgTags = !(Q.dlgTags !== false); saveQ(); paint(); });
+    var ps = $('v51FavSavePause'); if (ps) ps.addEventListener('click', () => { Q.dlgSavePause = !Q.dlgSavePause; saveQ(); paint(); });
     paint();
   }
   function injectResultButtons() {
@@ -11761,6 +11807,7 @@ extends CanvasLayer
     hookAll();
     injectTitleRow();
     injectSettingsBox();
+    try { injectTopFav(); } catch (e) {}
     injectResultButtons();
     bindUI();
     edLoad();
@@ -11828,7 +11875,8 @@ extends CanvasLayer
     footprints: true, pieces: 2, chargePitch: true, bgm: true, bgmVol: 0.32, sfxVol: 0.7,
     lowSpec: false, focus: false, oneHand: false, platformNums: true, practice: false,
     ceremony: '만세', fallLine: '', quick4: true, aura: true, gentle: true,
-    dnd: false, autoFit: true, bigEmoji: true, anime: true
+    dnd: false, autoFit: true, bigEmoji: true, anime: true,
+    dlgSpeed: 1, bgmFade: true, dlgTags: true, dlgSavePause: false
   };
   const QOL = Object.assign({}, QOL_DEF, lsGet(LS.qol, {}));
   function saveQol() { lsSet(LS.qol, QOL); }
@@ -22905,7 +22953,6 @@ extends CanvasLayer
   const QOL_ROWS = [
     ['oneHand', '✋ 한 손 조작 프리셋', '이동·점프를 오른손 한쪽에 모읍니다'],
     ['lowSpec', '🔋 저사양·배터리 절약', '파티클·연출을 줄입니다'],
-    ['focus', '🎧 집중 모드 (오프라인 표시)', '친구에게 오프라인으로 보이고 알림도 끕니다'],
     ['gaugePct', '📊 게이지 % 숫자', '충전 게이지를 숫자로'],
     ['bestLine', '📏 BEST 돌파선', '이 맵·모드 최고 기록선 표시'],
     ['pace', '⏱️ 최고 기록 대비 페이스', '내 최고와 실시간 비교'],
@@ -22917,7 +22964,6 @@ extends CanvasLayer
     ['chargePitch', '🎼 충전 음정 상승', '충전할수록 음이 올라갑니다'],
     ['practice', '🎯 연습장 모드', '되감기·궤적 · 랭킹 미등록'],
     ['gentle', '💬 격려 말풍선', '3연속 추락 시 격려'],
-    ['autoFit', '🔄 가로/세로 자동 맞춤', '화면 방향에 맞춰 버튼 재배치'],
     ['anime', '⚡ 태초 클로즈업', '태초 귀환 시 천둥번개 연출'],
     ['dnd', '🔕 위험 알림만', '중요 경고만 표시']
   ];
@@ -22943,20 +22989,20 @@ extends CanvasLayer
     h += '<div class="v43-block"><b>💬 나만의 추락 말풍선</b>' +
       '<input id="v43FallLine" class="mp-in" maxlength="24" placeholder="예: 아 진짜 ㅋㅋㅋ" value="' + esc(Q.fallLine || '') + '" />' +
       '<div class="v43-sub">큰 추락 때 이 말이 말풍선으로 뜹니다.</div></div>';
-    h += '<div class="v43-block"><b>💾 내 프리셋 3개</b><div class="v43-presets">' +
+    h += '<details class="v43-block"><summary style="font-weight:900;cursor:pointer">💾 내 프리셋 3개</summary><div class="v43-presets">' +
       [0, 1, 2].map((i) => '<button type="button" data-preset-save="' + i + '">' + (i + 1) + ' 저장</button>').join('') +
       '</div><div class="v43-presets">' +
       [0, 1, 2].map((i) => '<button type="button" data-preset-load="' + i + '">' + (presets()[i] ? '📂 ' + (i + 1) + ' 불러오기' : '📂 ' + (i + 1) + ' 비어있음') + '</button>').join('') +
-      '</div></div>';
-    h += '<div class="v43-block"><b>★ 즐겨찾기</b><div id="v43FavStrip" class="v43-opts">' +
+      '</div></details>';
+    h += '<details class="v43-block"><summary style="font-weight:900;cursor:pointer">★ 즐겨찾기</summary><div id="v43FavStrip" class="v43-opts">' +
       '<span class="v43-sub">아직 없음 · 규칙 화면에서 ★</span></div>' +
-      '<button type="button" class="mp-chip gold" id="v43FavCur" style="padding:6px">★ 지금 선택 즐겨찾기</button></div>';
-    h += '<div class="v43-block"><b>🛠️ 기타</b><div class="v43-opts">' +
+      '<button type="button" class="mp-chip gold" id="v43FavCur" style="padding:6px">★ 지금 선택 즐겨찾기</button></details>';
+    h += '<details class="v43-block"><summary style="font-weight:900;cursor:pointer">🛠️ 기타</summary><div class="v43-opts">' +
       '<button type="button" class="mp-chip" id="v43Ios">🔊 iOS 소리 복구</button>' +
       '<button type="button" class="mp-chip" id="v43Recon">🔄 멀티 재연결</button>' +
       '<button type="button" class="mp-chip" id="v43ShareBtn">📋 카톡 공유 문구</button>' +
       '<button type="button" class="mp-chip red" id="v43Reset">🧹 설정·캐시 초기화</button>' +
-      '</div><div class="v43-sub">기록은 남기고 설정만 초기화합니다.</div></div>';
+      '</div><div class="v43-sub">기록은 남기고 설정만 초기화합니다.</div></details>';
     body.innerHTML = h;
     body.querySelectorAll('[data-qset]').forEach((b) => b.addEventListener('click', () => {
       const k = b.getAttribute('data-qset');
@@ -25173,6 +25219,32 @@ extends CanvasLayer
     if (!on) bgmPauseAll();
     bgmSync();
   }
+  /* v5.21: BGM 페이드 (QOL.bgmFade, 기본 ON) — 맵 BGM 전환 + 스토리 BGM 시작/끝.
+     트랙별 __fadeGen으로 가드: 같은 트랙에 새 페이드가 시작되면 이전 페이드는 취소된다.
+     __fading이 켜져 있는 동안은 900ms 틱의 볼륨 램프와 pause-others 루프가 그 트랙을 건드리지 않는다. */
+  function bgmFadeOn() { try { return !(V.QOL && V.QOL.bgmFade === false); } catch (e) { return true; } }
+  function bgmFadeTo(track, target, ms, done) {
+    if (!track) { if (done) { try { done(); } catch (e) {} } return; }
+    var gen = (track.__fadeGen || 0) + 1;
+    track.__fadeGen = gen;
+    track.__fading = true;
+    var from = track.volume || 0, t0 = Date.now();
+    var finish = function () {
+      track.__fading = false;
+      if (done) { try { done(); } catch (e) {} }
+    };
+    if (ms <= 0 || from === target) {
+      try { track.volume = target; } catch (e) {}
+      finish();
+      return;
+    }
+    var iv = setInterval(function () {
+      if (track.__fadeGen !== gen) { clearInterval(iv); return; } /* 새 페이드가 이어받음 */
+      var k = Math.min(1, (Date.now() - t0) / ms);
+      try { track.volume = from + (target - from) * k; } catch (e) {}
+      if (k >= 1) { clearInterval(iv); finish(); }
+    }, 50);
+  }
   function bgmSync() {
     bgmInit();
     if (!BGM.main) return;
@@ -25193,24 +25265,50 @@ extends CanvasLayer
     var mapTrack = MAP_BGM[mapId]; /* v5.20: 신규 19맵은 맵마다 고유 BGM */
     var chTrack = CHAPTER_BGM[mapId]; /* 챕터 BGM은 스토리 모드용으로 유지 (맵별 BGM 없을 때 폴백) */
     var wantTrack = !inPlay ? 'lobby' : (boss ? 'boss' : (MAP_TRACKS.indexOf(mapId) >= 0 ? mapId : (mapTrack ? mapTrack : (chTrack ? chTrack : 'main'))));
+    var justSwitched = false;
     if (BGM.cur !== wantTrack) {
       var old = BGM[BGM.cur];
-      if (old) { try { old.pause(); } catch (e) {} }
+      if (old) {
+        /* v5.21: 페이드 ON이면 옛 곡을 400ms 페이드아웃 후 정지 (즉시 끊지 않음) */
+        if (bgmFadeOn() && !old.paused) {
+          (function (o) {
+            bgmFadeTo(o, 0, 400, function () {
+              try { o.pause(); } catch (e) {}
+            });
+          })(old);
+        } else { try { old.pause(); } catch (e) {} }
+      }
       BGM.cur = wantTrack;
+      justSwitched = true;
     }
     var a = BGM[wantTrack] || BGM.main;
     if (a && a.preload !== 'auto') { try { a.preload = 'auto'; } catch (e) {} }
     Object.keys(BGM).forEach(function (k) {
       var t = BGM[k];
-      if (t && t !== a && t.pause && !t.paused) { try { t.pause(); } catch (e) {} }
+      if (t && t !== a && t.pause && !t.paused && !t.__fading) { try { t.pause(); } catch (e) {} }
     });
     if (!a) return;
     /* 볼륨 페이드 */
     var v = want * 0.85;
-    if (Math.abs((a.volume || 0) - v) > 0.01) a.volume = Math.max(0, Math.min(1, (a.volume || 0) + (v - (a.volume || 0)) * 0.25));
+    /* v5.21: 페이드 중이면 900ms 틱의 램프가 볼륨을 건드리지 않음 (페이드 헬퍼가 전담) */
+    if (!a.__fading && Math.abs((a.volume || 0) - v) > 0.01) a.volume = Math.max(0, Math.min(1, (a.volume || 0) + (v - (a.volume || 0)) * 0.25));
     if (want > 0.001 && BGM.unlocked) {
       if (a.paused) { var pr = a.play(); if (pr && pr.catch) pr.catch(function () {}); }
-    } else if (!a.paused) { try { a.pause(); } catch (e) {} }
+      /* v5.21: 방금 전환된 곡은 볼륨 0에서 800ms 페이드인 */
+      if (justSwitched && bgmFadeOn()) {
+        try { a.volume = 0; } catch (e) {}
+        bgmFadeTo(a, v, 800);
+      }
+    } else if (!a.paused) {
+      /* v5.21: BGM OFF(볼륨 0·대사 장면) — 페이드 ON이면 400ms 페이드아웃 후 정지 */
+      if (bgmFadeOn()) {
+        (function (o) {
+          bgmFadeTo(o, 0, 400, function () {
+            try { o.pause(); } catch (e) {}
+          });
+        })(a);
+      } else { try { a.pause(); } catch (e) {} }
+    }
   }
   function bgmUnlock() {
     BGM.unlocked = true;
@@ -41920,7 +42018,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v5.20 · 64 MAPS';
+      sp[1].textContent = '★ v5.21 · 64 MAPS';
     }
   }
 
@@ -75292,13 +75390,14 @@ if (typeof module !== 'undefined' && module.exports) {
     try { sfxMp3('dlg_tick', 0.4); } catch (e) {}
   }
   function renderStory() {
-    var tabs = $('storyChTabs'), list = $('storyStageList'), det = $('storyDetail');
+    var tabs = $('storyChTabs'), list = $('storyStageList'), det = $('storyDetail'), rc = $('storyRecall');
     if (!tabs || !list) return;
     if (!DATA) {
       list.innerHTML = '<div style="padding:14px;font-size:12px;font-weight:700;color:#fca5a5">스토리 데이터를 불러오지 못했어요. 다시 열어보거나, 잠시 뒤에 다시 시도해 주세요.</div>';
       return;
     }
     if (det) det.classList.add('hidden');
+    if (rc) rc.classList.add('hidden'); /* v5.21: 회상 모드에서 돌아오면 회상 화면 닫기 */
     list.classList.remove('hidden');
     tabs.classList.remove('hidden');
     var chs = DATA.chapters || [];
@@ -75397,6 +75496,8 @@ if (typeof module !== 'undefined' && module.exports) {
   var STORY_BGM_VOL = 0.25; /* 대사 음성(volume 1, 발화 RMS -20.5~-12.9dBFS)보다 확실히 뒤:
     파일 RMS -18.0dBFS x 0.25 = 실효 -30.0dBFS → 가장 조용한 대사보다 9.5dB 아래.
     안전 밴드 0.20~0.30, 상한 0.30 (0.35는 가장 조용한 대사와 6.6dB밖에 안 벌어져서 제외). */
+  /* v5.21: BGM 페이드 켜짐 여부 (QOL.bgmFade, 기본 ON) — 스토리 BGM 시작/끝에도 적용 */
+  function dlgBgmFadeOn() { try { return !(V.QOL && V.QOL.bgmFade === false); } catch (e) { return true; } }
   function storyBgmFadeTo(target, ms, done) {
     if (!storyBgm) { if (done) { try { done(); } catch (e) {} } return; }
     var gen = ++storyBgmFadeGen;
@@ -75450,7 +75551,9 @@ if (typeof module !== 'undefined' && module.exports) {
       storyBgmOn = true;
       var p = storyBgm.play();
       if (p && p.catch) p.catch(function () { storyBgmOn = false; });
-      storyBgmFadeTo(STORY_BGM_VOL, 600); /* 0 -> 0.25 서서히 페이드인 (파일 자체엔 페이드 없음) */
+      /* v5.21: BGM 페이드 설정이 꺼져 있으면 페이드 없이 바로 목표 볼륨으로 */
+      if (dlgBgmFadeOn()) storyBgmFadeTo(STORY_BGM_VOL, 600); /* 0 -> 0.25 서서히 페이드인 (파일 자체엔 페이드 없음) */
+      else { try { storyBgm.volume = STORY_BGM_VOL; } catch (e) {} }
     } catch (e) { storyBgmOn = false; }
   }
   function storyBgmStop() {
@@ -75459,6 +75562,12 @@ if (typeof module !== 'undefined' && module.exports) {
       storyBgmOn = false;
       if (!storyBgm) return;
       var a = storyBgm;
+      if (!dlgBgmFadeOn()) { /* v5.21: 페이드 OFF면 즉시 정지 (대기 중인 페이드 취소) */
+        storyBgmFadeGen++;
+        if (storyBgmFade) { clearInterval(storyBgmFade); storyBgmFade = null; }
+        try { a.pause(); a.currentTime = 0; } catch (e2) {}
+        return;
+      }
       storyBgmFadeTo(0, 300, function () {
         try { a.pause(); a.currentTime = 0; } catch (e2) {} /* 다음 대사 장면은 루프 처음부터 */
       });
@@ -75665,6 +75774,13 @@ if (typeof module !== 'undefined' && module.exports) {
     }
     dlgTypeLine(dlgLines[dlgIdx]);
   }
+  function dlgPrev() {
+    if (!dlgLines) return;
+    /* v5.21: 바로 전 줄로 돌아가서 음성까지 다시 재생. 첫 줄이면 첫 줄을 다시 재생.
+       (dlgTypeLine이 이전 음성을 멈추고 새 줄 음성을 틀어주므로 여기선 인덱스만 옮긴다) */
+    if (dlgIdx > 0) dlgIdx--;
+    dlgTypeLine(dlgLines[dlgIdx]);
+  }
   function dlgSkipAll() {
     if (!dlgLines) { dlgHide(); return; }
     /* v5.20: 대사 전부 건너뛰고 바로 스테이지 시작 (끝 ▶ 과 같은 흐름) */
@@ -75685,6 +75801,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (next) next.textContent = (dlgIdx === dlgLines.length - 1) ? '끝 ▶' : '다음 ▶';
     dlgPortrait(line, dlgStage);
     dlgPlayVoice(line.audio || '');
+    dlgSaveLine(line); /* v5.21: 본 대사를 회상 모드용으로 저장 */
     dlgFull = body;
     dlgTyping = true;
     if (txt) {
@@ -75704,7 +75821,13 @@ if (typeof module !== 'undefined' && module.exports) {
       if (!dlgTyping) return;
       var t = (now || 0) - start;
       if (t < 0) t = 0;
-      var n = Math.floor(t / 22) + 1;
+      /* v5.21: 대사 속도 슬라이더 (QOL.dlgSpeed, 기본 1 = 22ms/글자). 프레임마다 다시 읽어
+         설정에서 바꾸면 바로 다음 글자부터 적용된다. 2×면 11ms/글자, 0.5×면 44ms/글자. */
+      var sp = 1;
+      try { sp = Number(V.QOL && V.QOL.dlgSpeed) || 1; } catch (e) {}
+      if (!(sp >= 0.25)) sp = 0.25;
+      if (sp > 3) sp = 3;
+      var n = Math.floor(t / (22 / sp)) + 1;
       if (n > body.length) n = body.length;
       if (n > lastN) {
         if (txt) txt.textContent = body.slice(0, n);
@@ -75726,6 +75849,82 @@ if (typeof module !== 'undefined' && module.exports) {
     dlgTimer = requestAnimationFrame(step);
     /* 다음 줄 미리 받아두기 (음성 + 초상) — 다음 누르자마자 바로 나오게 */
     dlgPrefetchNext();
+  }
+  /* v5.21: 본 대사 저장 + 회상 모드.
+     대사 장면에서 한 줄이 시작될 때마다 dlgTypeLine이 dlgSaveLine을 부른다.
+     저장 위치: localStorage 'jw64_dlglog_v1' (같은 스테이지·종류·턴은 한 번만 저장, 최대 600줄).
+     QOL.dlgSavePause가 켜져 있으면 새 대사는 저장하지 않는다. */
+  var KEY_DLGLOG = 'jw64_dlglog_v1';
+  var DLGLOG_MAX = 600;
+  function dlgLogLoad() {
+    try {
+      var s = lsGet(KEY_DLGLOG, null);
+      if (!s || typeof s !== 'object' || !Array.isArray(s.lines)) return { v: 1, lines: [] };
+      return s;
+    } catch (e) { return { v: 1, lines: [] }; }
+  }
+  function dlgSaveLine(line) {
+    try {
+      var q = V.QOL || {};
+      if (q.dlgSavePause) return; /* 일시정지 중이면 저장 안 함 */
+      var st = dlgStage;
+      if (!st || !line) return;
+      var s = dlgLogLoad();
+      var key = st.index + '|' + (line.kind || '') + '|' + (line.turn || 0);
+      var exists = false;
+      s.lines.forEach(function (e) { if (e.k === key) exists = true; });
+      if (exists) return; /* 같은 줄은 한 번만 저장 (되감기·재시청은 중복 저장 안 함) */
+      var chName = '';
+      try {
+        (DATA.chapters || []).forEach(function (c) { if (c.num === st.chapter) chName = c.title || ''; });
+      } catch (e) {}
+      s.lines.push({ k: key, st: st.index, ch: st.chapter, chn: chName, map: st.mapId, mapn: st.mapName || '', sp: line.speaker || '???', tx: line.body || '', kind: line.kind || 'intro', turn: line.turn || 0, ts: Date.now() });
+      while (s.lines.length > DLGLOG_MAX) s.lines.shift();
+      lsSet(KEY_DLGLOG, s);
+    } catch (e) {}
+  }
+  /* v5.21: 저장된 대사에 챕터 태그 자동 표시 — "N장" + "보스전"/"클리어" */
+  function dlgTagHtml(kind, ch) {
+    var tags = [((ch == null ? 0 : ch) + 1) + '장'];
+    if (kind === 'boss') tags.push('보스전');
+    else if (kind === 'clear') tags.push('클리어');
+    return tags.map(function (t) { return '<span style="display:inline-block;padding:1px 6px;margin-right:4px;font-size:10px;font-weight:800;color:#fde68a;background:#451a03;border:1px solid #f59e0b;border-radius:999px">' + esc(t) + '</span>'; }).join('');
+  }
+  /* v5.21: 회상 모드 — 스토리 목록에서 📖 버튼으로 진입. 저장된 대사를 스테이지
+     순서대로 묶어서 보여준다. QOL.dlgTags가 꺼져 있으면 태그는 안 보인다. */
+  function renderRecall() {
+    var tabs = $('storyChTabs'), list = $('storyStageList'), det = $('storyDetail'), rc = $('storyRecall');
+    if (!rc) return;
+    if (tabs) tabs.classList.add('hidden');
+    if (list) list.classList.add('hidden');
+    if (det) det.classList.add('hidden');
+    rc.classList.remove('hidden');
+    var s = dlgLogLoad();
+    var showTags = true;
+    try { showTags = !(V.QOL && V.QOL.dlgTags === false); } catch (e) {}
+    var h = '<div style="display:flex;gap:6px;align-items:center"><button type="button" class="v42-chip" id="storyRecallBack">← 스테이지 목록으로</button><span style="font-size:11px;font-weight:700;color:#94a3b8">본 대사 ' + s.lines.length + '줄</span></div>';
+    if (!s.lines.length) {
+      h += '<div style="padding:14px;font-size:12px;font-weight:700;color:#94a3b8">아직 본 대사가 없어요. 스토리 스테이지에 들어가면 대사가 여기에 차곡차곡 모여요.</div>';
+    } else {
+      var byStage = {}, order = [];
+      s.lines.forEach(function (e) {
+        if (!byStage[e.st]) { byStage[e.st] = []; order.push(e.st); }
+        byStage[e.st].push(e);
+      });
+      order.sort(function (a, b) { return a - b; });
+      order.forEach(function (stIdx) {
+        var arr = byStage[stIdx];
+        var first = arr[0];
+        h += '<div style="background:#0d1526;border:2px solid #334155;padding:8px"><div style="font-size:12px;font-weight:900;color:#fbbf24;margin-bottom:6px">' + first.st + '번 · ' + esc(first.mapn || '') + (showTags ? ' ' + dlgTagHtml('intro', first.ch) : '') + '</div>';
+        arr.forEach(function (e) {
+          h += '<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:800;color:#93c5fd">' + esc(e.sp) + (showTags && (e.kind === 'boss' || e.kind === 'clear') ? ' ' + dlgTagHtml(e.kind, e.ch) : '') + '</div><div style="font-size:13px;font-weight:700;line-height:1.6;color:#fff;white-space:pre-wrap">' + esc(e.tx) + '</div></div>';
+        });
+        h += '</div>';
+      });
+    }
+    rc.innerHTML = h;
+    var bk = $('storyRecallBack');
+    if (bk) bk.addEventListener('click', function () { renderStory(); });
   }
   function playLines(lines, onDone, st) {
     if (!lines || !lines.length) { if (onDone) onDone(); return; }
@@ -76533,6 +76732,16 @@ if (typeof module !== 'undefined' && module.exports) {
       nx.__storyBound = true;
       nx.addEventListener('click', function () { dlgNext(); });
     }
+    var pv = document.getElementById('storyDlgPrev');
+    if (pv && !pv.__storyBound) {
+      pv.__storyBound = true;
+      pv.addEventListener('click', function (e) { try { e.stopPropagation(); } catch (err) {} dlgPrev(); });
+    }
+    var rb = document.getElementById('storyRecallBtn');
+    if (rb && !rb.__storyBound) {
+      rb.__storyBound = true;
+      rb.addEventListener('click', function () { renderRecall(); });
+    }
     var sk = document.getElementById('storyDlgSkip');
     if (sk && !sk.__storyBound) {
       sk.__storyBound = true;
@@ -76551,5 +76760,5 @@ if (typeof module !== 'undefined' && module.exports) {
   else boot();
   if (root.document) root.addEventListener('load', function () { try { boot(); } catch (e) {} });
 
-  try { console.log('[story] v5.20 dlg-speed+skip ready'); } catch (e) {}
+  try { console.log('[story] v5.21 dlg-speed+rewind+recall+fade ready'); } catch (e) {}
 })(window);

@@ -896,7 +896,7 @@ html body #titleScreen {
         <div class="text-xs font-black text-amber-300 mb-2">🏠 혼자 하기 규칙</div>
         <div id="v51HubSoloHost"></div>
       </div>
-      <div class="flex gap-2">
+      <div class="flex gap-2" style="position:sticky;bottom:0;z-index:5;background:#0b1020;padding:10px 0 2px;border-top:2px solid #1e293b">
         <button id="btnResetSettings" type="button" class="flex-1 py-2.5 font-bold text-xs sm:text-sm bg-slate-800 text-slate-300 border-2 border-slate-600 cursor-pointer">
           기본값 초기화
         </button>
@@ -1808,8 +1808,10 @@ html body #titleScreen {
       <button type="button" class="v42-chip" data-v42close="storyModal">닫기 ✕</button>
     </div>
     <div id="storyChTabs" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+    <button type="button" id="storyRecallBtn" class="mp-btn" style="width:100%;padding:10px;font-size:14px;margin-top:6px">📖 대사 회상 — 본 대사 다시 보기</button>
     <div id="storyStageList" style="display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
     <div id="storyDetail" class="hidden" style="display:flex;flex-direction:column;gap:7px"></div>
+    <div id="storyRecall" class="hidden" style="display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
   </div>
 </div>
 
@@ -1827,6 +1829,7 @@ html body #titleScreen {
         </div>
         <div id="storyDlgText" style="min-height:76px;font-size:16px;font-weight:700;line-height:1.7;color:#fff;white-space:pre-wrap;transition:opacity .18s ease"></div>
         <div style="display:flex;gap:8px;margin-top:10px">
+          <button type="button" id="storyDlgPrev" class="mp-btn" style="flex:1;padding:12px;font-size:15px">◀ 되감기</button>
           <button type="button" id="storyDlgSkip" class="mp-btn" style="flex:1;padding:12px;font-size:15px">⏭ 대사 스킵</button>
           <button type="button" id="storyDlgNext" class="mp-btn green" style="flex:2;padding:12px;font-size:15px">다음 ▶</button>
         </div>
