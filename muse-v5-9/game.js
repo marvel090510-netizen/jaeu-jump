@@ -5,6 +5,59 @@
    - VERSION = '4.8' (멀티 호환) — 절대 변경 금지
    ========================================================================== */
 
+/* ===== v5.24 PERF: 화면 그라데이션 캐시 (전수 렉 조사) =====
+   매 프레임 createLinearGradient + 전체화면 fill은 모바일 GPU에서 가장 큰 래스터 비용이자
+   GC 유발 할당. 4px짜리 캔버스에 한 번 구워두고 매 프레임 drawImage로 붙인다.
+   (iOS Safari는 그라데이션 fill이 특히 느리다 — v5.15-r3 shadowBlur 대응과 같은 맥락)
+   shadowBlur는 v5.15-r3에서 모바일 인게임 시 이미 0으로 강제되므로 따로 손대지 않는다. */
+window.__jwGradCache = new Map();
+window.__jwGradCanvas = function (stops, H) {
+  var key = '';
+  for (var i = 0; i < stops.length; i++) key += stops[i][0] + ':' + stops[i][1] + '|';
+  key += '@' + (H | 0);
+  var cv = window.__jwGradCache.get(key);
+  if (cv) return cv;
+  cv = document.createElement('canvas');
+  cv.width = 4; cv.height = Math.max(1, H | 0);
+  var c = cv.getContext('2d');
+  var g = c.createLinearGradient(0, 0, 0, cv.height);
+  for (var j = 0; j < stops.length; j++) g.addColorStop(stops[j][0], stops[j][1]);
+  c.fillStyle = g; c.fillRect(0, 0, 4, cv.height);
+  if (window.__jwGradCache.size > 8) window.__jwGradCache.clear();
+  window.__jwGradCache.set(key, cv);
+  return cv;
+};
+/* 세계 높이 그라데이션(파노라마 하늘·틴트) 캐시: 행 0 = 세계 위, 행 wh = 세계 아래.
+   캔버스 그라데이션 (0,wh)->(0,0)에 stop을 그대로 넣으면 stop 0 = 아래, stop 1 = 위가 된다
+   (파노라마 sky()의 원본 gradient (0,bot)->(0,top)과 동일한 색). */
+window.__jwWorldGradCache = new Map();
+window.__jwWorldGradCanvas = function (key, stops, wh) {
+  var cv = window.__jwWorldGradCache.get(key);
+  if (cv) return cv;
+  cv = document.createElement('canvas');
+  cv.width = 4; cv.height = Math.max(1, wh | 0);
+  var c = cv.getContext('2d');
+  var g = c.createLinearGradient(0, cv.height, 0, 0);
+  for (var i = 0; i < stops.length; i++) g.addColorStop(stops[i][0], stops[i][1]);
+  c.fillStyle = g; c.fillRect(0, 0, 4, cv.height);
+  if (window.__jwWorldGradCache.size > 8) window.__jwWorldGradCache.clear();
+  window.__jwWorldGradCache.set(key, cv);
+  return cv;
+};
+/* 이름표 무지개 그라데이션 캐시 (로컬 좌표 0..nameW — translate와 함께 쓴다) */
+window.__jwRainbowCache = new Map();
+window.__jwRainbowGrad = function (ctx, nameW) {
+  var w = Math.round(nameW);
+  var g = window.__jwRainbowCache.get(w);
+  if (g) return g;
+  g = ctx.createLinearGradient(0, 0, w, 0);
+  g.addColorStop(0, '#f87171'); g.addColorStop(0.3, '#fbbf24');
+  g.addColorStop(0.6, '#34d399'); g.addColorStop(1, '#a78bfa');
+  if (window.__jwRainbowCache.size > 64) window.__jwRainbowCache.clear();
+  window.__jwRainbowCache.set(w, g);
+  return g;
+};
+
 /* ===== v59 inline block #4 (was index.html L940-3433) ===== */
 
     (function () {
@@ -1459,10 +1512,10 @@
         if (!player.onGround) {
           const feetPrev = prevY + player.h;
           const feetNow = player.y + player.h;
-          const allPlats = platforms.concat(abyssPlatforms);
-
-          for (let i = 0; i < allPlats.length; i++) {
-            const p = allPlats[i];
+          /* v5.24 PERF: concat()은 매 프레임 300개짜리 배열을 새로 만들어 GC 스파이크 유발 — 두 배열을 따로 돈다 */
+          const nPlatsU = platforms.length, nAbyssU = abyssPlatforms.length;
+          for (let i = 0; i < nPlatsU + nAbyssU; i++) {
+            const p = i < nPlatsU ? platforms[i] : abyssPlatforms[i - nPlatsU];
             if (p.crumbled) continue;
             const pad = (game.activeEv && game.activeEv.id === 'celestial') ? 6 : 0;
             const pL = p.x - pad;
@@ -1924,9 +1977,11 @@
         }
 
         // 2) Render Platforms
-        const allPlats = platforms.concat(abyssPlatforms);
-        for (let i = 0; i < allPlats.length; i++) {
-          const p = allPlats[i];
+        /* v5.24 PERF: concat()은 매 프레임 300개짜리 배열을 새로 만들어 GC 스파이크 유발 — 두 배열을 따로 돈다 */
+        const nPlats = platforms.length, nAbyss = abyssPlatforms.length;
+        let _safeFontSet = false;
+        for (let i = 0; i < nPlats + nAbyss; i++) {
+          const p = i < nPlats ? platforms[i] : abyssPlatforms[i - nPlats];
           const py = (p.y - camY) | 0;
           if (py + p.h < -80 || py > logicalH + 80) continue;
           if (p.crumbled) {
@@ -1937,8 +1992,7 @@
           if (!(window.JWG && JWG.drawPlatform && JWG.drawPlatform(ctx, p, (p.x + shk) | 0, py, game))) drawPlatformTile(p, (p.x + shk) | 0, py);
           /* v5.10 (e): 안전 발판 라벨 — 노란 테두리/금색 표시가 안전 발판(추락해도 여기서부터)임을 알린다 */
           if (p.safe && p.index > 1 && p.type !== 'summit') {
-            ctx.font = 'bold 9px "Galmuri11", monospace';
-            ctx.textAlign = 'center';
+            if (!_safeFontSet) { ctx.font = 'bold 9px "Galmuri11", monospace'; ctx.textAlign = 'center'; _safeFontSet = true; }
             ctx.fillStyle = 'rgba(5,3,10,.78)';
             ctx.fillRect(((p.x + p.w / 2 - 20) | 0), py - 15, 40, 11);
             ctx.fillStyle = '#fde047';
@@ -2076,10 +2130,10 @@
           const pt = game.particles[i];
           rect(ctx, pt.x | 0, (pt.y - camY) | 0, pt.sz, pt.sz, pt.col);
         }
+        ctx.font = 'bold 13px "Galmuri11", monospace';
+        ctx.textAlign = 'center';
         for (let i = 0; i < game.texts.length; i++) {
           const ft = game.texts[i];
-          ctx.font = 'bold 13px "Galmuri11", monospace';
-          ctx.textAlign = 'center';
           ctx.fillStyle = '#080510';
           ctx.fillText(ft.txt, (ft.x | 0) + 2, ((ft.y - camY) | 0) + 2);
           ctx.fillStyle = ft.col;
@@ -2766,9 +2820,13 @@ extends CanvasLayer
       };
       const retry = () => {
         if (self.closed) return;
+        /* v5.24: onerror와 onclose가 둘 다 retry를 불러 재시도 타이머가 2배로 늘어나는 폭증 방지.
+           릴레이가 끊겼을 때 WebSocket 에러가 기하급수적으로 불어나 메인 스레드를 잡아먹던 원인. */
+        if (st.retryPending) return;
+        st.retryPending = true;
         st.tries++;
         const wait = Math.min(20000, 1200 * Math.min(6, st.tries));
-        setTimeout(() => { if (!self.closed && !st.open) open(); }, wait);
+        setTimeout(() => { st.retryPending = false; if (!self.closed && !st.open) open(); }, wait);
       };
       this._openers = this._openers || {};
       this._openers[idx] = open;
@@ -3574,10 +3632,8 @@ extends CanvasLayer
       if (m.id === 'default') return false;
       /* 1) 하늘 그라데이션 (화면 고정) */
       const sky = m.sky || ['#0b1024', '#141b33', '#1e2745'];
-      const gg = ctx.createLinearGradient(0, 0, 0, logicalH);
-      gg.addColorStop(0, sky[0]); gg.addColorStop(0.55, sky[1]); gg.addColorStop(1, sky[2]);
-      ctx.fillStyle = gg;
-      ctx.fillRect(0, 0, W, logicalH);
+      /* v5.24 PERF: 하늘 그라데이션 캐시 (매 프레임 생성 + 전체화면 fill 제거) */
+      ctx.drawImage(window.__jwGradCanvas([[0, sky[0]], [0.55, sky[1]], [1, sky[2]]], logicalH), 0, 0, W, logicalH);
       const dec = decorFor(m);
       /* 2) 장식 레이어: 0.55 배 패럴랙스 반복 (배경은 살짝 눌러 발판이 잘 보이게) */
       ctx.globalAlpha = 0.92;
@@ -7330,21 +7386,24 @@ extends CanvasLayer
       const lcy = Math.max(16, Math.min(logicalH - 15, ry - 22));
       ctx.fillStyle = 'rgba(5,3,10,.85)';
       ctx.fillRect(lcx - nameW / 2, lcy, nameW, 13);
+      /* v5.24 PERF: 이름표 무지개 그라데이션 캐시 (멀티: 상대마다 매 프레임 2번 생성 제거 — 로컬 좌표 + translate) */
       if (tRank >= 5) {
-        const sg = ctx.createLinearGradient(lcx - nameW / 2, 0, lcx + nameW / 2, 0);
-        sg.addColorStop(0, '#f87171'); sg.addColorStop(0.3, '#fbbf24'); sg.addColorStop(0.6, '#34d399'); sg.addColorStop(1, '#a78bfa');
-        ctx.strokeStyle = sg;
-      } else if (tRank >= 3) ctx.strokeStyle = '#fbbf24';
-      else ctx.strokeStyle = hex;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(lcx - nameW / 2 + 0.5, lcy + 0.5, nameW - 1, 12);
+        ctx.save(); ctx.translate(lcx - nameW / 2, 0);
+        ctx.strokeStyle = window.__jwRainbowGrad(ctx, nameW);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0.5, lcy + 0.5, nameW - 1, 12);
+        ctx.restore();
+      } else {
+        if (tRank >= 3) ctx.strokeStyle = '#fbbf24'; else ctx.strokeStyle = hex;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(lcx - nameW / 2 + 0.5, lcy + 0.5, nameW - 1, 12);
+      }
       if (grad) {
-        const grd = ctx.createLinearGradient(lcx - nameW / 2, 0, lcx + nameW / 2, 0);
-        grd.addColorStop(0, '#f87171'); grd.addColorStop(0.3, '#fbbf24');
-        grd.addColorStop(0.6, '#34d399'); grd.addColorStop(1, '#a78bfa');
-        ctx.fillStyle = grd;
-      } else ctx.fillStyle = hex;
-      ctx.fillText(label, lcx, lcy + 10);
+        ctx.save(); ctx.translate(lcx - nameW / 2, 0);
+        ctx.fillStyle = window.__jwRainbowGrad(ctx, nameW);
+        ctx.fillText(label, nameW / 2, lcy + 10);
+        ctx.restore();
+      } else { ctx.fillStyle = hex; ctx.fillText(label, lcx, lcy + 10); }
       if (pr.elim) {
         ctx.fillStyle = 'rgba(3,5,12,.75)';
         ctx.fillRect(lcx - nameW / 2, lcy, nameW, 13);
@@ -10720,9 +10779,8 @@ extends CanvasLayer
     };
     w.drawBackground = function (ctx, camY, lh) {
       if (MP() && MP().current === 'custom') {
-        const g = ctx.createLinearGradient(0, 0, 0, lh);
-        g.addColorStop(0, '#101a33'); g.addColorStop(0.55, '#16234a'); g.addColorStop(1, '#0b1226');
-        ctx.fillStyle = g; ctx.fillRect(0, 0, 540, lh);
+        /* v5.24 PERF: 커스텀맵 하늘 그라데이션 캐시 */
+        ctx.drawImage(window.__jwGradCanvas([[0, '#101a33'], [0.55, '#16234a'], [1, '#0b1226']], lh), 0, 0, 540, lh);
         ctx.fillStyle = 'rgba(196,181,253,.35)';
         for (let i = 0; i < 26; i++) {
           const sx = (i * 73) % 540, sy = (i * 131 - camY * 0.2) % lh;
@@ -12119,21 +12177,21 @@ extends CanvasLayer
       try { if (root.JW43PANO && root.JW43PANO.drawBg(id, ctx, camY, lh)) return true; } catch (e) {}
       return O.drawBg.call(M, id, ctx, camY, lh);
     };
+    /* v5.24 PERF: 번호 숨김용 재사용 스크래치 (매 프레임 Object.assign 할당 제거) */
+    const _platNoNum = {};
     M.drawPlat = (id, ctx, p, px0, py0) => {
       if (N.has(id)) {
-        const st = { hidePlatNum: !!(V43.QOL && V43.QOL.platformNums === false) };
-        if (st.hidePlatNum && p.index > 0 && p.index % 5 === 0) {
-          /* 발판 번호 끄기: 그림만 그리고 번호는 지운다 */
-          N.drawPlat(id, ctx, p, px0, py0);
-          ctx.fillStyle = '#05030a';
-          ctx.fillRect(px0 + 3, py0 + 6, 36, 13);
-          N.drawPlat(id, ctx, Object.assign({}, p, { index: -1 }), px0, py0);
-          return true;
+        if (V43.QOL && V43.QOL.platformNums === false && p.index > 0 && p.index % 5 === 0) {
+          /* 발판 번호 끄기: index -1은 번호를 그리지 않는다(stamp 가드) — 한 번만 그린다.
+             예전엔 번호 그린 뒤 가리고 다시 그려서(3번 그리기 + Object.assign 할당) 렉 유발 */
+          for (const k in _platNoNum) delete _platNoNum[k];
+          Object.assign(_platNoNum, p);
+          _platNoNum.index = -1;
+          return N.drawPlat(id, ctx, _platNoNum, px0, py0);
         }
         return N.drawPlat(id, ctx, p, px0, py0);
       }
-      const st = { hidePlatNum: !!(V43.QOL && V43.QOL.platformNums === false) };
-      if (st.hidePlatNum && p.index > 0 && p.index % 5 === 0) {
+      if (V43.QOL && V43.QOL.platformNums === false && p.index > 0 && p.index % 5 === 0) {
         const r = O.drawPlat.call(M, id, ctx, p, px0, py0);
         ctx.fillStyle = 'rgba(5,3,10,.85)';
         ctx.fillRect(px0 + 2, py0 + 5, 38, 15);
@@ -15543,10 +15601,8 @@ extends CanvasLayer
       const m = BY_ID[id];
       if (!m) return false;
       const sky = m.sky || ['#0b1024', '#141b33', '#1e2745'];
-      const gg = ctx.createLinearGradient(0, 0, 0, logicalH);
-      gg.addColorStop(0, sky[0]); gg.addColorStop(0.55, sky[1]); gg.addColorStop(1, sky[2]);
-      ctx.fillStyle = gg;
-      ctx.fillRect(0, 0, W, logicalH);
+      /* v5.24 PERF: 하늘 그라데이션 캐시 (매 프레임 생성 + 전체화면 fill 제거) */
+      ctx.drawImage(window.__jwGradCanvas([[0, sky[0]], [0.55, sky[1]], [1, sky[2]]], logicalH), 0, 0, W, logicalH);
       const dec = decorFor(m);
       if (dec) {
         ctx.globalAlpha = 0.92;
@@ -15897,6 +15953,21 @@ extends CanvasLayer
 
   /* 하늘: 세계 좌표에 고정된 그라데이션 (반복 없음) */
   function sky(ctx, camY, G, stops) {
+    /* v5.24 PERF: 세계 높이 하늘 그라데이션은 한 번 구워두고 보이는 구간만 잘라 붙인다.
+       (원본과 동일한 색: stop 0 = 세계 아래, stop 1 = 세계 위. 카메라가 세계 밖에 있을 때만 원본 경로) */
+    const srcY0 = camY - G.top;
+    if (srcY0 >= 0 && srcY0 + G.H <= G.h) {
+      const mapped = [];
+      let key = '';
+      for (let i = 0; i < stops.length; i++) {
+        const pp = Math.max(0, Math.min(1, stops[i][0]));
+        const cc = toneCol(stops[i][1]);
+        mapped.push([pp, cc]); key += pp + ':' + cc + '|';
+      }
+      key += '@' + G.h;
+      const cv = window.__jwWorldGradCanvas(key, mapped, G.h);
+      if (cv) { ctx.drawImage(cv, 0, srcY0, 4, G.H, -40, 0, W + 80, G.H); return; }
+    }
     const g = ctx.createLinearGradient(0, G.bot - camY, 0, G.top - camY);
     for (let i = 0; i < stops.length; i++) {
       g.addColorStop(Math.max(0, Math.min(1, stops[i][0])), toneCol(stops[i][1]));
@@ -17906,12 +17977,8 @@ extends CanvasLayer
 
   /* 배경을 살짝 뒤로 물리는 소프트 베일 (발판 대비는 건드리지 않는다) */
   function softVeil(c, H) {
-    const g = c.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, 'rgba(10, 14, 28, 0.10)');
-    g.addColorStop(0.55, 'rgba(10, 14, 28, 0.04)');
-    g.addColorStop(1, 'rgba(10, 14, 28, 0.12)');
-    c.fillStyle = g;
-    c.fillRect(-40, 0, W + 80, H);
+    /* v5.24 PERF: 고정 베일 그라데이션 캐시 (매 프레임 생성 + 전체화면 fill 제거) */
+    c.drawImage(window.__jwGradCanvas([[0, 'rgba(10, 14, 28, 0.10)'], [0.55, 'rgba(10, 14, 28, 0.04)'], [1, 'rgba(10, 14, 28, 0.12)']], H), -40, 0, W + 80, H);
   }
 
   /* ---------------- 등록 ---------------- */
@@ -27637,12 +27704,23 @@ extends CanvasLayer
       /* 아주 옅은 색 기운으로 기존 배경을 부드럽게 정리 */
       const tint = PAL[id];
       if (tint) {
-        const g = ctx.createLinearGradient(0, G2.top, 0, G2.bot);
-        g.addColorStop(0, 'rgba(8,12,26,.30)');
-        g.addColorStop(0.5, 'rgba(10,16,34,.42)');
-        g.addColorStop(1, tint + '3a');
-        ctx.fillStyle = g;
-        ctx.fillRect(-40, G2.top, W + 80, G2.bot - G2.top);
+        /* v5.24 PERF: 틴트 그라데이션도 세계 높이로 한 번 구워두고 보이는 구간만 붙인다.
+           원본 gradient (0,top)->(0,bot)와 맞추려고 stop 위치를 뒤집어(1-p) 캐시에 넣는다.
+           카메라가 세계 밖에 있을 때만 원본 경로. */
+        const tSrcY0 = camY - G2.top;
+        const tKey = id + '|' + tint + '@' + G2.h;
+        const tCv = (tSrcY0 >= 0 && tSrcY0 + H <= G2.h)
+          ? window.__jwWorldGradCanvas(tKey, [[1, 'rgba(8,12,26,.30)'], [0.5, 'rgba(10,16,34,.42)'], [0, tint + '3a']], G2.h)
+          : null;
+        if (tCv) { ctx.drawImage(tCv, 0, tSrcY0, 4, H, -40, camY, W + 80, H); }
+        else {
+          const g = ctx.createLinearGradient(0, G2.top, 0, G2.bot);
+          g.addColorStop(0, 'rgba(8,12,26,.30)');
+          g.addColorStop(0.5, 'rgba(10,16,34,.42)');
+          g.addColorStop(1, tint + '3a');
+          ctx.fillStyle = g;
+          ctx.fillRect(-40, G2.top, W + 80, G2.bot - G2.top);
+        }
       }
       root.__v44bandN = (root.__v44bandN || 0) + 1;
       drawComposition(id, ctx, camY, H, G2);
@@ -52967,9 +53045,37 @@ function drawBossSprite(ctx, form, x, y, px, opts) {
   opts = opts || {};
   var mood = opts.mood || 'idle';
   var pal = s.pal, rows = s.rows;
+  /* v5.24 PERF: 16x16 픽셀아트를 매 프레임 ~200번 fillRect로 그리지 않고
+     (폼·표정·크기·반전)별로 한 번 구워두고 drawImage로 붙인다. 보스전 렉 완화.
+     베이크 실패 시(예: document 없음) 직접 그리기로 폴백. */
+  try {
+    var cacheKey = form + '|' + mood + '|' + px + '|' + (opts.flip ? '1' : '0');
+    var cache = drawBossSprite._c || (drawBossSprite._c = new Map());
+    var cv = cache.get(cacheKey);
+    if (!cv) {
+      cv = document.createElement('canvas');
+      cv.width = Math.ceil(16 * px); cv.height = Math.ceil(16 * px);
+      var bc = cv.getContext('2d');
+      drawBossPixels(bc, s, pal, rows, mood, px, opts, 0, 0);
+      if (cache.size > 48) cache.clear();
+      cache.set(cacheKey, cv);
+    }
+    ctx.save();
+    if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
+    ctx.drawImage(cv, Math.round(x), Math.round(y));
+    ctx.restore();
+    return true;
+  } catch (e) {
+    ctx.save();
+    if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
+    drawBossPixels(ctx, s, pal, rows, mood, px, opts, x, y);
+    ctx.restore();
+    return true;
+  }
+}
+/* 보스 픽셀아트 그리기 (c: 대상 ctx, ox/oy: 원점). 베이크용 + 직접 그리기용 공용. */
+function drawBossPixels(c, s, pal, rows, mood, px, opts, ox, oy) {
   var i, j, ch, col;
-  ctx.save();
-  if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
   for (i = 0; i < 16; i++) {
     for (j = 0; j < 16; j++) {
       ch = rows[i][j];
@@ -52980,14 +53086,14 @@ function drawBossSprite(ctx, form, x, y, px, opts) {
       if (mood === 'hurt' && (ch === 'E' || ch === 'G' || ch === 'H')) ch = 'K';
       col = pal[ch];
       if (!col) continue;
-      ctx.fillStyle = col;
+      c.fillStyle = col;
       var dx = opts.flip ? (15 - j) : j;
-      ctx.fillRect(Math.round(x + dx * px), Math.round(y + i * px), Math.ceil(px), Math.ceil(px));
+      c.fillRect(Math.round(ox + dx * px), Math.round(oy + i * px), Math.ceil(px), Math.ceil(px));
     }
   }
   /* 분노 눈썹: 눈 박스 위에 외곽선색으로 삐딱한 눈썹 3칸 */
   if (mood === 'angry' && s.eyes) {
-    ctx.fillStyle = pal.K;
+    c.fillStyle = pal.K;
     s.eyes.forEach(function (e, idx) {
       var ex = e[0], ey = e[1], ew = e[2];
       var dir = idx === 0 ? 1 : -1; /* 왼쪽 눈은 오른쪽으로 치켜, 오른쪽 눈은 왼쪽으로 치켜 */
@@ -52995,25 +53101,23 @@ function drawBossSprite(ctx, form, x, y, px, opts) {
         var bx = ex + (dir > 0 ? k : (ew - k));
         var by = ey - 1 - (dir > 0 ? 0 : 0);
         var fx = opts.flip ? (15 - bx) : bx;
-        ctx.fillRect(Math.round(x + fx * px), Math.round(y + (by - (k === ew ? 1 : 0)) * px), Math.ceil(px), Math.ceil(px));
+        c.fillRect(Math.round(ox + fx * px), Math.round(oy + (by - (k === ew ? 1 : 0)) * px), Math.ceil(px), Math.ceil(px));
       }
     });
   }
   /* 피격 X자: 눈 박스 안에 대각선 2줄 */
   if (mood === 'hurt' && s.eyes) {
-    ctx.fillStyle = pal.K;
+    c.fillStyle = pal.K;
     s.eyes.forEach(function (e) {
       var ex = e[0], ey = e[1], ew = e[2], eh = e[3];
       for (var k = 0; k < Math.max(ew, eh); k++) {
         [[ex + k, ey + k], [ex + ew - 1 - k, ey + k]].forEach(function (p) {
           var fx = opts.flip ? (15 - p[0]) : p[0];
-          ctx.fillRect(Math.round(x + fx * px), Math.round(y + p[1] * px), Math.ceil(px), Math.ceil(px));
+          c.fillRect(Math.round(ox + fx * px), Math.round(oy + p[1] * px), Math.ceil(px), Math.ceil(px));
         });
       }
     });
   }
-  ctx.restore();
-  return true;
 }
 
 /* ============================================================================
@@ -61343,9 +61447,8 @@ if (typeof module !== 'undefined' && module.exports) {
       var m = BY[id];
       if (!m) return false;
       var sky = m.sky || ['#0b1024', '#141b33', '#1e2745'];
-      var gg = ctx.createLinearGradient(0, 0, 0, logicalH);
-      gg.addColorStop(0, sky[0]); gg.addColorStop(0.55, sky[1]); gg.addColorStop(1, sky[2]);
-      ctx.fillStyle = gg; ctx.fillRect(0, 0, W, logicalH);
+      /* v5.24 PERF: 하늘 그라데이션 캐시 */
+      ctx.drawImage(window.__jwGradCanvas([[0, sky[0]], [0.55, sky[1]], [1, sky[2]]], logicalH), 0, 0, W, logicalH);
       var dec = decorFor(m);
       if (dec) {
         ctx.globalAlpha = 0.92;
@@ -62501,9 +62604,8 @@ if (typeof module !== 'undefined' && module.exports) {
       if (e.err === 2) return false;
       /* 이미지 오는 동안: 하늘만 깔아 검은 화면을 막는다 */
       var sky = skyOf(id);
-      var gg = ctx.createLinearGradient(0, 0, 0, lh);
-      gg.addColorStop(0, sky[0]); gg.addColorStop(0.55, sky[1]); gg.addColorStop(1, sky[2]);
-      ctx.fillStyle = gg; ctx.fillRect(0, 0, W, lh);
+      /* v5.24 PERF: 하늘 그라데이션 캐시 */
+      ctx.drawImage(window.__jwGradCanvas([[0, sky[0]], [0.55, sky[1]], [1, sky[2]]], lh), 0, 0, W, lh);
       return true;
     }
     var H = lh;
@@ -63899,7 +64001,8 @@ if (typeof module !== 'undefined' && module.exports) {
     var pwr = Math.max(0.14, power == null ? p.charge : power);
     var d = (dir == null ? dirNow(p) : dir);
     var L = launch(pwr, d, p);
-    var plats = (j.platforms || []).concat(j.abyssPlatforms || []);
+    var plats = (j.platforms || []), platsAbyss = (j.abyssPlatforms || []);
+    var nPlatsS = plats.length, nAbyssS = platsAbyss.length;
     var pw = p.w, ph = p.h;
     var dt = Math.max(1 / 240, Math.min(1 / 30, lastDt || 1 / 60));
     var x = p.x, y = p.y, vx = L.vx, vy = L.vy;
@@ -63921,8 +64024,8 @@ if (typeof module !== 'undefined' && module.exports) {
         break;
       }
       /* 엔진과 동일: 발판 하나씩 [착지 → 옆/머리 충돌] 순서로 검사 */
-      for (var i = 0; i < plats.length; i++) {
-        var q = plats[i];
+      for (var i = 0; i < nPlatsS + nAbyssS; i++) {
+        var q = i < nPlatsS ? plats[i] : platsAbyss[i - nPlatsS];
         if (!q || q.crumbled) continue;
         var pad = (g && g.activeEv && g.activeEv.id === 'celestial') ? 6 : 0;
         var pL = q.x - pad, pR = q.x + q.w + pad;
