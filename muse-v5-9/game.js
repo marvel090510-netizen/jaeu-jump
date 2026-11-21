@@ -2469,7 +2469,10 @@ extends CanvasLayer
 
           const openSettings = () => {
             applyTouchLayout();
-            document.getElementById('settingsModal').classList.remove('hidden');
+            var _sm = document.getElementById('settingsModal');
+            _sm.classList.remove('hidden');
+            /* v5.27: overlayGuard가 박은 pointer-events:none을 즉시 해제 — 안 그러면 최대 900ms간 터치·스크롤이 안 먹힌다. */
+            if (_sm.__v51pe) { _sm.style.removeProperty('pointer-events'); _sm.__v51pe = 0; }
             try { if (window.__v51HubShow) window.__v51HubShow(window.__v51HubSec || 'ctrl'); } catch (e) {}
           };
           const closeSettings = () => {
@@ -4958,7 +4961,11 @@ extends CanvasLayer
     }
     return TITLES.find((t) => t.id === id) || TITLES[0];
   }
-  function unlockedTitles(p) { return TITLES.filter((t) => t.need(p)); }
+  function unlockedTitles(p) {
+    /* v5.27: 개발자 계정에서는 모든 칭호가 해금된 것으로 본다. */
+    try { if (window.JWDEV && window.JWDEV.isDevAcct && window.JWDEV.isDevAcct()) return TITLES.slice(); } catch (e) {}
+    return TITLES.filter((t) => t.need(p));
+  }
   function bestTitleId(p) {
     let best = TITLES[0];
     TITLES.forEach((t) => { if (t.need(p) && t.rank > best.rank) best = t; });
@@ -12753,6 +12760,8 @@ extends CanvasLayer
   }
   V.HIDDEN_SKINS = HIDDEN_SKINS;
   V.skinLocked = function (id) {
+    /* v5.27: 개발자 계정에서는 모든 스킨(캐릭터)이 해금된 것으로 본다. */
+    try { if (window.JWDEV && window.JWDEV.isDevAcct && window.JWDEV.isDevAcct()) return false; } catch (e) {}
     const h = HIDDEN_SKINS.find((x) => x.id === id);
     if (!h) return false;
     try { return !h.lock(); } catch (e) { return true; }
@@ -22704,10 +22713,12 @@ extends CanvasLayer
         }
       }
     } catch (e) {}
-    /* 낙하 거리 */
+    /* 낙하 거리 — v5.27: 누적 낙하로 고친다. 예전에는 한 판 최고 낙하만 저장해서 '누적 낙하 100m' 업적이 절대 안 찼다. */
     if (pl.vy > 0 && !pl.onGround && pl.plat === null) {
-      ST.fallM += pl.vy * dt / 13.4;
-      S_STAT.fallM = Math.max(S_STAT.fallM || 0, Math.round(ST.fallM));
+      var _finc = pl.vy * dt / 13.4;
+      ST.fallM += _finc;
+      S_STAT.fallM = (S_STAT.fallM || 0) + _finc;
+      saveStatThrottled();
     }
     if (pl.onGround) ST.fallPeak = 0;
     /* 기록: 맵·모드별 (records43) */
@@ -22718,6 +22729,7 @@ extends CanvasLayer
       ST.combo++;
       ST.comboT = 2.4;
       S_STAT.maxCombo = Math.max(S_STAT.maxCombo || 0, ST.combo);
+      saveStatThrottled();
       if (ST.combo >= 10 && Q.aura) auroraFever();
     }
     if (!pl.chargeBoost || pl.chargeBoost <= 1) ST.boosted = false;
@@ -22771,15 +22783,26 @@ extends CanvasLayer
     if (Math.floor(ST.playSec) % 4 === 0) checkAch();
   }
   V.STAT43 = S_STAT;
-  V.saveStat43 = function () { try { S_STAT.playSec = Math.round(ST.playSec); saveStat(); } catch (e) {} };
+  /* v5.27: 플레이 시간 누적 — 예전에는 세션 시간으로 저장된 전체를 덮어써서, 다음 접속 때 어제 플레이 시간이 사라졌다.
+     이제는 새로 쌓인 시간(델타)만 더한다. */
+  function bankPlaySec() {
+    var _pd = ST.playSec - (ST._playBanked || 0);
+    if (_pd > 0) { S_STAT.playSec = Math.round((S_STAT.playSec || 0) + _pd); ST._playBanked = ST.playSec; }
+  }
+  V.saveStat43 = function () { try { bankPlaySec(); saveStat(); } catch (e) {} };
   let saveT = 0;
   function saveStatThrottled() {
     const t = performance.now();
     if (t - saveT < 1500) return;
     saveT = t;
-    S_STAT.playSec = Math.round(ST.playSec);
+    bankPlaySec();
     saveStat();
   }
+  /* v5.27: 탭을 닫거나 숨길 때 남은 플레이 시간을 저장 (안 그러면 마지막 구간이 날아간다). */
+  try {
+    document.addEventListener('visibilitychange', function () { if (document.hidden) { try { bankPlaySec(); saveStat(); } catch (e) {} } });
+    window.addEventListener('pagehide', function () { try { bankPlaySec(); saveStat(); } catch (e) {} });
+  } catch (e) {}
 
   function myRank() {
     const S = J() && V.st(), pl = J().player;
@@ -23257,8 +23280,10 @@ extends CanvasLayer
     const unlocked = Object.keys(ACH_STATE).length;
     let h = '<div class="v43-block"><b>📊 누적 기록</b>' +
       '<div class="v43-sumrow"><span class="k">총 점프</span><span class="v">' + (S_STAT.jump || 0).toLocaleString() + '회</span></div>' +
-      '<div class="v43-sumrow"><span class="k">총 낙하</span><span class="v">' + (S_STAT.fallM || 0) + 'm</span></div>' +
+      '<div class="v43-sumrow"><span class="k">총 낙하</span><span class="v">' + Math.round(S_STAT.fallM || 0) + 'm</span></div>' +
       '<div class="v43-sumrow"><span class="k">누적 플레이</span><span class="v">' + Math.round((S_STAT.playSec || 0) / 60) + '분</span></div>' +
+      '<div class="v43-sumrow"><span class="k">최고층</span><span class="v">' + (S_STAT.bestPlat || 0) + '층</span></div>' +
+      '<div class="v43-sumrow"><span class="k">누적 등반</span><span class="v">' + Math.round(S_STAT.climbM || 0).toLocaleString() + 'm</span></div>' +
       '<div class="v43-sumrow"><span class="k">최다 플레이 맵</span><span class="v">' + esc(mapName) + '</span></div>' +
       '<div class="v43-sumrow"><span class="k">최고 콤보</span><span class="v">' + (S_STAT.maxCombo || 0) + '콤보</span></div>' +
       '<div class="v43-sumrow"><span class="k">전체 완등</span><span class="v">' + (S_STAT.clears || 0) + '회</span></div>' +
@@ -23537,6 +23562,8 @@ extends CanvasLayer
     const skinBtn = $('v43OpenSkin2');
     if (skinBtn) skinBtn.addEventListener('click', () => {
       closeAll();
+      /* v5.27: 스킨 꾸미기 버튼도 통합 프로필로 간다 (프로필 버튼과 같은 화면). */
+      try { if (window.JW57PROF && window.JW57PROF.open) { window.JW57PROF.open('skin'); return; } } catch (e) {}
       const b = $('v42OpenSkin') || $('v42SkinBtn');
       if (b) b.click(); else if (V.openProfile) V.openProfile();
     });
@@ -23765,8 +23792,29 @@ extends CanvasLayer
     const nickEl = $('v43ProfNick');
     if (nickEl && nickEl.value !== myNick()) nickEl.value = myNick();
     if ($('v43ProfName')) $('v43ProfName').textContent = myNick();
-    const titleNow = V.recTitleShort() || (V.api().meTitle ? V.api().meTitle() : '🌱 도전자');
-    if ($('v43ProfTitle')) $('v43ProfTitle').textContent = titleNow;
+    /* v5.27: 프로필 카드 칭호 — V.api().meTitle은 존재하지 않는 메서드라 항상 '🌱 도전자'로 떨어졌다.
+       장착한 칭호(myTitleId → JW51TITLES.equipped, 'auto'면 최고 등급 보유 칭호)로 바로 보여준다. */
+    const titleNow = V.recTitleShort() || (function () {
+      try {
+        var tid = '';
+        try { if (window.JW56T5 && window.JW56T5.myTitleId) tid = window.JW56T5.myTitleId() || ''; } catch (e0) {}
+        if (!tid) { try { var _r = V.lsGet('jw41_identity_v1', {}) || {}; tid = _r.title || ''; } catch (e1) {} }
+        if (tid && tid !== 'auto') {
+          var _t = (V.api().titles() || []).filter(function (x) { return x.id === tid; })[0];
+          if (_t) return _t.short || _t.name;
+        }
+        if (tid === 'auto') {
+          var _un = V.api().unlockedTitles ? V.api().unlockedTitles() : [];
+          var _best = null;
+          (_un || []).forEach(function (x) { if (x && (!_best || (x.rank || 0) > (_best.rank || 0))) _best = x; });
+          if (_best) return _best.short || _best.name;
+        }
+      } catch (e) {}
+      return '🌱 도전자';
+    })();
+    /* v5.27: textContent로 바꾸면 decorate()가 그린 배지 칩이 지워지고 data-v51b만 남아 다시 안 그려졌다.
+       배지 속성을 함께 지워서 decorate()가 다음 틱에 배지를 다시 그리게 한다. */
+    if ($('v43ProfTitle')) { $('v43ProfTitle').textContent = titleNow; $('v43ProfTitle').removeAttribute('data-v51b'); }
     if ($('v43ProfRec')) $('v43ProfRec').textContent = V.recTitleShort() ? ('🏅 ' + V.recTitleShort()) : '기록 칭호 없음';
     spriteTo($('v43ProfBig'), col, sk);
 
@@ -23781,10 +23829,10 @@ extends CanvasLayer
         V.toast('🎨 색상 변경', 'lucky', b.textContent, 1400);
       }));
     }
-    /* 스킨 */
+    /* 스킨 — v5.27: 프로필에서는 보유중인 스킨만 보여준다 (칭호와 같은 규칙). 장착중인 스킨은 잠겨 있어도 보인다. */
     const sw = $('v43ProfSkins');
     if (sw) {
-      const skins = MD().SKINS;
+      const skins = (MD().SKINS || []).filter((s) => s.id === sk || !(V.skinLocked && V.skinLocked(s.id)));
       sw.innerHTML = skins.map((s) => {
         const lk = V.skinLocked && V.skinLocked(s.id);
         return '<button type="button" class="v42-skcard' + (s.id === sk ? ' on' : '') + (lk ? ' locked' : '') + '" data-pskin="' + s.id + '" style="' + (lk ? 'opacity:.5' : '') + '"><canvas width="32" height="36"></canvas><span class="nm">' + (lk ? '🔒 ' : '') + s.emoji + ' ' + s.name + '</span>' + (lk ? '<span class="nm" style="font-size:8px;color:#fca5a5">' + (s.why || '스토리 클리어로 해금') + '</span>' : '') + '</button>';
@@ -23882,9 +23930,15 @@ extends CanvasLayer
   }
 
   V.openProfile = function () {
+    /* v5.27: 프로필은 이제 통합 프로필(JW57PROF)로 연다 — 스킨 꾸미기 버튼과 같은 화면. */
+    try {
+      if (window.JW57PROF && window.JW57PROF.open) { window.JW57PROF.open(); return; }
+    } catch (e) {}
     const m = $('v43Profile');
     if (!m) return;
     m.classList.remove('hidden');
+    /* v5.27: overlayGuard가 숨은 모달에 박은 pointer-events:none을 즉시 해제 — 안 그러면 최대 900ms간 터치·스크롤이 안 먹힌다. */
+    if (m.__v51pe) { m.style.removeProperty('pointer-events'); m.__v51pe = 0; }
     render();
   };
 
@@ -29098,6 +29152,8 @@ extends CanvasLayer
     const colList = (api.colors && api.colors()) || [];
     const curSkin = api.meSkin ? api.meSkin() : 'jaeu';
     const curCol = api.meColor ? api.meColor() : 'blue';
+    /* v5.27: 스킨 꾸미기에서도 보유중인 스킨만 보여준다 (프로필과 같은 규칙). 장착중인 스킨은 잠겨 있어도 보인다. */
+    var ownedSkins = (skinList || []).filter(function (sk) { return sk.id === curSkin || !(V.skinLocked && V.skinLocked(sk.id)); });
     const colHex = (id) => {
       const c = colList.find((x) => x.id === id);
       if (c) return c.hex || '#38bdf8';
@@ -29105,8 +29161,8 @@ extends CanvasLayer
     };
     box.innerHTML =
       '<canvas id="v44DecoCv" width="260" height="150" style="width:100%;height:auto;image-rendering:pixelated;border:2px solid #334155;background:#0b1222"></canvas>' +
-      '<div class="v43-block"><b>🧑 본체 스킨 ' + skinList.length + '종</b><div class="v44-skingrid">' +
-        skinList.map((sk) => '<button type="button" class="v44-skinbtn' + (sk.id === curSkin ? ' on' : '') + '" data-skinp="' + sk.id + '">' +
+      '<div class="v43-block"><b>🧑 본체 스킨 ' + ownedSkins.length + '종</b><div class="v44-skingrid">' +
+        ownedSkins.map((sk) => '<button type="button" class="v44-skinbtn' + (sk.id === curSkin ? ' on' : '') + '" data-skinp="' + sk.id + '">' +
           '<span>' + (sk.emoji || '🧑') + '</span><b>' + sk.name + '</b></button>').join('') + '</div></div>' +
       '<div class="v43-block"><b>🎨 색상 ' + colList.length + '종</b><div class="v44-colgrid">' +
         colList.map((c) => '<button type="button" class="v44-colbtn' + (c.id === curCol ? ' on' : '') + '" data-colp="' + c.id +
@@ -29126,7 +29182,10 @@ extends CanvasLayer
       requestAnimationFrame(tick);
     }
     box.querySelectorAll('[data-skinp]').forEach((b) => b.addEventListener('click', () => {
-      try { if (V.api().setSkin) V.api().setSkin(b.getAttribute('data-skinp')); } catch (e) {}
+      var _sid = b.getAttribute('data-skinp');
+      /* v5.27: 잠긴 스킨은 스튜디오에서도 장착 불가 (예전에는 잠금 검사 없이 바로 장착됐다). */
+      if (V.skinLocked && V.skinLocked(_sid)) { try { V.toast('🔒 잠긴 스킨', 'danger', '스토리 클리어로 해금됩니다', 2400); } catch (e) {} return; }
+      try { if (V.api().setSkin) V.api().setSkin(_sid); } catch (e) {}
       renderStudio();
       try { V.beep(760, 0.05, 0.07, 'square', 980); } catch (e) {}
     }));
@@ -31424,7 +31483,7 @@ extends CanvasLayer
       sb.innerHTML = '<span style="font-size:15px">🎭</span><span>스킨·꾸미기</span>';
       const clone = sb.cloneNode(true);
       sb.parentNode.replaceChild(clone, sb);
-      clone.addEventListener('click', () => { closeAll(); openPanel('v44Deco', () => { if (G.renderStudio) G.renderStudio(); }); });
+      clone.addEventListener('click', () => { closeAll(); try { if (window.JW57PROF && window.JW57PROF.open) { window.JW57PROF.open('skin'); return; } } catch (e) {} openPanel('v44Deco', () => { if (G.renderStudio) G.renderStudio(); }); });
     }
     const rk = $('v43OpenRank');
     if (rk && rk.dataset.v44 !== '1') {
@@ -31455,6 +31514,8 @@ extends CanvasLayer
     const m = $(id);
     if (!m) return;
     m.classList.remove('hidden');
+    /* v5.27: overlayGuard가 박은 pointer-events:none을 즉시 해제 — 안 그러면 최대 900ms간 터치·스크롤이 안 먹힌다. */
+    if (m.__v51pe) { m.style.removeProperty('pointer-events'); m.__v51pe = 0; }
     try { if (render) render(); } catch (e) { console.warn('v44 panel', e); }
   }
   G.openPanel = openPanel;
@@ -46042,7 +46103,9 @@ extends CanvasLayer
     'html body #mpLobby canvas.mpb-thumb, html body #mpLobbyRules canvas.mpb-thumb{display:none !important;}',
     'html body #mpLobby img.mpb-thumb-img{display:block !important;}',
     /* 대기실 아래로 삐져나오던 잔여 안내줄 제거 (필요한 안내는 토스트로) */
-    'html body #mpLobbyStatus{display:none !important;}'
+    'html body #mpLobbyStatus{display:none !important;}',
+    /* v5.27: 프로필 모달은 내용이 길어지면 스크롤돼야 한다 (가운데가 안 내려가던 문제 방지). */
+    'html body #v43Profile{overflow-y:auto !important;-webkit-overflow-scrolling:touch;}'
   ].join('\n');
   doc.head.appendChild(st);
 
@@ -63224,6 +63287,79 @@ if (typeof module !== 'undefined' && module.exports) {
   function saveCfg() { try { if (root.JW51U && root.JW51U.save) root.JW51U.save(); } catch (e) {} }
   function readRaw() { var o = lsGet(KEY_CFG, {}) || {}; return { dev: !!o.dev, devUnlock: !!o.devUnlock }; }
 
+  /* ---------------- 개발자 계정 (v5.27) ----------------
+     개발자만 쓸 수 있는 별도 계정. 모든 것(칭호/이름표/테두리/캐릭터/스킨/스토리)이 해금돼 있다.
+     일반 계정과는 완전히 따로 논다: 전환할 때 일반 계정 진행도를 백업하고, 돌아올 때 복원한다.
+     (개발자 계정에서 논 기록은 일반 계정에 남지 않는다.) 전환은 페이지 새로고침으로 적용된다.
+     보호: PIN 해금(isUnlocked)이 된 개발자만 전환할 수 있다. */
+  var ACCT_KEYS = ['jw41_identity_v1', 'jw41_profile_v1', 'jw41_records_v1', 'jw43_stats_v1', 'jw43_ach_v1', 'jw43_rank_v1', 'jw43_best_v1', 'jw43_items_v1', 'jw51_board_v2', 'jw64_story_v1', 'jw64_char_v1', 'jw44_deco_v1'];
+  var KEY_ACCT_BACKUP = 'jw_dev_acct_backup_v1';
+  function isDevAcct() {
+    try { var c = cfg(); if (c) return !!c.devAcct; } catch (e) {}
+    try { var o = lsGet(KEY_CFG, {}) || {}; return !!o.devAcct; } catch (e) { return false; }
+  }
+  function setDevAcctFlag(on) {
+    try { var c = cfg(); if (c) { c.devAcct = !!on; saveCfg(); return; } } catch (e) {}
+    try { var raw = lsGet(KEY_CFG, {}) || {}; raw.devAcct = !!on; lsSet(KEY_CFG, raw); } catch (e) {}
+  }
+  function setDevAcct(on) {
+    on = !!on;
+    if (!D.isUnlocked()) { toast('🔒 개발자 해금이 필요해요', 'danger', '설정에서 PIN으로 개발자 모드를 먼저 해금하세요', 2600); return false; }
+    if (on === isDevAcct()) return true;
+    if (inMultiRace()) { toast('🚫 멀티 레이스 중에는 계정을 바꿀 수 없어', 'danger', '싱글·스토리 판에서만 바꿔요', 2200); return false; }
+    try {
+      if (on) {
+        var bk = {};
+        ACCT_KEYS.forEach(function (k) { try { var v = localStorage.getItem(k); if (v !== null) bk[k] = v; } catch (e) {} });
+        try { localStorage.setItem(KEY_ACCT_BACKUP, JSON.stringify(bk)); } catch (e) {}
+        setDevAcctFlag(true);
+        toast('👤 개발자 계정으로 전환', 'lucky', '모든 것이 해금된 계정입니다 · 돌아가면 일반 계정으로 복원돼요', 2600);
+      } else {
+        var raw = null;
+        try { raw = JSON.parse(localStorage.getItem(KEY_ACCT_BACKUP) || 'null'); } catch (e) {}
+        if (raw) {
+          ACCT_KEYS.forEach(function (k) {
+            try {
+              if (raw[k] !== undefined) localStorage.setItem(k, raw[k]);
+              else localStorage.removeItem(k);
+            } catch (e) {}
+          });
+          try { localStorage.removeItem(KEY_ACCT_BACKUP); } catch (e) {}
+        }
+        setDevAcctFlag(false);
+        toast('👤 일반 계정으로 복귀', 'lucky', '개발자 계정에서 논 기록은 저장되지 않았어요', 2600);
+      }
+    } catch (e) {}
+    setTimeout(function () { try { location.reload(); } catch (e) {} }, 700);
+    return true;
+  }
+  function paintAcctBtn() {
+    var b = $('devAcctBtn'), s = $('devAcctState');
+    if (!b) return;
+    var on = isDevAcct();
+    b.textContent = on ? '👤 일반 계정으로 돌아가기' : '👤 개발자 계정으로 전환';
+    if (s) s.textContent = on ? '지금은 개발자 계정 (모든 해금)' : '모든 것이 해금된 별도 계정';
+  }
+  function paintAcctBadge() {
+    try {
+      var on = isDevAcct();
+      var b = $('devAcctBadge');
+      if (on) {
+        if (!b) {
+          b = doc.createElement('button');
+          b.id = 'devAcctBadge';
+          b.type = 'button';
+          b.textContent = '🛠️ 개발자 계정 · 눌러서 일반 계정으로';
+          b.style.cssText = 'position:fixed;top:4px;left:50%;transform:translateX(-50%);z-index:99990;padding:3px 10px;border-radius:999px;background:rgba(124,58,237,.92);color:#fff;font-size:10px;font-weight:900;border:2px solid #e9d5ff;box-shadow:0 2px 8px rgba(0,0,0,.5);';
+          b.addEventListener('click', function () { setDevAcct(false); });
+          doc.body.appendChild(b);
+        }
+      } else if (b) {
+        b.remove();
+      }
+    } catch (e) {}
+  }
+
   /* ---------------- 멀티 판정 ---------------- */
   function inMultiRace() {
     try { if (V.G && V.G.multi && V.G.multi()) return true; } catch (e) {}
@@ -63258,7 +63394,8 @@ if (typeof module !== 'undefined' && module.exports) {
       '<span class="mp-lbl">🛠️ 개발자 명령</span>' +
       '<button id="devCmdClose" class="mp-chip" style="padding:3px 8px;font-size:11px">닫기 ✕</button></div>' +
       '<div id="devCmdLog"></div>' +
-      '<div style="font-size:11px;color:#94a3b8;font-weight:700">/top · /god · /fly · /skip · /unlockall · /bossskip — 슬래시 없이 쳐도 돼요</div>' +
+      '<div class="flex items-center gap-1.5"><button id="devAcctBtn" class="mp-btn" style="padding:6px 10px;font-size:11px">👤 개발자 계정으로 전환</button><span id="devAcctState" style="font-size:11px;color:#94a3b8;font-weight:700"></span></div>' +
+      '<div style="font-size:11px;color:#94a3b8;font-weight:700">/top · /god · /fly · /skip · /unlockall · /bossskip · /devacct — 슬래시 없이 쳐도 돼요</div>' +
       '<div class="flex gap-1.5">' +
       '<input id="devCmdInput" class="mp-in flex-1" maxlength="40" placeholder="/top — 명령어 입력 (Enter 전송)" />' +
       '<button id="devCmdSend" class="mp-btn blue" style="padding:8px 12px;font-size:12px">실행</button></div>';
@@ -63273,6 +63410,8 @@ if (typeof module !== 'undefined' && module.exports) {
     inp.addEventListener('blur', function () { setTyping(false); });
     $('devCmdSend').addEventListener('click', function () { run(inp.value); inp.value = ''; inp.focus(); });
     $('devCmdClose').addEventListener('click', function () { closePanel(); });
+    var _ab = $('devAcctBtn');
+    if (_ab) _ab.addEventListener('click', function () { setDevAcct(!isDevAcct()); });
   }
   function logLine(html) {
     var log = $('devCmdLog');
@@ -63290,6 +63429,7 @@ if (typeof module !== 'undefined' && module.exports) {
     var p = $('devCmdPanel');
     if (!p) return;
     p.classList.remove('hidden');
+    try { paintAcctBtn(); } catch (e) {}
     var inp = $('devCmdInput');
     if (inp) setTimeout(function () { try { inp.focus(); } catch (e) {} }, 30);
   }
@@ -63517,6 +63657,7 @@ if (typeof module !== 'undefined' && module.exports) {
       case 'skip': cmdSkip(); return;
       case 'unlockall': cmdUnlockAll(); return;
       case 'bossskip': cmdBossSkip(); return;
+      case 'devacct': setDevAcct(!isDevAcct()); return;
       default:
         toast('없는 명령어야', 'danger', '/top · /god · /fly · /skip · /unlockall · /bossskip 만 쓸 수 있어요', 2200);
         logLine('없는 명령어야');
@@ -63539,6 +63680,9 @@ if (typeof module !== 'undefined' && module.exports) {
       if (c) return !!c.devUnlock;
       return readRaw().devUnlock;
     },
+    /* v5.27: 개발자 계정 (PIN 해금된 개발자만 전환 가능) */
+    isDevAcct: isDevAcct,
+    setDevAcct: setDevAcct,
     setDev: function (on) {
       var c = cfg();
       if (c) { c.dev = !!on; saveCfg(); }
@@ -63563,6 +63707,9 @@ if (typeof module !== 'undefined' && module.exports) {
     run: run,
     toast: toast
   };
+  /* v5.27: 개발자 계정 표시 배지 (켜져 있을 때만 상단에 뜬다). */
+  try { paintAcctBadge(); } catch (e) {}
+  try { setInterval(function () { try { paintAcctBadge(); } catch (e) {} }, 1500); } catch (e) {}
   root.JWDEV = D;
 })(window);
 
@@ -65422,6 +65569,8 @@ if (typeof module !== 'undefined' && module.exports) {
   /* ---------- 1위 자동 잠금 ---------- */
   var lastChamp = null;
   function checkChamp() {
+    /* v5.27: 개발자 계정에서는 1위 칭호를 자동으로 해제하지 않는다. */
+    try { if (window.JWDEV && window.JWDEV.isDevAcct && window.JWDEV.isDevAcct()) return; } catch (e) {}
     var cur = equipped();
     var m = /^champ_(.+)$/.exec(cur);
     if (!m) return;
@@ -65611,7 +65760,9 @@ if (typeof module !== 'undefined' && module.exports) {
     var mm = meta(id);
     /* 프로필 카드 */
     var el = doc.getElementById('v43ProfTitle');
-    if (el && el.getAttribute('data-v51b') !== id) {
+    /* v5.27: 배지 칩이 실제로 없으면 다시 그린다 — render()가 textContent로 칩을 지워도
+       data-v51b만 남아서 다시 안 그려지던 문제(프로필 카드가 rookie로 고정)를 막는다. */
+    if (el && (el.getAttribute('data-v51b') !== id || !el.querySelector('.v58-ti'))) {
       el.setAttribute('data-v51b', id);
       el.innerHTML = badgeHtml(id, true);
     }
@@ -68476,7 +68627,7 @@ if (typeof module !== 'undefined' && module.exports) {
    게임이 켜질 때 patch-notes.json을 캐시 없이 받아서 최신 버전과 지금 빌드를 비교한다. */
 (function (root) {
   'use strict';
-  var BUILD = 'v5.26';
+  var BUILD = 'v5.27';
   root.__JW_BUILD_VERSION = BUILD;
   function norm(v) { return String(v || '').replace(/-정식$/, '').trim(); }
   function titleVisible() { try { var t = document.getElementById('titleScreen'); return !!(t && !t.classList.contains('hidden')); } catch (e) { return false; } }
@@ -71116,6 +71267,22 @@ if (typeof module !== 'undefined' && module.exports) {
     plate: plateOn, frame: frameOn,
     equip: equip, open: open, close: close, check: checkUnlock
   };
+  /* v5.27: 개발자 계정 — 이름표·테두리 전부 해금 (need()를 감싸서 개발자 계정일 때 항상 true). */
+  try {
+    [PLATES, FRAMES].forEach(function (list) {
+      (list || []).forEach(function (it) {
+        if (it && it.need && !it.need.__v57dev) {
+          var _o = it.need;
+          var _w = function () {
+            try { if (window.JWDEV && window.JWDEV.isDevAcct && window.JWDEV.isDevAcct()) return true; } catch (e) {}
+            return _o();
+          };
+          _w.__v57dev = 1;
+          it.need = _w;
+        }
+      });
+    });
+  } catch (e) {}
   console.log('[JW57PL] plates ready');
 })(window);
 
@@ -71224,6 +71391,12 @@ if (typeof module !== 'undefined' && module.exports) {
         '<div style="display:flex;flex-wrap:wrap;gap:4px" id="v57PrTitle"></div>' +
         '<div class="rec" id="v57PrRec"></div>' +
       '</div></div>' +
+      '<div id="v57PrEdit" style="display:flex;flex-direction:column;gap:6px;padding:10px 12px 0;">' +
+        '<input id="v57PrNickIn" type="text" maxlength="10" placeholder="닉네임" style="height:38px;padding:0 10px;border-radius:10px;border:2px solid #2a3b58;background:#0d1526;color:#fff;font-size:13px;font-weight:800">' +
+        '<input id="v57PrStatusIn" type="text" maxlength="40" placeholder="상태메시지" style="height:38px;padding:0 10px;border-radius:10px;border:2px solid #2a3b58;background:#0d1526;color:#fff;font-size:13px;font-weight:800">' +
+        '<input id="v57PrQuoteIn" type="text" maxlength="40" placeholder="1등 승리 멘트" style="height:38px;padding:0 10px;border-radius:10px;border:2px solid #2a3b58;background:#0d1526;color:#fff;font-size:13px;font-weight:800">' +
+        '<input id="v57PrFallIn" type="text" maxlength="24" placeholder="추락 대사" style="height:38px;padding:0 10px;border-radius:10px;border:2px solid #2a3b58;background:#0d1526;color:#fff;font-size:13px;font-weight:800">' +
+      '</div>' +
       '<div class="tabs">' +
         '<button type="button" class="tab on" data-v57pt="skin">🎨 스킨</button>' +
         '<button type="button" class="tab" data-v57pt="frame">🖼️ 테두리</button>' +
@@ -71232,6 +71405,27 @@ if (typeof module !== 'undefined' && module.exports) {
       '</div>' +
       '<div class="body" id="v57PrBody"></div></div>';
     doc.body.appendChild(m);
+    /* v5.27: 프로필 편집 (닉네임·상태·승리 멘트·추락 대사) — 예전 v43Profile의 편집 칸을 합친 화면에 그대로 둔다. */
+    (function () {
+      function bind(id, fn) { var el = $(id); if (el && !el.__v57w) { el.__v57w = 1; el.addEventListener('change', fn); } }
+      bind('v57PrNickIn', function () {
+        var v = String(($('v57PrNickIn') || {}).value || '').slice(0, 10) || '재우';
+        try { var S = V.st(); if (S) S.me.nick = v; } catch (e) {}
+        try { var inst = V.api().internals ? V.api().internals() : null; if (inst && inst.ident) inst.ident.nick = v; } catch (e) {}
+        try { var raw = V.lsGet('jw41_identity_v1', {}) || {}; raw.nick = v; V.lsSet('jw41_identity_v1', raw); } catch (e) {}
+        try { var inp = $('mpNick'); if (inp) { inp.value = v; inp.dispatchEvent(new Event('input', { bubbles: true })); } } catch (e) {}
+        paint();
+      });
+      bind('v57PrStatusIn', function () {
+        try { var el = $('frStatusMsg'); if (el) { el.value = $('v57PrStatusIn').value; el.dispatchEvent(new Event('input', { bubbles: true })); } } catch (e) {}
+      });
+      bind('v57PrQuoteIn', function () {
+        try { var el = $('frQuote'); if (el) { el.value = $('v57PrQuoteIn').value; el.dispatchEvent(new Event('input', { bubbles: true })); } } catch (e) {}
+      });
+      bind('v57PrFallIn', function () {
+        try { V.QOL.fallLine = String(($('v57PrFallIn') || {}).value || '').slice(0, 24); V.saveQol(); } catch (e) {}
+      });
+    })();
     m.addEventListener('click', function (e) {
       if (e.target === m) return close();
       var x = e.target.closest ? e.target.closest('[data-v57px]') : null;
@@ -71239,7 +71433,22 @@ if (typeof module !== 'undefined' && module.exports) {
       var tb = e.target.closest ? e.target.closest('[data-v57pt]') : null;
       if (tb) { TAB = tb.getAttribute('data-v57pt'); paint(); return; }
       var sk = e.target.closest ? e.target.closest('[data-v57sk]') : null;
-      if (sk) { try { V.api().setSkin(sk.getAttribute('data-v57sk')); } catch (er) {} paint(); try { root.JW57PLATE && JW57PLATE.apply(); } catch (er) {} return; }
+      if (sk) {
+        var _skid = sk.getAttribute('data-v57sk');
+        if (V.skinLocked && V.skinLocked(_skid)) { try { V.toast('🔒 잠긴 스킨', 'danger', '스토리 클리어로 해금됩니다', 2400); } catch (er) {} return; }
+        try { V.api().setSkin(_skid); } catch (er) {} paint(); try { root.JW57PLATE && JW57PLATE.apply(); } catch (er) {} return;
+      }
+      var _col = e.target.closest ? e.target.closest('[data-v57col]') : null;
+      if (_col) { try { V.api().setColor(_col.getAttribute('data-v57col')); } catch (er) {} paint(); return; }
+      var _dc = e.target.closest ? e.target.closest('[data-v57deco]') : null;
+      if (_dc) {
+        try {
+          var _G2 = (root.JW44 && root.JW44.G) || null;
+          if (_G2 && _G2.deco) { _G2.deco[_dc.getAttribute('data-v57deco')] = _dc.getAttribute('data-v57decoid'); if (_G2.saveDeco) _G2.saveDeco(); }
+        } catch (er) {}
+        paint();
+        return;
+      }
       var eq = e.target.closest ? e.target.closest('[data-v57pq]') : null;
       if (eq) {
         var kind = eq.getAttribute('data-v57kind');
@@ -71266,6 +71475,8 @@ if (typeof module !== 'undefined' && module.exports) {
       if (g) { g.clearRect(0, 0, cv.width, cv.height); if (sp) { g.imageSmoothingEnabled = false; try { g.drawImage(sp, 0, 0, cv.width, cv.height); } catch (e) {} } }
     }
     var nk = $('v57PrNick'); if (nk) nk.textContent = myNick();
+    var _ni = $('v57PrNickIn'); if (_ni && document.activeElement !== _ni) _ni.value = myNick();
+    var _fi = $('v57PrFallIn'); if (_fi && document.activeElement !== _fi) { try { _fi.value = (V.QOL && V.QOL.fallLine) || ''; } catch (e) {} }
     var tb = $('v57PrTitle'); if (tb) tb.innerHTML = titleBadge();
     var rc = $('v57PrRec');
     if (rc) rc.innerHTML = '최고 <b>' + bestM() + 'm</b> · 클리어 <b>' + ((prof().mapsCleared || []).length) + '</b>맵 · 완등 <b>' + (prof().clears || 0) + '</b>회';
@@ -71275,11 +71486,41 @@ if (typeof module !== 'undefined' && module.exports) {
       var skins = [];
       try { skins = V.api().skins() || []; } catch (e) {}
       var cur = ''; try { cur = V.api().meSkin(); } catch (e) {}
+      /* v5.27: 프로필에서는 보유중인 스킨만 보여준다 (칭호와 같은 규칙). 장착중인 스킨은 잠겨 있어도 보인다. */
+      skins = (skins || []).filter(function (s) { return s.id === cur || !(V.skinLocked && V.skinLocked(s.id)); });
       h += '<div class="skgrid">' + skins.map(function (s) {
         return '<button type="button" class="skcard' + (s.id === cur ? ' on' : '') + '" data-v57sk="' + esc(s.id) + '">' +
           '<canvas width="32" height="36" data-v57skcv="' + esc(s.id) + '"></canvas><b>' + (s.emoji || '') + ' ' + esc(s.name) + '</b></button>';
       }).join('') + '</div>';
       h += '<div class="note">스킨을 누르면 바로 적용됩니다 · 인게임·멀티·타이틀에 즉시 반영</div>';
+      /* v5.27: 스킨 꾸미기(색상·펫·모자·안경·등·꼬리·말풍선)를 같은 화면에 합친다. */
+      try {
+        var _cols = V.api().colors ? (V.api().colors() || []) : [];
+        var _curCol = V.api().meColor ? V.api().meColor() : '';
+        if (_cols.length) {
+          h += '<div class="note" style="margin-top:8px">🎨 색상</div><div style="display:flex;flex-wrap:wrap;gap:6px">' +
+            _cols.map(function (c) {
+              return '<button type="button" data-v57col="' + esc(c.id) + '" title="' + esc(c.name || c.id) + '" style="width:30px;height:30px;border-radius:9px;border:2px solid ' + (_curCol === c.id ? '#fbbf24' : '#334155') + ';background:' + esc(c.hex || '#38bdf8') + '"></button>';
+            }).join('') + '</div>';
+        }
+      } catch (e) {}
+      try {
+        var _G = (root.JW44 && root.JW44.G) || null;
+        var _SET = _G && _G.DECO_SET ? _G.DECO_SET : null;
+        var _DC = _G && _G.deco ? _G.deco : {};
+        if (_SET) {
+          var _kinds = [['pet', '🐾 펫', 'PETS'], ['hat', '👒 모자', 'HATS'], ['glasses', '🕶️ 안경', 'GLASSES'], ['back', '🦸 등(망토·날개)', 'BACK'], ['trail', '✨ 점프 꼬리 잔상', 'TRAIL'], ['bubble', '💬 말풍선 스타일', 'BUBBLES']];
+          _kinds.forEach(function (kd) {
+            var _list = _SET[kd[2]] || [];
+            var _curD = _DC[kd[0]];
+            if (!_list.length) return;
+            h += '<div class="note" style="margin-top:8px">' + kd[1] + '</div><div style="display:flex;flex-wrap:wrap;gap:6px">' +
+              _list.map(function (it) {
+                return '<button type="button" data-v57deco="' + kd[0] + '" data-v57decoid="' + esc(it.id) + '" style="padding:6px 9px;border-radius:10px;border:2px solid ' + (_curD === it.id ? '#fbbf24' : '#334155') + ';background:#162032;color:#e6f0ff;font-size:11px;font-weight:900">' + (it.emoji ? it.emoji + ' ' : '') + esc(it.name) + '</button>';
+              }).join('') + '</div>';
+          });
+        }
+      } catch (e) {}
     } else if (TAB === 'frame' || TAB === 'plate') {
       var P = PL();
       var list = P ? (TAB === 'frame' ? P.frames : P.plates) : [];
@@ -71302,7 +71543,9 @@ if (typeof module !== 'undefined' && module.exports) {
       var un = [];
       try { un = (V.api().unlockedTitles ? V.api().unlockedTitles() : titles).map(function (t) { return t.id; }); } catch (e) { un = []; }
       var curT = root.JW56T5 ? root.JW56T5.myTitleId() : 'auto';
-      titles.slice(0, 60).forEach(function (t) {
+      /* v5.27: 프로필 칭호는 보유중인 것만 보여준다 (도감은 그대로 전체 표시). 60개 제한도 없앤다. */
+      var ownedTitles = titles.filter(function (t) { return un.indexOf(t.id) >= 0; });
+      ownedTitles.forEach(function (t) {
         var has = un.indexOf(t.id) >= 0;
         var on = curT === t.id;
         var meta = {};
@@ -71316,7 +71559,8 @@ if (typeof module !== 'undefined' && module.exports) {
           (has ? '<button type="button"' + (on ? '' : ' class="pri"') + ' data-v57pq="' + esc(t.id) + '" data-v57kind="title">' + (on ? '착용중' : '장착') + '</button>'
                : '<button type="button" disabled style="opacity:.5">🔒 잠김</button>') + '</div>';
       });
-      if (!titles.length) h += '<div class="note">아직 표시할 칭호가 없어요.</div>';
+      if (!ownedTitles.length) h += '<div class="note">아직 보유한 칭호가 없어요 — 도감에서 조건을 확인해요</div>';
+      else h = '<div class="note">✅ 보유중(' + ownedTitles.length + ')</div>' + h;
     }
     body.innerHTML = h;
     /* 스킨 미니 아바타 */
@@ -76180,6 +76424,8 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   function unlockedSkinCount() { return Object.keys(unlockedSkinSet()).length; }
   function isSkinUnlocked(id) {
+    /* v5.27: 개발자 계정에서는 모든 스킨이 해금된 것으로 본다. */
+    try { if (window.JWDEV && window.JWDEV.isDevAcct && window.JWDEV.isDevAcct()) return true; } catch (e) {}
     if (!id) return false;
     if (DEFAULT_SKINS.indexOf(id) >= 0) return true;
     if (charSave().unlocked['skin:' + id]) return true;
@@ -76192,6 +76438,8 @@ if (typeof module !== 'undefined' && module.exports) {
     return false;
   }
   function isStagePlayable(stage) {
+    /* v5.27: 개발자 계정에서는 모든 스테이지가 열린 것으로 본다. */
+    try { if (window.JWDEV && window.JWDEV.isDevAcct && window.JWDEV.isDevAcct()) return true; } catch (e) {}
     if (!stage) return false;
     if (stage.startUnlocked) return true;
     if (stage.index <= 1) return true;
