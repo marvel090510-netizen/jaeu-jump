@@ -25091,6 +25091,17 @@ extends CanvasLayer
     sharkbay: 'ch6',
     trench: 'ch7', vcastle: 'ch7', demonking: 'ch7'
   };
+  /* v5.20: 신규 19맵 맵별 BGM (마누스 제작, 맵마다 고유 1트랙 · 파일 muse-v5-9/assets/audio/map-bgm-01~19.mp3).
+     story-data.json newMaps19 순서와 1:1 대응 — 01 alley, 02 pond, 03 hatchery, 04 burrow,
+     05 wheatfield, 06 octocave, 07 fruitfarm, 08 savanna, 09 halloween, 10 slimemarsh,
+     11 boxing, 12 mansionclean, 13 oldinn, 14 hospital, 15 ruins, 16 sharkbay,
+     17 trench, 18 vcastle, 19 demonking. */
+  var MAP_BGM = {
+    alley: 'mb0', pond: 'mb1', hatchery: 'mb2', burrow: 'mb3', wheatfield: 'mb4',
+    octocave: 'mb5', fruitfarm: 'mb6', savanna: 'mb7', halloween: 'mb8', slimemarsh: 'mb9',
+    boxing: 'mb10', mansionclean: 'mb11', oldinn: 'mb12', hospital: 'mb13', ruins: 'mb14',
+    sharkbay: 'mb15', trench: 'mb16', vcastle: 'mb17', demonking: 'mb18'
+  };
   var BGM = { main: null, boss: null, lobby: null, cur: '', unlocked: false, target: 0 };
   function bgmAudio(file) {
     var a = new Audio();
@@ -25108,6 +25119,14 @@ extends CanvasLayer
     a.loop = true; a.volume = 0;
     return a;
   }
+  /* v5.20: 맵별 BGM은 스토리 애셋 폴더에 있음 (스토리 BGM·음성과 같은 경로 규칙) */
+  function bgmMapAudio(mi) {
+    var a = new Audio();
+    a.preload = 'none';
+    a.src = 'muse-v5-9/assets/audio/map-bgm-' + ('0' + (mi + 1)).slice(-2) + '.mp3';
+    a.loop = true; a.volume = 0;
+    return a;
+  }
   function bgmInit() {
     if (BGM.main) return;
     try {
@@ -25116,6 +25135,7 @@ extends CanvasLayer
       BGM.lobby = bgmAudio('bgm-lobby.mp3');
       MAP_TRACKS.forEach(function (k) { BGM[k] = bgmAudio('bgm-' + k + '.mp3'); });
       for (var ci = 0; ci < 8; ci++) { BGM['ch' + ci] = bgmChapterAudio(ci); }
+      for (var mi = 0; mi < 19; mi++) { BGM['mb' + mi] = bgmMapAudio(mi); }
     } catch (e) {}
   }
   function bgmCurMap() {
@@ -25168,10 +25188,11 @@ extends CanvasLayer
     var _bossAlive = false;
     try { var _G = V.G; _bossAlive = !!(_G && _G.boss && !(_G.boss.dead || _G.boss.gone)); } catch (e) {}
     var boss = inPlay && (_bm === 'boss' || _bm === 'bossrush' || _bm === 'raid' || _bossAlive);
-    /* 라우팅: 타이틀·로비 → 로비 / 보스·80%↑ → 보스 / 맵 전용 → 그 맵 / 신규 19맵 → 챕터 BGM / 나머지 → 메인 */
+    /* 라우팅: 타이틀·로비 → 로비 / 보스·80%↑ → 보스 / 맵 전용 → 그 맵 / 신규 19맵 → 맵별 BGM / 챕터 BGM(폴백) / 나머지 → 메인 */
     var mapId = bgmCurMap();
-    var chTrack = CHAPTER_BGM[mapId]; /* v5.20: 신규 19맵은 챕터 BGM (같은 챕터끼리 공유) */
-    var wantTrack = !inPlay ? 'lobby' : (boss ? 'boss' : (MAP_TRACKS.indexOf(mapId) >= 0 ? mapId : (chTrack ? chTrack : 'main')));
+    var mapTrack = MAP_BGM[mapId]; /* v5.20: 신규 19맵은 맵마다 고유 BGM */
+    var chTrack = CHAPTER_BGM[mapId]; /* 챕터 BGM은 스토리 모드용으로 유지 (맵별 BGM 없을 때 폴백) */
+    var wantTrack = !inPlay ? 'lobby' : (boss ? 'boss' : (MAP_TRACKS.indexOf(mapId) >= 0 ? mapId : (mapTrack ? mapTrack : (chTrack ? chTrack : 'main'))));
     if (BGM.cur !== wantTrack) {
       var old = BGM[BGM.cur];
       if (old) { try { old.pause(); } catch (e) {} }
