@@ -40680,7 +40680,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v5.16 · 45 MAPS';
+      sp[1].textContent = '★ v5.18 · 45 MAPS';
     }
   }
 
@@ -73645,10 +73645,12 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   function dlgSkinPortraitUrl(skinId) {
     try {
-      var w = W();
-      if (!w || !w.spriteFor) return '';
-      var col = (w.meColor && w.meColor()) || 'blue';
-      var sp = w.spriteFor(col, 'idle1', skinId);
+      /* v5.18: W()는 root.__jwg(코어 엔진, spriteFor 없음)를 돌려줘서 항상 ''이
+         되어 이모지 폴백이 떴다. 스프라이트 API는 V.api()(= root.JWG)에 있다. */
+      var api = V.api ? V.api() : null;
+      if (!api || !api.spriteFor) return '';
+      var col = (api.meColor && api.meColor()) || 'blue';
+      var sp = api.spriteFor(col, 'idle1', skinId);
       if (!sp || !sp.width) return '';
       var cv = document.createElement('canvas');
       var sc = 4;
@@ -73658,6 +73660,35 @@ if (typeof module !== 'undefined' && module.exports) {
       g.drawImage(sp, 0, 0, cv.width, cv.height);
       return cv.toDataURL('image/png');
     } catch (e) { return ''; }
+  }
+  var dlgBossCache = {};
+  function dlgBossPortraitUrl(st) {
+    /* 스토리 보스 초상 — 전부 실제 게임 이미지, 이모지 금지:
+       ① 엔진 맵이면 그 맵의 보스 아트(B.art[form]를 384 캔버스에 렌더링,
+       결과창 hero 이미지와 같은 방식) ② 신규 19맵은 엔진 보스가 없어서
+       보스와 같은 종족인 스테이지 주인공 스킨으로 표시 ③ 최후 수단은
+       boss-king.png 파일. */
+    try {
+      if (!st) return 'assets/boss-king.png';
+      var JB = root.JW48B;
+      if (JB && JB.specOf && JB.art && ENGINE_MAPS.indexOf(st.mapId) >= 0) {
+        var spec = JB.specOf(st.mapId);
+        if (spec && spec.form && JB.art[spec.form]) {
+          if (dlgBossCache[spec.form]) return dlgBossCache[spec.form];
+          var cv = document.createElement('canvas');
+          cv.width = 384; cv.height = 384;
+          var c = cv.getContext('2d');
+          c.clearRect(0, 0, 384, 384);
+          JB.art[spec.form](c, 0, 0, 4, spec, { ai: { t: 0.4 } });
+          var u = cv.toDataURL('image/png');
+          dlgBossCache[spec.form] = u;
+          return u;
+        }
+      }
+      var skinUrl = dlgSkinPortraitUrl(st.skinId);
+      if (skinUrl) return skinUrl;
+    } catch (e) {}
+    return 'assets/boss-king.png';
   }
   var dlgLastWho = '', dlgPortraitTimer = null;
   function dlgPortrait(line, st) {
@@ -73673,17 +73704,15 @@ if (typeof module !== 'undefined' && module.exports) {
     var apply = function () {
       chara.style.display = 'none'; boss.style.display = 'none';
       if (!st) return;
-      var skinId = null, emoji = null;
-      if (line.kind === 'boss') { emoji = st.boss.emoji; }
-      else if (line.speaker === '재우') { skinId = 'jaeu'; }
-      else if (line.speaker === st.skinName) { skinId = st.skinId; }
-      else { skinId = st.skinId; emoji = st.skinEmoji; }
-      var shown = null;
-      if (skinId) {
-        var url = dlgSkinPortraitUrl(skinId);
-        if (url) { chara.src = url; chara.style.display = 'block'; shown = chara; }
-      }
-      if (!shown) { boss.textContent = emoji || st.skinEmoji || '🧑'; boss.style.display = 'block'; shown = boss; }
+      /* 화자 초상은 전부 실제 게임 이미지로 표시한다 (이모지 금지):
+         주인공 대사 → 그 캐릭터 스킨 스프라이트, 보스 대사 → 보스 아트. */
+      var url = null;
+      if (line.kind === 'boss') { url = dlgBossPortraitUrl(st); }
+      else if (line.speaker === '재우') { url = dlgSkinPortraitUrl('jaeu'); }
+      else { url = dlgSkinPortraitUrl(st.skinId); }
+      if (!url) url = 'assets/boss-king.png';
+      chara.src = url; chara.style.display = 'block';
+      var shown = chara;
       /* 페이드인: 살짝 아래에서 떠오르며 등장 */
       shown.style.opacity = '0';
       shown.style.transform = 'translateX(-50%) translateY(12px)';
@@ -73824,7 +73853,14 @@ if (typeof module !== 'undefined' && module.exports) {
     if (m) m.classList.add('hidden');
     dlgHide();
     var b = document.getElementById('btnStartGame');
-    if (b) b.click();
+    if (b) {
+      /* 스토리 시작은 위저드(맵·모드·규칙 고르기)를 거치지 않는다: 맵·모드가
+         스테이지 값으로 이미 정해져 있다. 위저드 자체의 시작 방식과 똑같이
+         __v43skip 플래그를 세우고 눌러서 바로 등반을 시작한다. 일반 시작 흐름은 그대로. */
+      b.__v43skip = true;
+      b.click();
+      setTimeout(function () { b.__v43skip = false; }, 500);
+    }
     else { try { V.toast('시작 버튼을 찾지 못했어요', 'danger', '타이틀 화면으로 돌아가 다시 시도해 주세요', 2000); } catch (e) {} }
   }
   function onStoryClear() {
