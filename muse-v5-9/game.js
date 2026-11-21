@@ -956,8 +956,8 @@ window.__jwRainbowGrad = function (ctx, nameW) {
           /* v5.11: 배경+글자를 시작과 동시에 함께, 즉시 숨긴다. 예전에는 opacity 0으로
              220ms 페이드아웃하면서 콜백(게임 시작)을 바로 실행해서, 살아있는 게임 화면
              위에 베일 글자가 반투명으로 떠 있었다. display:none을 먼저 하고 콜백을
-             실행하므로 게임이 시작될 때 베일은 이미 없다. transition도 꺼서 다음 show 때
-             페이드인이 다시 먹게 show 쪽에서 되돌린다. 낡은 250ms 숨김 타이머도 없어져서
+             실행하므로 게임이 시작될 때 베일은 이미 없다. v5.25: show도 페이드인을 없앴다 —
+             베일은 처음부터 불투명하고 즉시 숨긴다. 낡은 250ms 숨김 타이머도 없어져서
              새 베일을 덮어쓰던 문제도 사라진다. */
           try { v.style.transition = 'none'; } catch (e) {}
           v.style.opacity = '0';
@@ -975,8 +975,9 @@ window.__jwRainbowGrad = function (ctx, nameW) {
         } catch (e) {}
         v.style.display = 'flex';
         v.style.pointerEvents = 'auto';
-        try { v.style.transition = 'opacity .22s ease-out'; } catch (e) {} /* finish()가 끈 transition 복원 */
-        setTimeout(function () { v.style.opacity = '1'; }, 30);
+        /* v5.25: 베일을 처음부터 불투명으로 — 예전에는 opacity:0에서 30ms 뒤 220ms 페이드인해서 처음 ~250ms 동안 아래 낡은 월드가 비쳤다. 페이드인 제거 (finish()도 즉시 숨김이라 대칭). */
+        try { v.style.transition = 'none'; } catch (e) {}
+        v.style.opacity = '1';
         var t0 = Date.now();
         var iv = setInterval(function () {
           var done = false;
@@ -2205,6 +2206,8 @@ window.__jwRainbowGrad = function (ctx, nameW) {
 
       function startGameNow() {
         sfx.unlock();
+        /* v5.25: 월드 먼저 리셋 — 타이틀 숨기기 전에 동기 실행. 예전에는 진입 베일 콜백(__v59beginPlay)에서 리셋해서, 베일이 뜨기 전 ~100~250ms 동안 낡은 월드(이전 판 종료 상태)가 보였다. 재시작 버튼과 같은 순서. */
+        try { resetWorldAndPlayer(false); } catch (e) {}
         document.getElementById('titleScreen').classList.add('hidden');
         document.getElementById('pauseModal').classList.add('hidden');
         document.getElementById('victoryModal').classList.add('hidden');
@@ -2249,6 +2252,8 @@ window.__jwRainbowGrad = function (ctx, nameW) {
         try { if (window.JWMode && JWMode.stopSolo) JWMode.stopSolo(); } catch (e) {}
         try { if (window.JW43 && JW43.resetModeState) JW43.resetModeState((window.JWMode && JWMode.rules && JWMode.rules.mode) || 'normal'); } catch (e) {}
         try { resetFeverSilent(); } catch (e) {}
+        /* v5.25: 타이틀로 나갈 때 월드도 중립 상태로 리셋 — 예전에는 이전 판 종료 상태가 캔버스에 그대로 남아 다음 시작 때 터졌다. */
+        try { resetWorldAndPlayer(false); } catch (e) {}
         document.getElementById('pauseModal').classList.add('hidden');
         document.getElementById('victoryModal').classList.add('hidden');
         document.getElementById('gameHud').classList.add('hidden');
@@ -2493,6 +2498,19 @@ extends CanvasLayer
             ctrl = { preset: 'split', offsetX: 0, offsetY: 0, scale: 100, sound: ctrl.sound, camMode: ctrl.camMode };
             applyTouchLayout();
             saveCtrl();
+            /* v5.25: '기본값 초기화'는 조작만 리셋하던 게 버그 — 편리성(QOL) 설정도 기본값으로 되돌리고 화면도 갱신한다. */
+            try {
+              var J = window.JW43;
+              if (J && J.QOL && J.QOL_DEF) {
+                Object.keys(J.QOL).forEach(function (k) { if (k in J.QOL_DEF) J.QOL[k] = J.QOL_DEF[k]; });
+                if (J.saveQol) J.saveQol();
+                if (J.applyQolNow) J.applyQolNow();
+                if (J.renderQol) J.renderQol();
+              }
+            } catch (e) {}
+            try { if (typeof syncSingleSettingsUI === 'function') syncSingleSettingsUI(); } catch (e) {}
+            try { if (window.__v51FavPaint) window.__v51FavPaint(); } catch (e) {}
+            try { if (window.JW43 && window.JW43.toast) window.JW43.toast('🧹 초기화 완료', 'lucky', '기록은 그대로, 설정만 초기화했습니다', 2600); } catch (e) {}
           });
 
           const syncCamUI = () => {
@@ -2576,7 +2594,8 @@ extends CanvasLayer
           if (window.JWG && JWG.dtScale) dt *= JWG.dtScale();
           try {
             update(dt);
-            render();
+            /* v5.25: 일시정지 중에는 캔버스를 다시 그리지 않는다 — update()가 이미 멈춘 상태라 같은 정지 화면을 60fps로 다시 그리는 건 순수 낭비 (설정 모달 뒤에서도 계속 그려지던 문제). */
+            if (!game.paused) render();
           } catch (err) {
             console.error('Frame Error:', err);
           }
@@ -11025,8 +11044,10 @@ extends CanvasLayer
       '<div class="v42-row"><span class="v42-lbl">🎵 BGM 페이드</span><button type="button" class="v42-chip" id="v51FavFade">ON</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">🏷️ 대사 태그 보기</span><button type="button" class="v42-chip" id="v51FavTags">ON</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">⏸ 대사 저장 일시정지</span><button type="button" class="v42-chip" id="v51FavSavePause">저장 중</button></div>';
-    var first = card.querySelector('.v51-sec');
-    if (first) card.insertBefore(box, first); else card.appendChild(box);
+    /* v5.25: '자주 쓰는 설정'은 맨 위 고정이 아니라 카테고리(탭) 하나 — .v51-sec 섹션으로 만들고 show()가 탭으로 관리한다. */
+    box.className = 'v51-sec hidden';
+    box.setAttribute('data-hubsec', 'fav');
+    card.appendChild(box);
     /* v5.21: 저장 버튼을 카드 맨 아래로 — sticky bottom과 함께 스크롤 중에도 항상 보이게 */
     try {
       var sv = document.getElementById('btnSaveSettings');
@@ -11052,6 +11073,7 @@ extends CanvasLayer
     var tg = $('v51FavTags'); if (tg) tg.addEventListener('click', () => { Q.dlgTags = !(Q.dlgTags !== false); saveQ(); paint(); });
     var ps = $('v51FavSavePause'); if (ps) ps.addEventListener('click', () => { Q.dlgSavePause = !Q.dlgSavePause; saveQ(); paint(); });
     paint();
+    window.__v51FavPaint = paint; /* v5.25: 기본값 초기화 버튼이 다시 그릴 수 있게 노출 */
   }
   function injectResultButtons() {
     /* 싱글 결과창 */
@@ -19507,6 +19529,8 @@ extends CanvasLayer
   function decorateMaps() {
     const list = $('v42MapList');
     if (!list) return;
+    /* v5.25: 맵 선택창이 닫혀 있으면 카드 재정렬을 건너뛴다 — 예전에는 1.5초마다 숨은 카드 64장을 다시 붙여서 레이아웃을 흔들었다. */
+    if (list.closest('.hidden')) return;
     const cards = [...list.children].filter((c) => c.getAttribute('data-map'));
     if (!cards.length) return;
     const f = favs();
@@ -40009,7 +40033,13 @@ extends CanvasLayer
   }
   function ctrlSave(c) { try { localStorage.setItem(CK, JSON.stringify(c)); } catch (e) {} }
   var CPROPS = ['position', 'left', 'right', 'bottom', 'top', 'transform', 'transform-origin', 'opacity', 'z-index'];
+  var _ctrlAppliedRaw;
   function ctrlApply() {
+    /* v5.25: 600ms마다 같은 값을 다시 적용하지 않는다 — 바뀐 게 없으면 건너뛴다 (조작 버튼 스타일 재설정 방지). */
+    var _raw = null;
+    try { _raw = localStorage.getItem(CK); } catch (e) {}
+    if (_raw === _ctrlAppliedRaw) return;
+    _ctrlAppliedRaw = _raw;
     var c = ctrlLoad();
     var map = { L: 'touchBtnLeft', R: 'touchBtnRight', J: 'touchBtnJump' };
     /* v4.8.2: 사용자가 드래그 에디터에서 직접 옮겨 저장(edited)하기 전까지는
@@ -68043,8 +68073,9 @@ if (typeof module !== 'undefined' && module.exports) {
 
 
 /* ===== v5.23: 타이틀 전체화면 프롬프트 + 실제 보이는 높이에 맞춤 + 구 타이틀 UI 제거 ===== */
-/* v5.24: 갤럭시에서 프롬프트가 안 뜨던 문제 수정 — (1) 캐시버스터 v524tw1로 올려서 옛날 game.js(v523tw1, 프롬프트 없음) 캐시가 계속 뜨는 문제 해결.
-   (2) 프롬프트가 막히면 2초마다 다시 시도(최대 60초). (3) 거절은 24시간 뒤 다시 물어봄 + v1 'yes'만 이어받음. */
+/* v5.25: 갤럭시 프롬프트 확실히 뜨게 — (1) 키를 v3으로 올려서 거절한 사람도 한 번 더 물어봄 ('yes'만 v2/v1에서 이어받음).
+   (2) 프롬프트 z-index를 로딩 베일(99999)보다 위(100000)로 — 베일 뒤에 가려지던 문제 해결.
+   (3) 재시도 60초 상한 제거 — 모달이 오래 열려 있어도 타이틀이 보이면 계속 시도. */
 /* - 타이틀 화면이 뜰 때 "전체화면 하시겠습니까?" 1회 질문 (수락/거절 기억, 매번 안 물음)
    - 수락: Fullscreen API (JW51FULL.enter). 아이폰(미지원)은 홈 화면 추가 안내 + 레이아웃 맞춤
    - 타이틀 맞춤: 실제 보이는 높이(visualViewport.height || innerHeight)에 맞춰 내용이 넘치면
@@ -68062,8 +68093,8 @@ if (typeof module !== 'undefined' && module.exports) {
   root.JW523TITLE = true;
   var doc = document;
   var $ = function (id) { return doc.getElementById(id); };
-  var KEY = 'jw_fs_prompt_v2';
-  var OLD_KEY = 'jw_fs_prompt_v1';
+  var KEY = 'jw_fs_prompt_v3';
+  var OLD_KEY = 'jw_fs_prompt_v2';
   var promptOpen = false;
   var retryTimer = null;
   var NO_EXPIRE_MS = 24 * 60 * 60 * 1000; /* 거절은 24시간 뒤 다시 물어봄 */
@@ -68089,7 +68120,9 @@ if (typeof module !== 'undefined' && module.exports) {
       '}',
       '#v523FsYes{background:linear-gradient(180deg,#fde047,#f59e0b);border:3px solid #78350f;color:#451a03;font-weight:900;border-radius:12px;padding:10px 14px;font-size:14px;cursor:pointer;flex:1;}',
       '#v523FsNo{background:#1e293b;border:3px solid #475569;color:#e2e8f0;font-weight:900;border-radius:12px;padding:10px 14px;font-size:14px;cursor:pointer;flex:1;}',
-      '#v523FsTitleBtn{margin-left:auto;padding:2px 6px;font-size:12px;font-weight:900;color:#bfdbfe;background:#1e3a5f;border:1px solid #60a5fa;border-radius:8px;cursor:pointer;white-space:nowrap;flex:0 0 auto;}'
+      '#v523FsTitleBtn{margin-left:auto;padding:2px 6px;font-size:12px;font-weight:900;color:#bfdbfe;background:#1e3a5f;border:1px solid #60a5fa;border-radius:8px;cursor:pointer;white-space:nowrap;flex:0 0 auto;}',
+      /* v5.25: 프롬프트를 로딩 베일(z-99999)보다 위에 — 예전에는 베일 뒤에 가려져서 느린 기기에서 안 보이는 것처럼 보였다. */
+      '#v523FsPrompt{z-index:100000 !important;}'
     ].join('\n');
     doc.head.appendChild(s);
   }
@@ -68100,7 +68133,7 @@ if (typeof module !== 'undefined' && module.exports) {
   function migrateChoice() {
     try {
       if (localStorage.getItem(KEY)) return;
-      if (localStorage.getItem(OLD_KEY) === 'yes') localStorage.setItem(KEY, 'yes');
+      if (localStorage.getItem(OLD_KEY) === 'yes' || localStorage.getItem('jw_fs_prompt_v1') === 'yes') localStorage.setItem(KEY, 'yes');
     } catch (e) {}
   }
   function choice() {
@@ -68233,8 +68266,8 @@ if (typeof module !== 'undefined' && module.exports) {
     promptOpen = false;
     stopRetry();
   }
-  /* v5.24: 프롬프트가 막히면(다른 모달 열림/타이틀 숨김) 2초마다 다시 시도 — 최대 60초.
-     갤럭시에서 모달·느린 로딩 때문에 한 번 놓치면 다시 안 뜨던 문제 방지. */
+  /* v5.25: 60초 상한 제거 — 모달이 60초 넘게 열려 있으면 재시도가 죽어서 프롬프트가 영영 안 뜨던 문제.
+     타이틀이 숨겨지면(게임 시작) 멈추고, 타이틀로 돌아오면 MutationObserver가 다시 깨운다. */
   function tryPrompt() {
     fitTitle();
     showPrompt();
@@ -68242,10 +68275,8 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   function startRetry() {
     if (retryTimer) return;
-    var n = 0;
     retryTimer = setInterval(function () {
-      n++;
-      if (promptOpen || choice() || n > 30) { stopRetry(); return; }
+      if (promptOpen || choice()) { stopRetry(); return; }
       var ts = $('titleScreen');
       if (!ts || ts.classList.contains('hidden')) { stopRetry(); return; }
       showPrompt();
@@ -70177,10 +70208,15 @@ if (typeof module !== 'undefined' && module.exports) {
   var $ = function (id) { return doc.getElementById(id); };
   var KEY = 'v56_tag_on_v1';
 
+  /* v5.25: on() 결과를 캐시 — 예전에는 프레임마다 localStorage를 3번 읽었다 (JW56TAG rAF + v97UI 인터벌 + __jwgAfter). 쓰는 곳은 setOn 하나라 캐시가 안전하다. */
+  var _onCache = null;
   function on() {
-    try { var v = localStorage.getItem(KEY); return v === null ? true : v === '1'; } catch (e) { return true; }
+    if (_onCache !== null) return _onCache;
+    try { var v = localStorage.getItem(KEY); _onCache = (v === null ? true : v === '1'); } catch (e) { _onCache = true; }
+    return _onCache;
   }
   function setOn(v) {
+    _onCache = !!v;
     try { localStorage.setItem(KEY, v ? '1' : '0'); } catch (e) {}
     var el = $('v51IGTag');
     if (el && !v) el.style.display = 'none';
@@ -73529,10 +73565,21 @@ if (typeof module !== 'undefined' && module.exports) {
     if (gh) gh.classList.add('wide');
     /* 순서 정리: 계속 → 고스트 → 주크박스 → 조작 → 집중숨김 → 칭호 (muse-v5-9: 랭킹/하이라이트·특수기능 제거) */
     var order = ['btnResume', 'v43GhostPause', 'v48juOpen', 'btnOpenSettingsPause', 'v44Dnd', 'v56TagRow'];
-    order.forEach(function (id) {
-      var e = $(id);
-      if (e && e.parentElement === g1) g1.appendChild(e);
-    });
+    /* v5.25: 이미 올바른 순서면 다시 붙이지 않는다 — 예전에는 일시정지 중 200ms마다 6개 버튼을 무가드로 re-append해서 레이아웃을 흔들었다. */
+    var _inOrder = true, _prevIdx = -1;
+    for (var _oi = 0; _oi < order.length; _oi++) {
+      var _oe = $(order[_oi]);
+      if (!_oe || _oe.parentElement !== g1) { _inOrder = false; break; }
+      var _oIdx = Array.prototype.indexOf.call(g1.children, _oe);
+      if (_oIdx <= _prevIdx) { _inOrder = false; break; }
+      _prevIdx = _oIdx;
+    }
+    if (!_inOrder) {
+      order.forEach(function (id) {
+        var e = $(id);
+        if (e && e.parentElement === g1) g1.appendChild(e);
+      });
+    }
   }
 
   /* ================================================================ ⑧ 친구창/채팅 보정 */
@@ -74020,8 +74067,10 @@ if (typeof module !== 'undefined' && module.exports) {
     for (var i = 0; i < list.length; i++) {
       var e = list[i];
       if (!e) continue;
-      var cs = getComputedStyle(e);
-      var hidden = cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0';
+      /* v5.25: hidden 클래스면 getComputedStyle 없이 바로 숨김 처리 — 예전에는 900ms마다 모달 12개 전부에 getComputedStyle(강제 스타일 재계산)을 돌렸다. */
+      var hidden;
+      if (e.classList.contains('hidden')) hidden = true;
+      else { var cs = getComputedStyle(e); hidden = cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0'; }
       /* v5.5: 숨은 모달에 박은 pointer-events:none을 모달이 다시 보이면 해제 (영구 먹통 버그) */
       if (hidden) { if (!e.__v51pe) { e.style.setProperty('pointer-events', 'none', 'important'); e.__v51pe = 1; } }
       else if (e.__v51pe) { e.style.removeProperty('pointer-events'); e.__v51pe = 0; }
@@ -74170,7 +74219,7 @@ if (typeof module !== 'undefined' && module.exports) {
 (function (root) {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
-  var SECS = ['ctrl', 'bgm', 'chat', 'qol', 'help', 'solo'];
+  var SECS = ['ctrl', 'fav', 'bgm', 'chat', 'qol', 'help', 'solo'];
 
   function paintDnd() {
     var b = $('v51HubDnd'); if (!b) return;
@@ -74225,6 +74274,7 @@ if (typeof module !== 'undefined' && module.exports) {
       b.classList.toggle('on', b.getAttribute('data-hubsec') === sec);
     });
     if (sec === 'qol') { try { root.V && V.renderQol && V.renderQol(); } catch (e) {} moveBodies(); }
+    if (sec === 'fav') { try { if (window.__v51FavPaint) window.__v51FavPaint(); } catch (e) {} }
     if (sec === 'bgm') embedJuke();
     if (sec === 'chat') paintDnd();
     if (sec === 'help') moveBodies();
@@ -76742,6 +76792,8 @@ if (typeof module !== 'undefined' && module.exports) {
     var m = $('storyModal');
     if (m) m.classList.add('hidden');
     dlgHide();
+    /* v5.25: 대사창을 즉시 숨긴다 — dlgHide는 320ms 뒤에 숨기는데, 그 전에 게임이 시작돼서 대사창이 남은 채로 전환이 겹쳤다. */
+    var _sd = $('storyDlg'); if (_sd) _sd.classList.add('hidden');
     var b = document.getElementById('btnStartGame');
     if (b) {
       /* 스토리 시작은 위저드(맵·모드·규칙 고르기)를 거치지 않는다: 맵·모드가
