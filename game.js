@@ -882,7 +882,7 @@ window.__jwRainbowGrad = function (ctx, nameW) {
         ASSETS, TOTAL_PLATS, WORLD_W, WALL_W, EVENTS,
         get seed() { return PLAT_SEED; },
         set seed(v) { PLAT_SEED = v >>> 0; },
-        buildPlatforms, resetWorldAndPlayer, addParticles, addText, setMood,
+        buildPlatforms, resetWorldAndPlayer, addParticles, addText, setMood, fireworks: v528Fireworks,
         get stats() { return stats; },
         getZoneByY, getZoneByPlat, saveStats, saveCtrl, showEventCard, startGameNow, returnToTitle,
         executeJumpRelease, hideEventBanner, hitPlayerWithKnockback, triggerRandomEvent,
@@ -1000,13 +1000,55 @@ window.__jwRainbowGrad = function (ctx, nameW) {
         }, 100);
         setTimeout(function () { clearInterval(iv); finish(); }, 4500); /* 안전망 */
       }
-      function addText(x, y, txt, col = '#fde047') {
+      function addText(x, y, txt, col = '#fde047', big) {
         /* v5.10 B2: 같은 문구는 중복 쌓지 않고 기존 것을 갱신 (PERFECT! 겹침 방지) */
+        /* v5.28: big — CLUTCH! 같은 강조 문구는 조금 크게 (그리는 쪽에서만 폰트 크기 분기) */
         for (var _ti = 0; _ti < game.texts.length; _ti++) {
           var _tt = game.texts[_ti];
-          if (_tt && _tt.txt === txt && _tt.life > 0) { _tt.x = x; _tt.y = y; _tt.col = col; _tt.life = 1.2; return; }
+          if (_tt && _tt.txt === txt && _tt.life > 0) { _tt.x = x; _tt.y = y; _tt.col = col; _tt.big = !!big; _tt.life = 1.2; return; }
         }
-        game.texts.push({ x, y, txt, col, life: 1.2 });
+        game.texts.push({ x, y, txt, col, life: 1.2, big: !!big });
+      }
+
+      /* ===== v5.28: 픽셀 폭죽 (캔버스 파티클만 — DOM 변이 없음) =====
+         보스 처치·스토리 스테이지 클리어 축하 연출. 여러 색을 110ms 간격으로 터뜨린다. */
+      var V528_PALS = ['#fde047', '#f472b6', '#38bdf8', '#a7f3d0', '#fb923c'];
+      function v528Fireworks(x, y, bursts) {
+        var n = bursts || 3;
+        for (var k = 0; k < n; k++) {
+          (function (k) {
+            setTimeout(function () {
+              try {
+                var bx = x + (k - (n - 1) / 2) * 46;
+                var by = y - k * 34;
+                addParticles(bx, by, V528_PALS[(k * 2) % V528_PALS.length], 12, 210 + k * 30);
+                addParticles(bx, by, V528_PALS[(k * 2 + 3) % V528_PALS.length], 10, 170 + k * 26);
+              } catch (e) {}
+            }, k * 110);
+          })(k);
+        }
+      }
+      try { window.__v528Fx = { fireworks: v528Fireworks, addText: addText }; } catch (e) {}
+
+      /* ===== v5.28: CLUTCH! — 발판 끝에 아슬아슬하게 걸친 착지 표시 =====
+         착지 판정·물리는 손대지 않고, 이미 착지가 끝난 뒤 표시만 붙인다.
+         over = 발판 안쪽으로 들어온 여유(px) — 몸이 가장자리에 걸쳐 있을수록 작다. */
+      var __v528ClutchAt = 0;
+      function v528Clutch(pl, p, pL, pR) {
+        if (!pl || !p) return;
+        if (p.type === 'abyss_floor') return;        /* 낭떠러지 바닥은 아슬아슬이 아니다 */
+        if (!p.w || p.w < 48) return;                 /* 좁은 발판은 가운데 착지도 걸친 것처럼 보인다 */
+        var overL = (pl.x + pl.w) - (pL + 3);
+        var overR = (pR - 3) - pl.x;
+        var over = overL < overR ? overL : overR;
+        if (over < 0 || over > 7) return;             /* 7px 넘게 올라섰으면 평범한 착지 */
+        var now = 0;
+        try { now = performance.now(); } catch (e) { now = Date.now(); }
+        if (now - __v528ClutchAt < 700) return;       /* 연속 착지에서 도배되지 않게 */
+        __v528ClutchAt = now;
+        /* v5.28: 이름표(DOM 오버레이)는 머리 바로 위에 떠 있으므로 그보다 높게 띄운다 */
+        addText(pl.x + pl.w / 2, p.y - 58, 'CLUTCH!', '#fde047', true);
+        addParticles(pl.x + pl.w / 2, p.y - 4, '#fde047', 8, 120);
       }
 
       function resetWorldAndPlayer(isOrigin = false) {
@@ -1532,6 +1574,8 @@ window.__jwRainbowGrad = function (ctx, nameW) {
               player.peakFallVy = 0;
               player._bounced = false;
               player._bounceAir = false; /* 착지하면 튐 비행 종료 (onLand가 다시 켤 수 있음) */
+              /* v5.28: CLUTCH! — 발판 가장자리에 아슬아슬하게 걸쳐 착지하면 표시만 (물리·판정은 그대로) */
+              try { v528Clutch(player, p, pL, pR); } catch (e) {}
               if (window.JWG && JWG.onLand) JWG.onLand(p, impact);
 
               if (!player._bounced && impact >= 760 && p.index !== ((window.JWG && JWG.goalPlat) ? JWG.goalPlat() : TOTAL_PLATS)) {
@@ -2133,8 +2177,13 @@ window.__jwRainbowGrad = function (ctx, nameW) {
         }
         ctx.font = 'bold 13px "Galmuri11", monospace';
         ctx.textAlign = 'center';
+        var _v528BigFont = false; /* v5.28: 강조 문구(CLUTCH!)만 큰 폰트 — 폰트 설정은 바뀔 때만 */
         for (let i = 0; i < game.texts.length; i++) {
           const ft = game.texts[i];
+          if (!!ft.big !== _v528BigFont) {
+            _v528BigFont = !!ft.big;
+            ctx.font = _v528BigFont ? 'bold 17px "Galmuri11", monospace' : 'bold 13px "Galmuri11", monospace';
+          }
           ctx.fillStyle = '#080510';
           ctx.fillText(ft.txt, (ft.x | 0) + 2, ((ft.y - camY) | 0) + 2);
           ctx.fillStyle = ft.col;
@@ -4894,6 +4943,8 @@ extends CanvasLayer
       graph.draw(cv);
     }
     $('soloEnd').dataset.clear = d.clear ? '1' : '0';
+    /* v5.28: 스토리 판이면 결과창에 [다음 스테이지 ▶]·[방금 얻은 스킨 바로 장착]·[바로 재도전] 버튼 (스토리 쪽에서 채움) */
+    try { if (root.__v528StoryEnd) root.__v528StoryEnd(d); } catch (e) {}
     try { beep(d.clear ? 1046 : 240, 0.2, 0.14, 'square', d.clear ? 1568 : 90); } catch (e) {}
   }
 
@@ -25770,6 +25821,30 @@ extends CanvasLayer
   function game() { return J() && J().game; }
   function worldW() { return (J() && J().WORLD_W) || 540; }
   G.live = live; G.multi = multi; G.curMode = curMode;
+
+  /* ===== v5.28: 보스 피격 타격감 (전부 캔버스 — DOM 변이 없음) =====
+     - 짧고 경쾌한 미세 흔들림 0.15초 (이미 더 큰 흔들림이 걸려 있으면 그대로 둔다)
+     - 픽셀 히트 스파크 (기존 파티클 엔진 재사용)
+     - 보스 HP 바 깜빡임 — 시각만 기록해 두고 그리는 쪽에서 계산 (프레임마다 상태를 갱신하지 않음) */
+  function v528BossHitFx(b, x, y) {
+    if (!b) return;
+    var t = 0;
+    try { t = performance.now(); } catch (e) { t = Date.now(); }
+    G.v528HitAt = t;
+    try {
+      var g = game();
+      if (g) {
+        if (!(g.shakeT > 0.15)) { g.shakeT = 0.15; g.shakeMag = 3.6; }
+      }
+    } catch (e) {}
+    try {
+      var px = (typeof x === 'number') ? x : b.x + b.w / 2;
+      var py = (typeof y === 'number') ? y : b.y + b.h * 0.35;
+      V.parts(px, py, '#fff7cc', 10, 260);
+      V.parts(px, py, '#f472b6', 6, 190);
+    } catch (e) {}
+  }
+  G.v528BossHitFx = v528BossHitFx;
   /* 랜덤 목표층이면 모든 목표 계산이 그 층을 쓴다 */
   try {
     const ogn = V.goalNow;
@@ -26151,6 +26226,7 @@ extends CanvasLayer
       b.dead = true;
       V.parts(b.x + b.w / 2, b.y + b.h / 2, '#f472b6', 70, 340);
       V.parts(b.x + b.w / 2, b.y + b.h / 2, '#fde047', 40, 280);
+      try { if (window.__v528Fx && window.__v528Fx.fireworks) window.__v528Fx.fireworks(b.x + b.w / 2, b.y + b.h * 0.5, 3); } catch (e) {}
       V.toast('🎉 보스 격파!', 'lucky', b.kind === 'raid' ? '레이드 성공!' : '수문장을 쓰러뜨렸습니다', 3000);
       try { var _sx = window.__jwg && window.__jwg.sfx; if (_sx) _sx.bossDefeat(); else throw 0; } catch (e) { try { V.beep(1046, 0.2, 0.16, 'square', 1568); } catch (e2) {} }
       /* v5.6 D5: 격파 승리는 호스트만 판정한다 — 승리자는 보스에 데미지를 준 살아있는 플레이어로 한정하고, 그 목록을 v44bossdown으로 전원에게 방송한다 */
@@ -26202,6 +26278,7 @@ extends CanvasLayer
       if (typeof info.base === 'number') d = info.base * (b.weak ? 2 : 1);
       if (info.pid) { G.bossContrib = G.bossContrib || {}; G.bossContrib[info.pid] = (G.bossContrib[info.pid] || 0) + d; }
       b.hp = Math.max(0, b.hp - d);
+      try { v528BossHitFx(b, info.px, info.py); } catch (e) {}
       return;
     }
     if (multi() && V.st() && !V.st().isHost) {
@@ -26214,6 +26291,7 @@ extends CanvasLayer
     /* 호스트·싱글: 직접 깎고 기여 기록 (B15 격파 승리자 판정용) */
     if (mePid) { G.bossContrib = G.bossContrib || {}; G.bossContrib[mePid] = (G.bossContrib[mePid] || 0) + d; }
     b.hp = Math.max(0, b.hp - d);
+    try { v528BossHitFx(b, info.px, info.py); } catch (e) {}
   }
   G.damageBoss = damageBoss;
 
@@ -27023,6 +27101,21 @@ extends CanvasLayer
         else { g2.addColorStop(0, '#b91c1c'); g2.addColorStop(1, '#fb7185'); }
         ctx.fillStyle = g2;
         ctx.fillRect(bx + 1, by, Math.max(0, (bw - 2) * pct), 5);
+        /* v5.28: 피격 직후 0.22초 HP 바 깜빡임 — 맞았다는 게 한눈에 보이게 (그리는 쪽에서만 계산) */
+        if (G.v528HitAt) {
+          var _ht = 0;
+          try { _ht = performance.now() - G.v528HitAt; } catch (e) { _ht = 9999; }
+          if (_ht >= 0 && _ht < 220) {
+            var _a = (1 - _ht / 220) * 0.85;
+            _a *= 0.55 + 0.45 * Math.sin(_ht / 18);
+            if (_a > 0) {
+              ctx.fillStyle = 'rgba(255,255,255,' + (_a.toFixed(3)) + ')';
+              ctx.fillRect(bx + 1, by, bw - 2, 5);
+              ctx.fillStyle = 'rgba(255,255,255,' + (Math.min(1, _a * 1.15).toFixed(3)) + ')';
+              ctx.fillRect(bx - 3, by - 11, bw + 6, 1);
+            }
+          }
+        }
         ctx.font = 'bold 8px "Galmuri11", monospace';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#fef3c7';
@@ -30927,6 +31020,12 @@ extends CanvasLayer
      ================================================================ */
   function autoCard(clear, prevBest, prevT) {
     if (!Q.autoCard || !clear) return;
+    /* v5.28: 스토리 판 클리어에서는 자동 카드를 띄우지 않는다 — 카드가 결과창의 [다음 스테이지 ▶]을 가려서
+       원터치 진행이 막했다. 카드는 결과창의 🖼️ 인증샷 카드 버튼으로 그대로 만들 수 있다. */
+    try {
+      var _sr528 = V.storyRun;
+      if (_sr528 && _sr528.mapId === (((MP() && MP().current) || 'default')) && _sr528.mode === MD().rules.mode) return;
+    } catch (e) {}
     /* v4.8.5: 완주는 높이가 늘 정상이라 매번 '신기록'으로 카드가 떴다 → 첫 완주이거나 최단 시간 갱신일 때만 */
     let tNow = 0;
     try { tNow = Math.round(((MD() && MD().lastSoloEnd && MD().lastSoloEnd.time) || 0) * 1000); } catch (e) {}
@@ -40498,7 +40597,7 @@ extends CanvasLayer
         }
         y = yy;
       } catch (e) {}
-      return o.call(this, x, y, txt, col);
+      return o.apply(this, arguments); /* v5.28: big 등 추가 인자도 그대로 전달 */
     };
     w.__v49 = true;
     g.addText = w;
@@ -68640,7 +68739,7 @@ if (typeof module !== 'undefined' && module.exports) {
    게임이 켜질 때 patch-notes.json을 캐시 없이 받아서 최신 버전과 지금 빌드를 비교한다. */
 (function (root) {
   'use strict';
-  var BUILD = 'v5.27';
+  var BUILD = 'v5.28';
   root.__JW_BUILD_VERSION = BUILD;
   function norm(v) { return String(v || '').replace(/-정식$/, '').trim(); }
   function titleVisible() { try { var t = document.getElementById('titleScreen'); return !!(t && !t.classList.contains('hidden')); } catch (e) { return false; } }
@@ -77297,6 +77396,17 @@ if (typeof module !== 'undefined' && module.exports) {
       }
     }
     sfxMp3('unlock', 0.9);
+    run.cleared = true;
+    run.unlockedSkin = unlockedSkin || null; /* v5.28: 결과창 '방금 얻은 스킨 바로 장착' 버튼용 */
+    /* v5.28: 스테이지 클리어 축하 — 캔버스 픽셀 폭죽 (정상 근처, 화면 안) */
+    try {
+      if (window.__v528Fx && window.__v528Fx.fireworks) {
+        var _jw = J(); var _p = _jw && _jw.player;
+        var _fy = _p ? _p.y - 40 : 0;
+        var _fx = _p ? _p.x + 14 : 0;
+        window.__v528Fx.fireworks(_fx, _fy, 4);
+      }
+    } catch (e) {}
     if (unlockedSkin) {
       try { V.toast('🎉 캐릭터 해금!', 'lucky', st.skinEmoji + ' ' + st.skinName + ' · ' + st.index + '번 스테이지 클리어', 3400); } catch (e) {}
     } else {
@@ -77315,6 +77425,81 @@ if (typeof module !== 'undefined' && module.exports) {
       }, 900);
     }
   }
+  /* ---------------- v5.28: 스토리 결과창 원터치 버튼 --------------
+     싱글 결과창(#soloEnd)이 뜰 때 코어 showSoloEnd → root.__v528StoryEnd로 불린다.
+     - 클리어: [다음 스테이지 ▶] (64번이 아니고 다음 맵이 플레이 가능할 때)
+                [방금 얻은 스킨 바로 장착] (이번 클리어로 새 스킨을 해금했을 때)
+     - 실패·종료: [바로 재도전] — 로비로 나가지 않고 그 스테이지 즉시 재시작
+     onStoryClear(해금·저장)가 승리 처리와 같은 동기 흐름에서 끝나므로, 버튼은 그 뒤(다음 태스크)에 만든다.
+     결과창에서만 DOM을 만지고 인게임 캔버스·HUD는 그대로 둔다. */
+  function v528StoryEndClear() {
+    var se = $('soloEnd'); if (se) se.classList.add('hidden');
+    var bx = $('storyEndBtns');
+    if (bx) { bx.innerHTML = ''; bx.style.display = 'none'; }
+  }
+  function v528StoryEndRun(fn) {
+    v528StoryEndClear();
+    setTimeout(function () { try { fn(); } catch (e) {} }, 30);
+  }
+  function v528EquipSkin(skinId, st) {
+    var api = null;
+    try { api = V.api(); } catch (e) {}
+    try { if (api && api.setSkin) api.setSkin(skinId); } catch (e) {}
+    try {
+      V.toast('🎨 스킨 장착!', 'lucky', (st && st.skinEmoji ? st.skinEmoji + ' ' : '') + ((st && st.skinName) || '') + ' — 이제 일반 모드에서도 이 캐릭터로 뜁니다', 2600);
+    } catch (e) {}
+    var b = $('storyEquipSkin');
+    if (b) { b.disabled = true; b.style.opacity = '.65'; b.textContent = '✅ 장착 완료'; }
+  }
+  root.__v528StoryEnd = function (d) {
+    var box = null;
+    try { box = $('storyEndBtns'); } catch (e) { box = null; }
+    if (!box) return;
+    try { box.innerHTML = ''; box.style.display = 'none'; } catch (e) {}
+    var run = V.storyRun;
+    if (!run || !STAGE_BY_IDX[run.index]) return;
+    /* 스토리 판이 맞는지 대조 — 스토리 클리어 뒤 바로 일반 판을 돈 경우 옛 버튼이 남지 않게 */
+    if (d && (typeof d.mapId === 'string' || typeof d.modeId === 'string')) {
+      if (d.mapId !== run.mapId || d.modeId !== run.mode) return;
+    }
+    var isClear = !!(d && d.clear);
+    setTimeout(function () {
+      try {
+        var r = V.storyRun;
+        var st = r && STAGE_BY_IDX[r.index];
+        var bx = $('storyEndBtns');
+        if (!st || !bx) return;
+        var items = [];
+        if (isClear) {
+          var nx = (st.index < 64) ? STAGE_BY_IDX[st.index + 1] : null;
+          if (nx && isEngineMap(nx.mapId) && isStagePlayable(nx)) {
+            items.push({ id: 'storyNextStage', cls: 'mp-btn green', label: '다음 스테이지 ▶',
+              sub: nx.index + '번 · ' + nx.mapName,
+              go: function () { v528StoryEndRun(function () { playIntroThenStart(nx); }); } });
+          }
+          if (r.unlockedSkin) {
+            items.push({ id: 'storyEquipSkin', cls: 'mp-btn blue', label: '방금 얻은 스킨 바로 장착',
+              sub: (st.skinEmoji || '') + ' ' + (st.skinName || '') + ' 해금!',
+              go: function () { v528EquipSkin(r.unlockedSkin, st); } });
+          }
+        } else {
+          items.push({ id: 'storyRetryStage', cls: 'mp-btn', label: '바로 재도전',
+            sub: st.index + '번 · ' + st.mapName,
+            go: function () { v528StoryEndRun(function () { startStoryStage(st); }); } });
+        }
+        if (!items.length) return;
+        bx.innerHTML = items.map(function (it) {
+          return '<button type="button" id="' + it.id + '" class="' + it.cls + '" style="width:100%;padding:11px;font-size:14px">' + esc(it.label) +
+            '<span style="display:block;font-size:10.5px;font-weight:700;opacity:.85">' + esc(it.sub) + '</span></button>';
+        }).join('');
+        items.forEach(function (it) {
+          var b = $(it.id);
+          if (b) b.addEventListener('click', function () { try { it.go(); } catch (e) {} });
+        });
+        bx.style.display = 'flex';
+      } catch (e) {}
+    }, 0);
+  };
   var __victoryHooked = false;
   function hookVictory() {
     /* v5.19 수정: W() (= root.__jwg)에는 onReachVictory가 없어서 기존 훅은
@@ -77756,6 +77941,8 @@ if (typeof module !== 'undefined' && module.exports) {
       }
       var line = (st && st.boss && st.boss.dialogue && st.boss.dialogue[1]) || '보스를 격파했다!';
       V.toast('🎉 보스 격파!', 'lucky', line, 3400);
+      /* v5.28: 캔버스 픽셀 폭죽 축하 연출 (DOM 변이 없음) */
+      try { if (window.__v528Fx && window.__v528Fx.fireworks) window.__v528Fx.fireworks(b.x + b.w / 2, b.y + b.h * 0.4, 4); } catch (e) {}
       var sx = jw && jw.sfx;
       if (sx && sx.bossDefeat) sx.bossDefeat();
       else if (V.beep) V.beep(1046, 0.2, 0.16, 'square', 1568);
@@ -77855,9 +78042,12 @@ if (typeof module !== 'undefined' && module.exports) {
         b.hitT = now;
         b.hp = Math.max(0, b.hp - 1);
         b.flash = 0.18;
+        b.hitAt = now; /* v5.28: HP 바 깜빡임용 시각 기록 */
         p.vy = -700; p.onGround = false; p.plat = null;
+        /* v5.28: 짧고 경쾌한 미세 흔들림 0.15초 (기존 흔들림이 더 크면 그대로) */
+        try { var _g528 = jw.game; if (_g528 && !(_g528.shakeT > 0.15)) { _g528.shakeT = 0.15; _g528.shakeMag = 3.6; } } catch (e) {}
         try {
-          if (jw.addParticles) { jw.addParticles(p.x + 14, b.y, '#fde047', 26, 240); jw.addParticles(p.x + 14, b.y + 6, '#f472b6', 14, 200); }
+          if (jw.addParticles) { jw.addParticles(p.x + 14, b.y, '#fde047', 26, 240); jw.addParticles(p.x + 14, b.y + 6, '#f472b6', 14, 200); jw.addParticles(p.x + 14, b.y - 4, '#fff7cc', 10, 300); }
           if (jw.addText) jw.addText(p.x + 14, b.y - 26, '-1', '#fde047');
           if (V.beep) { V.beep(620, 0.1, 0.16, 'square', 940); V.beep(980, 0.08, 0.1, 'triangle', 1240); }
         } catch (e) {}
@@ -77922,6 +78112,18 @@ if (typeof module !== 'undefined' && module.exports) {
         ctx.fillRect(bx + 8, by - 8, b.w - 16, 6);
         ctx.fillStyle = b.hp <= Math.ceil(b.max / 2) ? '#f87171' : '#4ade80';
         ctx.fillRect(bx + 8, by - 8, (b.w - 16) * Math.max(0, b.hp / b.max), 6);
+        /* v5.28: 피격 직후 0.22초 HP 바 깜빡임 */
+        if (b.hitAt) {
+          var _hb = 0;
+          try { _hb = performance.now() - b.hitAt; } catch (e) { _hb = 9999; }
+          if (_hb >= 0 && _hb < 220) {
+            var _ha = (1 - _hb / 220) * 0.9 * (0.55 + 0.45 * Math.sin(_hb / 18));
+            if (_ha > 0) {
+              ctx.fillStyle = 'rgba(255,255,255,' + _ha.toFixed(3) + ')';
+              ctx.fillRect(bx + 8, by - 8, b.w - 16, 6);
+            }
+          }
+        }
         ctx.restore();
       }
       /* 돌풍 표시 */
