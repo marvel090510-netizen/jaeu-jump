@@ -1046,6 +1046,8 @@ window.__jwRainbowGrad = function (ctx, nameW) {
         try { now = performance.now(); } catch (e) { now = Date.now(); }
         if (now - __v528ClutchAt < 700) return;       /* 연속 착지에서 도배되지 않게 */
         __v528ClutchAt = now;
+        /* v5.31: 오늘의 미션 — CLUTCH! 착지 1회 (진행도만 갱신, 그리기·물리 무영향) */
+        try { if (window.JW531 && window.JW531.ev) window.JW531.ev('clutch'); } catch (e) {}
         /* v5.28: 이름표(DOM 오버레이)는 머리 바로 위에 떠 있으므로 그보다 높게 띄운다 */
         addText(pl.x + pl.w / 2, p.y - 58, 'CLUTCH!', '#fde047', true);
         addParticles(pl.x + pl.w / 2, p.y - 4, '#fde047', 8, 120);
@@ -2319,6 +2321,8 @@ window.__jwRainbowGrad = function (ctx, nameW) {
         document.getElementById('titleBestPlat').textContent = String(recordPlat()).padStart(3, '0') + ' / ' + String((window.JW43 && JW43.mapTotal) ? JW43.mapTotal() : 88).padStart(3, '0');
         document.getElementById('titleOriginCount').textContent = stats.originCount + '회';
         document.getElementById('titleClearCount').textContent = stats.clearCount + '회';
+        /* v5.31: 타이틀에 돌아올 때 오늘의 미션 버튼(진행도·보상 점) 갱신 */
+        try { if (window.JW531 && window.JW531.refresh) window.JW531.refresh(); } catch (e) {}
       }
 
       const GDSCRIPTS = {
@@ -10767,6 +10771,8 @@ extends CanvasLayer
     /* 랭킹 등록 */
     const fr = (V.ghostRec && V.ghostRec.length > 8) ? V.ghostRec.filter((x, i) => i % 3 === 0).slice(-160) : null;
     const wasClear = (reason === 'clear') || !!V.cleared;
+    /* v5.31: 오늘의 미션 — 완등/도달 층 (판 종료 시점 1회만) */
+    try { if (window.JW531 && window.JW531.ev) window.JW531.ev('run_end', { clear: wasClear, quit: reason === 'quit', floors: (J().player && J().player.runBestPlat) || 0 }); } catch (e) {}
     rankPush({ n: nick(), map: V.map, mode: V.mode, m: V.maxM, t: (V.clearT || J().game.time), clear: wasClear, fr: fr }, true);
     V.bomb = null; V.boss = null; V.chain.on = false;
     $('v42Flash').style.opacity = '0';
@@ -46654,6 +46660,14 @@ extends CanvasLayer
     } catch (e) {}
     c.over = true;
     c.result = res;
+    /* v5.31: 오늘의 미션 — 미니게임 판 종료 (점수·PERFECT 수). 60fps 루프 밖 1회만 */
+    try {
+      if (window.JW531 && window.JW531.ev && c.id === 'rhythm') {
+        var _v531s = null;
+        try { _v531s = (c.inst && c.inst.state) ? c.inst.state() : null; } catch (e) {}
+        window.JW531.ev('mg_end', { score: raw || 0, perfect: (_v531s && _v531s.perfect) || 0, win: !!win });
+      }
+    } catch (e) {}
     try { if (c.inst && c.inst.over) c.inst.over(res); } catch (e) {}
     if (MG.vs === 'friend' || MG.vs === 'room') sendScore(raw);
     res.peers = peerList();
@@ -77629,6 +77643,8 @@ if (typeof module !== 'undefined' && module.exports) {
     try { prevSkin = api && api.meSkin ? api.meSkin() : null; } catch (e) {}
     V.storyRun = { index: st.index, mapId: st.mapId, skinId: st.skinId, prevSkin: prevSkin, mode: st.mission.engineMode, done: false, timeSet: false };
     STORY_RUN_SKIN = st.skinId;
+    /* v5.31: 오늘의 미션 — 스토리 스테이지 플레이 1회 */
+    try { if (window.JW531 && window.JW531.ev) window.JW531.ev('story_play', { stage: st.index }); } catch (e) {}
     resetStoryRunState(); /* v5.19: 이전 판 보스·스탯·HUD 잔재 제거 */
     try { storyHudHide(); } catch (e) {}
     try { if (api && api.setSkin) api.setSkin(st.skinId); } catch (e) {}
@@ -77681,6 +77697,8 @@ if (typeof module !== 'undefined' && module.exports) {
     }
     sfxMp3('unlock', 0.9);
     run.cleared = true;
+    /* v5.31: 오늘의 미션 — 스토리 스테이지 클리어 */
+    try { if (window.JW531 && window.JW531.ev) window.JW531.ev('story_clear', { stage: st.index }); } catch (e) {}
     run.unlockedSkin = unlockedSkin || null; /* v5.28: 결과창 '방금 얻은 스킨 바로 장착' 버튼용 */
     /* v5.28: 스테이지 클리어 축하 — 캔버스 픽셀 폭죽 (정상 근처, 화면 안) */
     try {
@@ -80531,4 +80549,401 @@ if (typeof module !== 'undefined' && module.exports) {
   } catch (e) {}
 
   try { console.log('[v530] 차징 점프 미니게임 등록 · order', (MG.order || []).length); } catch (e) {}
+})(window);
+
+
+/* ===== v531 inline block #1 (new) ===== */
+
+/* ==========================================================================
+   v5.31 : 🎯 오늘의 미션 3종 (일일 퀘스트 + 펫 코인 보상)
+   --------------------------------------------------------------------------
+   · 날짜(YYYY-MM-DD, 로컬 시간) 시드로 매일 3개 미션을 '결정적으로' 뽑는다.
+     같은 날 새로고침해도 그대로, 자정을 넘기면 새로 뽑힌다.
+   · 카테고리 3종을 하나씩 균형 배치: 등반(climb) · 스토리/도전(story) · 미니게임(mg).
+   · 진행도는 이벤트 시점(등반 종료/완등, CLUTCH!, 스토리 시작/클리어, 미니게임 종료)에만
+     갱신한다 → 인게임 60fps 루프에는 아무 부하도 없다.
+   · 보상은 v5.29 펫 코인(JW529)에 그대로 합산한다. 코인 저장은 JW529.coins()만 거친다
+     (JW529 내부 ST.coins + save()를 그대로 쓰므로 기존 저장 방식과 100% 호환).
+   · 저장: localStorage 'jw531_daily'
+       { v:1, d:'YYYY-MM-DD', ids:['c_clear1','s_play2','m_play1'], p:{id:진행도}, c:{id:1}, b:0 }
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW531) return;
+
+  var doc = document;
+  var KEY = 'jw531_daily';
+  var BONUS = 100;                 /* 올클리어 보너스 코인 */
+  var $ = function (id) { try { return doc.getElementById(id); } catch (e) { return null; } };
+  function inPlay() {
+    try { var j = root.__jwg; return !!(j && j.game && j.game.inPlay); } catch (e) { return false; }
+  }
+  function toast(t, k, s, ms) { try { V.toast(t, k || 'lucky', s || '', ms || 2400); } catch (e) {} }
+  function beep(f, d, v, t, f2) { try { V.beep(f, d || 0.06, v || 0.09, t || 'square', f2 || null); } catch (e) {} }
+
+  /* ==========================================================================
+     미션 풀 — 카테고리마다 3종. 날짜 시드가 카테고리별로 1종씩 뽑는다.
+     ========================================================================== */
+  var CATS = [
+    { id: 'climb', name: '등반', col: '#38bdf8' },
+    { id: 'story', name: '스토리·도전', col: '#a78bfa' },
+    { id: 'mg', name: '미니게임', col: '#fbbf24' }
+  ];
+  var POOL = {
+    climb: [
+      { id: 'c_clear1', icon: '🏁', title: '아무 맵 1회 완등', desc: '정상까지 올라 완등 1회', need: 1, coin: 60, unit: '회' },
+      { id: 'c_floor50', icon: '🧱', title: '누적 50층 오르기', desc: '판마다 오른 층을 모두 더해요', need: 50, coin: 60, unit: '층' },
+      { id: 'c_clutch3', icon: '😱', title: 'CLUTCH! 3회', desc: '발판 끝에 아슬아슬하게 착지', need: 3, coin: 50, unit: '회' }
+    ],
+    story: [
+      { id: 's_play2', icon: '🎬', title: '스토리 2판 플레이', desc: '스테이지 시작만 해도 인정', need: 2, coin: 50, unit: '판' },
+      { id: 's_clear1', icon: '📖', title: '스토리 1스테이지 클리어', desc: '스토리 모드에서 1개 돌파', need: 1, coin: 70, unit: '개' },
+      { id: 's_clear2', icon: '⭐', title: '스토리 2스테이지 클리어', desc: '두 스테이지를 돌파', need: 2, coin: 80, unit: '개' }
+    ],
+    mg: [
+      { id: 'm_play1', icon: '⚡', title: '차징 점프 1판', desc: '⚡ 차징 점프: 하늘 탑 한 판', need: 1, coin: 50, unit: '판' },
+      { id: 'm_score200', icon: '🎯', title: '차징 점프 200점', desc: '한 판에서 200점 이상', need: 1, coin: 70, unit: '점' },
+      { id: 'm_perfect2', icon: '💫', title: 'PERFECT 2회', desc: '발판 정중앙 착지 2번', need: 2, coin: 60, unit: '회' }
+    ]
+  };
+  var BY_ID = {};
+  CATS.forEach(function (c) {
+    POOL[c.id].forEach(function (m) { m.cat = c.id; m.catName = c.name; BY_ID[m.id] = m; });
+  });
+
+  /* ==========================================================================
+     날짜 시드 → 3종 결정적 추첨
+     ========================================================================== */
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function dayKey(d) { d = d || new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  var LOCK = null;              /* 검증용 날짜 고정 — 일반 실행에서는 항상 null */
+  function todayKey() { return LOCK || dayKey(); }
+  function hash32(s) {
+    var h = 2166136261;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+  function rngOf(seed) {
+    var t = (seed >>> 0) || 1;
+    return function () {
+      t ^= t << 13; t >>>= 0;
+      t ^= t >>> 17;
+      t ^= t << 5; t >>>= 0;
+      return t / 4294967296;
+    };
+  }
+  function rollIds(day) {
+    var r = rngOf(hash32('jw531|' + day));
+    return CATS.map(function (c) {
+      var list = POOL[c.id];
+      var i = Math.floor(r() * list.length);
+      if (i < 0) i = 0;
+      if (i >= list.length) i = list.length - 1;
+      return list[i].id;
+    });
+  }
+
+  /* ==========================================================================
+     상태 저장
+     ========================================================================== */
+  var ST = null;
+
+  function blank(day) { return { v: 1, d: day, ids: rollIds(day), p: {}, c: {}, b: 0 }; }
+  function normalize(s) {
+    if (!s || typeof s !== 'object') return null;
+    if (typeof s.d !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s.d)) return null;
+    if (!Array.isArray(s.ids) || s.ids.length !== CATS.length) return null;
+    for (var i = 0; i < s.ids.length; i++) if (!BY_ID[s.ids[i]]) return null;
+    if (!s.p || typeof s.p !== 'object') s.p = {};
+    if (!s.c || typeof s.c !== 'object') s.c = {};
+    if (typeof s.b !== 'number') s.b = 0;
+    return s;
+  }
+  function save() { try { V.lsSet(KEY, ST); } catch (e) {} }
+  function ensure() {
+    var d = todayKey();
+    if (ST && ST.d === d) return false;
+    var loaded = null;
+    try { loaded = normalize(V.lsGet(KEY, null)); } catch (e) { loaded = null; }
+    if (loaded && loaded.d === d) { ST = loaded; }
+    else { ST = blank(d); save(); }
+    return true;
+  }
+  function missions() { ensure(); return ST.ids.map(function (id) { return BY_ID[id]; }); }
+  function progOf(id) {
+    var m = BY_ID[id];
+    var p = Number(ST.p[id]) || 0;
+    if (p < 0) p = 0;
+    if (p > m.need) p = m.need;
+    return p;
+  }
+  function isDone(id) { return progOf(id) >= BY_ID[id].need; }
+  function isClaimed(id) { return !!ST.c[id]; }
+  function claimable() {
+    var n = 0;
+    ST.ids.forEach(function (id) { if (isDone(id) && !isClaimed(id)) n++; });
+    return n;
+  }
+  function allClaimed() {
+    var ok = true;
+    ST.ids.forEach(function (id) { if (!isClaimed(id)) ok = false; });
+    return ok;
+  }
+  function doneCount() {
+    var n = 0;
+    ST.ids.forEach(function (id) { if (isDone(id)) n++; });
+    return n;
+  }
+
+  /* ==========================================================================
+     펫 코인 (v5.29 JW529) — 읽기는 st(), 쓰기는 coins()만 사용
+     ========================================================================== */
+  function coinNow() {
+    try {
+      var P = root.JW529;
+      if (!P || !P.st) return null;
+      var s = P.st();
+      return (s && typeof s.coins === 'number' && isFinite(s.coins)) ? s.coins : null;
+    } catch (e) { return null; }
+  }
+  function addCoins(n) {
+    try {
+      var P = root.JW529;
+      if (!P || !P.st || !P.coins) return false;
+      var cur = coinNow();
+      if (cur == null) return false;
+      P.coins(Math.max(0, Math.round(cur + n)));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* ==========================================================================
+     진행도 갱신 — 이벤트 시점에만 호출된다 (인게임 루프 밖)
+     ========================================================================== */
+  function bump(id, n) {
+    if (ST.ids.indexOf(id) < 0) return false;
+    var m = BY_ID[id];
+    var before = progOf(id);
+    if (before >= m.need) return false;
+    var after = before + Math.max(0, Math.round(n));
+    if (after > m.need) after = m.need;
+    if (after === before) return false;
+    ST.p[id] = after;
+    return true;
+  }
+
+  function ev(type, data) {
+    try {
+      data = data || {};
+      ensure();
+      var changed = false;
+      if (type === 'run_end') {
+        if (data.clear) changed = bump('c_clear1', 1) || changed;
+        if (!data.quit && data.floors > 0) changed = bump('c_floor50', Math.round(data.floors)) || changed;
+      } else if (type === 'clutch') {
+        changed = bump('c_clutch3', 1);
+      } else if (type === 'story_play') {
+        changed = bump('s_play2', 1);
+      } else if (type === 'story_clear') {
+        changed = bump('s_clear1', 1);
+        changed = bump('s_clear2', 1) || changed;
+      } else if (type === 'mg_end') {
+        changed = bump('m_play1', 1);
+        if ((Number(data.score) || 0) >= 200) changed = bump('m_score200', 1) || changed;
+        if ((Number(data.perfect) || 0) > 0) changed = bump('m_perfect2', Math.round(data.perfect)) || changed;
+      }
+      if (changed) {
+        save();
+        /* 인게임 중에는 DOM을 건드리지 않는다 (타이틀로 돌아올 때 refresh가 갱신) */
+        if (!inPlay()) { refreshBtn(); if (isModalOpen()) renderModal(); }
+      }
+      return changed;
+    } catch (e) { return false; }
+  }
+
+  /* ==========================================================================
+     수령
+     ========================================================================== */
+  function claim(id) {
+    try {
+      ensure();
+      var m = BY_ID[id];
+      if (!m || ST.ids.indexOf(id) < 0) return false;
+      if (!isDone(id) || isClaimed(id)) return false;
+      if (!addCoins(m.coin)) { toast('⚠️ 보상을 지급하지 못했어요', 'danger', '펫 코인 저장소를 찾지 못했습니다', 2600); return false; }
+      ST.c[id] = 1;
+      save();
+      toast('🎁 미션 보상 +' + m.coin + ' 코인', 'lucky', m.title, 2400);
+      beep(880, 0.07, 0.1, 'square', 1320);
+      try { setTimeout(function () { beep(1320, 0.08, 0.09, 'square', 1760); }, 90); } catch (e) {}
+      afterChange();
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function claimBonus() {
+    try {
+      ensure();
+      if (ST.b || !allClaimed()) return false;
+      if (!addCoins(BONUS)) { toast('⚠️ 보너스를 지급하지 못했어요', 'danger', '펫 코인 저장소를 찾지 못했습니다', 2600); return false; }
+      ST.b = 1;
+      save();
+      toast('🌟 올클리어 보너스 +' + BONUS + ' 코인', 'lucky', '오늘의 미션 3개를 모두 완료했습니다!', 3000);
+      [740, 988, 1245, 1480].forEach(function (f, i) { try { setTimeout(function () { beep(f, 0.09, 0.1, 'square', f + 220); }, i * 85); } catch (e) {} });
+      afterChange();
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function afterChange() { refreshBtn(); renderModal(); }
+
+  /* ==========================================================================
+     UI — 타이틀 컴팩트 버튼 + 전용 모달
+     ========================================================================== */
+  function isModalOpen() { var el = $('v531DailyModal'); return !!(el && !el.classList.contains('hidden')); }
+
+  function refreshBtn() {
+    try {
+      ensure();
+      var btn = $('v531DailyBtn'), pr = $('v531DailyProg'), dot = $('v531DailyDot');
+      if (!btn || !pr) return;
+      var dn = doneCount(), total = ST.ids.length, can = claimable() + ((allClaimed() && !ST.b) ? 1 : 0);
+      var sig = dn + '/' + total + '|' + can;
+      if (btn.__v531sig === sig) return;
+      btn.__v531sig = sig;
+      pr.textContent = dn + '/' + total;
+      if (dot) dot.className = can > 0 ? 'on' : '';
+    } catch (e) {}
+  }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) {
+      return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;';
+    });
+  }
+
+  function renderModal() {
+    try {
+      ensure();
+      var list = $('v531DailyList');
+      if (!list) return;
+      var dEl = $('v531DailyDate');
+      if (dEl) {
+        var md = ST.d.split('-');
+        dEl.textContent = md[0] + '년 ' + Number(md[1]) + '월 ' + Number(md[2]) + '일 · 자정에 새로 뽑혀요';
+      }
+      var cv = $('v531CoinVal');
+      if (cv) { var c = coinNow(); cv.textContent = (c == null ? '—' : c.toLocaleString()); }
+
+      var html = '';
+      ST.ids.forEach(function (id) {
+        var m = BY_ID[id];
+        var p = progOf(id), done = p >= m.need, got = isClaimed(id);
+        var pct = m.need > 0 ? Math.round((p / m.need) * 100) : 0;
+        var btn = got ? '<button type="button" class="got" disabled>완료 ✓</button>'
+          : (done ? '<button type="button" class="can" data-mid="' + id + '">받기</button>'
+            : '<button type="button" disabled>진행 중</button>');
+        html += '<div class="v531-m' + (got ? ' claimed' : (done ? ' done' : '')) + '">' +
+          '<div class="ico">' + m.icon + '</div>' +
+          '<div class="body">' +
+            '<div class="ttl">' + esc(m.title) + '</div>' +
+            '<div class="dsc">' + esc(m.desc) + '</div>' +
+            '<div class="bar"><i style="width:' + pct + '%"></i></div>' +
+            '<div class="meta"><span>' + p + ' / ' + m.need + ' ' + m.unit + '</span><span>🪙 +' + m.coin + '</span></div>' +
+          '</div>' + btn + '</div>';
+      });
+      list.innerHTML = html;
+
+      var bb = $('v531BonusBtn'), bar = $('v531BonusBar');
+      if (bb) {
+        if (ST.b) { bb.className = 'got'; bb.disabled = true; bb.textContent = '수령 완료 ✓'; }
+        else if (allClaimed()) { bb.className = 'can'; bb.disabled = false; bb.textContent = '🌟 +100 받기'; }
+        else { bb.className = ''; bb.disabled = true; bb.textContent = '+100'; }
+      }
+      if (bar) bar.className = 'v531-bonus' + (ST.b ? ' done' : (allClaimed() ? ' ready' : ''));
+    } catch (e) {}
+  }
+
+  function open() {
+    try {
+      ensure();
+      var el = $('v531DailyModal');
+      if (!el) return false;
+      renderModal();
+      el.classList.remove('hidden');
+      beep(680, 0.06, 0.08, 'square', 940);
+      return true;
+    } catch (e) { return false; }
+  }
+  function close() {
+    try { var el = $('v531DailyModal'); if (el) el.classList.add('hidden'); refreshBtn(); } catch (e) {}
+  }
+
+  /* ==========================================================================
+     배선
+     ========================================================================== */
+  function wire() {
+    var btn = $('v531DailyBtn');
+    if (btn && !btn.__v531w) {
+      btn.__v531w = 1;
+      btn.addEventListener('click', function (e) { try { e.preventDefault(); } catch (er) {} open(); });
+    }
+    var list = $('v531DailyList');
+    if (list && !list.__v531w) {
+      list.__v531w = 1;
+      list.addEventListener('click', function (e) {
+        var t = e.target;
+        var hit = null;
+        try { hit = t && t.closest ? t.closest('button[data-mid]') : null; } catch (er) { hit = null; }
+        if (!hit) return;
+        var id = hit.getAttribute('data-mid');
+        if (id) claim(id);
+      });
+    }
+    var bb = $('v531BonusBtn');
+    if (bb && !bb.__v531w) {
+      bb.__v531w = 1;
+      bb.addEventListener('click', function () { claimBonus(); });
+    }
+    var modal = $('v531DailyModal');
+    if (modal && !modal.__v531w) {
+      modal.__v531w = 1;
+      /* 닫기 칩(공용 data-v42close 핸들러)까지 함께 처리 — 닫은 뒤 배지를 갱신 */
+      modal.addEventListener('click', function (e) {
+        var t = e.target;
+        var cl = null;
+        try { cl = t && t.closest ? t.closest('[data-v42close="v531DailyModal"]') : null; } catch (er) { cl = null; }
+        if (cl) setTimeout(refreshBtn, 0);
+      });
+    }
+    refreshBtn();
+  }
+
+  if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', wire);
+  else wire();
+  try { root.addEventListener('load', function () { try { wire(); } catch (e) {} }); } catch (e) {}
+
+  root.JW531 = {
+    version: 'v5.31',
+    KEY: KEY,
+    ev: ev,
+    refresh: function () { ensure(); refreshBtn(); },
+    open: open,
+    close: close,
+    missions: missions,
+    state: function () { ensure(); return JSON.parse(JSON.stringify(ST)); },
+    pool: POOL,
+    dayKey: dayKey,
+    /* 테스트/검증용 */
+    _bump: function (id, n) { ensure(); var ch = bump(id, n); if (ch) { save(); refreshBtn(); } return ch; },
+    _claim: claim,
+    _bonus: claimBonus,
+    _roll: function (day) { LOCK = day || null; ST = blank(todayKey()); save(); refreshBtn(); return ST.ids.slice(); },
+    _unlock: function () { LOCK = null; ensure(); refreshBtn(); return ST.d; },
+    _render: renderModal
+  };
+
+  try { console.log('[v531] daily missions ready', (ST && ST.d) || dayKey()); } catch (e) {}
 })(window);
