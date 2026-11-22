@@ -221,6 +221,16 @@ input[type=range].grow{flex:1;min-width:60px;}
 .bingo button{aspect-ratio:1;padding:0;font-weight:700;}
 .bingo button.hit{background:var(--accent);color:#fff;}
 .flashcard{border:2px solid var(--accent);border-radius:18px;padding:1.4rem 1rem;text-align:center;font-size:1.3rem;font-weight:800;cursor:pointer;background:var(--accent-soft);min-height:110px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.3rem;}
+/* 미니게임 추가팩 — 빠른 반응 게임용 (터치 지연 방지 + 재렌더 없는 상태 표시) */
+.tbar{height:10px;border-radius:99px;background:var(--panel2);overflow:hidden;}
+.tbar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .1s linear;}
+.moleGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:280px;}
+.moleGrid button{aspect-ratio:1;font-size:2rem;padding:0;border-radius:50%;touch-action:none;user-select:none;-webkit-user-select:none;}
+.moleGrid button.up{background:#ffe9a8;border-color:#f2a007;}
+.reactStage{border-radius:18px;min-height:150px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.3rem;font-size:1.3rem;font-weight:800;text-align:center;padding:1rem;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;color:#fff;background:#5b6a7a;}
+.simonGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:280px;}
+.simonGrid button{aspect-ratio:1.35;font-size:1.7rem;padding:0;border-radius:16px;touch-action:none;user-select:none;-webkit-user-select:none;opacity:.5;}
+.simonGrid button.lit{opacity:1;filter:brightness(1.4);}
 table.mini{border-collapse:collapse;width:100%;font-size:.82rem;}
 table.mini td,table.mini th{border:1px solid var(--line);padding:.28rem .35rem;text-align:left;}
 .ptable{display:grid;grid-template-columns:repeat(9,1fr);gap:2px;font-size:.62rem;}
@@ -430,6 +440,17 @@ function toast(msg,ms=2600){const t=document.createElement("div");t.className="t
 function download(name, blob){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);}
 function downloadText(name,text,type="application/json"){download(name,new Blob([text],{type}));}
 function mailTo(subject,body){ const a=document.createElement("a"); a.href="mailto:?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body); document.body.appendChild(a); a.click(); a.remove(); }
+async function copyText(text,okMsg){ let ok=false;
+  try{ if(navigator.clipboard&&window.isSecureContext){ await navigator.clipboard.writeText(text); ok=true; } }catch(e){}
+  if(!ok){ try{ const ta=document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select(); ok=document.execCommand("copy"); ta.remove(); }catch(e){} }
+  toast(ok?(okMsg||"복사했어요"):"복사에 실패했어요 — 칸을 눌러 직접 선택해서 복사해 주세요"); return ok; }
+/* 초대 링크: 현재 페이지 주소 + ?room=<방코드>. 링크를 연 사람은 코드를
+   입력하지 않아도 바로 그 방으로 들어온다 (init에서 roomCodeFromUrl로 읽음).
+   #room= 형식도 함께 지원한다. */
+function roomLink(code){ const base=location.href.split(/[?#]/)[0]; return base+"?room="+(code||roomCode); }
+function roomCodeFromUrl(){ try{ const q=new URLSearchParams(location.search).get("room");
+    const h=new URLSearchParams((location.hash||"").replace(/^#/,"")).get("room");
+    const raw=(q||h||"").toUpperCase().replace(/[^A-Z0-9]/g,""); return /^[A-Z0-9]{4,10}$/.test(raw)?raw:""; }catch(e){ return ""; } }
 
 /* ---------------- state ---------------- */
 const ME={ id:uid(), name:"나", color:"#e4572e", avatar:"🦊", anon:false, role:"host", hand:false, muted:false };
@@ -676,7 +697,16 @@ function syncMediaLayer(){ const layer=$("#mediaLayer");
   updateMediaBar(); }
 function setLiveMedia(id){ if(liveMediaId===id){ syncMediaLayer(); return; }
   liveMediaId=id; mediaBarKey="__force"; syncMediaLayer();
-  if(id) toast("🎬 조작 모드를 켰어요 — 영상에서 재생 버튼을 눌러보세요. 끝나면 보드의 빈 곳을 누르거나 '조작 종료'를 눌러요"); }
+  if(id) toast("🎬 조작 모드를 켰어요 — 재생이 바로 시작돼요. 안 되면 영상 가운데 재생 버튼을 눌러보세요. 끝나면 보드의 빈 곳을 누르거나 '조작 종료'를 눌러요"); }
+/* 유튜브/동영상 재생 명령 — 조작 모드를 켜는 것과 별개로, 플레이어에 직접
+   playVideo 명령을 보내 "모드만 켜지고 재생은 안 되는" 상태를 없앤다.
+   유튜브는 enablejsapi=1 임베드에 postMessage 명령으로, 동영상 파일은 엘리먼트에 직접 건다. */
+let lastMediaTap={};
+function ytPlayCmd(o){ const send=()=>{ const el=mediaEls.get(o.id); const fr=el?el.querySelector("iframe"):null;
+    if(fr&&fr.contentWindow){ try{ fr.contentWindow.postMessage(JSON.stringify({event:"command",func:"playVideo",args:[]}),"https://www.youtube.com"); }catch(e){} } };
+  send(); setTimeout(send,700); } // 방금 넣은 영상은 플레이어 로딩이 늦을 수 있어 한 번 더 보낸다
+function mediaPlayCmd(o){ if(!o)return; if(o.kind==="youtube")ytPlayCmd(o);
+  else if(o.kind==="video"){ const el=mediaEls.get(o.id); const v=el?el.querySelector("video"):null; if(v){ const p=v.play(); if(p&&p.catch)p.catch(()=>{}); } } }
 let mediaBarKey="", mediaBarTarget=null;
 function updateMediaBar(){ const bar=$("#mediaBar"); if(!bar)return;
   const liveObj=liveMediaId?byId(liveMediaId):null;
@@ -697,7 +727,7 @@ function buildMediaEl(o){ const d=document.createElement("div"); d.className="me
   if(o.kind==="video"){ d.innerHTML=`<span class="tag">▶ 동영상</span><video src="${esc(o.src)}" controls playsinline></video>`; }
   else if(o.kind==="screen"){ d.innerHTML=`<span class="tag">● LIVE 화면 공유 — ${esc(o.owner||"나")}</span>`; const v=document.createElement("video"); v.autoplay=true; v.muted=true; v.playsInline=true; if(o.stream) v.srcObject=o.stream; d.appendChild(v); o._video=v; }
   else if(o.kind==="cam"){ d.innerHTML=`<span class="tag">📷 화상 — ${esc(o.owner||"나")}</span>`; const v=document.createElement("video"); v.autoplay=true; v.muted=true; v.playsInline=true; if(o.stream) v.srcObject=o.stream; d.appendChild(v); o._video=v; }
-  else if(o.kind==="youtube"){ d.innerHTML=`<span class="tag">YouTube · 두 번 누르면 재생</span><iframe src="https://www.youtube.com/embed/${esc(o.ytid)}?rel=0&playsinline=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" title="YouTube 동영상 플레이어" allowfullscreen></iframe><div class="ytPlay"><span>▶</span></div>`; }
+  else if(o.kind==="youtube"){ d.innerHTML=`<span class="tag">YouTube · 두 번 누르면 재생</span><iframe src="https://www.youtube.com/embed/${esc(o.ytid)}?rel=0&playsinline=1&enablejsapi=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" title="YouTube 동영상 플레이어" allowfullscreen></iframe><div class="ytPlay"><span>▶</span></div>`; }
   else if(o.kind==="spotify"){ d.innerHTML=`<span class="tag">Spotify · 두 번 누르면 재생</span><iframe src="https://open.spotify.com/embed/${esc(o.sp||"playlist/37i9dQZF1DXcBWIGoYBM5M")}" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture" allowfullscreen></iframe>`; }
   else if(o.kind==="map"){ d.innerHTML=`<span class="tag">지도</span><iframe src="https://www.openstreetmap.org/export/embed.html?bbox=${esc(o.bbox||"126.92%2C37.52%2C127.02%2C37.58")}&layer=${o.sat?"cyclemap":"mapnik"}"></iframe>`; }
   else if(o.kind==="web"){ d.innerHTML=`<span class="tag">웹</span><iframe src="${esc(o.src)}"></iframe>`; }
@@ -935,6 +965,21 @@ cv.addEventListener("pointerdown",e=>{ try{ cv.setPointerCapture(e.pointerId); }
   if(e.pointerType==="touch"&&liveTouches.length===2){ const {cx,cy,d}=pinchCenterDist(liveTouches); beginPinch(cx,cy,d); return; }
   if(pointers.size>2||pinchSuppress||palm) return; // 세 번째 손가락, 핀치 뒤 남은 손가락, 손바닥으로는 그리지 않음
   const myEntry=pointers.get(e.pointerId); if(myEntry)myEntry.owner=true; // 이 포인터가 시작하는 동작은 이 포인터가 뗄 때만 확정
+  // 재생 미디어(유튜브·동영상·스포티파이) 위의 탭은 그리기 대신 선택/재생으로 처리한다.
+  // dblclick은 터치 기기에서 touchstart의 preventDefault에 막혀 발생하지 않으므로,
+  // 포인터 이벤트로 직접 더블탭을 판정해 "두 번 누르면 재생"이 폰·아이패드에서도 되게 한다.
+  // (선택/손/레이저 도구는 기존 선택·이동 흐름을 그대로 쓴다)
+  if(!liveMediaId&&state.tool!=="select"&&state.tool!=="hand"&&state.tool!=="laser"){
+    const mo=hitObj(w);
+    if(mo&&mo.type==="dom"&&(mo.kind==="youtube"||mo.kind==="video"||mo.kind==="spotify")){
+      selectOnly([mo.id]);
+      const now=performance.now();
+      if(lastMediaTap.id===mo.id&&now-lastMediaTap.t<420&&Math.hypot(sx-lastMediaTap.sx,sy-lastMediaTap.sy)<44){ lastMediaTap={}; setLiveMedia(mo.id); mediaPlayCmd(mo); }
+      else { lastMediaTap={id:mo.id,t:now,sx,sy}; toast("🎬 "+(mo.kind==="youtube"?"유튜브 영상":mo.kind==="video"?"동영상":"스포티파이")+"을 선택했어요 — 한 번 더 누르면 바로 재생돼요"); }
+      if(myEntry)myEntry.owner=false;
+      return;
+    }
+  }
   hideTextEditor(true);
   if(liveMediaId) setLiveMedia(null); // 미디어 조작 중 보드를 누르면 조작 모드를 끄고 원래 그리기로 돌아간다
   if(state.myRole==="viewer"&&state.tool!=="hand"&&state.tool!=="select"&&state.tool!=="laser"){ toast("보기 전용 권한이에요 — 그릴 수 없어요"); return; }
@@ -1106,7 +1151,7 @@ function hideTextEditor(commit){ const ed=$("#textEditor"); if(ed.style.display=
   ed.style.display="none"; editingCtx=null; }
 cv.addEventListener("dblclick",e=>{ const {sx,sy}=evPos(e); const w=s2w(sx,sy); const o=hitObj(w);
   if(o&&(o.type==="text"||o.type==="sticky")){ const b=objBBox(o); openTextEditor({x:b.x,y:b.y},"edit",o); editingCtx={kind:o.type,obj:o,w:{x:b.x,y:b.y}}; }
-  else if(o&&(o.type==="dom"||o.type==="audio")){ selectOnly([o.id]); setLiveMedia(o.id); } });
+  else if(o&&(o.type==="dom"||o.type==="audio")){ selectOnly([o.id]); setLiveMedia(o.id); mediaPlayCmd(o); } });
 
 /* ---------------- laser ---------------- */
 function drawLaserDot(sx,sy,mine){ const fx=$("#laserFx"); let d=fx.querySelector(mine?".laserDot.mine":".laserDot");
@@ -1226,7 +1271,9 @@ function renderPeople(){ const el=$("#page-people"); if(!el)return;
   <div class="row" style="display:flex;gap:.35rem;align-items:center"><input type="url" id="pFbUrl" placeholder="https://전용프로젝트-default-rtdb.firebaseio.com" value="${esc(WB_FB_URL)}" style="flex:1;min-width:0"><button id="pFbGo">연결</button></div>
   <p class="hint">화이트보드 전용 Firebase가 기본으로 연결돼 있어서, 따로 설정하지 않아도 다른 기기와 실시간으로 같이 그릴 수 있어요. 다른 데이터베이스로 바꾸고 싶을 때만 위 칸에 새 주소를 붙여넣고 연결을 누르세요. 바꾼 주소는 이 기기의 이번 세션에만 적용돼요.</p>
   <div class="grid2 mt"><button id="pNewRoom">새 방 만들기</button><button id="pJoin">코드로 참가</button>
-  <button id="pQR">QR로 입장</button><button id="pCopyCode">방 코드 복사</button></div>
+  <button id="pQR">QR로 입장</button><button id="pCopyCode">방 코드 복사</button>
+  <button id="pCopyLink" style="font-weight:800">🔗 초대 링크 복사</button></div>
+  <p class="hint">초대 링크를 받은 친구는 링크를 누르는 것만으로 바로 이 방에 들어와요 — 코드를 따로 입력하지 않아도 돼요.</p>
   <label class="chk"><input type="checkbox" id="pAnon" ${ME.anon?"checked":""}> 익명 모드 (이름 없이 참여)</label>
   <div class="row" style="display:flex;gap:.35rem;align-items:center"><span class="small">닉네임</span><input type="text" id="pName" value="${esc(ME.name)}" style="flex:1"><button id="pNameOk">변경</button></div>
   <div class="row" style="display:flex;gap:.35rem;align-items:center"><span class="small">아바타</span><input type="text" id="pAvatar" value="${esc(ME.avatar)}" maxlength="2" style="width:4rem"><span class="small">커서 색</span><input type="color" id="pCurColor" value="${ME.color}"></div>
@@ -1241,7 +1288,7 @@ function renderPeople(){ const el=$("#page-people"); if(!el)return;
   <h3>활동 기록</h3><div id="actLog"></div>`;
   renderActivity(); renderActs();
   const on=(id,fn)=>{ const e2=el.querySelector(id); if(e2)e2.addEventListener("click",fn); };
-  on("#pNewRoom",()=>roomDialog(true)); on("#pJoin",()=>roomDialog(false)); on("#pQR",showQR); on("#pCopyCode",()=>{ navigator.clipboard&&navigator.clipboard.writeText(roomCode); toast("방 코드를 복사했어요: "+roomCode); });
+  on("#pNewRoom",()=>roomDialog(true)); on("#pJoin",()=>roomDialog(false)); on("#pQR",showQR); on("#pCopyCode",()=>copyText(roomCode,"방 코드를 복사했어요: "+roomCode)); on("#pCopyLink",()=>copyText(roomLink(),"초대 링크를 복사했어요 — 친구에게 보내세요"));
   on("#pFbGo",()=>fbSetUrl(el.querySelector("#pFbUrl")?el.querySelector("#pFbUrl").value:""));
   const an=el.querySelector("#pAnon"); an.addEventListener("change",()=>{ ME.anon=an.checked; broadcastPresence(); renderPeople(); renderAvatars(); toast(ME.anon?"익명으로 표시돼요":"이름이 표시돼요"); });
   on("#pNameOk",()=>{ ME.name=el.querySelector("#pName").value.trim()||"나"; ME.avatar=el.querySelector("#pAvatar").value||"🦊"; ME.color=el.querySelector("#pCurColor").value; broadcastPresence(); renderPeople(); renderAvatars(); toast("프로필을 바꿨어요"); });
@@ -1724,9 +1771,11 @@ function renderGames(){ const z=$("#gameZone"); if(!z)return;
    <button data-g="qbank">📚 문제은행</button><button data-g="quiz">❓ 퀴즈/설문 만들기</button>
    <button data-g="baseball">⚾ 야구 게임</button><button data-g="ttt">⭕ 틱택토</button><button data-g="c4">🔴 커넥트포</button>
    <button data-g="bingo">🎱 빙고</button><button data-g="memory">🧠 메모리 게임</button>
-   <button data-g="drawquiz">🎨 그림 퀴즈</button><button data-g="relay">🔁 이어그리기</button>
+   <button data-g="mole">🐹 두더지 잡기</button><button data-g="reaction">⚡ 반응속도</button>
+   <button data-g="numbase">🔢 숫자 야구</button><button data-g="rps">✊ 가위바위보</button>
+   <button data-g="simon">🎵 순서 기억</button><button data-g="drawquiz">🎨 그림 퀴즈</button><button data-g="relay">🔁 이어그리기</button>
    <button data-g="chess">♟ 체스/바둑판 넣기</button><button data-g="contest">🏅 그림 대회/60초 챌린지</button></div>
-   <p class="hint">게임은 보드 위 창에서 열리고, 방 사람 모두가 같은 판으로 실시간으로 같이 해요.</p>`;
+   <p class="hint">게임은 보드 위 창에서 열리고, 방 사람 모두가 같은 판으로 실시간으로 같이 해요. 두더지·반응속도·순서 기억은 각자 빠르게 플레이하고 최고 기록이 방 전체에 공유돼요.</p>`;
   z.querySelectorAll("[data-g]").forEach(b=>b.addEventListener("click",()=>openGame(b.dataset.g))); }
 /* ---- 공유 게임 상태 (방 전체가 같은 판을 함께 플레이) ---- */
 let tttState=null, c4State=null, bingoState=null, memState=null;
@@ -1766,7 +1815,131 @@ function renderMemory(b){ b=b||gameBody(); if(!b||!memState)return; const s=memS
       s.open=[]; featSync("mem",s); renderMemory(); },650); } }));
   const nb=b.querySelector("#memNew"); if(nb)nb.addEventListener("click",()=>newMemory()); }
 
-const GAME_NAMES={worldcup:"🏆 이상형 월드컵",akinator:"🧞 아키네이터",qbank:"📚 문제은행",quiz:"❓ 퀴즈 만들기",baseball:"⚾ 야구 게임",ttt:"⭕ 틱택토",c4:"🔴 커넥트포",bingo:"🎱 빙고",memory:"🧠 메모리 게임",drawquiz:"🎨 그림 퀴즈",relay:"🔁 이어그리기",chess:"♟ 체스/바둑판",contest:"🏅 그림 대회"};
+/* ---- 미니게임 추가팩 ----
+   두더지·반응속도·순서 기억: 이 기기에서 지연 없이 플레이하고 최고 기록만 방에 공유한다.
+   숫자 야구·가위바위보: 판 전체를 방과 공유한다.
+   반응 원칙: ① 빠른 게임은 click 대신 pointerdown으로 즉시 반응 ② 플레이 중에는
+   innerHTML을 다시 그리지 않고 클래스/텍스트만 바꾼다 ③ 모든 타이머는 세션 토큰과
+   DOM 존재 체크로 guard해, 창을 바꾸거나 닫으면 스스로 멈춰 렉·유령 동작이 없다. */
+let moleBest=null, reactBest=null, simonBest=null, nbState=null, rpsState=null;
+let moleSess=0, reactSess=0, simonSess=0;
+function openMole(b){ const sess=++moleSess;
+  b.innerHTML=`<div class="kv"><span>점수</span><b id="moleScore">0</b></div>
+  <div class="kv"><span>남은 시간</span><b id="moleTime">30.0초</b></div>
+  <div class="tbar mt"><i id="moleBar" style="width:100%"></i></div>
+  <div class="moleGrid mt" id="moleGrid">${Array(9).fill(0).map((_,i)=>`<button data-h="${i}" aria-label="두더지 구멍 ${i+1}">🕳️</button>`).join("")}</div>
+  <div id="moleMsg" class="mt" style="font-weight:700">시작을 누르면 두더지가 튀어나와요 — 보이면 바로 눌러 잡으세요!</div>
+  <div class="kv mt"><span>🏆 방 최고 기록</span><b id="moleBest">${moleBest?esc(moleBest.name)+" · "+moleBest.score+"마리":"아직 없어요"}</b></div>
+  <button id="moleStart" class="wfull mt">▶ 시작 (30초)</button>`;
+  const grid=b.querySelector("#moleGrid"), cells=[...grid.querySelectorAll("[data-h]")];
+  const scoreEl=b.querySelector("#moleScore"), timeEl=b.querySelector("#moleTime"), barEl=b.querySelector("#moleBar"), msgEl=b.querySelector("#moleMsg");
+  let score=0, cur=-1, playing=false, hideT=null, cdT=null;
+  const alive=()=>sess===moleSess&&document.body.contains(grid);
+  function clearTimers(){ if(hideT){ clearTimeout(hideT); hideT=null; } if(cdT){ clearInterval(cdT); cdT=null; } }
+  function hideMole(){ if(cur>=0){ cells[cur].textContent="🕳️"; cells[cur].classList.remove("up"); cur=-1; } }
+  function spawn(){ if(!playing||!alive())return; hideMole();
+    let n; do{ n=Math.floor(Math.random()*9); }while(n===cur);
+    cur=n; cells[cur].textContent="🐹"; cells[cur].classList.add("up");
+    hideT=setTimeout(()=>{ hideMole(); spawn(); },Math.max(420,760-score*12)); }
+  function finish(){ playing=false; clearTimers(); hideMole(); if(!alive())return;
+    msgEl.textContent="⏰ 끝! "+score+"마리를 잡았어요";
+    if(!moleBest||score>moleBest.score){ moleBest={name:myName(),score}; featSync("mole",{best:moleBest});
+      const be=b.querySelector("#moleBest"); if(be)be.textContent=moleBest.name+" · "+score+"마리"; msgEl.textContent+=" — 🏆 방 최고 기록!"; }
+    xp(Math.min(20,score)); }
+  cells.forEach(c=>c.addEventListener("pointerdown",e=>{ e.preventDefault(); if(!playing)return;
+    if(+c.dataset.h===cur){ score++; scoreEl.textContent=score; if(hideT)clearTimeout(hideT); hideMole(); beep(880,.06); spawn(); } }));
+  b.querySelector("#moleStart").addEventListener("click",()=>{ if(!alive())return; clearTimers(); hideMole();
+    score=0; scoreEl.textContent="0"; playing=true; msgEl.textContent="두더지를 잡아라!";
+    const t0=performance.now();
+    cdT=setInterval(()=>{ if(!alive()){ clearTimers(); return; }
+      const left=Math.max(0,30000-(performance.now()-t0));
+      timeEl.textContent=(left/1000).toFixed(1)+"초"; barEl.style.width=(left/300)+"%";
+      if(left<=0)finish(); },100);
+    spawn(); }); }
+function openReaction(b){ const sess=++reactSess;
+  b.innerHTML=`<div class="reactStage" id="reactStage" role="button" tabindex="0" aria-label="반응속도 테스트 무대">⚡ 반응속도 테스트<div class="small" style="color:#fff;opacity:.85">눌러서 시작하세요</div></div>
+  <div id="reactMsg" class="mt" style="font-weight:700">빨간 화면에서 기다리다가, 초록으로 바뀌는 순간 최대한 빨리 누르세요!</div>
+  <div class="kv mt"><span>🏆 방 최고 기록</span><b id="reactBest">${reactBest?esc(reactBest.name)+" · "+reactBest.ms+"ms":"아직 없어요"}</b></div>`;
+  const st=b.querySelector("#reactStage"), msg=b.querySelector("#reactMsg");
+  let phase="idle", t0=0, waitT=null;
+  const alive=()=>sess===reactSess&&document.body.contains(st);
+  function setStage(bg,html){ st.style.background=bg; st.innerHTML=html; }
+  const press=()=>{ if(!alive())return;
+    if(phase==="idle"){ phase="wait"; setStage("#e03131","🔴 기다리세요…<div class=\"small\" style=\"color:#fff;opacity:.85\">초록이 되면 바로 누르기!</div>"); msg.textContent="아직 누르면 안 돼요…";
+      waitT=setTimeout(()=>{ if(!alive()||phase!=="wait")return; phase="go"; t0=performance.now(); setStage("#2fbf71","🟢 지금! 누르세요!"); },1200+Math.random()*2300); }
+    else if(phase==="wait"){ if(waitT){ clearTimeout(waitT); waitT=null; } phase="idle";
+      setStage("#5b6a7a","⚡ 반응속도 테스트<div class=\"small\" style=\"color:#fff;opacity:.85\">눌러서 시작하세요</div>");
+      msg.textContent="😅 너무 빨랐어요! 초록이 된 다음에 눌러야 해요. 다시 눌러 시작하세요"; }
+    else if(phase==="go"){ const ms=Math.round(performance.now()-t0); phase="idle";
+      setStage("#2b7cd3","⚡ "+ms+"ms<div class=\"small\" style=\"color:#fff;opacity:.85\">다시 하려면 누르세요</div>");
+      let extra=""; if(!reactBest||ms<reactBest.ms){ reactBest={name:myName(),ms}; featSync("react",{best:reactBest});
+        const be=b.querySelector("#reactBest"); if(be)be.textContent=reactBest.name+" · "+ms+"ms"; extra=" — 🏆 방 최고 기록!"; }
+      msg.textContent="반응속도 "+ms+"ms!"+extra+(ms<200?" 엄청 빨라요!":ms<300?" 빠른 편이에요!":ms<450?" 평균이에요 — 한 번 더 도전!":" 조금 느렸어요, 다시 해봐요!"); xp(5); } };
+  st.addEventListener("pointerdown",e=>{ e.preventDefault(); press(); });
+  st.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); e.stopPropagation(); press(); } }); }
+const SIMON_PADS=[["🟢",523,"#2fbf71"],["🔴",659,"#e03131"],["🟡",784,"#f2a007"],["🔵",880,"#2b7cd3"]];
+function openSimon(b){ const sess=++simonSess;
+  b.innerHTML=`<div class="kv"><span>라운드</span><b id="simonRound">-</b></div>
+  <div class="simonGrid mt" id="simonGrid">${SIMON_PADS.map((p,i)=>`<button data-p="${i}" style="background:${p[2]}" aria-label="패드 ${i+1}">${p[0]}</button>`).join("")}</div>
+  <div id="simonMsg" class="mt" style="font-weight:700">시작을 누르면 색이 순서대로 반짝여요 — 같은 순서로 눌러 따라 해보세요!</div>
+  <div class="kv mt"><span>🏆 방 최고 기록</span><b id="simonBest">${simonBest?esc(simonBest.name)+" · "+simonBest.round+"라운드":"아직 없어요"}</b></div>
+  <button id="simonStart" class="wfull mt">▶ 시작</button>`;
+  const grid=b.querySelector("#simonGrid"), pads=[...grid.querySelectorAll("[data-p]")], msg=b.querySelector("#simonMsg"), roundEl=b.querySelector("#simonRound");
+  let seq=[], idx=0, lock=true, timers=[];
+  const alive=()=>sess===simonSess&&document.body.contains(grid);
+  function later(fn,ms){ timers.push(setTimeout(()=>{ if(alive())fn(); },ms)); }
+  function clearTimers(){ timers.forEach(clearTimeout); timers=[]; }
+  function flash(i,on){ if(pads[i])pads[i].classList.toggle("lit",on); }
+  function playSeq(){ lock=true; idx=0; roundEl.textContent=seq.length+"라운드"; msg.textContent="잘 보세요… ("+seq.length+"개)";
+    seq.forEach((p,i)=>{ later(()=>{ flash(p,true); beep(SIMON_PADS[p][1],.18); },500+i*560); later(()=>flash(p,false),500+i*560+380); });
+    later(()=>{ lock=false; msg.textContent="이제 따라 눌러보세요! ("+seq.length+"개)"; },500+seq.length*560); }
+  function gameOver(){ lock=true; clearTimers(); const reached=seq.length-1;
+    msg.textContent="❌ 틀렸어요! "+reached+"라운드까지 성공 — 다시 시작해 보세요";
+    if(reached>0&&(!simonBest||reached>simonBest.round)){ simonBest={name:myName(),round:reached}; featSync("simon",{best:simonBest});
+      const be=b.querySelector("#simonBest"); if(be)be.textContent=simonBest.name+" · "+reached+"라운드"; msg.textContent+=" 🏆 방 최고 기록!"; }
+    xp(Math.min(20,reached*2)); }
+  pads.forEach(p=>p.addEventListener("pointerdown",e=>{ e.preventDefault(); if(lock||!alive())return; const i=+p.dataset.p;
+    flash(i,true); beep(SIMON_PADS[i][1],.15); setTimeout(()=>flash(i,false),220);
+    if(i!==seq[idx]){ gameOver(); return; }
+    idx++;
+    if(idx>=seq.length){ lock=true; msg.textContent="🎉 성공! 다음 라운드는 "+(seq.length+1)+"개예요"; xp(5);
+      later(()=>{ seq.push(Math.floor(Math.random()*4)); playSeq(); },900); } }));
+  b.querySelector("#simonStart").addEventListener("click",()=>{ if(!alive())return; clearTimers(); seq=[Math.floor(Math.random()*4)]; playSeq(); }); }
+function freshNumbase(){ const ds=new Set(); while(ds.size<3)ds.add(Math.floor(Math.random()*10));
+  return {ans:[...ds].join(""),guesses:[],over:false,msg:"세 자리 숫자를 추리해 보세요 — 숫자와 자리가 모두 맞으면 스트라이크, 숫자만 맞으면 볼!"}; }
+function newNumbase(){ nbState=freshNumbase(); featSync("numbase",nbState); renderNumbase(); }
+function renderNumbase(b){ b=b||gameBody(); if(!b||!nbState)return; const s=nbState;
+  b.innerHTML=`<div id="nbLog">${s.guesses.map((g,i)=>`<div class="kv"><span>${i+1}. <b>${esc(g.g)}</b> — ${esc(g.by)}</span><b>${g.s}S ${g.b}B</b></div>`).join("")||'<p class="hint">아직 추리가 없어요. 방 사람 누구나 같이 추리할 수 있어요.</p>'}</div>
+  <div class="mt" style="font-weight:700">${esc(s.msg)}</div>
+  ${s.over?"":`<div class="row mt" style="display:flex;gap:.35rem"><input type="text" id="nbIn" inputmode="numeric" maxlength="3" placeholder="서로 다른 숫자 3개" style="flex:1;min-width:0"><button id="nbGo">추리하기</button></div>`}
+  <button id="nbNew" class="wfull mt">새 게임 (새 숫자 공유)</button>`;
+  const go=()=>{ const inp=b.querySelector("#nbIn"); const v=((inp&&inp.value)||"").replace(/\D/g,"");
+    if(v.length!==3||new Set(v).size!==3){ toast("서로 다른 숫자 3개를 입력해 주세요"); return; }
+    let S=0,B=0; for(let i=0;i<3;i++){ if(v[i]===s.ans[i])S++; else if(s.ans.includes(v[i]))B++; }
+    s.guesses.push({g:v,s:S,b:B,by:myName()});
+    if(S===3){ s.over=true; s.msg="🎉 "+myName()+"님이 정답 "+s.ans+"을(를) "+s.guesses.length+"번 만에 맞혔어요!"; xp(15); broadcast({t:"toast",msg:"🔢 숫자 야구 정답! "+s.ans}); }
+    else s.msg=v+" → "+S+"스트라이크 "+B+"볼 ("+s.guesses.length+"번째 추리)";
+    featSync("numbase",s); renderNumbase(b); };
+  const gb=b.querySelector("#nbGo"); if(gb)gb.addEventListener("click",go);
+  const inp2=b.querySelector("#nbIn"); if(inp2)inp2.addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter")go(); });
+  const nw=b.querySelector("#nbNew"); if(nw)nw.addEventListener("click",()=>newNumbase()); }
+function freshRps(){ return {w:0,l:0,d:0,streak:0,best:0,last:null}; }
+function renderRps(b){ b=b||gameBody(); if(!b||!rpsState)return; const s=rpsState;
+  b.innerHTML=`${s.last?`<div class="flashcard" style="min-height:84px">${s.last.me} vs ${s.last.com}<div class="small">${esc(s.last.txt)}</div></div>`:`<div class="flashcard" style="min-height:84px">✊ ✌️ 🖐<div class="small">컴퓨터와 대결 — 방 전체 전적이 함께 쌓여요</div></div>`}
+  <div class="grid3 mt"><button data-r="✌️" style="font-size:1.15rem">✌️ 가위</button><button data-r="✊" style="font-size:1.15rem">✊ 바위</button><button data-r="🖐" style="font-size:1.15rem">🖐 보</button></div>
+  <div id="rpsScore" class="mt"><div class="kv"><span>방 전체 전적</span><b>${s.w}승 ${s.d}무 ${s.l}패</b></div>
+  <div class="kv"><span>현재 연승</span><b>${s.streak}연승 (최고 ${s.best}연승)</b></div></div>
+  <button id="rpsReset" class="mt">전적 초기화</button>`;
+  const beats={"✌️":"🖐","✊":"✌️","🖐":"✊"};
+  b.querySelectorAll("[data-r]").forEach(btn=>btn.addEventListener("click",()=>{ const me=btn.dataset.r;
+    const com=["✌️","✊","🖐"][Math.floor(Math.random()*3)]; let txt;
+    if(me===com){ s.d++; txt="비겼어요!"; }
+    else if(beats[me]===com){ s.w++; s.streak++; if(s.streak>s.best)s.best=s.streak; txt="🎉 이겼어요!"; xp(5); }
+    else { s.l++; s.streak=0; txt="졌어요 — 다시 도전!"; }
+    s.last={me,com,txt:txt+" ("+myName()+")"}; featSync("rps",s); renderRps(b); }));
+  const rs=b.querySelector("#rpsReset"); if(rs)rs.addEventListener("click",()=>{ rpsState=freshRps(); featSync("rps",rpsState); renderRps(b); }); }
+
+const GAME_NAMES={worldcup:"🏆 이상형 월드컵",akinator:"🧞 아키네이터",qbank:"📚 문제은행",quiz:"❓ 퀴즈 만들기",baseball:"⚾ 야구 게임",ttt:"⭕ 틱택토",c4:"🔴 커넥트포",bingo:"🎱 빙고",memory:"🧠 메모리 게임",mole:"🐹 두더지 잡기",reaction:"⚡ 반응속도 테스트",numbase:"🔢 숫자 야구",rps:"✊ 가위바위보 대결",simon:"🎵 순서 기억 게임",drawquiz:"🎨 그림 퀴즈",relay:"🔁 이어그리기",chess:"♟ 체스/바둑판",contest:"🏅 그림 대회"};
 function openGame(kind,remote){ const b=openBoardWin("game",GAME_NAMES[kind]||"🎮 게임 · 재미");
   if(!remote){ shareWin("game",kind); setActivity((GAME_NAMES[kind]||"게임")+" 하는 중"); }
   if(kind==="worldcup")return openWorldcup(b);
@@ -1782,6 +1955,11 @@ function openGame(kind,remote){ const b=openBoardWin("game",GAME_NAMES[kind]||"�
   if(kind==="c4"){ renderC4(b); return; }
   if(kind==="bingo"){ if(!bingoState)newBingo(); else renderBingo(b); return; }
   if(kind==="memory"){ if(!memState)newMemory(); else renderMemory(b); return; }
+  if(kind==="mole")return openMole(b);
+  if(kind==="reaction")return openReaction(b);
+  if(kind==="simon")return openSimon(b);
+  if(kind==="numbase"){ if(!nbState)newNumbase(); else renderNumbase(b); return; }
+  if(kind==="rps"){ if(!rpsState)rpsState=freshRps(); renderRps(b); return; }
   if(kind==="drawquiz"){ const words=["코끼리","자전거","피자","우주인","펭귄","기타","무지개","소방차","햄버거","고래"]; const w=words[Math.floor(Math.random()*words.length)];
     b.innerHTML=`<div class="flashcard" style="min-height:80px">제시어: ${w}<div class="small">그리는 사람만 보세요! 나머지는 채팅으로 맞히기</div></div>
     <div class="grid2 mt"><button id="dqNew">새 제시어</button><button id="dq60">60초 타이머</button></div>`;
@@ -3127,7 +3305,8 @@ function connectRoom(code){ if(bc)bc.close(); stopFollow("silent"); roomCode=cod
   if(pingTimer)clearInterval(pingTimer);
   pingTimer=setInterval(()=>{ broadcast({t:"ping",me:meInfo()}); const cut=Date.now()-12000;
     for(const [id,p] of peers){ if(p.last&&p.last<cut){ peers.delete(id); if(state.followId===id)stopFollow("left"); const ce=cursorEls.get(id); if(ce){ ce.remove(); cursorEls.delete(id); } renderAvatars(); renderPeople(); } } },3000);
-  recentRooms.unshift({code,title:$("#boardTitle").value,when:nowT()}); recentRooms=recentRooms.slice(0,6); }
+  recentRooms.unshift({code,title:$("#boardTitle").value,when:nowT()}); recentRooms=recentRooms.slice(0,6);
+  try{ history.replaceState(null,"","?room="+code); }catch(e){} }
 function meInfo(){ return {id:ME.id,name:myName(),color:ME.color,avatar:ME.avatar,role:ME.role,hand:ME.hand,muted:voiceMuted,act:myAct,actTs:myActTs,cam:(typeof camCenter==="function"&&W>0)?camCenter():null}; }
 const FB_EVENT_TYPES=["cam-req","hand","react","note","poll","vote","score","timer","setrole","setrole2","muteReq","rtc","toast","join-req","join-res","openwin","recplay","bbpitch","bbswing","bbtake"];
 let syncMute=false; // 원격에서 받은 소리/동작을 재생하는 동안 재방송을 막아 에코 루프를 방지
@@ -3211,7 +3390,7 @@ function stopFollow(reason){ if(!state.followId)return; state.followId=null; fol
   else if(reason==="left")toast("따라가던 참여자가 나가서 따라가기를 해제했어요");
   else if(reason!=="silent")toast("따라가기를 해제했어요"); }
 $("#followStop").addEventListener("click",()=>stopFollow());
-$("#mediaPlay").addEventListener("click",()=>{ if(mediaBarTarget) setLiveMedia(mediaBarTarget.id); });
+$("#mediaPlay").addEventListener("click",()=>{ if(mediaBarTarget){ setLiveMedia(mediaBarTarget.id); mediaPlayCmd(mediaBarTarget); } });
 $("#mediaStop").addEventListener("click",()=>setLiveMedia(null));
 $("#mediaOpen").addEventListener("click",e=>{ const id=e.currentTarget.dataset.yt; if(id)window.open("https://www.youtube.com/watch?v="+id,"_blank"); });
 function broadcastCursor(w,laser){ broadcast({t:"cursor",x:w.x,y:w.y,name:myName(),color:ME.color,laser:!!laser,tool:state.tool}); }
@@ -3267,6 +3446,11 @@ const FEAT_APPLIERS={
  c4:d=>{ c4State=arrFix(d,["grid","cols"]); if($("#c4Msg"))renderC4(); else if(!boardWinOpen("game"))openGame("c4",true); },
  bingo:d=>{ bingoState=arrFix(d,["arr","hits"]); if($("#bgNew"))renderBingo(); else if(!boardWinOpen("game"))openGame("bingo",true); },
  mem:d=>{ memState=arrFix(d,["deck","open","done"]); if($("#memMsg"))renderMemory(); else if(!boardWinOpen("game"))openGame("memory",true); },
+ mole:d=>{ if(d&&d.best){ moleBest=d.best; const e=$("#moleBest"); if(e)e.textContent=d.best.name+" · "+d.best.score+"마리"; } },
+ react:d=>{ if(d&&d.best){ reactBest=d.best; const e=$("#reactBest"); if(e)e.textContent=d.best.name+" · "+d.best.ms+"ms"; } },
+ simon:d=>{ if(d&&d.best){ simonBest=d.best; const e=$("#simonBest"); if(e)e.textContent=d.best.name+" · "+d.best.round+"라운드"; } },
+ numbase:d=>{ nbState=arrFix(d,["guesses"]); if($("#nbLog"))renderNumbase(); else if(!boardWinOpen("game"))openGame("numbase",true); },
+ rps:d=>{ rpsState=d; if($("#rpsScore"))renderRps(); else if(!boardWinOpen("game"))openGame("rps",true); },
  bb:d=>{ bbShared=d; if(typeof bb!=="undefined"&&bb&&bb.el)bbAdopt(); },
  score:d=>{ scoreBoard=d; if($("#scoreList")||!boardWinOpen("widget"))openWidget("score",true); },
  calc:d=>{ lastCalc=d; const o=$("#calcOut"); if(o){ o.textContent="= "+d.res; const inp=$("#calcIn"); if(inp&&document.activeElement!==inp)inp.value=d.expr; } else if(!boardWinOpen("widget"))openWidget("calc",true); },
@@ -3354,25 +3538,41 @@ async function handleRTC(m){ if(m.to!==ME.id)return; const pc=await makePC(m.fro
   else if(m.kind==="ice"){ try{ await pc.addIceCandidate(m.data); }catch(e){} } }
 
 /* ---------------- room dialogs / share ---------------- */
-function roomDialog(create){ openModal(create?"새 방 만들기":"코드로 참가",`
+function roomDialog(create){ const doJoin=()=>{ const pw=$("#rmPw").value||""; if(joinRoom($("#rmCode").value||"", pw?djb2(pw):"")) closeModal(); };
+  openModal(create?"새 방 만들기":"코드로 참가",`
   ${create?`<label class="chk"><input type="checkbox" id="rmPrivate"> 비공개 방 (비밀번호)</label><input type="password" id="rmPw" class="wfull" placeholder="비밀번호 (비공개일 때)">`:
-  `<input type="text" id="rmCode" class="wfull" placeholder="방 코드 6자리" maxlength="6" style="text-transform:uppercase"><input type="password" id="rmPw" class="wfull mt" placeholder="비밀번호 (있으면)">`}
-  <p class="hint">화이트보드 전용 Firebase가 기본으로 연결돼 있어서, 다른 기기(아이패드·폰·PC)에서 이 페이지를 열고 같은 코드를 입력하면 바로 같이 그릴 수 있어요.</p>`,
-  [{label:create?"방 만들기":"참가하기",primary:true,fn:()=>{ if(create){ const priv=$("#rmPrivate").checked; roomPwHash=priv?djb2($("#rmPw").value||""):""; ME.role="host"; joinRoom(genCode(),roomPwHash); toast("새 방을 만들었어요"+(priv?" (비공개)":"")); }
-    else { joinRoom(($("#rmCode").value||"").toUpperCase(), djb2($("#rmPw").value||"")); } }}]); }
-function joinRoom(code,pwHash){ if(!code||code.length<4)return toast("방 코드를 확인해 주세요"); ME.role="guest"; connectRoom(code);
-  if(pwHash)broadcast({t:"join-req",pw:pwHash}); accessLog.unshift({who:myName(),when:nowT(),what:"방 "+code+" 입장"}); logAct("방 "+code+" 입장"); renderPeople(); }
+  `<input type="text" id="rmCode" class="wfull" placeholder="방 코드 6자리" maxlength="12" style="text-transform:uppercase" autocomplete="off" autocapitalize="characters"><input type="password" id="rmPw" class="wfull mt" placeholder="비밀번호 (있으면)">`}
+  <p class="hint">화이트보드 전용 Firebase가 기본으로 연결돼 있어서, 다른 기기(아이패드·폰·PC)에서 이 페이지를 열고 같은 코드를 입력하면 바로 같이 그릴 수 있어요. 코드를 붙여넣어도 돼요 — 앞뒤 공백이나 기호는 자동으로 정리돼요.</p>`,
+  [{label:create?"방 만들기":"참가하기",primary:true,keep:true,fn:()=>{ if(create){ const priv=$("#rmPrivate").checked; roomPwHash=priv?djb2($("#rmPw").value||""):""; joinRoom(genCode(),roomPwHash,true); toast("새 방을 만들었어요"+(priv?" (비공개)":"")); closeModal(); }
+    else doJoin(); }}]);
+  if(!create){ const ci=$("#rmCode"); if(ci){ ci.focus(); ci.addEventListener("keydown",e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); doJoin(); } }); } } }
+/* 방 코드 참가 — 예전에는 입력값을 그대로 방 이름으로 써서, 붙여넣을 때 섞인
+   공백·기호 때문에 엉뚱한 빈 방으로 조용히 들어가 "코드가 안 먹는다"처럼 보였다.
+   이제 코드를 영문/숫자만으로 정리·검증하고, 성공하면 바로 토스트로 알려준다.
+   asHost: 새 방 만들기는 joinRoom이 방장 권한을 게스트로 덮어쓰던 버그도 함께 수정. */
+function joinRoom(code,pwHash,asHost){ code=String(code||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  if(code.length<4||code.length>10){ toast("방 코드를 확인해 주세요 — 받은 6자리 코드를 그대로 입력해 주세요"); return false; }
+  ME.role=asHost?"host":"guest"; connectRoom(code);
+  if(pwHash&&!asHost)broadcast({t:"join-req",pw:pwHash});
+  accessLog.unshift({who:myName(),when:nowT(),what:"방 "+code+" 입장"}); logAct("방 "+code+" 입장"); renderPeople();
+  if(!asHost)toast("🚪 방 "+code+"에 들어갔어요");
+  return true; }
 function showQR(){ openModal("QR로 방 입장",`<div id="qrBox" style="display:flex;justify-content:center;padding:.6rem"></div>
-  <p style="text-align:center" class="hint">방 코드 <b>${roomCode}</b> — 폰 카메라로 QR을 찍거나 코드를 입력해 들어오세요.<br>(QR에는 방 코드가 담겨 있어요)</p>`,[]);
-  if(window.QRCode){ new QRCode($("#qrBox"),{text:"WHITEBOARD-ROOM:"+roomCode,width:180,height:180}); } else $("#qrBox").innerHTML="<b style='font-size:2rem'>"+roomCode+"</b>"; }
-$("#btnShare").addEventListener("click",()=>{ openModal("방 공유",`<div class="kv"><span>방 코드</span><b style="font-size:1.2rem">${roomCode}</b></div>
+  <p style="text-align:center" class="hint">방 코드 <b>${roomCode}</b> — 폰 카메라로 QR을 찍으면 초대 링크가 열리면서 바로 이 방으로 들어와요.<br>코드를 직접 입력해서 들어와도 돼요.</p>`,[]);
+  if(window.QRCode){ new QRCode($("#qrBox"),{text:roomLink(),width:180,height:180}); } else $("#qrBox").innerHTML="<b style='font-size:2rem'>"+roomCode+"</b>"; }
+$("#btnShare").addEventListener("click",()=>{ const link=roomLink();
+  openModal("방 공유",`<div class="kv"><span>방 코드</span><b style="font-size:1.2rem">${roomCode}</b></div>
+  <label class="small" for="shLink" style="display:block;margin-top:.55rem;font-weight:700">초대 링크 — 받은 친구가 누르면 바로 이 방으로 들어와요</label>
+  <div class="row" style="display:flex;gap:.35rem;align-items:center;margin-top:.3rem"><input type="text" id="shLink" readonly value="${esc(link)}" style="flex:1;min-width:0"><button id="shCopyLink" style="font-weight:800;white-space:nowrap">링크 복사</button></div>
   <div class="grid2 mt"><button id="shCopy">코드 복사</button><button id="shQR">QR 보기</button>
   <button id="shSns">SNS로 공유</button><button id="shMail">이메일로 보내기</button></div>
-  <p class="hint">SNS 공유는 기기의 공유 창을 열어요 (지원 기기에서).</p>`,[]);
-  $("#shCopy").addEventListener("click",()=>{ navigator.clipboard&&navigator.clipboard.writeText(roomCode); toast("복사했어요"); });
+  <p class="hint">SNS 공유는 기기의 공유 창을 열어요 (지원 기기에서). 링크를 받은 친구는 코드를 따로 입력하지 않아도 돼요.</p>`,[]);
+  const li=$("#shLink"); li.addEventListener("click",()=>li.select());
+  $("#shCopyLink").addEventListener("click",()=>copyText(link,"초대 링크를 복사했어요 — 친구에게 보내세요"));
+  $("#shCopy").addEventListener("click",()=>copyText(roomCode,"방 코드를 복사했어요: "+roomCode));
   $("#shQR").addEventListener("click",showQR);
-  $("#shSns").addEventListener("click",async()=>{ const data={title:"공유 화이트보드",text:"화이트보드 방 코드: "+roomCode+" — 같이 그려요!"}; if(navigator.share){ try{ await navigator.share(data); }catch(e){} } else toast("이 기기는 공유 창을 지원하지 않아요 — 코드를 복사해 보내세요"); });
-  $("#shMail").addEventListener("click",()=>{ mailTo("화이트보드 초대","방 코드: "+roomCode); }); });
+  $("#shSns").addEventListener("click",async()=>{ const data={title:"공유 화이트보드",text:"화이트보드에서 같이 그려요! 링크를 누르면 바로 방으로 들어와요.",url:link}; if(navigator.share){ try{ await navigator.share(data); }catch(e){} } else copyText(link,"이 기기는 공유 창을 지원하지 않아요 — 대신 링크를 복사했어요"); });
+  $("#shMail").addEventListener("click",()=>{ mailTo("화이트보드 초대","같이 그려요! 아래 링크를 누르면 바로 방으로 들어와요.\n"+link+"\n(링크가 안 열리면 이 페이지에서 방 코드 "+roomCode+" 로 참가하세요)"); }); });
 
 /* ---------------- presentation ---------------- */
 let presIdx=0, presAutoTimer=null;
@@ -3436,15 +3636,19 @@ setInterval(()=>{ drawMinimap(); renderFrameBar(); },4000);
 /* ---------------- init ---------------- */
 function seedBoard(){ const objs=[
   {type:"text",x:60,y:36,text:"공유 화이트보드에 온 걸 환영해요!",size:34,color:"#182230",font:"sans",bold:true,align:"left",opacity:1},
-  {type:"text",x:60,y:86,text:"왼쪽 도구로 그리고, 위쪽 방 코드로 친구를 불러요. 보드는 끝없이 넓어요 — 드래그/핀치로 돌아다녀 보세요.",size:17,color:"#5b6a7a",font:"sans",align:"left",opacity:1},
+  {type:"text",x:60,y:86,text:"왼쪽 도구로 그리고, 위쪽 '공유' 버튼의 초대 링크로 친구를 불러요. 보드는 끝없이 넓어요 — 드래그/핀치로 돌아다녀 보세요.",size:17,color:"#5b6a7a",font:"sans",align:"left",opacity:1},
   {type:"sticky",x:64,y:140,w:190,h:130,text:"포스트잇은 N 키!\n여기에 아이디어를 적어보세요",color:"#fff3a3",size:16,opacity:1},
   {type:"sticky",x:284,y:140,w:190,h:130,text:"추가기능 탭에\n템플릿 80종 · 게임 · 문제은행\n음악 스튜디오가 있어요",color:"#bfe3ff",size:16,opacity:1},
   {type:"shape",shape:"star",x:520,y:150,w:90,h:90,color:"#f2a007",fill:"#ffd60a",sw:3,opacity:1,dash:"solid"},
   {type:"shape",shape:"ellipse",x:640,y:160,w:110,h:80,color:"#2b7cd3",fill:"none",sw:3,opacity:1,dash:"solid",label:"도형"},
  ]; objs.forEach(o=>addObject(o,true)); }
 function init(){ buildToolbar(); setTool("pen"); resize(); renderProps(); renderPeople(); renderExtra(); renderSettings(); renderVote();
-  connectRoom(genCode()); ME.role="host"; renderAvatars(); seedBoard(); fitAll(); drawMinimap(); renderFrameBar();
-  addChat("",WB_FB_URL?"보드 준비 완료! 방 코드를 친구에게 알려주면, 친구가 다른 기기(아이패드·폰·PC)에서 이 페이지를 열고 같은 코드로 들어와 바로 같이 그릴 수 있어요.":"보드 준비 완료! 같은 기기의 탭끼리는 바로 같이 그릴 수 있어요. 다른 기기와 실시간으로 그리려면 사람·방 탭에서 화이트보드 전용 Firebase 주소를 먼저 설정해 주세요.",false,true);
+  const linkCode=roomCodeFromUrl();
+  if(linkCode){ connectRoom(linkCode); ME.role="guest"; renderAvatars(); fitAll(); drawMinimap(); renderFrameBar();
+    addChat("","🔗 초대 링크로 방 "+linkCode+"에 들어왔어요! 이 방 사람들과 실시간으로 같이 그릴 수 있어요.",false,true);
+    toast("🔗 링크로 방 "+linkCode+"에 들어왔어요");
+  } else { connectRoom(genCode()); ME.role="host"; renderAvatars(); seedBoard(); fitAll(); drawMinimap(); renderFrameBar();
+    addChat("",WB_FB_URL?"보드 준비 완료! 위쪽 '공유' 버튼에서 초대 링크를 복사해 친구에게 보내면, 친구가 링크를 누르는 것만으로 바로 이 방에 들어와 같이 그릴 수 있어요.":"보드 준비 완료! 같은 기기의 탭끼리는 바로 같이 그릴 수 있어요. 다른 기기와 실시간으로 그리려면 사람·방 탭에서 화이트보드 전용 Firebase 주소를 먼저 설정해 주세요.",false,true); }
   logAct("보드 시작"); saveVersion("시작 상태",true);
   if(matchMedia("(prefers-color-scheme: dark)").matches){ state.theme="dark"; document.documentElement.dataset.theme="dark"; dirtyBg(); dirty(); renderSettings(); } }
 init();
