@@ -115,6 +115,10 @@ input[type=range].grow{flex:1;min-width:60px;}
 #framebar{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;z-index:41;display:none;gap:.35rem;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:.28rem .55rem;box-shadow:var(--shadow);max-width:92%;overflow-x:auto;}
 #framebar.has{display:flex;}
 #framebar .fb{white-space:nowrap;font-size:.82rem;}
+#followBar{position:absolute;left:50%;transform:translateX(-50%);top:10px;z-index:42;display:flex;gap:.45rem;align-items:center;background:var(--panel);border:1.5px solid var(--sel);border-radius:999px;padding:.28rem .35rem .28rem .8rem;box-shadow:var(--shadow);font-weight:700;font-size:.86rem;max-width:94%;}
+#followBar[hidden]{display:none;}
+#followBar .fl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#followBar button{border-radius:999px;padding:.2rem .7rem;min-height:1.9rem;flex:none;}
 
 /* right panel */
 #side{flex:none;width:312px;background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-sm);margin:.55rem .55rem .55rem 0;overflow:hidden;display:flex;flex-direction:column;z-index:55;min-height:0;}
@@ -320,6 +324,7 @@ body.focusUI #zoomctl{left:12px;}
         <button id="zoomFit" title="전부 보기" style="width:auto;padding:0 .5rem;">전부</button>
         <button id="zoomHome" title="원점" style="width:auto;padding:0 .5rem;">원점</button>
       </div>
+      <div id="followBar" hidden><span class="fl" id="followLbl">따라가는 중</span><button id="followStop">해제</button></div>
       <div id="framebar"></div>
       <div id="minimap" title="미니맵 — 누르면 이동"><canvas id="mmCv" width="344" height="236"></canvas></div>
       <div id="textEditor"><textarea id="textArea" rows="2"></textarea></div>
@@ -868,7 +873,7 @@ function updatePinch(cx,cy,d){
 function pinchCenterDist(ps){ return {cx:(ps[0].sx+ps[1].sx)/2, cy:(ps[0].sy+ps[1].sy)/2, d:Math.hypot(ps[0].sx-ps[1].sx,ps[0].sy-ps[1].sy)}; }
 function evPos(e){ const r=cv.getBoundingClientRect(); return {sx:e.clientX-r.left, sy:e.clientY-r.top}; }
 function pressureOf(e){ let p=e.pressure>0?e.pressure:.55; p=Math.pow(p, state.pressureCurve); return clamp(p,.05,1); }
-function playDrawSound(){ if(!state.drawSound)return; try{ drawSndCtx=drawSndCtx||new (window.AudioContext||window.webkitAudioContext)();
+function playDrawSound(){ if(!state.drawSound)return; try{ drawSndCtx=drawSndCtx||new (window.AudioContext||window.webkitAudioContext)(); if(drawSndCtx.state!=="running"){ try{ const p=drawSndCtx.resume(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} }
   const t=drawSndCtx.currentTime, o=drawSndCtx.createOscillator(), gn=drawSndCtx.createGain();
   o.type="triangle"; o.frequency.value=180+Math.random()*60; gn.gain.setValueAtTime(.015,t); gn.gain.exponentialRampToValueAtTime(.0001,t+.05);
   o.connect(gn).connect(drawSndCtx.destination); o.start(t); o.stop(t+.06); }catch(e){} }
@@ -975,7 +980,7 @@ cv.addEventListener("touchmove",e=>{ e.preventDefault(); const r=cv.getBoundingC
 function endTouch(e){ [...e.changedTouches].forEach(t=>touchPts.delete(t.identifier));
   if(e.touches.length<2){ const pt=[...pointers.values()].filter(p=>p.type==="touch").length; if(pt<2)pinch=null; pinchSuppress=e.touches.length>0||pointers.size>0; } }
 cv.addEventListener("touchend",endTouch); cv.addEventListener("touchcancel",endTouch);
-function onCamChange(){ dirtyBg(); dirty(); $("#zoomlbl").textContent=Math.round(cam.z*100)+"%"; broadcastCam(); drawMinimap(); }
+function onCamChange(){ if(state.followId&&!followApplying) stopFollow("local"); dirtyBg(); dirty(); $("#zoomlbl").textContent=Math.round(cam.z*100)+"%"; broadcastCam(); drawMinimap(); }
 $("#zoomIn").addEventListener("click",()=>{cam.z=clamp(cam.z*1.2,.08,6);onCamChange();});
 $("#zoomOut").addEventListener("click",()=>{cam.z=clamp(cam.z/1.2,.08,6);onCamChange();});
 $("#zoomHome").addEventListener("click",()=>{cam={x:-40,y:-40,z:1};onCamChange();});
@@ -1182,7 +1187,7 @@ function renderPeople(){ const el=$("#page-people"); if(!el)return;
   ${plist.map(p=>`<div class="li"><span class="av" style="background:${p.color};margin:0">${esc(p.avatar||"🙂")}${p.hand?'<span class="hand">✋</span>':""}</span>
     <div class="grow"><div class="nm">${esc(p.name)} ${p.muted?"🔇":""}</div><div class="small">${p.role==="host"?"방장":"참여자"}</div><div class="small actline" data-act-for="${p.id}"></div></div>
     ${!p.me&&state.followId===p.id?'<span class="pill host">따라가는 중</span>':""}
-    ${!p.me?`<button data-follow="${p.id}">따라가기</button>`:""}
+    ${!p.me?`<button data-follow="${p.id}" class="${state.followId===p.id?"on":""}">${state.followId===p.id?"따라가기 해제":"따라가기"}</button>`:""}
     ${ME.role==="host"&&!p.me?`<button data-role="${p.id}">권한</button><button data-mute="${p.id}">음소거</button>`:""}
   </div>`).join("")||""}
   <h3>최근 방</h3>${recentRooms.map(r=>`<div class="li"><div class="grow"><div class="nm">${esc(r.title)}</div><div class="small">코드 ${r.code} · ${esc(r.when)}</div></div><button data-rejoin="${r.code}">입장</button></div>`).join("")||'<p class="hint">아직 없어요.</p>'}
@@ -1193,7 +1198,7 @@ function renderPeople(){ const el=$("#page-people"); if(!el)return;
   on("#pFbGo",()=>fbSetUrl(el.querySelector("#pFbUrl")?el.querySelector("#pFbUrl").value:""));
   const an=el.querySelector("#pAnon"); an.addEventListener("change",()=>{ ME.anon=an.checked; broadcastPresence(); renderPeople(); renderAvatars(); toast(ME.anon?"익명으로 표시돼요":"이름이 표시돼요"); });
   on("#pNameOk",()=>{ ME.name=el.querySelector("#pName").value.trim()||"나"; ME.avatar=el.querySelector("#pAvatar").value||"🦊"; ME.color=el.querySelector("#pCurColor").value; broadcastPresence(); renderPeople(); renderAvatars(); toast("프로필을 바꿨어요"); });
-  el.querySelectorAll("[data-follow]").forEach(b=>b.addEventListener("click",()=>{ state.followId=state.followId===b.dataset.follow?null:b.dataset.follow; toast(state.followId?"따라가기 시작 — 상대 화면을 같이 봐요":"따라가기 해제"); renderPeople(); }));
+  el.querySelectorAll("[data-follow]").forEach(b=>b.addEventListener("click",()=>{ if(state.followId===b.dataset.follow) stopFollow(); else startFollow(b.dataset.follow); }));
   el.querySelectorAll("[data-role]").forEach(b=>b.addEventListener("click",()=>{ broadcast({t:"setrole",to:b.dataset.role,role:"viewer"}); toast("상대에게 보기 전용 권한을 보냈어요 (한 번 더 누르면 그리기)"); broadcast({t:"setrole2",to:b.dataset.role}); }));
   el.querySelectorAll("[data-mute]").forEach(b=>b.addEventListener("click",()=>{ broadcast({t:"muteReq",to:b.dataset.mute}); toast("음소거 요청을 보냈어요"); }));
   el.querySelectorAll("[data-rejoin]").forEach(b=>b.addEventListener("click",()=>joinRoom(b.dataset.rejoin,""))); }
@@ -1662,7 +1667,7 @@ function safeCalc(expr){ const toks=[]; let i=0;
   function parseAtom(){ const tk=next(); if(!tk)throw new Error("end"); if(tk.t==="n")return tk.v; if(tk.t==="("){ const v=parseExpr(); if(!next()||toks[pos-1].t!==")")throw new Error("paren"); return v; } throw new Error("atom"); }
   const out=parseExpr(); if(pos<toks.length)throw new Error("trailing"); return Math.round(out*1e10)/1e10; }
 let scoreBoard=[], attended=false;
-function beep(freq=660,dur=.25){ try{ const ctx=beep.ctx||(beep.ctx=new (window.AudioContext||window.webkitAudioContext)()); const o=ctx.createOscillator(),gn=ctx.createGain();
+function beep(freq=660,dur=.25){ try{ const ctx=beep.ctx||(beep.ctx=new (window.AudioContext||window.webkitAudioContext)()); if(ctx.state!=="running"){ try{ const p=ctx.resume(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} } const o=ctx.createOscillator(),gn=ctx.createGain();
   o.frequency.value=freq; gn.gain.setValueAtTime(.12,ctx.currentTime); gn.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+dur); o.connect(gn).connect(ctx.destination); o.start(); o.stop(ctx.currentTime+dur); }catch(e){} }
 
 /* ---------------- games ---------------- */
@@ -2556,7 +2561,16 @@ function makeIR(dur,decay){ const rate=AC.sampleRate, len=Math.floor(rate*dur), 
   for(let ch=0;ch<2;ch++){ const d=buf.getChannelData(ch); for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay); } return buf; }
 function applyMix(){ if(!AC||!finalGain)return; finalGain.gain.value=mix.vol; eqLow.gain.value=mix.low; eqMid.gain.value=mix.mid; eqHigh.gain.value=mix.high;
   revGainNode.gain.value=mix.rev; dlyGainNode.gain.value=mix.dly; compNode.threshold.value=mix.master?-18:0; compNode.ratio.value=mix.master?6:1; }
+/* 오디오 복구: iOS는 전화·잠금·앱 전환 뒤 컨텍스트가 "interrupted"가 되는데
+   예전 코드는 "suspended"만 resume해서 한 번 끊기면 새로고침 전까지 무음이었다.
+   running이 아닌 모든 상태에서 resume을 시도하고, 사용자 제스처·화면 복귀
+   때마다 다시 깨우며, 상태 변화를 감지해 자동 복구한다. */
+function resumeAudio(){ if(!AC||AC.state==="running")return; try{ const p=AC.resume(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} }
+function resumeCtx(c){ if(!c||c.state==="running")return; try{ const p=c.resume(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} }
+["pointerdown","touchend","keydown"].forEach(ev=>window.addEventListener(ev,()=>{ resumeAudio(); resumeCtx(typeof beep!=="undefined"?beep.ctx:null); resumeCtx(typeof drawSndCtx!=="undefined"?drawSndCtx:null); },{capture:true,passive:true}));
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden)resumeAudio(); });
 function audio(){ if(!AC){ AC=new (window.AudioContext||window.webkitAudioContext)();
+    AC.onstatechange=()=>{ if(AC&&AC.state!=="running"&&!document.hidden)resumeAudio(); };
     masterGain=AC.createGain(); masterGain.gain.value=.9; // 악기 입력 버스 (playNote가 여기로 연결)
     eqLow=AC.createBiquadFilter(); eqLow.type="lowshelf"; eqLow.frequency.value=220;
     eqMid=AC.createBiquadFilter(); eqMid.type="peaking"; eqMid.frequency.value=1100; eqMid.Q.value=.8;
@@ -2570,7 +2584,7 @@ function audio(){ if(!AC){ AC=new (window.AudioContext||window.webkitAudioContex
     const dly=AC.createDelay(1); dly.delayTime.value=.27; const fb=AC.createGain(); fb.gain.value=.34; dlyGainNode=AC.createGain(); dlyGainNode.gain.value=mix.dly;
     eqHigh.connect(dlyGainNode); dlyGainNode.connect(dly); dly.connect(fb); fb.connect(dly); dly.connect(finalGain);
     finalGain.connect(AC.destination); finalGain.connect(musicDest); }
-  if(AC.state==="suspended")AC.resume(); return AC; }
+  resumeAudio(); return AC; }
 const FAM={
  piano:{label:"건반·피아노",type:"piano"}, organ:{label:"오르간·아코디언",type:"organ"}, synth:{label:"신스·전자",type:"synth"},
  bowed:{label:"현악 (활)",type:"bowed"}, pluck:{label:"현악 (뜯는)",type:"pluck"}, wood:{label:"목관",type:"wood"},
@@ -2601,7 +2615,7 @@ function playNote(midi,inst,when=0,dur=1.2,vel=1,pan=0){ inst=inst||curInst; con
   const recipe=FAM[inst.fam].type;
   const mk=(type,freq,g0)=>{ const o=ctx.createOscillator(); o.type=type; o.frequency.value=freq; const gn=ctx.createGain(); gn.gain.value=g0; o.connect(gn).connect(out); return [o,gn]; };
   const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=clamp(900+inst.bright+f*1.4,300,9000); lp.connect(out);
-  const vib=ctx.createOscillator(); vib.frequency.value=5.2; const vibG=ctx.createGain(); vibG.gain.value=0; vib.connect(vibG); vib.start(t);
+  const vib=ctx.createOscillator(); vib.frequency.value=5.2; const vibG=ctx.createGain(); vibG.gain.value=0; vib.connect(vibG); vib.start(t); vib.stop(t+dur+.5); // 정지 예약 필수 — 예전엔 음마다 오실레이터가 영원히 쌓여 오디오가 포화돼 소리가 끊기고 결국 안 났다
   let oscs=[];
   const env=(g,a,peak,d,s,r)=>{ g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(peak*vel,t+a); g.gain.linearRampToValueAtTime(s*vel,t+a+d); g.gain.setValueAtTime(s*vel,t+Math.max(a+d,dur-r)); g.gain.linearRampToValueAtTime(0,t+dur); };
   if(recipe==="piano"){ const g=ctx.createGain(); g.connect(lp); lp.frequency.value=clamp(1100+vel*4200+f*1.1,700,9500);
@@ -2836,7 +2850,9 @@ function startSeq(remote){ if(seqTimer)clearInterval(seqTimer); const ctx=audio(
   let step=0, nextTime=ctx.currentTime+.08;
   if(remote&&remote.startedAt){ const el=(Date.now()-remote.startedAt)/1000; if(el>0){ step=Math.floor(el/stepDur)%T; nextTime=ctx.currentTime+.07; } seqStep=step; seqStartedAt=remote.startedAt; }
   else { seqStartedAt=Date.now()+80; seqStep=0; }
-  seqTimer=setInterval(()=>{ const c=audio(); while(nextTime<c.currentTime+.14){ const s=step; const when=nextTime-c.currentTime+((s%2===1)?swingVal*stepDur:0);
+  seqTimer=setInterval(()=>{ const c=audio();
+    if(nextTime<c.currentTime-.3){ const missed=Math.floor((c.currentTime-nextTime)/stepDur); step=(step+missed)%T; nextTime=c.currentTime+.06; } // 백그라운드·일시정지로 밀린 스텝을 한꺼번에 폭주시키지 않고 건너뛴다 (과부하로 소리가 죽는 원인)
+    while(nextTime<c.currentTime+.14){ const s=step; const when=nextTime-c.currentTime+((s%2===1)?swingVal*stepDur:0);
       const anySolo=(tracks||[]).some(t=>t.solo); syncMute=true;
       try{ (tracks||[]).forEach(t=>{ if(t.mute||(anySolo&&!t.solo))return; const v=t.steps[s]; if(!v)return;
         if(t.kind==="drum")playDrum(t.inst,60,c.currentTime+Math.max(0,when));
@@ -2995,7 +3011,7 @@ function fbSetUrl(url){ url=(url||"").trim().replace(/\/+$/,"");
   toast("화이트보드 전용 Firebase에 연결을 시도하고 있어요"); }
 function fbListen(ref,ev,cb){ try{ ref.on(ev,cb); fbListeners.push([ref,ev,cb]); }catch(e){} }
 function fbDetachRoom(){ fbListeners.forEach(([r,ev,cb])=>{ try{ r.off(ev,cb); }catch(e){} }); fbListeners=[];
-  if(fbRoom){ try{ fbRoom.child("presence/"+ME.id).remove(); fbRoom.child("cursors/"+ME.id).remove(); fbRoom.child("live/"+ME.id).remove(); }catch(e){} fbRoom=null; }
+  if(fbRoom){ try{ fbRoom.child("presence/"+ME.id).remove(); fbRoom.child("cursors/"+ME.id).remove(); fbRoom.child("live/"+ME.id).remove(); fbRoom.child("cams/"+ME.id).remove(); }catch(e){} fbRoom=null; }
   remoteLive.clear(); }
 function fbPublishPresence(){ if(!fbRoom)return; try{ fbRoom.child("presence/"+ME.id).set({...meInfo(),last:Date.now()}).catch(()=>{}); }catch(e){} }
 function fbOnObj(snap){ const rec=snap.val(); if(!rec||!rec.obj)return; if(rec.by===ME.id)return; const obj=rec.obj;
@@ -3003,7 +3019,7 @@ function fbOnObj(snap){ const rec=snap.val(); if(!rec||!rec.obj)return; if(rec.b
 function fbConnectRoom(code){ fbDetachRoom(); fbReady=false; fbJoinTs=Date.now();
   if(!fbInit()){ setFbConn(false); return; }
   const roomRef=fbDb.ref("rooms/"+code); fbRoom=roomRef;
-  try{ roomRef.child("presence/"+ME.id).onDisconnect().remove(); roomRef.child("cursors/"+ME.id).onDisconnect().remove(); roomRef.child("live/"+ME.id).onDisconnect().remove(); }catch(e){}
+  try{ roomRef.child("presence/"+ME.id).onDisconnect().remove(); roomRef.child("cursors/"+ME.id).onDisconnect().remove(); roomRef.child("live/"+ME.id).onDisconnect().remove(); roomRef.child("cams/"+ME.id).onDisconnect().remove(); }catch(e){}
   fbPublishPresence();
   const objRef=roomRef.child("objects");
   fbListen(objRef,"child_added",fbOnObj); fbListen(objRef,"child_changed",fbOnObj);
@@ -3019,12 +3035,18 @@ function fbConnectRoom(code){ fbDetachRoom(); fbReady=false; fbJoinTs=Date.now()
   const curRef=roomRef.child("cursors");
   const onCur=snap=>{ if(snap.key===ME.id)return; const v=snap.val(); if(v)drawRemoteCursor({from:snap.key,x:v.x,y:v.y,name:v.name,color:v.color,laser:v.laser,tool:v.tool}); };
   fbListen(curRef,"child_added",onCur); fbListen(curRef,"child_changed",onCur);
+  // 따라가기용 카메라 위치 — 최신값만 유지되는 전용 노드 (이벤트 큐와 달리 누락·역순 없음)
+  const camRef=roomRef.child("cams");
+  const onCamNode=snap=>{ if(snap.key===ME.id)return; const v=snap.val(); if(v)notePeerCam(snap.key,v); };
+  fbListen(camRef,"child_added",onCamNode); fbListen(camRef,"child_changed",onCamNode);
+  fbListen(camRef,"child_removed",snap=>{ const p=peers.get(snap.key); if(p)delete p.cam; });
   const presRef=roomRef.child("presence");
   fbListen(presRef,"child_added",snap=>{ if(snap.key===ME.id)return; const v=snap.val()||{}; const isNew=!peers.has(snap.key);
-    peers.set(snap.key,{...v,id:snap.key,last:v.last||Date.now()}); renderAvatars(); renderPeople();
+    peers.set(snap.key,{...v,id:snap.key,last:v.last||Date.now()}); if(v.cam)notePeerCam(snap.key,v.cam); renderAvatars(); renderPeople();
     if(isNew&&Date.now()-fbJoinTs>2000){ toast("👋 "+(v.name||"참여자")+"님이 들어왔어요"); addChat("","",false,true); chatLog.lastChild.textContent=(v.name||"참여자")+"님이 들어왔어요"; entranceFx(); } });
-  fbListen(presRef,"child_changed",snap=>{ if(snap.key===ME.id)return; const v=snap.val()||{}; peers.set(snap.key,{...v,id:snap.key,last:v.last||Date.now()}); renderAvatars(); renderActs(); });
+  fbListen(presRef,"child_changed",snap=>{ if(snap.key===ME.id)return; const v=snap.val()||{}; const prev=peers.get(snap.key); peers.set(snap.key,{...v,id:snap.key,last:v.last||Date.now(),cam:(v.cam||(prev&&prev.cam))}); if(v.cam)notePeerCam(snap.key,v.cam); renderAvatars(); renderActs(); });
   fbListen(presRef,"child_removed",snap=>{ if(snap.key===ME.id)return; peers.delete(snap.key); remoteLive.delete(snap.key);
+    if(state.followId===snap.key)stopFollow("left");
     const ce=cursorEls.get(snap.key); if(ce){ ce.remove(); cursorEls.delete(snap.key); } renderAvatars(); renderPeople(); });
   const chatRef=roomRef.child("chat").limitToLast(40);
   fbListen(chatRef,"child_added",snap=>{ const rec=snap.val(); if(!rec||rec.by===ME.id)return;
@@ -3039,16 +3061,16 @@ function fbConnectRoom(code){ fbDetachRoom(); fbReady=false; fbJoinTs=Date.now()
   const onFeat=snap=>{ const rec=snap.val(); if(!rec||rec.by===ME.id)return; applyFeatRemote(snap.key,rec.data,rec.by,rec.ts); };
   fbListen(featRef,"child_added",onFeat); fbListen(featRef,"child_changed",onFeat);
   fbReady=true; }
-function connectRoom(code){ if(bc)bc.close(); roomCode=code; $("#roomCodeLbl").textContent=code; joinedAt=Date.now();
+function connectRoom(code){ if(bc)bc.close(); stopFollow("silent"); roomCode=code; $("#roomCodeLbl").textContent=code; joinedAt=Date.now();
   bc=null; try{ bc=new BroadcastChannel("wb-room-"+code); bc.onmessage=e=>onSync(e.data); }catch(e){}
   fbConnectRoom(code);
   peers.clear(); broadcast({t:"hello",me:meInfo()}); broadcastPresence();
   if(pingTimer)clearInterval(pingTimer);
   pingTimer=setInterval(()=>{ broadcast({t:"ping",me:meInfo()}); const cut=Date.now()-12000;
-    for(const [id,p] of peers){ if(p.last&&p.last<cut){ peers.delete(id); const ce=cursorEls.get(id); if(ce){ ce.remove(); cursorEls.delete(id); } renderAvatars(); renderPeople(); } } },3000);
+    for(const [id,p] of peers){ if(p.last&&p.last<cut){ peers.delete(id); if(state.followId===id)stopFollow("left"); const ce=cursorEls.get(id); if(ce){ ce.remove(); cursorEls.delete(id); } renderAvatars(); renderPeople(); } } },3000);
   recentRooms.unshift({code,title:$("#boardTitle").value,when:nowT()}); recentRooms=recentRooms.slice(0,6); }
-function meInfo(){ return {id:ME.id,name:myName(),color:ME.color,avatar:ME.avatar,role:ME.role,hand:ME.hand,muted:voiceMuted,act:myAct,actTs:myActTs}; }
-const FB_EVENT_TYPES=["cam","hand","react","note","poll","vote","score","timer","setrole","setrole2","muteReq","rtc","toast","join-req","join-res","openwin","recplay","bbpitch","bbswing","bbtake"];
+function meInfo(){ return {id:ME.id,name:myName(),color:ME.color,avatar:ME.avatar,role:ME.role,hand:ME.hand,muted:voiceMuted,act:myAct,actTs:myActTs,cam:(typeof camCenter==="function"&&W>0)?camCenter():null}; }
+const FB_EVENT_TYPES=["cam-req","hand","react","note","poll","vote","score","timer","setrole","setrole2","muteReq","rtc","toast","join-req","join-res","openwin","recplay","bbpitch","bbswing","bbtake"];
 let syncMute=false; // 원격에서 받은 소리/동작을 재생하는 동안 재방송을 막아 에코 루프를 방지
 function broadcast(msg){ if(!msg||syncMute)return;
   if(FB_EVENT_TYPES.includes(msg.t)&&!msg._eid)msg._eid=uid();
@@ -3079,10 +3101,58 @@ function broadcastLiveStroke(st){ const t=performance.now(); if(t-fbLiveLast<70)
   if(fbRoom){ try{ fbRoom.child("live/"+ME.id).set({obj:clean,by:ME.id,ts:Date.now()}).catch(()=>{}); }catch(e){} } }
 function broadcastLiveEnd(){ if(bc){ try{ bc.postMessage({t:"live-end",from:ME.id}); }catch(e){} }
   if(fbRoom){ try{ fbRoom.child("live/"+ME.id).remove().catch(()=>{}); }catch(e){} } }
-window.addEventListener("beforeunload",()=>{ try{ if(fbRoom){ fbRoom.child("presence/"+ME.id).remove(); fbRoom.child("cursors/"+ME.id).remove(); fbRoom.child("live/"+ME.id).remove(); } }catch(e){} });
-let cursorEls=new Map(), camThrottle=0;
+window.addEventListener("beforeunload",()=>{ try{ if(fbRoom){ fbRoom.child("presence/"+ME.id).remove(); fbRoom.child("cursors/"+ME.id).remove(); fbRoom.child("live/"+ME.id).remove(); fbRoom.child("cams/"+ME.id).remove(); } }catch(e){} });
+let cursorEls=new Map();
+/* ---------------- 따라가기(팔로우) 엔진 ----------------
+   예전 방식의 문제: ① 따라가기를 눌러도 상대가 다음에 움직일 때까지 현재
+   위치를 받을 방법이 없었고 ② 카메라가 30초 뒤 지워지는 일회성 이벤트
+   큐로 가서 연속 이동 때 누락·역순이 생겼고 ③ 상대의 좌상단 좌표를 그대로
+   복사해 기기마다 화면 크기가 다르면 중심이 어긋났고 ④ 스로틀이 마지막
+   위치를 버려 상대가 멈춘 지점까지 못 따라갔다.
+   새 방식: 화면 "중심점+줌"을 전용 cams/<id> 노드(최신값 유지)와
+   BroadcastChannel로 보내고, 시작 즉시 cam-req로 현재 위치를 요청하며,
+   타임스탬프로 오래된 업데이트를 버리고, 마지막 위치는 trailing 전송으로
+   반드시 보낸다. 팔로워가 직접 화면을 움직이면 따라가기가 풀린다. */
+let followApplying=false, followLastTs=0, camLastSent=0, camPending=null, camSendTimer=null;
+function camCenter(){ return {cx:cam.x+W/(2*cam.z), cy:cam.y+H/(2*cam.z), z:cam.z, ts:Date.now()}; }
+function sendCamNow(p){ camLastSent=performance.now(); camPending=null;
+  if(bc){ try{ bc.postMessage({t:"cam",cam:p,from:ME.id}); }catch(e){} }
+  if(fbRoom){ try{ fbRoom.child("cams/"+ME.id).set(p).catch(()=>{}); }catch(e){} } }
+function broadcastCam(force){ const p=camCenter(); const t=performance.now();
+  if(!force&&t-camLastSent<60){ camPending=p;
+    if(!camSendTimer)camSendTimer=setTimeout(()=>{ camSendTimer=null; if(camPending)sendCamNow(camPending); },70);
+    return; }
+  if(camSendTimer){ clearTimeout(camSendTimer); camSendTimer=null; }
+  sendCamNow(p); }
+function applyFollowCam(id,c,force){ if(state.followId!==id||!c)return;
+  if(c.ts&&!force){ if(followLastTs&&c.ts<=followLastTs)return; }
+  if(c.ts)followLastTs=c.ts;
+  const z=clamp(c.z||cam.z||1,.08,6); let nx,ny;
+  if(c.cx!=null&&c.cy!=null){ nx=c.cx-W/(2*z); ny=c.cy-H/(2*z); }        // 중심 기준 — 기기 화면 크기가 달라도 같은 중심을 본다
+  else if(c.x!=null&&c.y!=null){ nx=c.x; ny=c.y; }                        // 예전 형식(좌상단) 호환
+  else return;
+  followApplying=true;
+  cam={x:nx,y:ny,z};
+  dirtyBg(); dirty(); $("#zoomlbl").textContent=Math.round(z*100)+"%"; drawMinimap();
+  followApplying=false; }
+function notePeerCam(id,c){ if(!c)return; const p=peers.get(id); if(p)p.cam=c;
+  if(state.followId===id)applyFollowCam(id,c); }
+function followName(){ const p=state.followId?peers.get(state.followId):null; return p?(p.name||"참여자"):"참여자"; }
+function updateFollowUI(){ const bar=$("#followBar"); if(!bar)return;
+  if(state.followId){ bar.hidden=false; $("#followLbl").textContent="👀 "+followName()+"님 화면 따라가는 중"; }
+  else bar.hidden=true; }
+function startFollow(id){ const p=peers.get(id); state.followId=id; followLastTs=0;
+  if(p&&p.cam)applyFollowCam(id,p.cam,true);                            // 마지막으로 알려진 위치로 즉시 이동
+  broadcast({t:"cam-req",to:id});                                       // 상대에게 현재 화면을 지금 보내달라고 요청
+  updateFollowUI(); renderPeople();
+  toast("👀 "+(p?(p.name||"참여자"):"참여자")+"님 따라가기 시작 — 상대 화면을 같이 봐요"); }
+function stopFollow(reason){ if(!state.followId)return; state.followId=null; followLastTs=0;
+  updateFollowUI(); renderPeople();
+  if(reason==="local")toast("화면을 직접 움직여 따라가기를 해제했어요");
+  else if(reason==="left")toast("따라가던 참여자가 나가서 따라가기를 해제했어요");
+  else if(reason!=="silent")toast("따라가기를 해제했어요"); }
+$("#followStop").addEventListener("click",()=>stopFollow());
 function broadcastCursor(w,laser){ broadcast({t:"cursor",x:w.x,y:w.y,name:myName(),color:ME.color,laser:!!laser,tool:state.tool}); }
-function broadcastCam(){ const t=performance.now(); if(t-camThrottle<120)return; camThrottle=t; broadcast({t:"cam",cam}); }
 /* ---------------- 기능 상태 실시간 공유 (feat) ----------------
    게임·위젯·문제은행·월드컵·시퀀서 같은 "기능"의 상태를 방 코드별
    Firebase feat/<키> 노드 + BroadcastChannel로 동기화한다. 보드에 오브젝트로
@@ -3127,16 +3197,17 @@ function onSync(m){ if(!m||m.from===ME.id)return;
     if(seenEventIds.size>400){ const it=seenEventIds.values(); for(let i=0;i<150;i++)seenEventIds.delete(it.next().value); } }
   const P=peers.get(m.from);
   switch(m.t){
-   case "hello": { const isNew=!peers.has(m.from); peers.set(m.from,{...m.me,last:Date.now()}); renderAvatars(); renderPeople();
+   case "hello": { const isNew=!peers.has(m.from); peers.set(m.from,{...m.me,last:Date.now()}); if(m.me&&m.me.cam)notePeerCam(m.from,m.me.cam); renderAvatars(); renderPeople();
      if(objects.length&&bc) bc.postMessage({t:"state",objects:objects.map(stripObj),to:m.from,from:ME.id});
      if(isNew){ toast("👋 "+m.me.name+"님이 들어왔어요"); addChat("","",false,true); chatLog.lastChild.textContent=m.me.name+"님이 들어왔어요"; entranceFx(); notify("화이트보드",m.me.name+"님이 방에 들어왔어요"); } break; }
-   case "ping": peers.set(m.from,{...m.me,last:Date.now()}); renderAvatars(); break;
+   case "ping": { const prevP=peers.get(m.from); peers.set(m.from,{...m.me,last:Date.now(),cam:(m.me&&m.me.cam)||(prevP&&prevP.cam)||null}); if(m.me&&m.me.cam)notePeerCam(m.from,m.me.cam); renderAvatars(); break; }
    case "state": if(m.to&&m.to!==ME.id)break; if(joinedAt>Date.now()-15000||!objects.length){ objects=m.objects; selected.clear(); dirty(); drawMinimap(); } break;
    case "op": applyOp(m.op); break;
    case "live": if(m.obj){ remoteLive.set(m.from,m.obj); dirty(); } break;
    case "live-end": remoteLive.delete(m.from); dirty(); break;
    case "cursor": drawRemoteCursor(m); break;
-   case "cam": if(state.followId===m.from){ cam=m.cam; dirtyBg(); dirty(); $("#zoomlbl").textContent=Math.round(cam.z*100)+"%"; } break;
+   case "cam": notePeerCam(m.from,m.cam); break;
+   case "cam-req": if(!m.to||m.to===ME.id) broadcastCam(true); break;
    case "chat": if(m.mid){ if(seenChatIds.has(m.mid))break; seenChatIds.add(m.mid); } addChat(m.who,m.text,false); notify("채팅",m.who+": "+m.text); break;
    case "hand": if(P){P.hand=m.hand; renderAvatars(); renderPeople();} if(m.hand)toast("✋ "+(P?P.name:"참여자")+"님이 손을 들었어요"); break;
    case "react": { const c=s2w(W/2,H/2); floatReaction(m.emoji,c); break; }
