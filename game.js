@@ -5,6 +5,59 @@
    - VERSION = '4.8' (멀티 호환) — 절대 변경 금지
    ========================================================================== */
 
+/* ===== v5.24 PERF: 화면 그라데이션 캐시 (전수 렉 조사) =====
+   매 프레임 createLinearGradient + 전체화면 fill은 모바일 GPU에서 가장 큰 래스터 비용이자
+   GC 유발 할당. 4px짜리 캔버스에 한 번 구워두고 매 프레임 drawImage로 붙인다.
+   (iOS Safari는 그라데이션 fill이 특히 느리다 — v5.15-r3 shadowBlur 대응과 같은 맥락)
+   shadowBlur는 v5.15-r3에서 모바일 인게임 시 이미 0으로 강제되므로 따로 손대지 않는다. */
+window.__jwGradCache = new Map();
+window.__jwGradCanvas = function (stops, H) {
+  var key = '';
+  for (var i = 0; i < stops.length; i++) key += stops[i][0] + ':' + stops[i][1] + '|';
+  key += '@' + (H | 0);
+  var cv = window.__jwGradCache.get(key);
+  if (cv) return cv;
+  cv = document.createElement('canvas');
+  cv.width = 4; cv.height = Math.max(1, H | 0);
+  var c = cv.getContext('2d');
+  var g = c.createLinearGradient(0, 0, 0, cv.height);
+  for (var j = 0; j < stops.length; j++) g.addColorStop(stops[j][0], stops[j][1]);
+  c.fillStyle = g; c.fillRect(0, 0, 4, cv.height);
+  if (window.__jwGradCache.size > 8) window.__jwGradCache.clear();
+  window.__jwGradCache.set(key, cv);
+  return cv;
+};
+/* 세계 높이 그라데이션(파노라마 하늘·틴트) 캐시: 행 0 = 세계 위, 행 wh = 세계 아래.
+   캔버스 그라데이션 (0,wh)->(0,0)에 stop을 그대로 넣으면 stop 0 = 아래, stop 1 = 위가 된다
+   (파노라마 sky()의 원본 gradient (0,bot)->(0,top)과 동일한 색). */
+window.__jwWorldGradCache = new Map();
+window.__jwWorldGradCanvas = function (key, stops, wh) {
+  var cv = window.__jwWorldGradCache.get(key);
+  if (cv) return cv;
+  cv = document.createElement('canvas');
+  cv.width = 4; cv.height = Math.max(1, wh | 0);
+  var c = cv.getContext('2d');
+  var g = c.createLinearGradient(0, cv.height, 0, 0);
+  for (var i = 0; i < stops.length; i++) g.addColorStop(stops[i][0], stops[i][1]);
+  c.fillStyle = g; c.fillRect(0, 0, 4, cv.height);
+  if (window.__jwWorldGradCache.size > 8) window.__jwWorldGradCache.clear();
+  window.__jwWorldGradCache.set(key, cv);
+  return cv;
+};
+/* 이름표 무지개 그라데이션 캐시 (로컬 좌표 0..nameW — translate와 함께 쓴다) */
+window.__jwRainbowCache = new Map();
+window.__jwRainbowGrad = function (ctx, nameW) {
+  var w = Math.round(nameW);
+  var g = window.__jwRainbowCache.get(w);
+  if (g) return g;
+  g = ctx.createLinearGradient(0, 0, w, 0);
+  g.addColorStop(0, '#f87171'); g.addColorStop(0.3, '#fbbf24');
+  g.addColorStop(0.6, '#34d399'); g.addColorStop(1, '#a78bfa');
+  if (window.__jwRainbowCache.size > 64) window.__jwRainbowCache.clear();
+  window.__jwRainbowCache.set(w, g);
+  return g;
+};
+
 /* ===== v59 inline block #4 (was index.html L940-3433) ===== */
 
     (function () {
@@ -903,8 +956,8 @@
           /* v5.11: 배경+글자를 시작과 동시에 함께, 즉시 숨긴다. 예전에는 opacity 0으로
              220ms 페이드아웃하면서 콜백(게임 시작)을 바로 실행해서, 살아있는 게임 화면
              위에 베일 글자가 반투명으로 떠 있었다. display:none을 먼저 하고 콜백을
-             실행하므로 게임이 시작될 때 베일은 이미 없다. transition도 꺼서 다음 show 때
-             페이드인이 다시 먹게 show 쪽에서 되돌린다. 낡은 250ms 숨김 타이머도 없어져서
+             실행하므로 게임이 시작될 때 베일은 이미 없다. v5.25: show도 페이드인을 없앴다 —
+             베일은 처음부터 불투명하고 즉시 숨긴다. 낡은 250ms 숨김 타이머도 없어져서
              새 베일을 덮어쓰던 문제도 사라진다. */
           try { v.style.transition = 'none'; } catch (e) {}
           v.style.opacity = '0';
@@ -922,8 +975,9 @@
         } catch (e) {}
         v.style.display = 'flex';
         v.style.pointerEvents = 'auto';
-        try { v.style.transition = 'opacity .22s ease-out'; } catch (e) {} /* finish()가 끈 transition 복원 */
-        setTimeout(function () { v.style.opacity = '1'; }, 30);
+        /* v5.25: 베일을 처음부터 불투명으로 — 예전에는 opacity:0에서 30ms 뒤 220ms 페이드인해서 처음 ~250ms 동안 아래 낡은 월드가 비쳤다. 페이드인 제거 (finish()도 즉시 숨김이라 대칭). */
+        try { v.style.transition = 'none'; } catch (e) {}
+        v.style.opacity = '1';
         var t0 = Date.now();
         var iv = setInterval(function () {
           var done = false;
@@ -1459,10 +1513,10 @@
         if (!player.onGround) {
           const feetPrev = prevY + player.h;
           const feetNow = player.y + player.h;
-          const allPlats = platforms.concat(abyssPlatforms);
-
-          for (let i = 0; i < allPlats.length; i++) {
-            const p = allPlats[i];
+          /* v5.24 PERF: concat()은 매 프레임 300개짜리 배열을 새로 만들어 GC 스파이크 유발 — 두 배열을 따로 돈다 */
+          const nPlatsU = platforms.length, nAbyssU = abyssPlatforms.length;
+          for (let i = 0; i < nPlatsU + nAbyssU; i++) {
+            const p = i < nPlatsU ? platforms[i] : abyssPlatforms[i - nPlatsU];
             if (p.crumbled) continue;
             const pad = (game.activeEv && game.activeEv.id === 'celestial') ? 6 : 0;
             const pL = p.x - pad;
@@ -1924,9 +1978,11 @@
         }
 
         // 2) Render Platforms
-        const allPlats = platforms.concat(abyssPlatforms);
-        for (let i = 0; i < allPlats.length; i++) {
-          const p = allPlats[i];
+        /* v5.24 PERF: concat()은 매 프레임 300개짜리 배열을 새로 만들어 GC 스파이크 유발 — 두 배열을 따로 돈다 */
+        const nPlats = platforms.length, nAbyss = abyssPlatforms.length;
+        let _safeFontSet = false;
+        for (let i = 0; i < nPlats + nAbyss; i++) {
+          const p = i < nPlats ? platforms[i] : abyssPlatforms[i - nPlats];
           const py = (p.y - camY) | 0;
           if (py + p.h < -80 || py > logicalH + 80) continue;
           if (p.crumbled) {
@@ -1937,8 +1993,7 @@
           if (!(window.JWG && JWG.drawPlatform && JWG.drawPlatform(ctx, p, (p.x + shk) | 0, py, game))) drawPlatformTile(p, (p.x + shk) | 0, py);
           /* v5.10 (e): 안전 발판 라벨 — 노란 테두리/금색 표시가 안전 발판(추락해도 여기서부터)임을 알린다 */
           if (p.safe && p.index > 1 && p.type !== 'summit') {
-            ctx.font = 'bold 9px "Galmuri11", monospace';
-            ctx.textAlign = 'center';
+            if (!_safeFontSet) { ctx.font = 'bold 9px "Galmuri11", monospace'; ctx.textAlign = 'center'; _safeFontSet = true; }
             ctx.fillStyle = 'rgba(5,3,10,.78)';
             ctx.fillRect(((p.x + p.w / 2 - 20) | 0), py - 15, 40, 11);
             ctx.fillStyle = '#fde047';
@@ -2076,10 +2131,10 @@
           const pt = game.particles[i];
           rect(ctx, pt.x | 0, (pt.y - camY) | 0, pt.sz, pt.sz, pt.col);
         }
+        ctx.font = 'bold 13px "Galmuri11", monospace';
+        ctx.textAlign = 'center';
         for (let i = 0; i < game.texts.length; i++) {
           const ft = game.texts[i];
-          ctx.font = 'bold 13px "Galmuri11", monospace';
-          ctx.textAlign = 'center';
           ctx.fillStyle = '#080510';
           ctx.fillText(ft.txt, (ft.x | 0) + 2, ((ft.y - camY) | 0) + 2);
           ctx.fillStyle = ft.col;
@@ -2151,6 +2206,11 @@
 
       function startGameNow() {
         sfx.unlock();
+        /* v5.25: 월드 먼저 리셋 — 타이틀 숨기기 전에 동기 실행. 예전에는 진입 베일 콜백(__v59beginPlay)에서 리셋해서, 베일이 뜨기 전 ~100~250ms 동안 낡은 월드(이전 판 종료 상태)가 보였다. 재시작 버튼과 같은 순서. */
+        try { resetWorldAndPlayer(false); } catch (e) {}
+        /* v5.26: 데이터만 리셋하면 캔버스 비트맵은 옛날 화면 그대로다 — 그리는 건 다음 rAF라 베일이 걷히기 전엔 안 그려질 수 있다.
+           여기서 한 번 동기 렌더해서 캔버스 자체를 새 월드로 만든 뒤 타이틀을 숨긴다. */
+        try { render(); } catch (e) {}
         document.getElementById('titleScreen').classList.add('hidden');
         document.getElementById('pauseModal').classList.add('hidden');
         document.getElementById('victoryModal').classList.add('hidden');
@@ -2195,6 +2255,10 @@
         try { if (window.JWMode && JWMode.stopSolo) JWMode.stopSolo(); } catch (e) {}
         try { if (window.JW43 && JW43.resetModeState) JW43.resetModeState((window.JWMode && JWMode.rules && JWMode.rules.mode) || 'normal'); } catch (e) {}
         try { resetFeverSilent(); } catch (e) {}
+        /* v5.25: 타이틀로 나갈 때 월드도 중립 상태로 리셋 — 예전에는 이전 판 종료 상태가 캔버스에 그대로 남아 다음 시작 때 터졌다. */
+        try { resetWorldAndPlayer(false); } catch (e) {}
+        /* v5.26: 타이틀 뒤 캔버스도 새 월드로 즉시 그려둔다 (다음 시작 때 옛 화면이 안 보이게). */
+        try { render(); } catch (e) {}
         document.getElementById('pauseModal').classList.add('hidden');
         document.getElementById('victoryModal').classList.add('hidden');
         document.getElementById('gameHud').classList.add('hidden');
@@ -2393,6 +2457,8 @@ extends CanvasLayer
             /* v5.11: 다시 도전도 진입 베일로 가림 — 같은 맵이라 아트 준비됨, 즉시 닫힘 */
             try { showEntryVeil(); } catch (e) {}
             resetWorldAndPlayer(false);
+            /* v5.26: 캔버스도 즉시 새 월드로 그려둔다 (옛 화면 번쩍임 방지). */
+            try { render(); } catch (e) {}
           });
           document.getElementById('btnQuitToTitle').addEventListener('click', () => {
             if (window.JWG && JWG.state && JWG.state.phase !== 'idle') { document.getElementById('pauseModal').classList.add('hidden'); JWG.leave(); return; }
@@ -2403,13 +2469,28 @@ extends CanvasLayer
 
           const openSettings = () => {
             applyTouchLayout();
-            document.getElementById('settingsModal').classList.remove('hidden');
+            var _sm = document.getElementById('settingsModal');
+            _sm.classList.remove('hidden');
+            /* v5.27: overlayGuard가 박은 pointer-events:none을 즉시 해제 — 안 그러면 최대 900ms간 터치·스크롤이 안 먹힌다. */
+            if (_sm.__v51pe) { _sm.style.removeProperty('pointer-events'); _sm.__v51pe = 0; }
             try { if (window.__v51HubShow) window.__v51HubShow(window.__v51HubSec || 'ctrl'); } catch (e) {}
           };
           const closeSettings = () => {
             saveCtrl();
             try { if (window.__v51HubClose) window.__v51HubClose(); } catch (e) {}
             document.getElementById('settingsModal').classList.add('hidden');
+            /* v5.26: 설정은 일시정지 창에서 여는데, 열 때 일시정지 창이 숨겨진다(wireRulesEntry).
+               닫을 때 일시정지 창을 다시 안 보여주면 paused=true인 채로 '계속' 버튼이 없어 게임이 영영 멈춘다. */
+            try {
+              if (game.inPlay && game.paused) {
+                var _pm = document.getElementById('pauseModal');
+                if (_pm) {
+                  _pm.classList.remove('hidden');
+                  /* overlayGuard가 숨은 모달에 박은 pointer-events:none을 즉시 해제 — 안 그러면 최대 900ms간 계속 버튼이 안 눌린다 */
+                  if (_pm.__v51pe) { _pm.style.removeProperty('pointer-events'); _pm.__v51pe = 0; }
+                }
+              }
+            } catch (e) {}
           };
           document.getElementById('btnOpenSettingsTitle').addEventListener('click', openSettings);
           document.getElementById('btnOpenSettingsPause').addEventListener('click', openSettings);
@@ -2439,6 +2520,26 @@ extends CanvasLayer
             ctrl = { preset: 'split', offsetX: 0, offsetY: 0, scale: 100, sound: ctrl.sound, camMode: ctrl.camMode };
             applyTouchLayout();
             saveCtrl();
+            /* v5.26: 값은 돌아가는데 화면(프리셋 버튼·슬라이더)이 옛날 값을 보여주면 '안 됨'으로 보인다 — 보이는 UI도 같이 되돌린다. */
+            try {
+              document.querySelectorAll('.preset-btn').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-preset') === ctrl.preset); });
+              var _rx = document.getElementById('rngOffsetX'); if (_rx) _rx.value = ctrl.offsetX;
+              var _ry = document.getElementById('rngOffsetY'); if (_ry) _ry.value = ctrl.offsetY;
+              var _rs = document.getElementById('rngBtnScale'); if (_rs) _rs.value = ctrl.scale;
+            } catch (e) {}
+            /* v5.25: '기본값 초기화'는 조작만 리셋하던 게 버그 — 편리성(QOL) 설정도 기본값으로 되돌리고 화면도 갱신한다. */
+            try {
+              var J = window.JW43;
+              if (J && J.QOL && J.QOL_DEF) {
+                Object.keys(J.QOL).forEach(function (k) { if (k in J.QOL_DEF) J.QOL[k] = J.QOL_DEF[k]; });
+                if (J.saveQol) J.saveQol();
+                if (J.applyQolNow) J.applyQolNow();
+                if (J.renderQol) J.renderQol();
+              }
+            } catch (e) {}
+            try { if (typeof syncSingleSettingsUI === 'function') syncSingleSettingsUI(); } catch (e) {}
+            try { if (window.__v51FavPaint) window.__v51FavPaint(); } catch (e) {}
+            try { if (window.JW43 && window.JW43.toast) window.JW43.toast('🧹 초기화 완료', 'lucky', '기록은 그대로, 설정만 초기화했습니다', 2600); } catch (e) {}
           });
 
           const syncCamUI = () => {
@@ -2522,7 +2623,8 @@ extends CanvasLayer
           if (window.JWG && JWG.dtScale) dt *= JWG.dtScale();
           try {
             update(dt);
-            render();
+            /* v5.25: 일시정지 중에는 캔버스를 다시 그리지 않는다 — update()가 이미 멈춘 상태라 같은 정지 화면을 60fps로 다시 그리는 건 순수 낭비 (설정 모달 뒤에서도 계속 그려지던 문제). */
+            if (!game.paused) render();
           } catch (err) {
             console.error('Frame Error:', err);
           }
@@ -2766,9 +2868,13 @@ extends CanvasLayer
       };
       const retry = () => {
         if (self.closed) return;
+        /* v5.24: onerror와 onclose가 둘 다 retry를 불러 재시도 타이머가 2배로 늘어나는 폭증 방지.
+           릴레이가 끊겼을 때 WebSocket 에러가 기하급수적으로 불어나 메인 스레드를 잡아먹던 원인. */
+        if (st.retryPending) return;
+        st.retryPending = true;
         st.tries++;
         const wait = Math.min(20000, 1200 * Math.min(6, st.tries));
-        setTimeout(() => { if (!self.closed && !st.open) open(); }, wait);
+        setTimeout(() => { st.retryPending = false; if (!self.closed && !st.open) open(); }, wait);
       };
       this._openers = this._openers || {};
       this._openers[idx] = open;
@@ -3574,10 +3680,8 @@ extends CanvasLayer
       if (m.id === 'default') return false;
       /* 1) 하늘 그라데이션 (화면 고정) */
       const sky = m.sky || ['#0b1024', '#141b33', '#1e2745'];
-      const gg = ctx.createLinearGradient(0, 0, 0, logicalH);
-      gg.addColorStop(0, sky[0]); gg.addColorStop(0.55, sky[1]); gg.addColorStop(1, sky[2]);
-      ctx.fillStyle = gg;
-      ctx.fillRect(0, 0, W, logicalH);
+      /* v5.24 PERF: 하늘 그라데이션 캐시 (매 프레임 생성 + 전체화면 fill 제거) */
+      ctx.drawImage(window.__jwGradCanvas([[0, sky[0]], [0.55, sky[1]], [1, sky[2]]], logicalH), 0, 0, W, logicalH);
       const dec = decorFor(m);
       /* 2) 장식 레이어: 0.55 배 패럴랙스 반복 (배경은 살짝 눌러 발판이 잘 보이게) */
       ctx.globalAlpha = 0.92;
@@ -4857,7 +4961,11 @@ extends CanvasLayer
     }
     return TITLES.find((t) => t.id === id) || TITLES[0];
   }
-  function unlockedTitles(p) { return TITLES.filter((t) => t.need(p)); }
+  function unlockedTitles(p) {
+    /* v5.27: 개발자 계정에서는 모든 칭호가 해금된 것으로 본다. */
+    try { if (window.JWDEV && window.JWDEV.isDevAcct && window.JWDEV.isDevAcct()) return TITLES.slice(); } catch (e) {}
+    return TITLES.filter((t) => t.need(p));
+  }
   function bestTitleId(p) {
     let best = TITLES[0];
     TITLES.forEach((t) => { if (t.need(p) && t.rank > best.rank) best = t; });
@@ -6913,6 +7021,8 @@ extends CanvasLayer
 
   /* ---------- 아이템 사용 ---------- */
   function useItem(it) {
+    /* v5.26: 업적용 통계 — 아이템 사용 횟수가 S_STAT에 안 쌓여서 '아이템 수집가' 업적이 절대 안 열렸다. */
+    try { var _s43i = window.JW43 && window.JW43.STAT43; if (_s43i) _s43i.items = (_s43i.items || 0) + 1; if (window.JW43 && window.JW43.saveStat43) window.JW43.saveStat43(); } catch (e) {}
     if (it.kind === 'wing') {
       S.wings++;
       JW().addParticles(it.x, it.y, '#a7f3d0', 18, 170);
@@ -7330,21 +7440,24 @@ extends CanvasLayer
       const lcy = Math.max(16, Math.min(logicalH - 15, ry - 22));
       ctx.fillStyle = 'rgba(5,3,10,.85)';
       ctx.fillRect(lcx - nameW / 2, lcy, nameW, 13);
+      /* v5.24 PERF: 이름표 무지개 그라데이션 캐시 (멀티: 상대마다 매 프레임 2번 생성 제거 — 로컬 좌표 + translate) */
       if (tRank >= 5) {
-        const sg = ctx.createLinearGradient(lcx - nameW / 2, 0, lcx + nameW / 2, 0);
-        sg.addColorStop(0, '#f87171'); sg.addColorStop(0.3, '#fbbf24'); sg.addColorStop(0.6, '#34d399'); sg.addColorStop(1, '#a78bfa');
-        ctx.strokeStyle = sg;
-      } else if (tRank >= 3) ctx.strokeStyle = '#fbbf24';
-      else ctx.strokeStyle = hex;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(lcx - nameW / 2 + 0.5, lcy + 0.5, nameW - 1, 12);
+        ctx.save(); ctx.translate(lcx - nameW / 2, 0);
+        ctx.strokeStyle = window.__jwRainbowGrad(ctx, nameW);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0.5, lcy + 0.5, nameW - 1, 12);
+        ctx.restore();
+      } else {
+        if (tRank >= 3) ctx.strokeStyle = '#fbbf24'; else ctx.strokeStyle = hex;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(lcx - nameW / 2 + 0.5, lcy + 0.5, nameW - 1, 12);
+      }
       if (grad) {
-        const grd = ctx.createLinearGradient(lcx - nameW / 2, 0, lcx + nameW / 2, 0);
-        grd.addColorStop(0, '#f87171'); grd.addColorStop(0.3, '#fbbf24');
-        grd.addColorStop(0.6, '#34d399'); grd.addColorStop(1, '#a78bfa');
-        ctx.fillStyle = grd;
-      } else ctx.fillStyle = hex;
-      ctx.fillText(label, lcx, lcy + 10);
+        ctx.save(); ctx.translate(lcx - nameW / 2, 0);
+        ctx.fillStyle = window.__jwRainbowGrad(ctx, nameW);
+        ctx.fillText(label, nameW / 2, lcy + 10);
+        ctx.restore();
+      } else { ctx.fillStyle = hex; ctx.fillText(label, lcx, lcy + 10); }
       if (pr.elim) {
         ctx.fillStyle = 'rgba(3,5,12,.75)';
         ctx.fillRect(lcx - nameW / 2, lcy, nameW, 13);
@@ -7639,6 +7752,8 @@ extends CanvasLayer
     const mode = (S.room && S.room.mode) || 'normal';
 
     prof.races = (prof.races || 0) + 1;
+    /* v5.26: 업적용 통계 — 레이스 횟수가 S_STAT에 안 쌓여서 '첫 레이스' 업적이 절대 안 열렸다. */
+    try { var _s43r = window.JW43 && window.JW43.STAT43; if (_s43r) _s43r.races = (_s43r.races || 0) + 1; if (window.JW43 && window.JW43.saveStat43) window.JW43.saveStat43(); } catch (e) {}
     prof.origin = (prof.origin || 0) + (S.rs.origin || 0);
     prof.collide = (prof.collide || 0) + (S.rs.collide || 0);
     if (S.me.fin && S.rs.fin) prof.clears = (prof.clears || 0) + 1;
@@ -10720,9 +10835,8 @@ extends CanvasLayer
     };
     w.drawBackground = function (ctx, camY, lh) {
       if (MP() && MP().current === 'custom') {
-        const g = ctx.createLinearGradient(0, 0, 0, lh);
-        g.addColorStop(0, '#101a33'); g.addColorStop(0.55, '#16234a'); g.addColorStop(1, '#0b1226');
-        ctx.fillStyle = g; ctx.fillRect(0, 0, 540, lh);
+        /* v5.24 PERF: 커스텀맵 하늘 그라데이션 캐시 */
+        ctx.drawImage(window.__jwGradCanvas([[0, '#101a33'], [0.55, '#16234a'], [1, '#0b1226']], lh), 0, 0, 540, lh);
         ctx.fillStyle = 'rgba(196,181,253,.35)';
         for (let i = 0; i < 26; i++) {
           const sx = (i * 73) % 540, sy = (i * 131 - camY * 0.2) % lh;
@@ -10919,13 +11033,13 @@ extends CanvasLayer
       saveCfg(); paint();
     });
     cs.addEventListener('input', () => { CFG.chainMax = +cs.value; saveCfg(); });
-    /* v5.19-dev: 개발자 모드 PIN 해금 + ON/OFF 토글 (PIN은 문자열 '0209' 비교) */
+    /* v5.19-dev: 개발자 모드 PIN 해금 + ON/OFF 토글 (PIN 판정은 JWDEV.unlock의 해시 비교) */
     const dvB = $('v42CfgDev'), pinOk = $('v42DevPinOk'), pinInp = $('v42DevPin');
     if (dvB) dvB.addEventListener('click', () => {
       if (!window.JWDEV) return;
       if (!JWDEV.isUnlocked()) { JWDEV.toast('🔒 먼저 PIN을 입력해 해금해요', 'danger', 'PIN 4자리를 입력하고 해금을 눌러요', 2000); return; }
       JWDEV.setDev(!JWDEV.isDev());
-      JWDEV.toast(JWDEV.isDev() ? '🛠️ 개발자 모드 ON' : '🛠️ 개발자 모드 OFF', 'lucky', JWDEV.isDev() ? '게임 화면 오른쪽 위에 🛠️ 버튼이 떠요' : '🛠️ 버튼이 사라져요', 1800);
+      JWDEV.toast(JWDEV.isDev() ? '🛠️ 개발자 모드 ON' : '🛠️ 개발자 모드 OFF', 'lucky', JWDEV.isDev() ? '일시정지 메뉴(⏸) 안에 🛠️ 버튼이 생겨요' : '🛠️ 버튼이 사라져요', 1800);
       paint();
     });
     if (pinOk) pinOk.addEventListener('click', () => {
@@ -10934,7 +11048,7 @@ extends CanvasLayer
       const v = inp ? inp.value.trim() : '';
       if (JWDEV.unlock(v)) {
         if (inp) inp.value = '';
-        JWDEV.toast('🛠️ 개발자 모드 해금!', 'lucky', '개발자 모드를 켰어요 · 게임 화면 오른쪽 위에 🛠️ 버튼이 떠요', 2600);
+        JWDEV.toast('🛠️ 개발자 모드 해금!', 'lucky', '개발자 모드를 켰어요 · 일시정지 메뉴(⏸) 안에 🛠️ 버튼이 생겨요', 2600);
       } else {
         JWDEV.toast('PIN이 틀렸어요', 'danger', '4자리 PIN을 다시 입력해요', 2000);
         if (inp) inp.select();
@@ -10967,8 +11081,10 @@ extends CanvasLayer
       '<div class="v42-row"><span class="v42-lbl">🎵 BGM 페이드</span><button type="button" class="v42-chip" id="v51FavFade">ON</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">🏷️ 대사 태그 보기</span><button type="button" class="v42-chip" id="v51FavTags">ON</button></div>' +
       '<div class="v42-row"><span class="v42-lbl">⏸ 대사 저장 일시정지</span><button type="button" class="v42-chip" id="v51FavSavePause">저장 중</button></div>';
-    var first = card.querySelector('.v51-sec');
-    if (first) card.insertBefore(box, first); else card.appendChild(box);
+    /* v5.25: '자주 쓰는 설정'은 맨 위 고정이 아니라 카테고리(탭) 하나 — .v51-sec 섹션으로 만들고 show()가 탭으로 관리한다. */
+    box.className = 'v51-sec hidden';
+    box.setAttribute('data-hubsec', 'fav');
+    card.appendChild(box);
     /* v5.21: 저장 버튼을 카드 맨 아래로 — sticky bottom과 함께 스크롤 중에도 항상 보이게 */
     try {
       var sv = document.getElementById('btnSaveSettings');
@@ -10994,6 +11110,7 @@ extends CanvasLayer
     var tg = $('v51FavTags'); if (tg) tg.addEventListener('click', () => { Q.dlgTags = !(Q.dlgTags !== false); saveQ(); paint(); });
     var ps = $('v51FavSavePause'); if (ps) ps.addEventListener('click', () => { Q.dlgSavePause = !Q.dlgSavePause; saveQ(); paint(); });
     paint();
+    window.__v51FavPaint = paint; /* v5.25: 기본값 초기화 버튼이 다시 그릴 수 있게 노출 */
   }
   function injectResultButtons() {
     /* 싱글 결과창 */
@@ -11037,6 +11154,9 @@ extends CanvasLayer
     edLoad(); edRenderTypes(); edDraw();
     $('v42Editor').classList.remove('hidden');
   }
+  /* v5.23: v4.3 에디터 버튼이 숨은 v42 버튼을 거치지 않고 직접 열 수 있게 전역으로 내보낸다
+     (v42 IIFE와 v4.3 IIFE는 스코프가 달라서 V/root.JW43 경유는 안 됨) */
+  try { window.__jwOpenEditor = openEditor; } catch (e) {}
   function bindUI() {
     document.querySelectorAll('[data-v42close]').forEach((b) => b.addEventListener('click', () => {
       const id = b.getAttribute('data-v42close');
@@ -11669,6 +11789,9 @@ extends CanvasLayer
 
   /* ================================================================ 15. 타이틀 액션 그리드 (2 + 3 + 3) */
   function injectTitleRow() {
+    /* v5.23: 구 타이틀 줄(v4.2) 폐기 — 만들지 않는다. 숨기기만 하면 DOM에 남아 렉·버그 원인이 되므로,
+       v42TitleRow/2 + v42World를 아예 생성하지 않는다. 버튼은 v4.3 줄(v43TitleRow)이 담당한다. */
+    return;
     const menu = $('btnOpenSettingsTitle') && $('btnOpenSettingsTitle').closest('div');
     if (!menu || $('v42TitleRow')) return;
     const mk = (id, kind, label) => '<button type="button" id="' + id + '"><canvas class="v42-tico" data-ico="' + kind + '" width="24" height="24"></canvas><span>' + label + '</span></button>';
@@ -12113,21 +12236,21 @@ extends CanvasLayer
       try { if (root.JW43PANO && root.JW43PANO.drawBg(id, ctx, camY, lh)) return true; } catch (e) {}
       return O.drawBg.call(M, id, ctx, camY, lh);
     };
+    /* v5.24 PERF: 번호 숨김용 재사용 스크래치 (매 프레임 Object.assign 할당 제거) */
+    const _platNoNum = {};
     M.drawPlat = (id, ctx, p, px0, py0) => {
       if (N.has(id)) {
-        const st = { hidePlatNum: !!(V43.QOL && V43.QOL.platformNums === false) };
-        if (st.hidePlatNum && p.index > 0 && p.index % 5 === 0) {
-          /* 발판 번호 끄기: 그림만 그리고 번호는 지운다 */
-          N.drawPlat(id, ctx, p, px0, py0);
-          ctx.fillStyle = '#05030a';
-          ctx.fillRect(px0 + 3, py0 + 6, 36, 13);
-          N.drawPlat(id, ctx, Object.assign({}, p, { index: -1 }), px0, py0);
-          return true;
+        if (V43.QOL && V43.QOL.platformNums === false && p.index > 0 && p.index % 5 === 0) {
+          /* 발판 번호 끄기: index -1은 번호를 그리지 않는다(stamp 가드) — 한 번만 그린다.
+             예전엔 번호 그린 뒤 가리고 다시 그려서(3번 그리기 + Object.assign 할당) 렉 유발 */
+          for (const k in _platNoNum) delete _platNoNum[k];
+          Object.assign(_platNoNum, p);
+          _platNoNum.index = -1;
+          return N.drawPlat(id, ctx, _platNoNum, px0, py0);
         }
         return N.drawPlat(id, ctx, p, px0, py0);
       }
-      const st = { hidePlatNum: !!(V43.QOL && V43.QOL.platformNums === false) };
-      if (st.hidePlatNum && p.index > 0 && p.index % 5 === 0) {
+      if (V43.QOL && V43.QOL.platformNums === false && p.index > 0 && p.index % 5 === 0) {
         const r = O.drawPlat.call(M, id, ctx, p, px0, py0);
         ctx.fillStyle = 'rgba(5,3,10,.85)';
         ctx.fillRect(px0 + 2, py0 + 5, 38, 15);
@@ -12637,6 +12760,8 @@ extends CanvasLayer
   }
   V.HIDDEN_SKINS = HIDDEN_SKINS;
   V.skinLocked = function (id) {
+    /* v5.27: 개발자 계정에서는 모든 스킨(캐릭터)이 해금된 것으로 본다. */
+    try { if (window.JWDEV && window.JWDEV.isDevAcct && window.JWDEV.isDevAcct()) return false; } catch (e) {}
     const h = HIDDEN_SKINS.find((x) => x.id === id);
     if (!h) return false;
     try { return !h.lock(); } catch (e) { return true; }
@@ -15537,10 +15662,8 @@ extends CanvasLayer
       const m = BY_ID[id];
       if (!m) return false;
       const sky = m.sky || ['#0b1024', '#141b33', '#1e2745'];
-      const gg = ctx.createLinearGradient(0, 0, 0, logicalH);
-      gg.addColorStop(0, sky[0]); gg.addColorStop(0.55, sky[1]); gg.addColorStop(1, sky[2]);
-      ctx.fillStyle = gg;
-      ctx.fillRect(0, 0, W, logicalH);
+      /* v5.24 PERF: 하늘 그라데이션 캐시 (매 프레임 생성 + 전체화면 fill 제거) */
+      ctx.drawImage(window.__jwGradCanvas([[0, sky[0]], [0.55, sky[1]], [1, sky[2]]], logicalH), 0, 0, W, logicalH);
       const dec = decorFor(m);
       if (dec) {
         ctx.globalAlpha = 0.92;
@@ -15891,6 +16014,21 @@ extends CanvasLayer
 
   /* 하늘: 세계 좌표에 고정된 그라데이션 (반복 없음) */
   function sky(ctx, camY, G, stops) {
+    /* v5.24 PERF: 세계 높이 하늘 그라데이션은 한 번 구워두고 보이는 구간만 잘라 붙인다.
+       (원본과 동일한 색: stop 0 = 세계 아래, stop 1 = 세계 위. 카메라가 세계 밖에 있을 때만 원본 경로) */
+    const srcY0 = camY - G.top;
+    if (srcY0 >= 0 && srcY0 + G.H <= G.h) {
+      const mapped = [];
+      let key = '';
+      for (let i = 0; i < stops.length; i++) {
+        const pp = Math.max(0, Math.min(1, stops[i][0]));
+        const cc = toneCol(stops[i][1]);
+        mapped.push([pp, cc]); key += pp + ':' + cc + '|';
+      }
+      key += '@' + G.h;
+      const cv = window.__jwWorldGradCanvas(key, mapped, G.h);
+      if (cv) { ctx.drawImage(cv, 0, srcY0, 4, G.H, -40, 0, W + 80, G.H); return; }
+    }
     const g = ctx.createLinearGradient(0, G.bot - camY, 0, G.top - camY);
     for (let i = 0; i < stops.length; i++) {
       g.addColorStop(Math.max(0, Math.min(1, stops[i][0])), toneCol(stops[i][1]));
@@ -17900,12 +18038,8 @@ extends CanvasLayer
 
   /* 배경을 살짝 뒤로 물리는 소프트 베일 (발판 대비는 건드리지 않는다) */
   function softVeil(c, H) {
-    const g = c.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, 'rgba(10, 14, 28, 0.10)');
-    g.addColorStop(0.55, 'rgba(10, 14, 28, 0.04)');
-    g.addColorStop(1, 'rgba(10, 14, 28, 0.12)');
-    c.fillStyle = g;
-    c.fillRect(-40, 0, W + 80, H);
+    /* v5.24 PERF: 고정 베일 그라데이션 캐시 (매 프레임 생성 + 전체화면 fill 제거) */
+    c.drawImage(window.__jwGradCanvas([[0, 'rgba(10, 14, 28, 0.10)'], [0.55, 'rgba(10, 14, 28, 0.04)'], [1, 'rgba(10, 14, 28, 0.12)']], H), -40, 0, W + 80, H);
   }
 
   /* ---------------- 등록 ---------------- */
@@ -19434,6 +19568,8 @@ extends CanvasLayer
   function decorateMaps() {
     const list = $('v42MapList');
     if (!list) return;
+    /* v5.25: 맵 선택창이 닫혀 있으면 카드 재정렬을 건너뛴다 — 예전에는 1.5초마다 숨은 카드 64장을 다시 붙여서 레이아웃을 흔들었다. */
+    if (list.closest('.hidden')) return;
     const cards = [...list.children].filter((c) => c.getAttribute('data-map'));
     if (!cards.length) return;
     const f = favs();
@@ -22547,6 +22683,18 @@ extends CanvasLayer
       ST.lastJumps = g.jumps;
       saveStatThrottled();
     }
+    /* v5.26: 업적용 통계 — 최고층(bestPlat)·맵별 기록(maps)이 아예 안 쌓여서
+       30/50/80층 도달·여행자(5맵)·세계일주(10맵) 업적이 절대 안 열렸다. */
+    try {
+      if (pl.runBestPlat) {
+        var _nb = Math.max(S_STAT.bestPlat || 0, pl.runBestPlat);
+        if (_nb !== (S_STAT.bestPlat || 0)) { S_STAT.bestPlat = _nb; saveStatThrottled(); }
+        var _cm2 = 'default';
+        try { _cm2 = (window.JWMap && window.JWMap.current) || 'default'; } catch (e) {}
+        S_STAT.maps = S_STAT.maps || {};
+        if (!S_STAT.maps[_cm2] || S_STAT.maps[_cm2] < pl.runBestPlat) { S_STAT.maps[_cm2] = pl.runBestPlat; saveStatThrottled(); }
+      }
+    } catch (e) {}
     /* v4.6: 누적 등반 높이(m) — 오르는 동안 이동한 거리를 쌓는다 (무지개 이름표 해금 조건) */
     try {
       /* v4.7: 누적 등반(m)은 클래식·타임어택에서만 인정 (무한·하강·연습 편법 차단) */
@@ -22565,10 +22713,12 @@ extends CanvasLayer
         }
       }
     } catch (e) {}
-    /* 낙하 거리 */
+    /* 낙하 거리 — v5.27: 누적 낙하로 고친다. 예전에는 한 판 최고 낙하만 저장해서 '누적 낙하 100m' 업적이 절대 안 찼다. */
     if (pl.vy > 0 && !pl.onGround && pl.plat === null) {
-      ST.fallM += pl.vy * dt / 13.4;
-      S_STAT.fallM = Math.max(S_STAT.fallM || 0, Math.round(ST.fallM));
+      var _finc = pl.vy * dt / 13.4;
+      ST.fallM += _finc;
+      S_STAT.fallM = (S_STAT.fallM || 0) + _finc;
+      saveStatThrottled();
     }
     if (pl.onGround) ST.fallPeak = 0;
     /* 기록: 맵·모드별 (records43) */
@@ -22579,6 +22729,7 @@ extends CanvasLayer
       ST.combo++;
       ST.comboT = 2.4;
       S_STAT.maxCombo = Math.max(S_STAT.maxCombo || 0, ST.combo);
+      saveStatThrottled();
       if (ST.combo >= 10 && Q.aura) auroraFever();
     }
     if (!pl.chargeBoost || pl.chargeBoost <= 1) ST.boosted = false;
@@ -22632,15 +22783,26 @@ extends CanvasLayer
     if (Math.floor(ST.playSec) % 4 === 0) checkAch();
   }
   V.STAT43 = S_STAT;
-  V.saveStat43 = function () { try { S_STAT.playSec = Math.round(ST.playSec); saveStat(); } catch (e) {} };
+  /* v5.27: 플레이 시간 누적 — 예전에는 세션 시간으로 저장된 전체를 덮어써서, 다음 접속 때 어제 플레이 시간이 사라졌다.
+     이제는 새로 쌓인 시간(델타)만 더한다. */
+  function bankPlaySec() {
+    var _pd = ST.playSec - (ST._playBanked || 0);
+    if (_pd > 0) { S_STAT.playSec = Math.round((S_STAT.playSec || 0) + _pd); ST._playBanked = ST.playSec; }
+  }
+  V.saveStat43 = function () { try { bankPlaySec(); saveStat(); } catch (e) {} };
   let saveT = 0;
   function saveStatThrottled() {
     const t = performance.now();
     if (t - saveT < 1500) return;
     saveT = t;
-    S_STAT.playSec = Math.round(ST.playSec);
+    bankPlaySec();
     saveStat();
   }
+  /* v5.27: 탭을 닫거나 숨길 때 남은 플레이 시간을 저장 (안 그러면 마지막 구간이 날아간다). */
+  try {
+    document.addEventListener('visibilitychange', function () { if (document.hidden) { try { bankPlaySec(); saveStat(); } catch (e) {} } });
+    window.addEventListener('pagehide', function () { try { bankPlaySec(); saveStat(); } catch (e) {} });
+  } catch (e) {}
 
   function myRank() {
     const S = J() && V.st(), pl = J().player;
@@ -23118,8 +23280,10 @@ extends CanvasLayer
     const unlocked = Object.keys(ACH_STATE).length;
     let h = '<div class="v43-block"><b>📊 누적 기록</b>' +
       '<div class="v43-sumrow"><span class="k">총 점프</span><span class="v">' + (S_STAT.jump || 0).toLocaleString() + '회</span></div>' +
-      '<div class="v43-sumrow"><span class="k">총 낙하</span><span class="v">' + (S_STAT.fallM || 0) + 'm</span></div>' +
+      '<div class="v43-sumrow"><span class="k">총 낙하</span><span class="v">' + Math.round(S_STAT.fallM || 0) + 'm</span></div>' +
       '<div class="v43-sumrow"><span class="k">누적 플레이</span><span class="v">' + Math.round((S_STAT.playSec || 0) / 60) + '분</span></div>' +
+      '<div class="v43-sumrow"><span class="k">최고층</span><span class="v">' + (S_STAT.bestPlat || 0) + '층</span></div>' +
+      '<div class="v43-sumrow"><span class="k">누적 등반</span><span class="v">' + Math.round(S_STAT.climbM || 0).toLocaleString() + 'm</span></div>' +
       '<div class="v43-sumrow"><span class="k">최다 플레이 맵</span><span class="v">' + esc(mapName) + '</span></div>' +
       '<div class="v43-sumrow"><span class="k">최고 콤보</span><span class="v">' + (S_STAT.maxCombo || 0) + '콤보</span></div>' +
       '<div class="v43-sumrow"><span class="k">전체 완등</span><span class="v">' + (S_STAT.clears || 0) + '회</span></div>' +
@@ -23398,11 +23562,13 @@ extends CanvasLayer
     const skinBtn = $('v43OpenSkin2');
     if (skinBtn) skinBtn.addEventListener('click', () => {
       closeAll();
+      /* v5.27: 스킨 꾸미기 버튼도 통합 프로필로 간다 (프로필 버튼과 같은 화면). */
+      try { if (window.JW57PROF && window.JW57PROF.open) { window.JW57PROF.open('skin'); return; } } catch (e) {}
       const b = $('v42OpenSkin') || $('v42SkinBtn');
       if (b) b.click(); else if (V.openProfile) V.openProfile();
     });
     const ed = $('v43OpenEditor');
-    if (ed) ed.addEventListener('click', () => { closeAll(); const b = $('v42OpenEditor2') || $('v42OpenEditor'); if (b) b.click(); });
+    if (ed) ed.addEventListener('click', () => { closeAll(); try { if (window.__jwOpenEditor) window.__jwOpenEditor(); else { var b = $('v42OpenEditor2') || $('v42OpenEditor'); if (b) b.click(); } } catch (e) {} });
     const rk = $('v43OpenRank');
     if (rk) rk.addEventListener('click', () => {
       closeAll();
@@ -23626,8 +23792,29 @@ extends CanvasLayer
     const nickEl = $('v43ProfNick');
     if (nickEl && nickEl.value !== myNick()) nickEl.value = myNick();
     if ($('v43ProfName')) $('v43ProfName').textContent = myNick();
-    const titleNow = V.recTitleShort() || (V.api().meTitle ? V.api().meTitle() : '🌱 도전자');
-    if ($('v43ProfTitle')) $('v43ProfTitle').textContent = titleNow;
+    /* v5.27: 프로필 카드 칭호 — V.api().meTitle은 존재하지 않는 메서드라 항상 '🌱 도전자'로 떨어졌다.
+       장착한 칭호(myTitleId → JW51TITLES.equipped, 'auto'면 최고 등급 보유 칭호)로 바로 보여준다. */
+    const titleNow = V.recTitleShort() || (function () {
+      try {
+        var tid = '';
+        try { if (window.JW56T5 && window.JW56T5.myTitleId) tid = window.JW56T5.myTitleId() || ''; } catch (e0) {}
+        if (!tid) { try { var _r = V.lsGet('jw41_identity_v1', {}) || {}; tid = _r.title || ''; } catch (e1) {} }
+        if (tid && tid !== 'auto') {
+          var _t = (V.api().titles() || []).filter(function (x) { return x.id === tid; })[0];
+          if (_t) return _t.short || _t.name;
+        }
+        if (tid === 'auto') {
+          var _un = V.api().unlockedTitles ? V.api().unlockedTitles() : [];
+          var _best = null;
+          (_un || []).forEach(function (x) { if (x && (!_best || (x.rank || 0) > (_best.rank || 0))) _best = x; });
+          if (_best) return _best.short || _best.name;
+        }
+      } catch (e) {}
+      return '🌱 도전자';
+    })();
+    /* v5.27: textContent로 바꾸면 decorate()가 그린 배지 칩이 지워지고 data-v51b만 남아 다시 안 그려졌다.
+       배지 속성을 함께 지워서 decorate()가 다음 틱에 배지를 다시 그리게 한다. */
+    if ($('v43ProfTitle')) { $('v43ProfTitle').textContent = titleNow; $('v43ProfTitle').removeAttribute('data-v51b'); }
     if ($('v43ProfRec')) $('v43ProfRec').textContent = V.recTitleShort() ? ('🏅 ' + V.recTitleShort()) : '기록 칭호 없음';
     spriteTo($('v43ProfBig'), col, sk);
 
@@ -23642,10 +23829,10 @@ extends CanvasLayer
         V.toast('🎨 색상 변경', 'lucky', b.textContent, 1400);
       }));
     }
-    /* 스킨 */
+    /* 스킨 — v5.27: 프로필에서는 보유중인 스킨만 보여준다 (칭호와 같은 규칙). 장착중인 스킨은 잠겨 있어도 보인다. */
     const sw = $('v43ProfSkins');
     if (sw) {
-      const skins = MD().SKINS;
+      const skins = (MD().SKINS || []).filter((s) => s.id === sk || !(V.skinLocked && V.skinLocked(s.id)));
       sw.innerHTML = skins.map((s) => {
         const lk = V.skinLocked && V.skinLocked(s.id);
         return '<button type="button" class="v42-skcard' + (s.id === sk ? ' on' : '') + (lk ? ' locked' : '') + '" data-pskin="' + s.id + '" style="' + (lk ? 'opacity:.5' : '') + '"><canvas width="32" height="36"></canvas><span class="nm">' + (lk ? '🔒 ' : '') + s.emoji + ' ' + s.name + '</span>' + (lk ? '<span class="nm" style="font-size:8px;color:#fca5a5">' + (s.why || '스토리 클리어로 해금') + '</span>' : '') + '</button>';
@@ -23743,9 +23930,15 @@ extends CanvasLayer
   }
 
   V.openProfile = function () {
+    /* v5.27: 프로필은 이제 통합 프로필(JW57PROF)로 연다 — 스킨 꾸미기 버튼과 같은 화면. */
+    try {
+      if (window.JW57PROF && window.JW57PROF.open) { window.JW57PROF.open(); return; }
+    } catch (e) {}
     const m = $('v43Profile');
     if (!m) return;
     m.classList.remove('hidden');
+    /* v5.27: overlayGuard가 숨은 모달에 박은 pointer-events:none을 즉시 해제 — 안 그러면 최대 900ms간 터치·스크롤이 안 먹힌다. */
+    if (m.__v51pe) { m.style.removeProperty('pointer-events'); m.__v51pe = 0; }
     render();
   };
 
@@ -24161,12 +24354,14 @@ extends CanvasLayer
     try { st = (root.JW43 && root.JW43.achState) ? root.JW43.achState() : {}; } catch (e) {}
     const done = ach.filter((a) => st[a.id]).length;
     const min = Math.round((Number(stats.playSec) || 0) / 60);
-    sg.innerHTML = [
+    /* v5.23: 900ms마다 innerHTML을 다시 만들지 않는다 — 값이 바뀔 때만 갱신 (타이틀 렉 줄이기) */
+    var sgHtml = [
       ['완등', (Number(stats.clears) || 0) + '회'],
       ['최고 층', String(Number(stats.bestPlat) || 1).padStart(3, '0')],
       ['플레이', min + '분'],
       ['업적', done + ' / ' + (ach.length || 0)]
     ].map((x) => '<div class="sa-stat"><span>' + x[0] + '</span><b>' + x[1] + '</b></div>').join('');
+    if (sg.__v523html !== sgHtml) { sg.__v523html = sgHtml; sg.innerHTML = sgHtml; }
     const q = $('v44SideQuick');
     if (q) {
       const lt = document.documentElement.classList.contains('theme-light');
@@ -24293,6 +24488,11 @@ extends CanvasLayer
     '#v43GhostPause b { font-size:10px; padding:1px 6px; border:2px solid #475569; color:#94a3b8; }',
     '#v43GhostPause.on { border-color:#a78bfa; }',
     '#v43GhostPause.on b { background:#6d28d9; border-color:#c4b5fd; color:#fff; }',
+    /* 개발자 명령 버튼(일시정지 메뉴 안, v5.22: HUD 🛠️ 버튼을 여기로 이동) */
+    '#v44DevPause { width:100%; display:flex; align-items:center; justify-content:space-between; gap:6px;',
+    '  padding:7px 9px; font-size:11px; font-weight:900; cursor:pointer; background:#2e1065; color:#ede9fe;',
+    '  border:2px solid #a78bfa; }',
+    '#v44DevPause.hidden { display:none !important; }',
     '.v43-pauserow { display:grid; grid-template-columns:1fr 1fr; gap:6px; }',
     /* iPad/가로: 일시정지 버튼 왼쪽에 상태 박스를 같이, 우측 여백을 일정하게 */
     '#gameHud > div:first-child { padding-right:0 !important; }',
@@ -24375,9 +24575,45 @@ extends CanvasLayer
   }
 
   /* ================================================================ 2. 일시정지 메뉴 */
+  /* v5.22: 개발자 버튼 — 일시정지 메뉴 안으로 이동 (HUD 🛠️ 버튼 삭제).
+     개발자 모드 ON + 싱글 인게임일 때만 보임. 누르면 메뉴를 닫고 게임을 재개한 뒤
+     명령 입력창을 띄운다 (기존 HUD 버튼과 같은 동작). */
+  function syncPauseDevBtn(pm) {
+    var card = pm.querySelector('.flex.flex-col.gap-2\\.5') || pm.querySelector('.pixel-panel');
+    var btn = $('v44DevPause');
+    if (!btn) {
+      if (!card) return;
+      btn = doc.createElement('button');
+      btn.type = 'button';
+      btn.id = 'v44DevPause';
+      btn.className = 'hidden';
+      btn.innerHTML = '<span>🛠️ 개발자 명령</span><span style="font-size:9px;color:#c4b5fd">/top · /god · /fly · /skip · /unlockall · /bossskip</span>';
+      var anchor = $('btnOpenSettingsPause') || card.firstChild;
+      card.insertBefore(btn, anchor);
+      btn.addEventListener('click', function () {
+        try {
+          var m = $('pauseModal');
+          if (m) m.classList.add('hidden');
+          var g = J() && J().game;
+          if (g) g.paused = false;
+        } catch (e) {}
+        try { if (window.JWDEV) JWDEV.togglePanel(); } catch (e2) {}
+      });
+    }
+    var show = false;
+    try {
+      var g2 = J() && J().game;
+      var inPlay = !!(g2 && g2.inPlay && !g2.victory);
+      var multi = !!(window.JWDEV && JWDEV.inMultiRace && JWDEV.inMultiRace());
+      show = !!(inPlay && window.JWDEV && JWDEV.isDev && JWDEV.isDev() && !multi);
+    } catch (e) {}
+    btn.classList.toggle('hidden', !show);
+  }
   function pauseTools() {
     var pm = $('pauseModal');
-    if (!pm || $('v43GhostPause')) return;
+    if (!pm) return;
+    try { syncPauseDevBtn(pm); } catch (e) {}
+    if ($('v43GhostPause')) return;
     var card = pm.querySelector('.flex.flex-col.gap-2\\.5') || pm.querySelector('.pixel-panel');
     if (!card) return;
     var btn = doc.createElement('button');
@@ -25123,7 +25359,7 @@ extends CanvasLayer
   /* 맵별 전용 트랙: 파일 audio/bgm-<id>.mp3 가 있으면 그 맵에서 재생 */
   var MAP_TRACKS = ['default', 'dessert', 'site', 'space', 'bamboo', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano',
     'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji', 'london', 'skycastle', 'pirate', 'carnival', 'mushroom', 'cyberpunk', 'olympus', 'lab', 'canyon', 'santa', 'stadium', 'rockfest', 'onsen', 'honey', 'library', 'cheese', 'dino', 'alien', 'gyeongju', 'venice', 'snowclock', 'fireworks', 'baseball', 'retro20'];
-  /* v5.20: 신규 19맵 챕터 BGM (마누스 제작, 챕터별 1트랙 · 파일 assets/audio/chapter-bgm-01~08.mp3).
+  /* v5.20: 신규 19맵 챕터 BGM (마누스 제작, 챕터별 1트랙 · 파일 muse-v5-9/assets/audio/chapter-bgm-01~08.mp3).
      story-data.json newMaps19의 chapter(0~7) 순서대로 매칭 — 트랙 01이 1장(데이터 ch0 프롤로그),
      …, 트랙 08이 8장(데이터 ch7 심연의 문). 같은 챕터 맵끼리 같은 트랙 공유.
      (마누스 README 분위기 표기와 데이터 챕터명은 일부 다름 — 순번 기준 매칭) */
@@ -25137,7 +25373,7 @@ extends CanvasLayer
     sharkbay: 'ch6',
     trench: 'ch7', vcastle: 'ch7', demonking: 'ch7'
   };
-  /* v5.20: 신규 19맵 맵별 BGM (마누스 제작, 맵마다 고유 1트랙 · 파일 assets/audio/map-bgm-01~19.mp3).
+  /* v5.20: 신규 19맵 맵별 BGM (마누스 제작, 맵마다 고유 1트랙 · 파일 muse-v5-9/assets/audio/map-bgm-01~19.mp3).
      story-data.json newMaps19 순서와 1:1 대응 — 01 alley, 02 pond, 03 hatchery, 04 burrow,
      05 wheatfield, 06 octocave, 07 fruitfarm, 08 savanna, 09 halloween, 10 slimemarsh,
      11 boxing, 12 mansionclean, 13 oldinn, 14 hospital, 15 ruins, 16 sharkbay,
@@ -25161,7 +25397,7 @@ extends CanvasLayer
   function bgmChapterAudio(ci) {
     var a = new Audio();
     a.preload = 'none';
-    a.src = 'assets/audio/chapter-bgm-0' + (ci + 1) + '.mp3';
+    a.src = 'muse-v5-9/assets/audio/chapter-bgm-0' + (ci + 1) + '.mp3';
     a.loop = true; a.volume = 0;
     return a;
   }
@@ -25169,7 +25405,7 @@ extends CanvasLayer
   function bgmMapAudio(mi) {
     var a = new Audio();
     a.preload = 'none';
-    a.src = 'assets/audio/map-bgm-' + ('0' + (mi + 1)).slice(-2) + '.mp3';
+    a.src = 'muse-v5-9/assets/audio/map-bgm-' + ('0' + (mi + 1)).slice(-2) + '.mp3';
     a.loop = true; a.volume = 0;
     return a;
   }
@@ -25349,12 +25585,10 @@ extends CanvasLayer
         ' style="padding:4px 7px;font-size:10px' + (lk ? ';opacity:.5' : '') + '">' +
         (lk ? '🔒 ' : '') + (t.short || t.name) + '</button>';
     }
-    var h = '<div style="font-size:9.5px;font-weight:900;color:#86efac;margin:2px 0 3px">✅ 사용 가능(' + open.length + ')</div>';
+    /* v5.26: 프로필은 보유중인 것만 보여준다 (잠긴 칭호는 도감에서 확인). */
+    var h = '<div style="font-size:9.5px;font-weight:900;color:#86efac;margin:2px 0 3px">✅ 보유중(' + open.length + ')</div>';
+    if (!open.length) h += '<div style="font-size:11px;color:#93a8c8;font-weight:800;padding:6px 2px">아직 보유한 칭호가 없어요 — 도감에서 조건을 확인해요</div>';
     h += '<div style="display:flex;flex-wrap:wrap;gap:3px">' + open.map(function (t) { return chip(t, false); }).join('') + '</div>';
-    if (locked.length) {
-      h += '<div style="font-size:9.5px;font-weight:900;color:#fca5a5;margin:6px 0 3px">🔒 잠김(' + locked.length + ') · 조건을 달성하면 열립니다</div>';
-      h += '<div style="display:flex;flex-wrap:wrap;gap:3px">' + locked.map(function (t) { return chip(t, true); }).join('') + '</div>';
-    }
     box.innerHTML = h;
     box.addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('[data-ftitle]') : null;
@@ -25365,18 +25599,26 @@ extends CanvasLayer
         V.toast('🔒 잠긴 칭호', 'danger', t.why || '조건을 달성하면 열립니다', 2400);
         return;
       }
-      var inst = api.internals ? api.internals() : null;
-      if (inst && inst.ident) inst.ident.title = id;
-      var raw = V.lsGet('jw41_identity_v1', {}) || {};
-      raw.title = id; V.lsSet('jw41_identity_v1', raw);
-      if (V.lsGet('jw43_rectitle_v1', '')) V.lsSet('jw43_rectitle_v1', '');
-      try { api.renderLobby && api.renderLobby(); } catch (er) {}
+      /* v5.26: 통합 — 장착은 JW51TITLES.equip 하나로 (저장·잠금 검사·전 UI 갱신이 한 곳에서). */
+      if (window.JW51TITLES && window.JW51TITLES.equip) {
+        window.JW51TITLES.equip(id);
+      } else {
+        /* 폴백: 도감 모듈이 없을 때만 예전 방식으로 저장 */
+        var inst = api.internals ? api.internals() : null;
+        if (inst && inst.ident) inst.ident.title = id;
+        var raw = V.lsGet('jw41_identity_v1', {}) || {};
+        raw.title = id; V.lsSet('jw41_identity_v1', raw);
+        if (V.lsGet('jw43_rectitle_v1', '')) V.lsSet('jw43_rectitle_v1', '');
+        try { api.renderLobby && api.renderLobby(); } catch (er) {}
+        V.toast('🏅 칭호 변경', 'lucky', t.short || t.name || id, 1500);
+      }
       box.__v43fix = false;
       setTimeout(paintTitles, 60);
       paintTitleProfile();
-      V.toast('🏅 칭호 변경', 'lucky', t.short || t.name || id, 1500);
     });
   }
+  /* v5.26: 칭호 통합 — 도감에서 장착해도 프로필 칭호 목록이 바로 다시 그려지게 전역으로 노출 */
+  try { window.__paintProfTitles = paintTitles; } catch (e) {}
 
   /* ================================================================ 15. 전체화면 (v5.15: 강제 진입 제거 — ⛶ 버튼으로만) */
   function fsToggle() {
@@ -25779,6 +26021,18 @@ extends CanvasLayer
     } catch (e) { return null; }
   })();
   G.bossImg = BOSSIMG;
+  /* ---------- 보스 오버홀 1단계 (v5.22): 호랑이·유령 전용 아트 ---------- */
+  function bossFileImg(src) {
+    try {
+      const im = new Image();
+      im.src = src;
+      return im;
+    } catch (e) { return null; }
+  }
+  const BOSSTIGERIMG = bossFileImg('assets/boss-tiger.png');
+  const BOSSGHOSTIMG = bossFileImg('assets/boss-ghost.png');
+  G.bossTigerImg = BOSSTIGERIMG;
+  G.bossGhostImg = BOSSGHOSTIMG;
 
   function spawnBoss(kind) {
     const ps = plats();
@@ -26704,7 +26958,13 @@ extends CanvasLayer
       const sy = b.y - camY;
       if (sy > -260 && sy < lh + 260) {
         const bob = Math.sin((b.t || 0) * 2) * 3;
-        const img = (BOSSIMG && BOSSIMG.complete && BOSSIMG.naturalWidth) ? BOSSIMG : null;
+        /* v5.22: 보스 종족별 전용 아트 — 호랑이·유령은 생성 이미지, 나머지는 기존 boss-king.png */
+        const bform = (b.spec && b.spec.form) ? b.spec.form : null;
+        let bimg = BOSSIMG;
+        if (bform === 'tiger') bimg = BOSSTIGERIMG;
+        else if (bform === 'ghost') bimg = BOSSGHOSTIMG;
+        const img = (bimg && bimg.complete && bimg.naturalWidth) ? bimg
+          : ((BOSSIMG && BOSSIMG.complete && BOSSIMG.naturalWidth) ? BOSSIMG : null);
         /* 위험 오라 · 예고 붉은 기운 */
         const rage = (b.beam && b.beam.phase === 'warn') || b.weak;
         if (rage) {
@@ -27570,12 +27830,23 @@ extends CanvasLayer
       /* 아주 옅은 색 기운으로 기존 배경을 부드럽게 정리 */
       const tint = PAL[id];
       if (tint) {
-        const g = ctx.createLinearGradient(0, G2.top, 0, G2.bot);
-        g.addColorStop(0, 'rgba(8,12,26,.30)');
-        g.addColorStop(0.5, 'rgba(10,16,34,.42)');
-        g.addColorStop(1, tint + '3a');
-        ctx.fillStyle = g;
-        ctx.fillRect(-40, G2.top, W + 80, G2.bot - G2.top);
+        /* v5.24 PERF: 틴트 그라데이션도 세계 높이로 한 번 구워두고 보이는 구간만 붙인다.
+           원본 gradient (0,top)->(0,bot)와 맞추려고 stop 위치를 뒤집어(1-p) 캐시에 넣는다.
+           카메라가 세계 밖에 있을 때만 원본 경로. */
+        const tSrcY0 = camY - G2.top;
+        const tKey = id + '|' + tint + '@' + G2.h;
+        const tCv = (tSrcY0 >= 0 && tSrcY0 + H <= G2.h)
+          ? window.__jwWorldGradCanvas(tKey, [[1, 'rgba(8,12,26,.30)'], [0.5, 'rgba(10,16,34,.42)'], [0, tint + '3a']], G2.h)
+          : null;
+        if (tCv) { ctx.drawImage(tCv, 0, tSrcY0, 4, H, -40, camY, W + 80, H); }
+        else {
+          const g = ctx.createLinearGradient(0, G2.top, 0, G2.bot);
+          g.addColorStop(0, 'rgba(8,12,26,.30)');
+          g.addColorStop(0.5, 'rgba(10,16,34,.42)');
+          g.addColorStop(1, tint + '3a');
+          ctx.fillStyle = g;
+          ctx.fillRect(-40, G2.top, W + 80, G2.bot - G2.top);
+        }
       }
       root.__v44bandN = (root.__v44bandN || 0) + 1;
       drawComposition(id, ctx, camY, H, G2);
@@ -28881,6 +29152,8 @@ extends CanvasLayer
     const colList = (api.colors && api.colors()) || [];
     const curSkin = api.meSkin ? api.meSkin() : 'jaeu';
     const curCol = api.meColor ? api.meColor() : 'blue';
+    /* v5.27: 스킨 꾸미기에서도 보유중인 스킨만 보여준다 (프로필과 같은 규칙). 장착중인 스킨은 잠겨 있어도 보인다. */
+    var ownedSkins = (skinList || []).filter(function (sk) { return sk.id === curSkin || !(V.skinLocked && V.skinLocked(sk.id)); });
     const colHex = (id) => {
       const c = colList.find((x) => x.id === id);
       if (c) return c.hex || '#38bdf8';
@@ -28888,8 +29161,8 @@ extends CanvasLayer
     };
     box.innerHTML =
       '<canvas id="v44DecoCv" width="260" height="150" style="width:100%;height:auto;image-rendering:pixelated;border:2px solid #334155;background:#0b1222"></canvas>' +
-      '<div class="v43-block"><b>🧑 본체 스킨 ' + skinList.length + '종</b><div class="v44-skingrid">' +
-        skinList.map((sk) => '<button type="button" class="v44-skinbtn' + (sk.id === curSkin ? ' on' : '') + '" data-skinp="' + sk.id + '">' +
+      '<div class="v43-block"><b>🧑 본체 스킨 ' + ownedSkins.length + '종</b><div class="v44-skingrid">' +
+        ownedSkins.map((sk) => '<button type="button" class="v44-skinbtn' + (sk.id === curSkin ? ' on' : '') + '" data-skinp="' + sk.id + '">' +
           '<span>' + (sk.emoji || '🧑') + '</span><b>' + sk.name + '</b></button>').join('') + '</div></div>' +
       '<div class="v43-block"><b>🎨 색상 ' + colList.length + '종</b><div class="v44-colgrid">' +
         colList.map((c) => '<button type="button" class="v44-colbtn' + (c.id === curCol ? ' on' : '') + '" data-colp="' + c.id +
@@ -28909,7 +29182,10 @@ extends CanvasLayer
       requestAnimationFrame(tick);
     }
     box.querySelectorAll('[data-skinp]').forEach((b) => b.addEventListener('click', () => {
-      try { if (V.api().setSkin) V.api().setSkin(b.getAttribute('data-skinp')); } catch (e) {}
+      var _sid = b.getAttribute('data-skinp');
+      /* v5.27: 잠긴 스킨은 스튜디오에서도 장착 불가 (예전에는 잠금 검사 없이 바로 장착됐다). */
+      if (V.skinLocked && V.skinLocked(_sid)) { try { V.toast('🔒 잠긴 스킨', 'danger', '스토리 클리어로 해금됩니다', 2400); } catch (e) {} return; }
+      try { if (V.api().setSkin) V.api().setSkin(_sid); } catch (e) {}
       renderStudio();
       try { V.beep(760, 0.05, 0.07, 'square', 980); } catch (e) {}
     }));
@@ -30020,19 +30296,6 @@ extends CanvasLayer
       if (pause && pause.parentNode) pause.parentNode.insertBefore(b, pause);
       else body.appendChild(b);
     }
-    /* v5.19-dev: 개발자 명령 버튼 (개발자 모드 ON일 때만 syncPlayButtons가 표시) */
-    if (!$('v44DevBtn')) {
-      const b = document.createElement('button');
-      b.id = 'v44DevBtn';
-      b.type = 'button';
-      b.className = 'v44-pausebtn hidden';
-      b.textContent = '🛠️';
-      b.title = '개발자 명령';
-      b.addEventListener('click', () => { try { if (window.JWDEV) JWDEV.togglePanel(); } catch (e) {} });
-      const pause = $('btnPauseHud');
-      if (pause && pause.parentNode) pause.parentNode.insertBefore(b, pause);
-      else body.appendChild(b);
-    }
     if (!$('v44Dnd')) {
       /* 🔔 알림 토글은 인게임 하단 조작부에서 빼고 일시정지(설정) 안으로 */
       const b = document.createElement('button');
@@ -30102,13 +30365,6 @@ extends CanvasLayer
     const inPlay = !!(g && g.inPlay && !g.victory);
     const fr = $('v44FastRestart');
     if (fr) fr.classList.toggle('hidden', !inPlay);
-    /* v5.19-dev: 개발자 버튼은 싱글 인게임 + 개발자 모드 ON일 때만 (멀티 레이스 중 숨김) */
-    const dv = $('v44DevBtn');
-    if (dv) {
-      let dvMulti = false;
-      try { dvMulti = !!(window.JWDEV && JWDEV.inMultiRace && JWDEV.inMultiRace()); } catch (e) {}
-      dv.classList.toggle('hidden', !(inPlay && window.JWDEV && JWDEV.isDev && JWDEV.isDev() && !dvMulti));
-    }
     const dd = $('v44Dnd');
     if (dd) {
       dd.classList.toggle('hidden', !inPlay);
@@ -31227,7 +31483,7 @@ extends CanvasLayer
       sb.innerHTML = '<span style="font-size:15px">🎭</span><span>스킨·꾸미기</span>';
       const clone = sb.cloneNode(true);
       sb.parentNode.replaceChild(clone, sb);
-      clone.addEventListener('click', () => { closeAll(); openPanel('v44Deco', () => { if (G.renderStudio) G.renderStudio(); }); });
+      clone.addEventListener('click', () => { closeAll(); try { if (window.JW57PROF && window.JW57PROF.open) { window.JW57PROF.open('skin'); return; } } catch (e) {} openPanel('v44Deco', () => { if (G.renderStudio) G.renderStudio(); }); });
     }
     const rk = $('v43OpenRank');
     if (rk && rk.dataset.v44 !== '1') {
@@ -31258,6 +31514,8 @@ extends CanvasLayer
     const m = $(id);
     if (!m) return;
     m.classList.remove('hidden');
+    /* v5.27: overlayGuard가 박은 pointer-events:none을 즉시 해제 — 안 그러면 최대 900ms간 터치·스크롤이 안 먹힌다. */
+    if (m.__v51pe) { m.style.removeProperty('pointer-events'); m.__v51pe = 0; }
     try { if (render) render(); } catch (e) { console.warn('v44 panel', e); }
   }
   G.openPanel = openPanel;
@@ -31450,12 +31708,21 @@ extends CanvasLayer
     return tab + '|?';
   }
   function hubMaybeRefresh() {
-    /* 1초 틱에서 부른다 — 서명이 안 바뀌었으면 다시 그리지 않는다 (스크롤 유지).
-       칭호 탭은 제외: 검색창에 입력 중이면 통째로 다시 그릴 때 포커스가 날아간다 (예전 틱의 예외와 동일). */
+    /* 1초 틱에서 부른다 — 서명이 안 바뀌었으면 다시 그리지 않는다 (스크롤 유지). */
     try {
       var m = $('v44Codex');
       if (!m || m.classList.contains('hidden')) return;
-      if (codexTab === 'titles') return;
+      /* v5.26: 칭호 탭도 갱신한다 — 단, 목록(#v44HubTlList)만 다시 그려서 검색창 포커스는 유지.
+         예전에는 칭호 탭을 통째로 제외해서 프로필에서 장착해도 도감에 안 반영됐다. */
+      if (codexTab === 'titles') {
+        var sig = hubSigFor('titles');
+        if (sig !== hubLastSig) {
+          hubLastSig = sig;
+          var _b = $('v44CodexBody');
+          if (_b) paintTitlesList(_b);
+        }
+        return;
+      }
       codexShow(codexTab);
     } catch (e) {}
   }
@@ -31862,7 +32129,7 @@ extends CanvasLayer
       try { if (G.injectRivalSection) G.injectRivalSection(); } catch (e) {}
       try { G.paintStreak && G.paintStreak(); } catch (e) {}
       try { multiSetupCheck(); } catch (e) {}
-      try { if ($('v44Codex') && !$('v44Codex').classList.contains('hidden') && codexTab !== 'titles') hubMaybeRefresh(); } catch (e) {}
+      try { if ($('v44Codex') && !$('v44Codex').classList.contains('hidden')) hubMaybeRefresh(); } catch (e) {}
     }, 1000);
     /* 동작 확인용 전역 */
     root.JW44 = {
@@ -39884,7 +40151,13 @@ extends CanvasLayer
   }
   function ctrlSave(c) { try { localStorage.setItem(CK, JSON.stringify(c)); } catch (e) {} }
   var CPROPS = ['position', 'left', 'right', 'bottom', 'top', 'transform', 'transform-origin', 'opacity', 'z-index'];
+  var _ctrlAppliedRaw;
   function ctrlApply() {
+    /* v5.25: 600ms마다 같은 값을 다시 적용하지 않는다 — 바뀐 게 없으면 건너뛴다 (조작 버튼 스타일 재설정 방지). */
+    var _raw = null;
+    try { _raw = localStorage.getItem(CK); } catch (e) {}
+    if (_raw === _ctrlAppliedRaw) return;
+    _ctrlAppliedRaw = _raw;
     var c = ctrlLoad();
     var map = { L: 'touchBtnLeft', R: 'touchBtnRight', J: 'touchBtnJump' };
     /* v4.8.2: 사용자가 드래그 에디터에서 직접 옮겨 저장(edited)하기 전까지는
@@ -40384,14 +40657,23 @@ extends CanvasLayer
       '  font-size:13px;font-weight:900;line-height:1;color:#eaf3ff;background:rgba(255,255,255,.07);',
       '  border:1px solid rgba(160,195,245,.3);}',
       '#v50BotCtl button:active{background:rgba(125,211,252,.25);}',
-      /* 빈 자리 슬롯 */
-      '#mpLobby .mps-slot{padding:6px 8px !important;gap:6px !important;justify-content:flex-start !important;',
+      /* 빈 자리 슬롯 — v5.22: 버튼 하나로 합치고 자리 너비를 채움 (+ N은 왼쪽 고정, 버튼이 나머지 너비 차지·가운데 정렬) */
+      '#mpLobby .mps-slot{padding:6px 8px !important;gap:6px !important;justify-content:flex-start !important;align-items:center !important;',
       '  background:rgba(11,27,54,.55) !important;border:1px dashed rgba(96,165,250,.45) !important;border-radius:12px !important;}',
-      '#mpLobby .mps-slot .v50-slot-no{font-size:11px;font-weight:900;color:#8fb3e0;opacity:.9;margin-right:2px;}',
-      '#mpLobby .v50-slot-b{margin-left:auto;display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;',
+      '#mpLobby .mps-slot .v50-slot-no{flex:0 0 auto;font-size:11px;font-weight:900;color:#8fb3e0;opacity:.9;margin-right:2px;}',
+      '#mpLobby .v50-slot-b{flex:1 1 auto;min-width:0;justify-content:center;display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;',
       '  font-size:10.5px;font-weight:900;color:#dceaff;background:rgba(255,255,255,.07);border:1px solid rgba(150,190,255,.28);}',
-      '#mpLobby .v50-slot-b + .v50-slot-b{margin-left:4px;}',
       '#mpLobby .v50-slot-b:active{background:rgba(125,211,252,.24);}',
+      /* 빈 자리 추가 선택 팝업 (v5.22) */
+      '#v50SlotDim{position:fixed;inset:0;z-index:13010;background:transparent;}',
+      '#v50SlotDim.hidden{display:none !important;}',
+      '#v50SlotPick{position:fixed;z-index:13020;min-width:180px;display:flex;flex-direction:column;gap:6px;',
+      '  padding:8px;border-radius:14px;background:linear-gradient(180deg,rgba(30,42,68,.99),rgba(13,19,34,.99));',
+      '  border:1px solid rgba(150,190,255,.35);box-shadow:0 16px 40px rgba(0,0,0,.65);}',
+      '#v50SlotPick.hidden{display:none !important;}',
+      '#v50SlotPick button{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;',
+      '  font-size:13px;font-weight:900;color:#eaf3ff;background:rgba(255,255,255,.06);border:1px solid rgba(150,190,255,.22);text-align:left;}',
+      '#v50SlotPick button:active{background:rgba(125,211,252,.24);}',
       /* 하단 바 */
       '#mpLobby .sticky > #mpLobbyStatus:empty{display:none !important;}',
       '#mpLobby .sticky{padding-top:8px !important;}',
@@ -40664,7 +40946,8 @@ extends CanvasLayer
     if (!id) return '';
     /* v4.8.3: 1번 기본 맵도 전용 썸네일(default.jpg)을 쓴다 (인게임 맵은 그대로) */
     /* v4.8.5: 커스텀 맵 등 썸네일 파일이 없는 맵은 404 대신 기본 썸네일 */
-    var HAS = {'arcade':1,'arctic':1,'atlantis':1,'bamboo':1,'clock':1,'default':1,'dessert':1,'egypt':1,'fuji':1,'kitchen':1,'mansion':1,'newyork':1,'paris':1,'rainbow':1,'school':1,'seoul':1,'site':1,'space':1,'train':1,'volcano':1,'wuxia':1,'london':1,'skycastle':1,'pirate':1,'carnival':1,'mushroom':1,'cyberpunk':1,'olympus':1,'lab':1,'canyon':1,'santa':1,'stadium':1,'rockfest':1,'onsen':1,'honey':1,'library':1,'cheese':1,'dino':1,'alien':1,'gyeongju':1,'venice':1,'snowclock':1,'fireworks':1,'baseball':1,'retro20':1};
+    /* v5.23: 신규 19맵 추가 — '지금 고른 맵' 패널에 신규 맵 썸네일이 뜨게 (기본 썸네일 대신) */
+    var HAS = {'arcade':1,'arctic':1,'atlantis':1,'bamboo':1,'clock':1,'default':1,'dessert':1,'egypt':1,'fuji':1,'kitchen':1,'mansion':1,'newyork':1,'paris':1,'rainbow':1,'school':1,'seoul':1,'site':1,'space':1,'train':1,'volcano':1,'wuxia':1,'london':1,'skycastle':1,'pirate':1,'carnival':1,'mushroom':1,'cyberpunk':1,'olympus':1,'lab':1,'canyon':1,'santa':1,'stadium':1,'rockfest':1,'onsen':1,'honey':1,'library':1,'cheese':1,'dino':1,'alien':1,'gyeongju':1,'venice':1,'snowclock':1,'fireworks':1,'baseball':1,'retro20':1,'alley':1,'pond':1,'hatchery':1,'burrow':1,'wheatfield':1,'octocave':1,'fruitfarm':1,'savanna':1,'halloween':1,'slimemarsh':1,'boxing':1,'mansionclean':1,'oldinn':1,'hospital':1,'ruins':1,'sharkbay':1,'trench':1,'vcastle':1,'demonking':1};
     return 'assets/maps/t/' + (HAS[id] ? id : 'default') + '.jpg';
   }
 
@@ -40757,20 +41040,32 @@ extends CanvasLayer
         phead.insertBefore(ctl, $('mpRoomCount'));
       }
     }
-    /* 빈 자리: [🤖 봇] [📩 초대] */
-    var list = $('mpRoomPlayers');
-    if (list) {
-      Array.prototype.forEach.call(list.querySelectorAll('.mps-slot'), function (slot) {
-        if (slot.getAttribute('data-v50') === '1') return;
-        slot.setAttribute('data-v50', '1');
-        var no = (slot.textContent || '').match(/\d+/);
-        slot.innerHTML = '<span class="v50-slot-no">＋ ' + (no ? no[0] : '') + '</span>' +
-          '<button type="button" class="v50-slot-b" data-v50slot="bot">' + svg('bot', 14) + ' 봇</button>' +
-          '<button type="button" class="v50-slot-b" data-v50slot="inv">' + svg('mail', 14) + ' 초대</button>';
-        slot.querySelectorAll('[data-v50slot]').forEach(function (bb) {
+    /* 빈 자리: 버튼 하나로 합치고 누르면 [🤖 봇 추가 / 📩 친구 초대] 선택 팝업 (v5.22) */
+    function closeSlotPick() {
+      var d = $('v50SlotDim'), p = $('v50SlotPick');
+      if (d) d.classList.add('hidden');
+      if (p) p.classList.add('hidden');
+    }
+    function openSlotPick(anchorBtn) {
+      var d = $('v50SlotDim'), p = $('v50SlotPick');
+      if (!d) {
+        d = doc.createElement('div');
+        d.id = 'v50SlotDim';
+        d.className = 'hidden';
+        d.addEventListener('click', function () { closeSlotPick(); });
+        doc.body.appendChild(d);
+      }
+      if (!p) {
+        p = doc.createElement('div');
+        p.id = 'v50SlotPick';
+        p.className = 'hidden';
+        p.innerHTML = '<button type="button" data-pick="bot">🤖 봇 추가</button>' +
+          '<button type="button" data-pick="inv">📩 친구 초대</button>';
+        p.querySelectorAll('[data-pick]').forEach(function (bb) {
           bb.addEventListener('click', function (ev) {
             ev.preventDefault(); ev.stopPropagation();
-            if (bb.getAttribute('data-v50slot') === 'bot') {
+            closeSlotPick();
+            if (bb.getAttribute('data-pick') === 'bot') {
               try { V.addBot(1); } catch (e) {}
               setTimeout(paintSummary, 240);
             } else {
@@ -40778,6 +41073,41 @@ extends CanvasLayer
             }
           });
         });
+        doc.body.appendChild(p);
+      }
+      /* 버튼 아래에 띄우되 화면 아래가 모자라면 위로, 좌우는 화면 안에 맞춤 */
+      var r = anchorBtn.getBoundingClientRect();
+      p.classList.remove('hidden');
+      d.classList.remove('hidden');
+      var pw = Math.max(180, Math.min(r.width, window.innerWidth - 16));
+      var ph = p.offsetHeight || 110;
+      var left = Math.max(8, Math.min(r.left, window.innerWidth - pw - 8));
+      var top = (r.bottom + 6 + ph <= window.innerHeight) ? (r.bottom + 6) : Math.max(8, r.top - 6 - ph);
+      p.style.left = left + 'px';
+      p.style.top = top + 'px';
+      p.style.width = pw + 'px';
+    }
+    if (!doc.__v50SlotEsc) {
+      doc.__v50SlotEsc = true;
+      doc.addEventListener('keydown', function (e) {
+        if (e && e.key === 'Escape') closeSlotPick();
+      });
+    }
+    var list = $('mpRoomPlayers');
+    if (list) {
+      Array.prototype.forEach.call(list.querySelectorAll('.mps-slot'), function (slot) {
+        if (slot.getAttribute('data-v50') === '1') return;
+        slot.setAttribute('data-v50', '1');
+        var no = (slot.textContent || '').match(/\d+/);
+        slot.innerHTML = '<span class="v50-slot-no">＋ ' + (no ? no[0] : '') + '</span>' +
+          '<button type="button" class="v50-slot-b v50-slot-add" data-v50slot="add">' + svg('bot', 14) + ' 봇 · 초대</button>';
+        var ab = slot.querySelector('[data-v50slot="add"]');
+        if (ab) {
+          ab.addEventListener('click', function (ev) {
+            ev.preventDefault(); ev.stopPropagation();
+            openSlotPick(ab);
+          });
+        }
       });
     }
   }
@@ -41698,6 +42028,24 @@ extends CanvasLayer
       '  #titleScreen #v43SideArt .sa-card{height:auto !important;max-height:calc(100dvh - 60px) !important;}',
       '  #v50SideMapImg{max-height:44dvh !important;}',
       '  #titleScreen #v43SideArt #v43SideMap{max-height:44dvh !important;}',
+      '}',
+      /* --- 폰 타이틀 한 화면 (v5.22): 759px 이하에서 배너·프로필·버튼·간격 축소 —
+         스토리 모드·하단 메뉴까지 스크롤 없이 보이게. 맵 패널은 건드리지 않음. --- */
+      '@media (max-width:759px){',
+      '  #titleScreen > div.relative.z-10{padding:calc(env(safe-area-inset-top,0px) + 6px) 12px 10px !important;gap:6px !important;}',
+      '  #titleScreen .inline-flex.items-center.gap-2{margin-bottom:6px !important;padding:4px 10px !important;}',
+      '  #titleScreen #v43Cover{max-height:120px !important;}',
+      '  #titleScreen .mt-3.flex.items-center.gap-3.p-3{padding:9px 12px !important;margin-top:8px !important;gap:6px 10px !important;}',
+      '  #titleScreen #titlePortraitImg{width:44px !important;height:44px !important;}',
+      '  #titleScreen #titleBestHeight{font-size:18px !important;}',
+      '  #titleScreen .grid.grid-cols-2.gap-2{gap:8px !important;margin-top:8px !important;}',
+      '  #titleScreen #btnStartGame,#titleScreen #btnMultiplayer{min-height:60px !important;padding:9px 12px !important;}',
+      '  #titleScreen #btnStoryMode,#titleScreen #btnPatchNotes{padding:7px 12px !important;font-size:13px !important;}',
+      '  #titleScreen .mt-3.mb-2.flex.flex-col.gap-2{margin-top:8px !important;margin-bottom:4px !important;gap:6px !important;}',
+      '  #titleScreen #v43TitleRow{margin-top:8px !important;gap:6px !important;}',
+      '  #titleScreen #v43TitleRow button{height:52px !important;font-size:9px !important;}',
+      '  #titleScreen #v43TitleRow button span:first-child{font-size:17px !important;}',
+      '  #titleScreen #v43TestLink{margin:6px auto 0 !important;}',
       '}'
     ].join('\n');
     doc.head.appendChild(st0);
@@ -42018,7 +42366,7 @@ extends CanvasLayer
     if (!bar) return;
     var sp = bar.querySelectorAll('span');
     if (sp.length > 1 && (sp[1].textContent || '').indexOf('v4.8') < 0) {
-      sp[1].textContent = '★ v5.21 · 64 MAPS';
+      sp[1].textContent = '★ ' + (window.__JW_BUILD_VERSION || 'v5.26') + ' · 64 MAPS'; /* v5.26: 하드코딩된 v5.24가 아니라 실제 빌드 버전 */
     }
   }
 
@@ -42668,7 +43016,7 @@ extends CanvasLayer
      반환: null(스토리 아님) | { i: 스테이지 번호, map: mapId, name: 맵 표시 이름, label: 미션 문구|null } */
   var __storyData = null, __storyDataLoading = false;
   function loadStoryData() {
-    var urls = ['assets/story-data.json'];
+    var urls = ['assets/story-data.json', 'muse-v5-9/assets/story-data.json'];
     var i = 0;
     (function next() {
       if (i >= urls.length) { __storyDataLoading = false; return; }
@@ -45625,19 +45973,24 @@ extends CanvasLayer
       try { V.toast('🔒 잠긴 칭호', 'danger', t.why || '조건을 달성하면 열립니다', 2400); } catch (e) {}
       return;
     }
+    /* v5.26: 통합 — 장착은 JW51TITLES.equip 하나로. */
     try {
-      var inst = V.api().internals();
-      if (inst.ident) inst.ident.title = id;
-      var raw = V.lsGet('jw41_identity_v1', {}) || {};
-      raw.title = id;
-      V.lsSet('jw41_identity_v1', raw);
-      if (V.lsGet('jw43_rectitle_v1', '')) V.lsSet('jw43_rectitle_v1', '');
-      try { V.api().renderLobby && V.api().renderLobby(); } catch (e) {}
-      try { V.api().renderProfileCard && V.api().renderProfileCard(); } catch (e) {}
-      var box = $('v43ProfTitles');
-      if (box) box.__v43fix = false;
-      var t2 = titles().filter(function (x) { return x.id === id; })[0] || {};
-      V.toast('🏅 칭호 장착', 'lucky', t2.short || t2.name || id, 1600);
+      if (root.JW51TITLES && root.JW51TITLES.equip) {
+        root.JW51TITLES.equip(id);
+      } else {
+        var inst = V.api().internals();
+        if (inst.ident) inst.ident.title = id;
+        var raw = V.lsGet('jw41_identity_v1', {}) || {};
+        raw.title = id;
+        V.lsSet('jw41_identity_v1', raw);
+        if (V.lsGet('jw43_rectitle_v1', '')) V.lsSet('jw43_rectitle_v1', '');
+        try { V.api().renderLobby && V.api().renderLobby(); } catch (e) {}
+        try { V.api().renderProfileCard && V.api().renderProfileCard(); } catch (e) {}
+        var box = $('v43ProfTitles');
+        if (box) box.__v43fix = false;
+        var t2 = titles().filter(function (x) { return x.id === id; })[0] || {};
+        V.toast('🏅 칭호 장착', 'lucky', t2.short || t2.name || id, 1600);
+      }
       paintTitle(true);
     } catch (e) {}
   }
@@ -45750,7 +46103,9 @@ extends CanvasLayer
     'html body #mpLobby canvas.mpb-thumb, html body #mpLobbyRules canvas.mpb-thumb{display:none !important;}',
     'html body #mpLobby img.mpb-thumb-img{display:block !important;}',
     /* 대기실 아래로 삐져나오던 잔여 안내줄 제거 (필요한 안내는 토스트로) */
-    'html body #mpLobbyStatus{display:none !important;}'
+    'html body #mpLobbyStatus{display:none !important;}',
+    /* v5.27: 프로필 모달은 내용이 길어지면 스크롤돼야 한다 (가운데가 안 내려가던 문제 방지). */
+    'html body #v43Profile{overflow-y:auto !important;-webkit-overflow-scrolling:touch;}'
   ].join('\n');
   doc.head.appendChild(st);
 
@@ -52845,9 +53200,37 @@ function drawBossSprite(ctx, form, x, y, px, opts) {
   opts = opts || {};
   var mood = opts.mood || 'idle';
   var pal = s.pal, rows = s.rows;
+  /* v5.24 PERF: 16x16 픽셀아트를 매 프레임 ~200번 fillRect로 그리지 않고
+     (폼·표정·크기·반전)별로 한 번 구워두고 drawImage로 붙인다. 보스전 렉 완화.
+     베이크 실패 시(예: document 없음) 직접 그리기로 폴백. */
+  try {
+    var cacheKey = form + '|' + mood + '|' + px + '|' + (opts.flip ? '1' : '0');
+    var cache = drawBossSprite._c || (drawBossSprite._c = new Map());
+    var cv = cache.get(cacheKey);
+    if (!cv) {
+      cv = document.createElement('canvas');
+      cv.width = Math.ceil(16 * px); cv.height = Math.ceil(16 * px);
+      var bc = cv.getContext('2d');
+      drawBossPixels(bc, s, pal, rows, mood, px, opts, 0, 0);
+      if (cache.size > 48) cache.clear();
+      cache.set(cacheKey, cv);
+    }
+    ctx.save();
+    if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
+    ctx.drawImage(cv, Math.round(x), Math.round(y));
+    ctx.restore();
+    return true;
+  } catch (e) {
+    ctx.save();
+    if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
+    drawBossPixels(ctx, s, pal, rows, mood, px, opts, x, y);
+    ctx.restore();
+    return true;
+  }
+}
+/* 보스 픽셀아트 그리기 (c: 대상 ctx, ox/oy: 원점). 베이크용 + 직접 그리기용 공용. */
+function drawBossPixels(c, s, pal, rows, mood, px, opts, ox, oy) {
   var i, j, ch, col;
-  ctx.save();
-  if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
   for (i = 0; i < 16; i++) {
     for (j = 0; j < 16; j++) {
       ch = rows[i][j];
@@ -52858,14 +53241,14 @@ function drawBossSprite(ctx, form, x, y, px, opts) {
       if (mood === 'hurt' && (ch === 'E' || ch === 'G' || ch === 'H')) ch = 'K';
       col = pal[ch];
       if (!col) continue;
-      ctx.fillStyle = col;
+      c.fillStyle = col;
       var dx = opts.flip ? (15 - j) : j;
-      ctx.fillRect(Math.round(x + dx * px), Math.round(y + i * px), Math.ceil(px), Math.ceil(px));
+      c.fillRect(Math.round(ox + dx * px), Math.round(oy + i * px), Math.ceil(px), Math.ceil(px));
     }
   }
   /* 분노 눈썹: 눈 박스 위에 외곽선색으로 삐딱한 눈썹 3칸 */
   if (mood === 'angry' && s.eyes) {
-    ctx.fillStyle = pal.K;
+    c.fillStyle = pal.K;
     s.eyes.forEach(function (e, idx) {
       var ex = e[0], ey = e[1], ew = e[2];
       var dir = idx === 0 ? 1 : -1; /* 왼쪽 눈은 오른쪽으로 치켜, 오른쪽 눈은 왼쪽으로 치켜 */
@@ -52873,25 +53256,23 @@ function drawBossSprite(ctx, form, x, y, px, opts) {
         var bx = ex + (dir > 0 ? k : (ew - k));
         var by = ey - 1 - (dir > 0 ? 0 : 0);
         var fx = opts.flip ? (15 - bx) : bx;
-        ctx.fillRect(Math.round(x + fx * px), Math.round(y + (by - (k === ew ? 1 : 0)) * px), Math.ceil(px), Math.ceil(px));
+        c.fillRect(Math.round(ox + fx * px), Math.round(oy + (by - (k === ew ? 1 : 0)) * px), Math.ceil(px), Math.ceil(px));
       }
     });
   }
   /* 피격 X자: 눈 박스 안에 대각선 2줄 */
   if (mood === 'hurt' && s.eyes) {
-    ctx.fillStyle = pal.K;
+    c.fillStyle = pal.K;
     s.eyes.forEach(function (e) {
       var ex = e[0], ey = e[1], ew = e[2], eh = e[3];
       for (var k = 0; k < Math.max(ew, eh); k++) {
         [[ex + k, ey + k], [ex + ew - 1 - k, ey + k]].forEach(function (p) {
           var fx = opts.flip ? (15 - p[0]) : p[0];
-          ctx.fillRect(Math.round(x + fx * px), Math.round(y + p[1] * px), Math.ceil(px), Math.ceil(px));
+          c.fillRect(Math.round(ox + fx * px), Math.round(oy + p[1] * px), Math.ceil(px), Math.ceil(px));
         });
       }
     });
   }
-  ctx.restore();
-  return true;
 }
 
 /* ============================================================================
@@ -55257,7 +55638,8 @@ if (typeof module !== 'undefined' && module.exports) {
         ctx.save();
         ctx.globalAlpha = 0.55;
         try {
-          if (typeof drawBossSprite === 'function' && drawBossSprite(ctx, h.spec.form, h.x, cy2, (h.w / 96) * 6, { mood: 'idle' })) { /* muse-v5.9: 분신도 v2 스프라이트 */ }
+          if (drawBossFile(ctx, h.spec.form, h.x, cy2, h.w, h.w)) { /* v5.22: 분신도 생성 이미지 */ }
+          else if (typeof drawBossSprite === 'function' && drawBossSprite(ctx, h.spec.form, h.x, cy2, (h.w / 96) * 6, { mood: 'idle' })) { /* muse-v5.9: 분신도 v2 스프라이트 */ }
           else if (B.art && B.art[h.spec.form]) B.art[h.spec.form](ctx, h.x, cy2, h.w / 96, h.spec, 0.5);
         } catch (e) {}
         ctx.restore();
@@ -55317,6 +55699,26 @@ if (typeof module !== 'undefined' && module.exports) {
     }
   }
 
+  /* v5.22: 호랑이·유령 전용 생성 이미지 — 로드됐으면 파일 이미지를 쓰고,
+     아니면 기존 픽셀 스프라이트로 폴백 (이미지는 G.bossTigerImg/G.bossGhostImg에 프리로드됨) */
+  function bossFileImage(form) {
+    try {
+      var g = G();
+      var im = form === 'tiger' ? (g && g.bossTigerImg) : form === 'ghost' ? (g && g.bossGhostImg) : null;
+      return (im && im.complete && im.naturalWidth) ? im : null;
+    } catch (e) { return null; }
+  }
+  function drawBossFile(ctx, form, x, y, w, h) {
+    var im = bossFileImage(form);
+    if (!im) return false;
+    try {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(im, Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+      ctx.restore();
+      return true;
+    } catch (e) { return false; }
+  }
   function drawBoss(ctx, b, camY, lh) {
     var sy = b.y - camY;
     /* 화면 위로 벗어나 있으면 위치 표식 */
@@ -55367,11 +55769,14 @@ if (typeof module !== 'undefined' && module.exports) {
       /* muse-v5.9: 보스 v2 픽셀 스프라이트 (없으면 기존 도형 아트로 폴백) */
       var __bt = (b.ai ? b.ai.t : 0);
       var __mood = (b.ai && b.ai.act && !b.ai.act.fired1) ? 'angry' : (b.flash > 0 ? 'hurt' : ((__bt % 3.7) < 0.12 ? 'blink' : 'idle'));
-      if (typeof drawBossSprite === 'function' && drawBossSprite(ctx, b.spec.form, b.x, sy + bob, u * 6, { mood: __mood })) {
-        /* v2 스프라이트로 그림 */
-      } else if (B.art && B.art[b.spec.form]) B.art[b.spec.form](ctx, b.x, sy + bob, u, b.spec, b);
-      else {
-        ctx.fillStyle = c[0]; ctx.fillRect(b.x, sy + bob, b.w, b.h);
+      /* v5.22: 호랑이·유령은 생성 이미지 파일로 그리고, 그 외는 기존 픽셀 스프라이트 */
+      if (!drawBossFile(ctx, b.spec.form, b.x, sy + bob, b.w, b.h)) {
+        if (typeof drawBossSprite === 'function' && drawBossSprite(ctx, b.spec.form, b.x, sy + bob, u * 6, { mood: __mood })) {
+          /* v2 스프라이트로 그림 */
+        } else if (B.art && B.art[b.spec.form]) B.art[b.spec.form](ctx, b.x, sy + bob, u, b.spec, b);
+        else {
+          ctx.fillStyle = c[0]; ctx.fillRect(b.x, sy + bob, b.w, b.h);
+        }
       }
     } catch (e) { console.warn('v48b art', e); }
     ctx.restore();
@@ -56455,6 +56860,9 @@ if (typeof module !== 'undefined' && module.exports) {
   var heroCache = {};
   function bossPng(spec) {
     try {
+      /* v5.22: 호랑이·유령은 생성 이미지 파일을 그대로 쓴다 */
+      if (spec && spec.form === 'tiger') return 'assets/boss-tiger.png';
+      if (spec && spec.form === 'ghost') return 'assets/boss-ghost.png';
       if (heroCache[spec.form]) return heroCache[spec.form];
       var cv = doc.createElement('canvas');
       cv.width = 384; cv.height = 384;
@@ -61194,9 +61602,8 @@ if (typeof module !== 'undefined' && module.exports) {
       var m = BY[id];
       if (!m) return false;
       var sky = m.sky || ['#0b1024', '#141b33', '#1e2745'];
-      var gg = ctx.createLinearGradient(0, 0, 0, logicalH);
-      gg.addColorStop(0, sky[0]); gg.addColorStop(0.55, sky[1]); gg.addColorStop(1, sky[2]);
-      ctx.fillStyle = gg; ctx.fillRect(0, 0, W, logicalH);
+      /* v5.24 PERF: 하늘 그라데이션 캐시 */
+      ctx.drawImage(window.__jwGradCanvas([[0, sky[0]], [0.55, sky[1]], [1, sky[2]]], logicalH), 0, 0, W, logicalH);
       var dec = decorFor(m);
       if (dec) {
         ctx.globalAlpha = 0.92;
@@ -62352,9 +62759,8 @@ if (typeof module !== 'undefined' && module.exports) {
       if (e.err === 2) return false;
       /* 이미지 오는 동안: 하늘만 깔아 검은 화면을 막는다 */
       var sky = skyOf(id);
-      var gg = ctx.createLinearGradient(0, 0, 0, lh);
-      gg.addColorStop(0, sky[0]); gg.addColorStop(0.55, sky[1]); gg.addColorStop(1, sky[2]);
-      ctx.fillStyle = gg; ctx.fillRect(0, 0, W, lh);
+      /* v5.24 PERF: 하늘 그라데이션 캐시 */
+      ctx.drawImage(window.__jwGradCanvas([[0, sky[0]], [0.55, sky[1]], [1, sky[2]]], lh), 0, 0, W, lh);
       return true;
     }
     var H = lh;
@@ -62531,7 +62937,7 @@ if (typeof module !== 'undefined' && module.exports) {
     joinBanner: true,
     statsPlus: true,
     dev: false,      /* v5.19-dev: 개발자 모드 ON/OFF (PIN 해금 뒤 토글) */
-    devUnlock: false /* v5.19-dev: PIN 0209 해금 여부 (영구) */
+    devUnlock: false /* v5.19-dev: 개발자 PIN 해금 여부 (영구) */
   };
   function load() {
     var o = {};
@@ -62848,9 +63254,10 @@ if (typeof module !== 'undefined' && module.exports) {
 
 
 /* ===== v5.19-dev : 개발자 모드 + 치트 명령어 (태겸 확정 스펙, 2026-11-21) =====
-   - 설정 → PIN '0209'(문자열 비교) 입력 시 해금. 해금·ON/OFF는 jw51_cfg_v1의
+   - 설정 → 개발자 PIN 입력 시 해금 (v5.27: 평문 대신 해시 비교 — 소스에 PIN이 남지 않는다).
+     해금·ON/OFF는 jw51_cfg_v1의
      JW51U.CFG.dev / .devUnlock에 저장 (DEF 화이트리스트 포함이라 와이프에도 유지).
-   - 개발자 모드 ON일 때만 게임 화면 오른쪽 위에 🛠️ 버튼이 뜨고, 누르면 명령 입력창.
+   - 개발자 모드 ON일 때만 일시정지 메뉴(⏸) 안에 🛠️ 버튼이 뜨고, 누르면 명령 입력창.
    - 명령어(영어만, 슬래시 유무·대소문자 무관): /top /god /fly /skip /unlockall /bossskip.
      없는 명령어는 "없는 명령어야". 멀티 레이스 중에는 버튼 숨김 + 명령어 전부 차단.
    - god/fly는 세션 전용 토글(저장 안 함). 스토리 클리어 기록은 onStoryClear 훅에
@@ -62864,11 +63271,23 @@ if (typeof module !== 'undefined' && module.exports) {
   if (root.JWDEV) return;
   var doc = document;
 
-  var PIN = '0209'; /* 문자열 비교 — 숫자로 바꾸면 앞자리 0이 날아감 */
+  /* v5.27: PIN 평문 제거 — 소스 보기로 PIN이 바로 읽히지 않도록 salt를 섞은 FNV-1a 해시 두 번으로 비교한다.
+     (앞자리 0이 날아가지 않도록 입력은 항상 문자열로 다룬다. 동기 함수라 기존 unlock() 흐름 그대로.) */
+  var PIN_SALT = '#5.27|';
+  var PIN_HASH = 0x0ef722c2;
+  function fnv1a(str) {
+    var h = 0x811c9dc5, s = String(str);
+    for (var i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return h >>> 0;
+  }
+  function pinHash(str) { return fnv1a(String(fnv1a(PIN_SALT + String(str == null ? '' : str)))); }
   var KEY_CFG = 'jw51_cfg_v1';
   var KEY_STORY = 'jw64_story_v1';
   var KEY_CHAR = 'jw64_char_v1';
-  var DATA_URLS = ['assets/story-data.json'];
+  var DATA_URLS = ['assets/story-data.json', 'muse-v5-9/assets/story-data.json'];
 
   function $(id) { return doc.getElementById(id); }
   function lsGet(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
@@ -62880,6 +63299,79 @@ if (typeof module !== 'undefined' && module.exports) {
   function cfg() { try { if (root.JW51U && root.JW51U.CFG) return root.JW51U.CFG; } catch (e) {} return null; }
   function saveCfg() { try { if (root.JW51U && root.JW51U.save) root.JW51U.save(); } catch (e) {} }
   function readRaw() { var o = lsGet(KEY_CFG, {}) || {}; return { dev: !!o.dev, devUnlock: !!o.devUnlock }; }
+
+  /* ---------------- 개발자 계정 (v5.27) ----------------
+     개발자만 쓸 수 있는 별도 계정. 모든 것(칭호/이름표/테두리/캐릭터/스킨/스토리)이 해금돼 있다.
+     일반 계정과는 완전히 따로 논다: 전환할 때 일반 계정 진행도를 백업하고, 돌아올 때 복원한다.
+     (개발자 계정에서 논 기록은 일반 계정에 남지 않는다.) 전환은 페이지 새로고침으로 적용된다.
+     보호: PIN 해금(isUnlocked)이 된 개발자만 전환할 수 있다. */
+  var ACCT_KEYS = ['jw41_identity_v1', 'jw41_profile_v1', 'jw41_records_v1', 'jw43_stats_v1', 'jw43_ach_v1', 'jw43_rank_v1', 'jw43_best_v1', 'jw43_items_v1', 'jw51_board_v2', 'jw64_story_v1', 'jw64_char_v1', 'jw44_deco_v1'];
+  var KEY_ACCT_BACKUP = 'jw_dev_acct_backup_v1';
+  function isDevAcct() {
+    try { var c = cfg(); if (c) return !!c.devAcct; } catch (e) {}
+    try { var o = lsGet(KEY_CFG, {}) || {}; return !!o.devAcct; } catch (e) { return false; }
+  }
+  function setDevAcctFlag(on) {
+    try { var c = cfg(); if (c) { c.devAcct = !!on; saveCfg(); return; } } catch (e) {}
+    try { var raw = lsGet(KEY_CFG, {}) || {}; raw.devAcct = !!on; lsSet(KEY_CFG, raw); } catch (e) {}
+  }
+  function setDevAcct(on) {
+    on = !!on;
+    if (!D.isUnlocked()) { toast('🔒 개발자 해금이 필요해요', 'danger', '설정에서 PIN으로 개발자 모드를 먼저 해금하세요', 2600); return false; }
+    if (on === isDevAcct()) return true;
+    if (inMultiRace()) { toast('🚫 멀티 레이스 중에는 계정을 바꿀 수 없어', 'danger', '싱글·스토리 판에서만 바꿔요', 2200); return false; }
+    try {
+      if (on) {
+        var bk = {};
+        ACCT_KEYS.forEach(function (k) { try { var v = localStorage.getItem(k); if (v !== null) bk[k] = v; } catch (e) {} });
+        try { localStorage.setItem(KEY_ACCT_BACKUP, JSON.stringify(bk)); } catch (e) {}
+        setDevAcctFlag(true);
+        toast('👤 개발자 계정으로 전환', 'lucky', '모든 것이 해금된 계정입니다 · 돌아가면 일반 계정으로 복원돼요', 2600);
+      } else {
+        var raw = null;
+        try { raw = JSON.parse(localStorage.getItem(KEY_ACCT_BACKUP) || 'null'); } catch (e) {}
+        if (raw) {
+          ACCT_KEYS.forEach(function (k) {
+            try {
+              if (raw[k] !== undefined) localStorage.setItem(k, raw[k]);
+              else localStorage.removeItem(k);
+            } catch (e) {}
+          });
+          try { localStorage.removeItem(KEY_ACCT_BACKUP); } catch (e) {}
+        }
+        setDevAcctFlag(false);
+        toast('👤 일반 계정으로 복귀', 'lucky', '개발자 계정에서 논 기록은 저장되지 않았어요', 2600);
+      }
+    } catch (e) {}
+    setTimeout(function () { try { location.reload(); } catch (e) {} }, 700);
+    return true;
+  }
+  function paintAcctBtn() {
+    var b = $('devAcctBtn'), s = $('devAcctState');
+    if (!b) return;
+    var on = isDevAcct();
+    b.textContent = on ? '👤 일반 계정으로 돌아가기' : '👤 개발자 계정으로 전환';
+    if (s) s.textContent = on ? '지금은 개발자 계정 (모든 해금)' : '모든 것이 해금된 별도 계정';
+  }
+  function paintAcctBadge() {
+    try {
+      var on = isDevAcct();
+      var b = $('devAcctBadge');
+      if (on) {
+        if (!b) {
+          b = doc.createElement('button');
+          b.id = 'devAcctBadge';
+          b.type = 'button';
+          b.textContent = '🛠️ 개발자 계정 · 눌러서 일반 계정으로';
+          b.style.cssText = 'position:fixed;top:4px;left:50%;transform:translateX(-50%);z-index:99990;padding:3px 10px;border-radius:999px;background:rgba(124,58,237,.92);color:#fff;font-size:10px;font-weight:900;border:2px solid #e9d5ff;box-shadow:0 2px 8px rgba(0,0,0,.5);';
+          b.addEventListener('click', function () { setDevAcct(false); });
+          doc.body.appendChild(b);
+        }
+      } else if (b) {
+        b.remove();
+      }
+    } catch (e) {}
+  }
 
   /* ---------------- 멀티 판정 ---------------- */
   function inMultiRace() {
@@ -62915,7 +63407,8 @@ if (typeof module !== 'undefined' && module.exports) {
       '<span class="mp-lbl">🛠️ 개발자 명령</span>' +
       '<button id="devCmdClose" class="mp-chip" style="padding:3px 8px;font-size:11px">닫기 ✕</button></div>' +
       '<div id="devCmdLog"></div>' +
-      '<div style="font-size:11px;color:#94a3b8;font-weight:700">/top · /god · /fly · /skip · /unlockall · /bossskip — 슬래시 없이 쳐도 돼요</div>' +
+      '<div class="flex items-center gap-1.5"><button id="devAcctBtn" class="mp-btn" style="padding:6px 10px;font-size:11px">👤 개발자 계정으로 전환</button><span id="devAcctState" style="font-size:11px;color:#94a3b8;font-weight:700"></span></div>' +
+      '<div style="font-size:11px;color:#94a3b8;font-weight:700">/top · /god · /fly · /skip · /unlockall · /bossskip · /devacct — 슬래시 없이 쳐도 돼요</div>' +
       '<div class="flex gap-1.5">' +
       '<input id="devCmdInput" class="mp-in flex-1" maxlength="40" placeholder="/top — 명령어 입력 (Enter 전송)" />' +
       '<button id="devCmdSend" class="mp-btn blue" style="padding:8px 12px;font-size:12px">실행</button></div>';
@@ -62930,6 +63423,8 @@ if (typeof module !== 'undefined' && module.exports) {
     inp.addEventListener('blur', function () { setTyping(false); });
     $('devCmdSend').addEventListener('click', function () { run(inp.value); inp.value = ''; inp.focus(); });
     $('devCmdClose').addEventListener('click', function () { closePanel(); });
+    var _ab = $('devAcctBtn');
+    if (_ab) _ab.addEventListener('click', function () { setDevAcct(!isDevAcct()); });
   }
   function logLine(html) {
     var log = $('devCmdLog');
@@ -62947,6 +63442,7 @@ if (typeof module !== 'undefined' && module.exports) {
     var p = $('devCmdPanel');
     if (!p) return;
     p.classList.remove('hidden');
+    try { paintAcctBtn(); } catch (e) {}
     var inp = $('devCmdInput');
     if (inp) setTimeout(function () { try { inp.focus(); } catch (e) {} }, 30);
   }
@@ -63174,6 +63670,7 @@ if (typeof module !== 'undefined' && module.exports) {
       case 'skip': cmdSkip(); return;
       case 'unlockall': cmdUnlockAll(); return;
       case 'bossskip': cmdBossSkip(); return;
+      case 'devacct': setDevAcct(!isDevAcct()); return;
       default:
         toast('없는 명령어야', 'danger', '/top · /god · /fly · /skip · /unlockall · /bossskip 만 쓸 수 있어요', 2200);
         logLine('없는 명령어야');
@@ -63196,6 +63693,9 @@ if (typeof module !== 'undefined' && module.exports) {
       if (c) return !!c.devUnlock;
       return readRaw().devUnlock;
     },
+    /* v5.27: 개발자 계정 (PIN 해금된 개발자만 전환 가능) */
+    isDevAcct: isDevAcct,
+    setDevAcct: setDevAcct,
     setDev: function (on) {
       var c = cfg();
       if (c) { c.dev = !!on; saveCfg(); }
@@ -63205,7 +63705,7 @@ if (typeof module !== 'undefined' && module.exports) {
       return !!on;
     },
     unlock: function (pin) {
-      if (String(pin == null ? '' : pin).trim() !== PIN) return false;
+      if (pinHash(String(pin == null ? '' : pin).trim()) !== PIN_HASH) return false;
       var c = cfg();
       if (c) { c.devUnlock = true; c.dev = true; saveCfg(); }
       else {
@@ -63220,6 +63720,9 @@ if (typeof module !== 'undefined' && module.exports) {
     run: run,
     toast: toast
   };
+  /* v5.27: 개발자 계정 표시 배지 (켜져 있을 때만 상단에 뜬다). */
+  try { paintAcctBadge(); } catch (e) {}
+  try { setInterval(function () { try { paintAcctBadge(); } catch (e) {} }, 1500); } catch (e) {}
   root.JWDEV = D;
 })(window);
 
@@ -63750,7 +64253,8 @@ if (typeof module !== 'undefined' && module.exports) {
     var pwr = Math.max(0.14, power == null ? p.charge : power);
     var d = (dir == null ? dirNow(p) : dir);
     var L = launch(pwr, d, p);
-    var plats = (j.platforms || []).concat(j.abyssPlatforms || []);
+    var plats = (j.platforms || []), platsAbyss = (j.abyssPlatforms || []);
+    var nPlatsS = plats.length, nAbyssS = platsAbyss.length;
     var pw = p.w, ph = p.h;
     var dt = Math.max(1 / 240, Math.min(1 / 30, lastDt || 1 / 60));
     var x = p.x, y = p.y, vx = L.vx, vy = L.vy;
@@ -63772,8 +64276,8 @@ if (typeof module !== 'undefined' && module.exports) {
         break;
       }
       /* 엔진과 동일: 발판 하나씩 [착지 → 옆/머리 충돌] 순서로 검사 */
-      for (var i = 0; i < plats.length; i++) {
-        var q = plats[i];
+      for (var i = 0; i < nPlatsS + nAbyssS; i++) {
+        var q = i < nPlatsS ? plats[i] : platsAbyss[i - nPlatsS];
         if (!q || q.crumbled) continue;
         var pad = (g && g.activeEv && g.activeEv.id === 'celestial') ? 6 : 0;
         var pL = q.x - pad, pR = q.x + q.w + pad;
@@ -64753,9 +65257,9 @@ if (typeof module !== 'undefined' && module.exports) {
 /* ===== v59 inline block #71 (was index.html L66297-66857) ===== */
 
 /* ==========================================================================
-   v5.1-titles : 칭호 대개편 — 등급 · 일러스트 배지 · 45맵 클리어/1위 칭호
+   v5.1-titles : 칭호 대개편 — 등급 · 일러스트 배지 · 64맵 클리어/1위 칭호 (v5.23: 신규 19맵 추가)
    - 등급: 일반 / 희귀(블루) / 영웅(퍼플 네온) / 전설(골드·무지개) / 👑 1위 한정
-   - 45맵 각각 '클리어 칭호' + '랭킹 1위 전용 칭호'(맵별 고유 멘트, 1위 유지 시에만)
+   - 64맵 각각 '클리어 칭호' + '랭킹 1위 전용 칭호'(맵별 고유 멘트, 1위 유지 시에만)
    - 배지는 16×16 픽셀 아트를 canvas 로 구워 dataURL 로 어디서나 사용
    - 1위를 내주면 자동 잠금 + 장착 중이면 해제 안내
    ========================================================================== */
@@ -64815,13 +65319,34 @@ if (typeof module !== 'undefined' && module.exports) {
     fireworks:['불꽃놀이', '축제의 왕'],
     baseball: ['야간 경기', '나이트 게임 MVP'],
     retro20:  ['추억의 등반', '태초의 레전드'],
+    alley: ['골목길 등반가', '지붕 위의 왕'],
+    pond: ['연잎의 개구리', '연못의 왕'],
+    hatchery: ['병아리 친구', '양계장의 주인'],
+    burrow: ['토끼 굴 탐험가', '당근밭의 왕'],
+    wheatfield: ['밀밭의 수확자', '바람개비의 왕'],
+    octocave: ['항아리 동굴 탐험가', '문어의 왕'],
+    fruitfarm: ['바나나 농부', '과일 시장의 왕'],
+    savanna: ['사바나의 질주자', '초원의 왕'],
+    halloween: ['사탕 거리 탐험가', '할로윈의 왕'],
+    slimemarsh: ['슬라임 친구', '늪의 군주'],
+    boxing: ['링 위의 도전자', '링의 챔피언'],
+    mansionclean: ['대청소의 달인', '호화 저택의 주인'],
+    oldinn: ['강시 마을 탐험가', '객잔의 주인'],
+    hospital: ['응급실의 수호자', '병원의 원장'],
+    ruins: ['고대 폐허 탐험가', '돌 신전의 왕'],
+    sharkbay: ['상어 해류의 생존자', '바다의 사냥왕'],
+    trench: ['난파선 탐험가', '심해의 지배자'],
+    vcastle: ['지하 묘지의 탐험가', '뱀파이어의 왕'],
+    demonking: ['마왕성 도전자', '지옥의 지배자'],
     custom:   ['나만의 길', '창조의 지배자']
   };
   var ORDER = ['default', 'dessert', 'site', 'space', 'bamboo', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano',
     'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji',
     'london', 'skycastle', 'pirate', 'carnival', 'mushroom', 'cyberpunk', 'olympus', 'lab', 'canyon', 'santa',
     'stadium', 'rockfest', 'onsen', 'honey', 'library', 'cheese', 'dino', 'alien', 'gyeongju', 'venice',
-    'snowclock', 'fireworks', 'baseball', 'retro20'];
+    'snowclock', 'fireworks', 'baseball', 'retro20',
+    'alley', 'pond', 'hatchery', 'burrow', 'wheatfield', 'octocave', 'fruitfarm', 'savanna', 'halloween', 'slimemarsh',
+    'boxing', 'mansionclean', 'oldinn', 'hospital', 'ruins', 'sharkbay', 'trench', 'vcastle', 'demonking'];
 
   /* ---------- 등급 ---------- */
   /* common | rare | epic | legend | champion */
@@ -64885,7 +65410,11 @@ if (typeof module !== 'undefined' && module.exports) {
     carnival: 'star', mushroom: 'tree', cyberpunk: 'tower', olympus: 'dome', lab: 'wave', canyon: 'pyramid',
     santa: 'tree', stadium: 'dome', rockfest: 'star', onsen: 'tower', honey: 'dome', library: 'dome',
     cheese: 'pyramid', dino: 'skull', alien: 'star', gyeongju: 'dome', venice: 'boat', snowclock: 'tower',
-    fireworks: 'star', baseball: 'dome', retro20: 'tower', custom: 'gear'
+    fireworks: 'star', baseball: 'dome', retro20: 'tower',
+    alley: 'tower', pond: 'wave', hatchery: 'dome', burrow: 'tree', wheatfield: 'gear', octocave: 'wave',
+    fruitfarm: 'tree', savanna: 'tree', halloween: 'ghost', slimemarsh: 'wave', boxing: 'dome', mansionclean: 'dome',
+    oldinn: 'ghost', hospital: 'dome', ruins: 'pyramid', sharkbay: 'wave', trench: 'boat', vcastle: 'ghost',
+    demonking: 'fire', custom: 'gear'
   };
 
   /* ---------- 칭호 등록 ---------- */
@@ -65036,6 +65565,11 @@ if (typeof module !== 'undefined' && module.exports) {
       decorate();
       if (V.api().renderLobby) V.api().renderLobby();
       try { if (V.api().syncSingle) V.api().syncSingle(); } catch (e2) {}
+      /* v5.26: 통합 — 프로필 칭호 목록·프로필 카드·도감 모달까지 바로 갱신
+         (예전에는 프로필은 900ms 폴링에만 의존했고, 도감 탭은 아예 안 갱신됐다) */
+      try { if (window.__paintProfTitles) window.__paintProfTitles(); } catch (e2) {}
+      try { if (V.api().renderProfileCard) V.api().renderProfileCard(); } catch (e2) {}
+      try { paint(); } catch (e2) {}
     } catch (e) {}
     C.toast('🏅 칭호 장착', 'lucky', t.short || t.name, 1600);
     C.beep(1046, 0.1, 0.1, 'square', 1420);
@@ -65048,6 +65582,8 @@ if (typeof module !== 'undefined' && module.exports) {
   /* ---------- 1위 자동 잠금 ---------- */
   var lastChamp = null;
   function checkChamp() {
+    /* v5.27: 개발자 계정에서는 1위 칭호를 자동으로 해제하지 않는다. */
+    try { if (window.JWDEV && window.JWDEV.isDevAcct && window.JWDEV.isDevAcct()) return; } catch (e) {}
     var cur = equipped();
     var m = /^champ_(.+)$/.exec(cur);
     if (!m) return;
@@ -65237,7 +65773,9 @@ if (typeof module !== 'undefined' && module.exports) {
     var mm = meta(id);
     /* 프로필 카드 */
     var el = doc.getElementById('v43ProfTitle');
-    if (el && el.getAttribute('data-v51b') !== id) {
+    /* v5.27: 배지 칩이 실제로 없으면 다시 그린다 — render()가 textContent로 칩을 지워도
+       data-v51b만 남아서 다시 안 그려지던 문제(프로필 카드가 rookie로 고정)를 막는다. */
+    if (el && (el.getAttribute('data-v51b') !== id || !el.querySelector('.v58-ti'))) {
       el.setAttribute('data-v51b', id);
       el.innerHTML = badgeHtml(id, true);
     }
@@ -65282,7 +65820,7 @@ if (typeof module !== 'undefined' && module.exports) {
       b.type = 'button';
       b.className = 'v51btn gold sm';
       b.style.marginTop = '6px';
-      b.textContent = '🏅 칭호 도감 (45맵 · 1위 전용)';
+      b.textContent = '🏅 칭호 도감 (64맵 · 1위 전용)';
       b.addEventListener('click', function () { ensure(); doc.getElementById('v51Titles').classList.remove('hide'); paint(); });
       host.parentElement.appendChild(b);
     });
@@ -67765,6 +68303,383 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 
 
+/* ===== v5.23: 타이틀 전체화면 프롬프트 + 실제 보이는 높이에 맞춤 + 구 타이틀 UI 제거 ===== */
+/* v5.25: 갤럭시 프롬프트 확실히 뜨게 — (1) 키를 v3으로 올려서 거절한 사람도 한 번 더 물어봄 ('yes'만 v2/v1에서 이어받음).
+   (2) 프롬프트 z-index를 로딩 베일(99999)보다 위(100000)로 — 베일 뒤에 가려지던 문제 해결.
+   (3) 재시도 60초 상한 제거 — 모달이 오래 열려 있어도 타이틀이 보이면 계속 시도. */
+/* - 타이틀 화면이 뜰 때 "전체화면 하시겠습니까?" 1회 질문 (수락/거절 기억, 매번 안 물음)
+   - 수락: Fullscreen API (JW51FULL.enter). 아이폰(미지원)은 홈 화면 추가 안내 + 레이아웃 맞춤
+   - 타이틀 맞춤: 실제 보이는 높이(visualViewport.height || innerHeight)에 맞춰 내용이 넘치면
+     단계별 압축(tf1~tf3). fullscreenchange·resize·visualViewport·회전 때 다시 맞춤.
+     타이틀만 건드린다 (인게임·설정 안 건드림). 스크롤은 막지 않는다 — 길면 스크롤은 되게 둔다.
+   - 구 타이틀 UI 제거: v42 줄/월드 스트립은 숨기지 않고 DOM에서 완전히 제거한다.
+     (숨기기만 하면 DOM에 남아 렉·버그 원인이 됨 — "가리는 게 아니라 없애는 거")
+     ※ btnOpenSettingsTitle은 정적 버튼이라 로드 시 리스너가 붙으므로 DOM에 둔다 (display:none, 비용 없음).
+     v4.2 injectTitleRow는 v5.23에서 아예 만들지 않게 바꿨다 (위쪽 참조). */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V) return;
+  if (root.JW523TITLE) return;
+  root.JW523TITLE = true;
+  var doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  var KEY = 'jw_fs_prompt_v3';
+  var OLD_KEY = 'jw_fs_prompt_v2';
+  var promptOpen = false;
+  var retryTimer = null;
+  var NO_EXPIRE_MS = 24 * 60 * 60 * 1000; /* 거절은 24시간 뒤 다시 물어봄 */
+
+  /* ---------- CSS (타이틀만) ---------- */
+  function injectCss() {
+    if ($('v523TitleCss')) return;
+    var s = doc.createElement('style');
+    s.id = 'v523TitleCss';
+    s.textContent = [
+      '#titleScreen{height:100dvh;max-height:100dvh;}',
+      '@media (max-width:759px){',
+      '  #titleScreen.tf1 #v43Cover{max-height:80px !important;}',
+      '  #titleScreen.tf1 > div.relative.z-10 > div:first-child > p:nth-of-type(2){display:none !important;}',
+      '  #titleScreen.tf1 h1{font-size:24px !important;}',
+      '  #titleScreen.tf1 > div.relative.z-10 > div:first-child > p:nth-of-type(1){font-size:15px !important;}',
+      '  #titleScreen.tf2 #v43Cover{display:none !important;}',
+      '  #titleScreen.tf2 #titlePortraitImg{width:36px !important;height:36px !important;}',
+      '  #titleScreen.tf2 #btnStartGame,#titleScreen.tf2 #btnMultiplayer{min-height:52px !important;}',
+      '  #titleScreen.tf2 #titleBestHeight{font-size:16px !important;}',
+      '  #titleScreen.tf3 #v43TitleRow button{height:44px !important;}',
+      '  #titleScreen.tf3 #v43TestLink{display:none !important;}',
+      '}',
+      '#v523FsYes{background:linear-gradient(180deg,#fde047,#f59e0b);border:3px solid #78350f;color:#451a03;font-weight:900;border-radius:12px;padding:10px 14px;font-size:14px;cursor:pointer;flex:1;}',
+      '#v523FsNo{background:#1e293b;border:3px solid #475569;color:#e2e8f0;font-weight:900;border-radius:12px;padding:10px 14px;font-size:14px;cursor:pointer;flex:1;}',
+      '#v523FsTitleBtn{margin-left:auto;padding:2px 6px;font-size:12px;font-weight:900;color:#bfdbfe;background:#1e3a5f;border:1px solid #60a5fa;border-radius:8px;cursor:pointer;white-space:nowrap;flex:0 0 auto;}',
+      /* v5.25: 프롬프트를 로딩 베일(z-99999)보다 위에 — 예전에는 베일 뒤에 가려져서 느린 기기에서 안 보이는 것처럼 보였다. */
+      '#v523FsPrompt{z-index:100000 !important;}'
+    ].join('\n');
+    doc.head.appendChild(s);
+  }
+
+  /* ---------- 저장된 선택 ---------- */
+  /* v5.24: v1에서 'yes'만 이어받음 (수락한 사람은 다시 안 물어봄). 'no'는 이어받지 않음 — 다시 물어봄.
+     거절은 'no:<시간>'으로 저장하고 24시간 지나면 만료돼서 다시 물어봄. */
+  function migrateChoice() {
+    try {
+      if (localStorage.getItem(KEY)) return;
+      if (localStorage.getItem(OLD_KEY) === 'yes' || localStorage.getItem('jw_fs_prompt_v1') === 'yes') localStorage.setItem(KEY, 'yes');
+    } catch (e) {}
+  }
+  function choice() {
+    try {
+      var v = localStorage.getItem(KEY) || '';
+      if (!v) return '';
+      if (v === 'yes') return 'yes';
+      if (v.indexOf('no:') === 0) {
+        var t = parseInt(v.slice(3), 10);
+        if (!t || isNaN(t) || (Date.now() - t) > NO_EXPIRE_MS) return '';
+        return 'no';
+      }
+      return '';
+    } catch (e) { return ''; }
+  }
+  function saveChoice(v) {
+    try {
+      if (v === 'no') localStorage.setItem(KEY, 'no:' + Date.now());
+      else localStorage.setItem(KEY, v);
+    } catch (e) {}
+  }
+
+  /* ---------- 기기 판별 / 전체화면 ---------- */
+  function fsSupported() {
+    var e = doc.documentElement;
+    return !!(e.requestFullscreen || e.webkitRequestFullscreen || e.webkitRequestFullScreen || e.mozRequestFullScreen || e.msRequestFullscreen);
+  }
+  function fsOn() {
+    return !!(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement);
+  }
+  function enterFs() {
+    try {
+      if (root.JW51FULL && root.JW51FULL.enter) { root.JW51FULL.enter(); return true; }
+    } catch (e) {}
+    try {
+      var el = doc.documentElement;
+      var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+      if (!fn) return false;
+      var p = fn.call(el);
+      if (p && p.catch) p.catch(function () {});
+      return true;
+    } catch (e) { return false; }
+  }
+  function exitFs() {
+    try {
+      if (root.JW51FULL && root.JW51FULL.exit) { root.JW51FULL.exit(); return; }
+    } catch (e) {}
+    try {
+      var fn = doc.exitFullscreen || doc.webkitExitFullscreen || doc.webkitCancelFullScreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+      if (fn) fn.call(doc);
+    } catch (e) {}
+  }
+
+  /* ---------- 타이틀 맞춤: 실제 보이는 높이에 맞게 압축 (스크롤은 막지 않음) ---------- */
+  function visibleH() {
+    try {
+      if (window.visualViewport && window.visualViewport.height) return Math.round(window.visualViewport.height);
+    } catch (e) {}
+    return window.innerHeight || 0;
+  }
+  function fitTitle() {
+    var ts = $('titleScreen');
+    if (!ts || ts.classList.contains('hidden')) return;
+    var vh = visibleH();
+    if (vh > 0) {
+      ts.style.height = vh + 'px';
+      ts.style.maxHeight = vh + 'px';
+    }
+    /* 내용이 넘치면 단계별로 압축. 스크롤은 막지 않는다 (overflow-y-auto 그대로) —
+       tf3까지 해도 넘치면 그냥 스크롤이 된다. */
+    var lvl = 0, guard = 0;
+    ts.classList.remove('tf1', 'tf2', 'tf3');
+    try {
+      while (ts.scrollHeight > ts.clientHeight + 1 && lvl < 3 && guard < 5) {
+        lvl++; guard++;
+        ts.classList.add('tf' + lvl);
+      }
+    } catch (e) {}
+    try { doc.body.classList.toggle('v523-fs', fsOn()); } catch (e) {}
+  }
+
+  /* ---------- 구 타이틀 UI 제거 (숨기지 않고 DOM에서 완전히 제거) ---------- */
+  function removeOldTitleUI() {
+    ['v42TitleRow', 'v42TitleRow2', 'v42World'].forEach(function (id) {
+      try {
+        var el = $(id);
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+      } catch (e) {}
+    });
+  }
+
+  /* ---------- 전체화면 프롬프트 ---------- */
+  function buildPrompt() {
+    var m = $('v523FsPrompt');
+    if (m) return m;
+    m = doc.createElement('div');
+    m.id = 'v523FsPrompt';
+    m.className = 'v42-modal hidden';
+    m.innerHTML =
+      '<div class="v42-card" style="max-width:22rem;text-align:center">' +
+        '<div class="v42-t">⛶ 전체화면 하시겠습니까?</div>' +
+        '<div class="v42-sub" style="margin-top:6px">전체화면으로 보면 타이틀이 한 화면에 다 보여요.<br>나중에 설정에서도 바꿀 수 있어요.</div>' +
+        '<div style="display:flex;gap:8px;margin-top:14px">' +
+          '<button type="button" id="v523FsYes">전체화면으로 보기</button>' +
+          '<button type="button" id="v523FsNo">그냥 보기</button>' +
+        '</div>' +
+      '</div>';
+    doc.body.appendChild(m);
+    var yes = $('v523FsYes'), no = $('v523FsNo');
+    if (yes) yes.addEventListener('click', onAccept);
+    if (no) no.addEventListener('click', onDecline);
+    return m;
+  }
+  function showPrompt() {
+    if (promptOpen || choice()) return;
+    var ts = $('titleScreen');
+    if (!ts || ts.classList.contains('hidden')) return;
+    try {
+      if (doc.querySelector('.v42-modal:not(.hidden), .v43-modal:not(.hidden), .v44-modal:not(.hidden), #pauseModal:not(.hidden)')) return;
+    } catch (e) {}
+    var m = buildPrompt();
+    if (!m) return;
+    promptOpen = true;
+    stopRetry();
+    m.classList.remove('hidden');
+  }
+  function hidePrompt() {
+    var m = $('v523FsPrompt');
+    if (m) m.classList.add('hidden');
+    promptOpen = false;
+    stopRetry();
+  }
+  /* v5.25: 60초 상한 제거 — 모달이 60초 넘게 열려 있으면 재시도가 죽어서 프롬프트가 영영 안 뜨던 문제.
+     타이틀이 숨겨지면(게임 시작) 멈추고, 타이틀로 돌아오면 MutationObserver가 다시 깨운다. */
+  function tryPrompt() {
+    fitTitle();
+    showPrompt();
+    if (!promptOpen && !choice()) startRetry();
+  }
+  function startRetry() {
+    if (retryTimer) return;
+    retryTimer = setInterval(function () {
+      if (promptOpen || choice()) { stopRetry(); return; }
+      var ts = $('titleScreen');
+      if (!ts || ts.classList.contains('hidden')) { stopRetry(); return; }
+      showPrompt();
+      if (promptOpen) stopRetry();
+    }, 2000);
+  }
+  function stopRetry() {
+    if (retryTimer) { clearInterval(retryTimer); retryTimer = null; }
+  }
+  function onAccept() {
+    saveChoice('yes');
+    hidePrompt();
+    if (fsSupported()) {
+      enterFs();
+      setTimeout(fitTitle, 300);
+      setTimeout(fitTitle, 800);
+    } else {
+      showIphoneGuide();
+      fitTitle();
+    }
+  }
+  function onDecline() {
+    saveChoice('no');
+    hidePrompt();
+    fitTitle();
+  }
+  function showIphoneGuide() {
+    var m = buildPrompt();
+    if (!m) return;
+    var card = m.querySelector('.v42-card');
+    if (!card) return;
+    card.innerHTML =
+      '<div class="v42-t">📱 아이폰 전체화면 안내</div>' +
+      '<div class="v42-sub" style="margin-top:6px">아이폰 사파리는 전체화면 버튼이 안 돼요.<br>공유 버튼 → “홈 화면에 추가”를 하면<br>앱처럼 전체화면으로 열려요.</div>' +
+      '<div style="display:flex;gap:8px;margin-top:14px">' +
+        '<button type="button" id="v523FsYes" style="flex:1">확인</button>' +
+      '</div>';
+    var ok = $('v523FsYes');
+    if (ok) ok.addEventListener('click', function () { hidePrompt(); });
+    promptOpen = true;
+    m.classList.remove('hidden');
+  }
+
+  /* ---------- 타이틀 ⛶ 버튼 (버전 배지 줄 오른쪽) ---------- */
+  function addTitleFsBtn() {
+    try {
+      var row = doc.querySelector('#titleScreen .relative.z-10 .inline-flex.items-center.gap-2');
+      if (!row || $('v523FsTitleBtn')) return;
+      var b = doc.createElement('button');
+      b.type = 'button';
+      b.id = 'v523FsTitleBtn';
+      b.textContent = '⛶';
+      b.title = '전체화면';
+      b.addEventListener('click', function () {
+        try {
+          if (fsOn()) exitFs();
+          else if (fsSupported()) enterFs();
+          else showIphoneGuide();
+          setTimeout(fitTitle, 300);
+        } catch (e) {}
+      });
+      row.appendChild(b);
+    } catch (e) {}
+  }
+
+  /* ---------- 타이틀 표시 감지 (보일 때 맞춤 + 프롬프트 + 구 UI 제거) ---------- */
+  function onTitleVisible() {
+    try { removeOldTitleUI(); } catch (e) {}
+    try { addTitleFsBtn(); } catch (e) {}
+    fitTitle();
+    setTimeout(fitTitle, 120);
+    setTimeout(tryPrompt, 600);
+  }
+  function watchTitle() {
+    var ts = $('titleScreen');
+    if (!ts) return;
+    try {
+      var ob = new MutationObserver(function () {
+        try {
+          if (ts.classList.contains('hidden')) { hidePrompt(); return; }
+          onTitleVisible();
+        } catch (e) {}
+      });
+      ob.observe(ts, { attributes: true, attributeFilter: ['class'] });
+    } catch (e) {}
+  }
+
+  /* ---------- 리사이즈/전체화면 전환 때 다시 맞춤 ---------- */
+  function bindResize() {
+    var t = 0;
+    function debounced() {
+      var now = Date.now();
+      if (now - t < 120) return;
+      t = now;
+      fitTitle();
+    }
+    try { doc.addEventListener('fullscreenchange', function () { setTimeout(fitTitle, 60); setTimeout(fitTitle, 400); }); } catch (e) {}
+    try { doc.addEventListener('webkitfullscreenchange', function () { setTimeout(fitTitle, 60); setTimeout(fitTitle, 400); }); } catch (e) {}
+    try { window.addEventListener('resize', debounced); } catch (e) {}
+    try { window.addEventListener('orientationchange', function () { setTimeout(fitTitle, 300); setTimeout(fitTitle, 700); }); } catch (e) {}
+    try {
+      if (window.visualViewport) window.visualViewport.addEventListener('resize', debounced);
+    } catch (e) {}
+  }
+
+  /* ---------- 부트 ---------- */
+  try { migrateChoice(); } catch (e) {}
+  try { injectCss(); } catch (e) {}
+  try { removeOldTitleUI(); } catch (e) {}
+  try { addTitleFsBtn(); } catch (e) {}
+  try { watchTitle(); } catch (e) {}
+  try { bindResize(); } catch (e) {}
+  setTimeout(function () {
+    try {
+      var ts = $('titleScreen');
+      if (ts && !ts.classList.contains('hidden')) onTitleVisible();
+    } catch (e) {}
+  }, 900);
+  /* v5.24: 느린 기기(갤럭시) 대비 — 3초 뒤 한 번 더 확인 */
+  setTimeout(function () {
+    try {
+      var ts = $('titleScreen');
+      if (ts && !ts.classList.contains('hidden') && !choice() && !promptOpen) onTitleVisible();
+    } catch (e) {}
+  }, 3000);
+  console.log('[JW523TITLE] fullscreen prompt + title fit ready');
+
+/* ===== v5.26: 버전 확인 — 캐시된 옛날 빌드가 돌고 있으면 새 버전 알림 + 새로고침 =====
+   원인: index.html이 캐시돼서 옛날 game.js를 부르면 고친 게 기기에 안 먹힌다 (갤럭시 ⛶ 없음·전환 안 고쳐짐·초기화 안 됨이 전부 이거였다).
+   게임이 켜질 때 patch-notes.json을 캐시 없이 받아서 최신 버전과 지금 빌드를 비교한다. */
+(function (root) {
+  'use strict';
+  var BUILD = 'v5.27';
+  root.__JW_BUILD_VERSION = BUILD;
+  function norm(v) { return String(v || '').replace(/-정식$/, '').trim(); }
+  function titleVisible() { try { var t = document.getElementById('titleScreen'); return !!(t && !t.classList.contains('hidden')); } catch (e) { return false; } }
+  var bannerShown = false, autoDone = false;
+  try { autoDone = sessionStorage.getItem('jw526_autoref') === '1'; } catch (e) {}
+  function showBanner(ver) {
+    if (bannerShown) return; bannerShown = true;
+    try {
+      var b = document.createElement('div');
+      b.id = 'v526VerBanner';
+      b.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:10px;z-index:200000;display:flex;gap:8px;align-items:center;background:#1e3a5f;border:2px solid #60a5fa;color:#dbeafe;font-weight:900;font-size:13px;padding:10px 12px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.5);max-width:94vw;';
+      b.innerHTML = '<span>🎉 새 버전 ' + ver + '이 있어요!</span><button type="button" style="background:#fbbf24;color:#451a03;border:2px solid #78350f;border-radius:9px;padding:6px 10px;font-weight:900;cursor:pointer;white-space:nowrap;">새로고침</button>';
+      b.querySelector('button').addEventListener('click', function () { location.reload(); });
+      document.body.appendChild(b);
+    } catch (e) {}
+  }
+  function check() {
+    try {
+      fetch('assets/patch-notes.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+        var es = (d && d.entries) || [];
+        var last = es[es.length - 1];
+        var remote = last && last.version ? norm(last.version) : '';
+        if (!remote || remote === norm(BUILD)) return;
+        if (!titleVisible()) return;
+        showBanner(last.version);
+        if (!autoDone) {
+          try { sessionStorage.setItem('jw526_autoref', '1'); autoDone = true; } catch (e) {}
+          setTimeout(function () { try { if (titleVisible()) location.reload(); } catch (e) {} }, 4000);
+        }
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  setTimeout(check, 2000);
+  setInterval(check, 120000);
+  root.__JW526VER = { check: check, build: BUILD };
+})(window);
+})(window);
+
+
 /* ===== v59 inline block #82 (was index.html L69299-69582) ===== */
 
 /* ==========================================================================
@@ -69567,10 +70482,15 @@ if (typeof module !== 'undefined' && module.exports) {
   var $ = function (id) { return doc.getElementById(id); };
   var KEY = 'v56_tag_on_v1';
 
+  /* v5.25: on() 결과를 캐시 — 예전에는 프레임마다 localStorage를 3번 읽었다 (JW56TAG rAF + v97UI 인터벌 + __jwgAfter). 쓰는 곳은 setOn 하나라 캐시가 안전하다. */
+  var _onCache = null;
   function on() {
-    try { var v = localStorage.getItem(KEY); return v === null ? true : v === '1'; } catch (e) { return true; }
+    if (_onCache !== null) return _onCache;
+    try { var v = localStorage.getItem(KEY); _onCache = (v === null ? true : v === '1'); } catch (e) { _onCache = true; }
+    return _onCache;
   }
   function setOn(v) {
+    _onCache = !!v;
     try { localStorage.setItem(KEY, v ? '1' : '0'); } catch (e) {}
     var el = $('v51IGTag');
     if (el && !v) el.style.display = 'none';
@@ -70046,18 +70966,47 @@ if (typeof module !== 'undefined' && module.exports) {
     try { (V.__rankClearers || []).forEach(function (f) { try { f(); } catch (e) {} }); } catch (e) {}
   };
   function myNick() { try { var s = V.st(); return (s && s.me && s.me.nick) || ''; } catch (e) { return ''; } }
-  function isChampAny() {
+  /* v5.26: 1등 판정 수정 — 예전에는 내 기록만 있는 맵도 1등으로 쳤다 (로컬 랭킹에 내 기록만 있으면 best가 나).
+     그래서 👑 정상의 황제 이름표·👑 왕좌의 황금 테두리가 조건 없이 풀렸다. 진짜 1등은 다른 사람이 최소 1명은 있는 맵에서 내가 1등일 때만. */
+  function champMaps() {
     var me = String(myNick()).trim();
-    if (!me) return false;
-    var best = {};
+    if (!me) return [];
+    var per = {};
     rankAll().forEach(function (r) {
       if (!r || !r.map) return;
       if (r.mode !== 'pureclassic') return;    /* 🏛️ 클래식 1위만 인정 */
       var n = String(r.n || '').trim(), m = Number(r.m) || 0;
-      if (!best[r.map] || m > best[r.map].m) best[r.map] = { n: n, m: m };
+      var e = per[r.map] || (per[r.map] = { best: null, nicks: {} });
+      e.nicks[n] = 1;
+      if (!e.best || m > e.best.m) e.best = { n: n, m: m };
     });
-    return Object.keys(best).length > 0 && Object.keys(best).some(function (k) { return best[k].n === me; });
+    var out = [];
+    Object.keys(per).forEach(function (k) {
+      var e = per[k];
+      if (e.best && e.best.n === me && Object.keys(e.nicks).length >= 2) out.push(k);
+    });
+    return out;
   }
+  function isChampAny() { return champMaps().length > 0; }
+  function isChampCount() { return champMaps().length; }
+  function clearsTotal() {
+    var a = 0, b2 = 0;
+    try { a = (prof().clears || 0); } catch (e) {}
+    try { b2 = (V.STAT43 && V.STAT43.clears) || 0; } catch (e) {}
+    return Math.max(a, b2);
+  }
+  var CHAP = {
+    ch0: ['school', 'alley', 'pond', 'clock'],
+    ch1: ['mushroom', 'honey', 'cheese', 'hatchery', 'burrow', 'wheatfield', 'santa', 'dessert', 'retro20'],
+    ch2: ['octocave', 'atlantis', 'fruitfarm', 'savanna', 'halloween', 'slimemarsh', 'venice', 'onsen'],
+    ch3: ['seoul', 'london', 'kitchen', 'arcade', 'carnival', 'stadium', 'baseball', 'boxing', 'mansionclean', 'gyeongju'],
+    ch4: ['egypt', 'dino', 'rainbow', 'newyork', 'site', 'train', 'arctic', 'oldinn'],
+    ch5: ['mansion', 'rockfest', 'hospital', 'lab', 'volcano', 'canyon', 'library', 'ruins'],
+    ch6: ['olympus', 'fireworks', 'space', 'pirate', 'sharkbay', 'fuji', 'paris'],
+    ch7: ['bamboo', 'wuxia', 'cyberpunk', 'alien', 'snowclock', 'trench', 'vcastle', 'demonking', 'skycastle', 'default']
+  };
+  function chapDone(ids) { var b = board(); for (var i = 0; i < ids.length; i++) if (b.indexOf(ids[i]) < 0) return false; return true; }
+  function chapProg(ids) { var b = board(), n = 0; for (var i = 0; i < ids.length; i++) if (b.indexOf(ids[i]) >= 0) n++; return n + ' / ' + ids.length + ' 맵'; }
   function bossCleared() { var a = ach(); return !!(a.clear1 || a.boss || a.bossrush || a.raid); }
   function timeattackBest() {
     var me = String(myNick()).trim(), best = 0;
@@ -70073,7 +71022,19 @@ if (typeof module !== 'undefined' && module.exports) {
     { id: 'cyber', name: '💜 사이버 네온', cls: 'v57-pl-cyber', why: '⏱️ 타임어택 40층 이상', need: function () { return timeattackBest() >= 40; }, prog: function () { return Math.round(timeattackBest()) + ' / 40층'; } },
     { id: 'blood', name: '🩸 블러드 문', cls: 'v57-pl-blood', why: '🥊 보스 러시 격파', need: function () { return bossCleared(); }, prog: function () { return bossCleared() ? '달성' : '보스 러시 격파 필요'; } },
     { id: 'prism', name: '💎 천상 프리즘', cls: 'v57-pl-prism', why: '45맵 클래식 올클리어', need: function () { return board().length >= 45; }, prog: function () { return board().length + ' / 45 맵'; } },
-    { id: 'emperor', name: '👑 정상의 황제', cls: 'v57-pl-emperor', king: true, why: '클래식 모드 랭킹 1등', need: function () { return isChampAny(); }, prog: function () { return isChampAny() ? '1등 유지 중' : '랭킹 1등 필요'; } }
+    { id: 'emperor', name: '👑 정상의 황제', cls: 'v57-pl-emperor', king: true, why: '클래식 모드 랭킹 1등', need: function () { return isChampAny(); }, prog: function () { return isChampAny() ? '1등 유지 중' : '랭킹 1등 필요'; } },
+    { id: 'ch0', name: '📕 프롤로그의 탈출자', cls: 'v57-plx v57-pl-ch0', why: '프롤로그 4맵 올클리어', need: function () { return chapDone(CHAP.ch0); }, prog: function () { return chapProg(CHAP.ch0); } },
+    { id: 'ch1', name: '🌲 숲의 친구', cls: 'v57-plx v57-pl-ch1', why: '1장 숲과 들 9맵 올클리어', need: function () { return chapDone(CHAP.ch1); }, prog: function () { return chapProg(CHAP.ch1); } },
+    { id: 'ch2', name: '🌊 바다의 여행자', cls: 'v57-plx v57-pl-ch2', why: '2장 바다와 이국 8맵 올클리어', need: function () { return chapDone(CHAP.ch2); }, prog: function () { return chapProg(CHAP.ch2); } },
+    { id: 'ch3', name: '🌆 도시의 하루', cls: 'v57-plx v57-pl-ch3', why: '3장 도시의 하루 10맵 올클리어', need: function () { return chapDone(CHAP.ch3); }, prog: function () { return chapProg(CHAP.ch3); } },
+    { id: 'ch4', name: '✈️ 세계 여행자', cls: 'v57-plx v57-pl-ch4', why: '4장 세계 여행 8맵 올클리어', need: function () { return chapDone(CHAP.ch4); }, prog: function () { return chapProg(CHAP.ch4); } },
+    { id: 'ch5', name: '🌙 밤의 탐험가', cls: 'v57-plx v57-pl-ch5', why: '5장 밤의 세계 8맵 올클리어', need: function () { return chapDone(CHAP.ch5); }, prog: function () { return chapProg(CHAP.ch5); } },
+    { id: 'ch6', name: '🌌 신화의 별', cls: 'v57-plx v57-pl-ch6', why: '6장 신화와 우주 7맵 올클리어', need: function () { return chapDone(CHAP.ch6); }, prog: function () { return chapProg(CHAP.ch6); } },
+    { id: 'ch7', name: '🚪 심연의 문지기', cls: 'v57-plx v57-pl-ch7', why: '7장 심연의 문 10맵 올클리어', need: function () { return chapDone(CHAP.ch7); }, prog: function () { return chapProg(CHAP.ch7); } },
+    { id: 'climb25k', name: '🌋 25,000m 등반가', cls: 'v57-plx v57-pl-climb25k', why: '누적 등반 25,000m', need: function () { return climb() >= 25000; }, prog: function () { return Math.round(climb()) + ' / 25,000m'; } },
+    { id: 'climb50k', name: '☁️ 50,000m 등반가', cls: 'v57-plx v57-pl-climb50k', why: '누적 등반 50,000m', need: function () { return climb() >= 50000; }, prog: function () { return Math.round(climb()) + ' / 50,000m'; } },
+    { id: 'combo30', name: '⚡ 30콤보', cls: 'v57-plx v57-pl-combo30', why: '한 판 30콤보', need: function () { return ((V.STAT43 && V.STAT43.maxCombo) || 0) >= 30; }, prog: function () { return ((V.STAT43 && V.STAT43.maxCombo) || 0) + ' / 30콤보'; } },
+    { id: 'clears50', name: '🏆 완등 50회', cls: 'v57-plx v57-pl-clears50', why: '정상 50번', need: function () { return clearsTotal() >= 50; }, prog: function () { return clearsTotal() + ' / 50회'; } }
   ];
   /* ---------- 테두리 ---------- */
   var FRAMES = [
@@ -70085,7 +71046,30 @@ if (typeof module !== 'undefined' && module.exports) {
     { id: 'fire', name: '🔥 용암 불꽃', cls: 'v57-fr-fire', why: '보스 러시 격파', need: function () { return bossCleared(); }, prog: function () { return bossCleared() ? '달성' : '보스 러시 격파 필요'; } },
     { id: 'holo', name: '🪩 홀로그램', cls: 'v57-fr-holo', why: '타임어택 40층', need: function () { return timeattackBest() >= 40; }, prog: function () { return Math.round(timeattackBest()) + ' / 40층'; } },
     { id: 'knight', name: '🛡️ 황금 기사단', cls: 'v57-fr-knight', why: '45맵 올클리어', need: function () { return board().length >= 45; }, prog: function () { return board().length + ' / 45 맵'; } },
-    { id: 'crown', name: '👑 왕좌의 황금', cls: 'v57-fr-crown', king: true, why: '클래식 모드 랭킹 1등', need: function () { return isChampAny(); }, prog: function () { return isChampAny() ? '1등 유지 중' : '랭킹 1등 필요'; } }
+    { id: 'crown', name: '👑 왕좌의 황금', cls: 'v57-fr-crown', king: true, why: '클래식 모드 랭킹 1등', need: function () { return isChampAny(); }, prog: function () { return isChampAny() ? '1등 유지 중' : '랭킹 1등 필요'; } },
+    { id: 'fr-alley', name: '🐱 골목 고양이', cls: 'v57-fr-alley', why: '고양이 골목 클리어', need: function () { return board().indexOf('alley') >= 0; }, prog: function () { return board().indexOf('alley') >= 0 ? '달성' : '고양이 골목 클리어 필요'; } },
+    { id: 'fr-pond', name: '💧 연못 물결', cls: 'v57-fr-pond', why: '개울가 연못 클리어', need: function () { return board().indexOf('pond') >= 0; }, prog: function () { return board().indexOf('pond') >= 0 ? '달성' : '개울가 연못 클리어 필요'; } },
+    { id: 'fr-hatchery', name: '🐣 병아리', cls: 'v57-fr-hatchery', why: '병아리 양계장 클리어', need: function () { return board().indexOf('hatchery') >= 0; }, prog: function () { return board().indexOf('hatchery') >= 0 ? '달성' : '병아리 양계장 클리어 필요'; } },
+    { id: 'fr-burrow', name: '🥕 당근밭', cls: 'v57-fr-burrow', why: '당근밭 클리어', need: function () { return board().indexOf('burrow') >= 0; }, prog: function () { return board().indexOf('burrow') >= 0 ? '달성' : '당근밭 클리어 필요'; } },
+    { id: 'fr-wheatfield', name: '🌾 황금 밀밭', cls: 'v57-fr-wheatfield', why: '가을 밀밭 클리어', need: function () { return board().indexOf('wheatfield') >= 0; }, prog: function () { return board().indexOf('wheatfield') >= 0 ? '달성' : '가을 밀밭 클리어 필요'; } },
+    { id: 'fr-octocave', name: '🐙 문어 동굴', cls: 'v57-fr-octocave', why: '문어 항아리 동굴 클리어', need: function () { return board().indexOf('octocave') >= 0; }, prog: function () { return board().indexOf('octocave') >= 0 ? '달성' : '문어 항아리 동굴 클리어 필요'; } },
+    { id: 'fr-fruitfarm', name: '🍌 과일 시장', cls: 'v57-fr-fruitfarm', why: '바나나 농장 클리어', need: function () { return board().indexOf('fruitfarm') >= 0; }, prog: function () { return board().indexOf('fruitfarm') >= 0 ? '달성' : '바나나 농장 클리어 필요'; } },
+    { id: 'fr-savanna', name: '🦁 사바나', cls: 'v57-fr-savanna', why: '사바나 클리어', need: function () { return board().indexOf('savanna') >= 0; }, prog: function () { return board().indexOf('savanna') >= 0 ? '달성' : '사바나 클리어 필요'; } },
+    { id: 'fr-halloween', name: '🎃 할로윈', cls: 'v57-fr-halloween', why: '할로윈 마을 클리어', need: function () { return board().indexOf('halloween') >= 0; }, prog: function () { return board().indexOf('halloween') >= 0 ? '달성' : '할로윈 마을 클리어 필요'; } },
+    { id: 'fr-slimemarsh', name: '🟢 슬라임', cls: 'v57-fr-slimemarsh', why: '슬라임 늪 클리어', need: function () { return board().indexOf('slimemarsh') >= 0; }, prog: function () { return board().indexOf('slimemarsh') >= 0 ? '달성' : '슬라임 늪 클리어 필요'; } },
+    { id: 'fr-boxing', name: '🥊 권투 링', cls: 'v57-fr-boxing', why: '권투 링 체육관 클리어', need: function () { return board().indexOf('boxing') >= 0; }, prog: function () { return board().indexOf('boxing') >= 0 ? '달성' : '권투 링 체육관 클리어 필요'; } },
+    { id: 'fr-mansionclean', name: '🧹 저택 청소', cls: 'v57-fr-mansionclean', why: '호화 저택 대청소 클리어', need: function () { return board().indexOf('mansionclean') >= 0; }, prog: function () { return board().indexOf('mansionclean') >= 0 ? '달성' : '호화 저택 대청소 클리어 필요'; } },
+    { id: 'fr-oldinn', name: '🏮 객잔 등불', cls: 'v57-fr-oldinn', why: '중국 객잔 클리어', need: function () { return board().indexOf('oldinn') >= 0; }, prog: function () { return board().indexOf('oldinn') >= 0 ? '달성' : '중국 객잔 클리어 필요'; } },
+    { id: 'fr-hospital', name: '🏥 응급실', cls: 'v57-fr-hospital', why: '병원 클리어', need: function () { return board().indexOf('hospital') >= 0; }, prog: function () { return board().indexOf('hospital') >= 0 ? '달성' : '병원 클리어 필요'; } },
+    { id: 'fr-ruins', name: '🗿 돌 신전', cls: 'v57-fr-ruins', why: '고대 돌 신전 폐허 클리어', need: function () { return board().indexOf('ruins') >= 0; }, prog: function () { return board().indexOf('ruins') >= 0 ? '달성' : '고대 돌 신전 폐허 클리어 필요'; } },
+    { id: 'fr-sharkbay', name: '🦈 상어 해류', cls: 'v57-fr-sharkbay', why: '상어 해류 클리어', need: function () { return board().indexOf('sharkbay') >= 0; }, prog: function () { return board().indexOf('sharkbay') >= 0 ? '달성' : '상어 해류 클리어 필요'; } },
+    { id: 'fr-trench', name: '🌊 심해 해구', cls: 'v57-fr-trench', why: '심해 해구 클리어', need: function () { return board().indexOf('trench') >= 0; }, prog: function () { return board().indexOf('trench') >= 0 ? '달성' : '심해 해구 클리어 필요'; } },
+    { id: 'fr-vcastle', name: '🧛 뱀파이어 성', cls: 'v57-fr-vcastle', why: '뱀파이어 성 클리어', need: function () { return board().indexOf('vcastle') >= 0; }, prog: function () { return board().indexOf('vcastle') >= 0 ? '달성' : '뱀파이어 성 클리어 필요'; } },
+    { id: 'fr-demonking', name: '😈 마왕성', cls: 'v57-fr-demonking', why: '마왕성 클리어', need: function () { return board().indexOf('demonking') >= 0; }, prog: function () { return board().indexOf('demonking') >= 0 ? '달성' : '마왕성 클리어 필요'; } },
+    { id: 'fr-all64', name: '🌟 64맵 올클리어', cls: 'v57-fr-all64', why: '64맵 올클리어', need: function () { return board().length >= 64; }, prog: function () { return board().length + ' / 64 맵'; } },
+    { id: 'fr-clears100', name: '💯 완등 100회', cls: 'v57-fr-clears100', why: '정상 100번', need: function () { return clearsTotal() >= 100; }, prog: function () { return clearsTotal() + ' / 100회'; } },
+    { id: 'fr-champ3', name: '👑 3맵 1등', cls: 'v57-fr-champ3', king: true, why: '클래식 모드 3개 맵 1등', need: function () { return isChampCount() >= 3; }, prog: function () { return isChampCount() + ' / 3 맵'; } },
+    { id: 'fr-bossall', name: '🔥 보스+타임어택', cls: 'v57-fr-bossall', why: '보스 러시 격파 + 타임어택 80층', need: function () { return bossCleared() && timeattackBest() >= 80; }, prog: function () { return (bossCleared() ? '보스 ✓' : '보스 러시 필요') + ' · ' + Math.round(timeattackBest()) + ' / 80층'; } }
   ];
   function byId(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return list[0]; }
   function plateOn() { return byId(PLATES, ls(K_PLATE, 'none') || 'none'); }
@@ -70134,7 +71118,43 @@ if (typeof module !== 'undefined' && module.exports) {
       '#v57PlM .info u{display:block;text-decoration:none;font-size:11px;font-weight:900;color:#fbbf24;margin-top:3px;}',
       '#v57PlM .row button{flex:0 0 auto;min-height:40px;padding:0 12px;border-radius:11px;font-size:13px;font-weight:900;white-space:nowrap;',
       '  border:2px solid #33456a;background:linear-gradient(180deg,#243654,#162032);color:#e6f0ff;box-shadow:0 3px 0 #070c16;}',
-      '#v57PlM .row button.pri{background:linear-gradient(180deg,#cfe6ff,#67a9fb 55%,#2f6fd0);color:#041a3a;border-color:#0b2c5c;}'
+      '#v57PlM .row button.pri{background:linear-gradient(180deg,#cfe6ff,#67a9fb 55%,#2f6fd0);color:#041a3a;border-color:#0b2c5c;}',
+      '.v57-plx{background-size:220% 100%;animation:v57flow 6s linear infinite;-webkit-background-clip:text;background-clip:text;color:transparent !important;-webkit-text-fill-color:transparent;}',
+      '.v57-pl-ch0{background-image:linear-gradient(92deg,#fde68a,#f59e0b 40%,#fca5a5 70%,#fde68a);}',
+      '.v57-pl-ch1{background-image:linear-gradient(92deg,#bbf7d0,#22c55e 40%,#86efac 70%,#bbf7d0);}',
+      '.v57-pl-ch2{background-image:linear-gradient(92deg,#bae6fd,#0ea5e9 40%,#67e8f9 70%,#bae6fd);}',
+      '.v57-pl-ch3{background-image:linear-gradient(92deg,#fbcfe8,#a855f7 40%,#fb923c 70%,#fbcfe8);}',
+      '.v57-pl-ch4{background-image:linear-gradient(92deg,#fef9c3,#38bdf8 40%,#fbbf24 70%,#fef9c3);}',
+      '.v57-pl-ch5{background-image:linear-gradient(92deg,#c7d2fe,#6366f1 40%,#a5b4fc 70%,#c7d2fe);}',
+      '.v57-pl-ch6{background-image:linear-gradient(92deg,#e9d5ff,#8b5cf6 40%,#f0abfc 70%,#e9d5ff);}',
+      '.v57-pl-ch7{background-image:linear-gradient(92deg,#fecaca,#dc2626 40%,#7f1d1d 70%,#fecaca);}',
+      '.v57-pl-climb25k{background-image:linear-gradient(92deg,#fed7aa,#ea580c 40%,#fbbf24 70%,#fed7aa);}',
+      '.v57-pl-climb50k{background-image:linear-gradient(92deg,#f0f9ff,#7dd3fc 40%,#e0f2fe 70%,#f0f9ff);}',
+      '.v57-pl-combo30{background-image:linear-gradient(92deg,#fef08a,#eab308 40%,#fde047 70%,#fef08a);}',
+      '.v57-pl-clears50{background-image:linear-gradient(92deg,#fef3c7,#d97706 40%,#fcd34d 70%,#fef3c7);}',
+      '.v57-fr-alley{box-shadow:0 0 0 2px #fb923c,0 0 0 4px rgba(251,146,60,.4),0 0 14px rgba(251,146,60,.6) !important;border-radius:10px;}',
+      '.v57-fr-pond{box-shadow:0 0 0 2px #38bdf8,0 0 0 4px rgba(56,189,248,.4),0 0 14px rgba(56,189,248,.6) !important;border-radius:10px;}',
+      '.v57-fr-hatchery{box-shadow:0 0 0 2px #fde047,0 0 0 4px rgba(253,224,71,.4),0 0 14px rgba(253,224,71,.6) !important;border-radius:10px;}',
+      '.v57-fr-burrow{box-shadow:0 0 0 2px #f97316,0 0 0 4px rgba(249,115,22,.4),0 0 14px rgba(249,115,22,.6) !important;border-radius:10px;}',
+      '.v57-fr-wheatfield{box-shadow:0 0 0 2px #fbbf24,0 0 0 4px rgba(251,191,36,.4),0 0 14px rgba(251,191,36,.6) !important;border-radius:10px;}',
+      '.v57-fr-octocave{box-shadow:0 0 0 2px #a855f7,0 0 0 4px rgba(168,85,247,.4),0 0 14px rgba(168,85,247,.6) !important;border-radius:10px;}',
+      '.v57-fr-fruitfarm{box-shadow:0 0 0 2px #a3e635,0 0 0 4px rgba(163,230,53,.4),0 0 14px rgba(163,230,53,.6) !important;border-radius:10px;}',
+      '.v57-fr-savanna{box-shadow:0 0 0 2px #d97706,0 0 0 4px rgba(217,119,6,.4),0 0 14px rgba(217,119,6,.6) !important;border-radius:10px;}',
+      '.v57-fr-halloween{box-shadow:0 0 0 2px #f97316,0 0 0 4px rgba(124,58,237,.5),0 0 14px rgba(249,115,22,.6) !important;border-radius:10px;}',
+      '.v57-fr-slimemarsh{box-shadow:0 0 0 2px #4ade80,0 0 0 4px rgba(74,222,128,.4),0 0 14px rgba(74,222,128,.6) !important;border-radius:10px;}',
+      '.v57-fr-boxing{box-shadow:0 0 0 2px #ef4444,0 0 0 4px rgba(239,68,68,.4),0 0 14px rgba(239,68,68,.6) !important;border-radius:10px;}',
+      '.v57-fr-mansionclean{box-shadow:0 0 0 2px #94a3b8,0 0 0 4px rgba(148,163,184,.4),0 0 14px rgba(148,163,184,.6) !important;border-radius:10px;}',
+      '.v57-fr-oldinn{box-shadow:0 0 0 2px #dc2626,0 0 0 4px rgba(220,38,38,.4),0 0 14px rgba(220,38,38,.6) !important;border-radius:10px;}',
+      '.v57-fr-hospital{box-shadow:0 0 0 2px #2dd4bf,0 0 0 4px rgba(45,212,191,.4),0 0 14px rgba(45,212,191,.6) !important;border-radius:10px;}',
+      '.v57-fr-ruins{box-shadow:0 0 0 2px #a8a29e,0 0 0 4px rgba(168,162,158,.4),0 0 14px rgba(168,162,158,.6) !important;border-radius:10px;}',
+      '.v57-fr-sharkbay{box-shadow:0 0 0 2px #0284c7,0 0 0 4px rgba(2,132,199,.4),0 0 14px rgba(2,132,199,.6) !important;border-radius:10px;}',
+      '.v57-fr-trench{box-shadow:0 0 0 2px #1e3a8a,0 0 0 4px rgba(30,58,138,.5),0 0 14px rgba(30,58,138,.7) !important;border-radius:10px;}',
+      '.v57-fr-vcastle{box-shadow:0 0 0 2px #7f1d1d,0 0 0 4px rgba(127,29,29,.5),0 0 14px rgba(127,29,29,.7) !important;border-radius:10px;}',
+      '.v57-fr-demonking{box-shadow:0 0 0 2px #991b1b,0 0 0 4px rgba(0,0,0,.6),0 0 16px rgba(153,27,27,.8) !important;border-radius:10px;}',
+      '.v57-fr-all64{box-shadow:0 0 0 2px #fbbf24,0 0 0 4px rgba(251,191,36,.5),0 0 18px rgba(251,191,36,.8) !important;border-radius:12px;}',
+      '.v57-fr-clears100{box-shadow:0 0 0 2px #fde047,0 0 0 4px rgba(253,224,71,.5),0 0 16px rgba(253,224,71,.7) !important;border-radius:12px;}',
+      '.v57-fr-champ3{box-shadow:0 0 0 2px #ffd24a,0 0 0 4px rgba(255,210,74,.5),0 0 18px rgba(255,200,60,.8) !important;border-radius:12px;}',
+      '.v57-fr-bossall{box-shadow:0 0 0 2px #f97316,0 0 0 4px rgba(249,115,22,.5),0 0 16px rgba(249,115,22,.7) !important;border-radius:10px;}'
     ].join('\n');
     doc.head.appendChild(s);
   }
@@ -70260,6 +71280,22 @@ if (typeof module !== 'undefined' && module.exports) {
     plate: plateOn, frame: frameOn,
     equip: equip, open: open, close: close, check: checkUnlock
   };
+  /* v5.27: 개발자 계정 — 이름표·테두리 전부 해금 (need()를 감싸서 개발자 계정일 때 항상 true). */
+  try {
+    [PLATES, FRAMES].forEach(function (list) {
+      (list || []).forEach(function (it) {
+        if (it && it.need && !it.need.__v57dev) {
+          var _o = it.need;
+          var _w = function () {
+            try { if (window.JWDEV && window.JWDEV.isDevAcct && window.JWDEV.isDevAcct()) return true; } catch (e) {}
+            return _o();
+          };
+          _w.__v57dev = 1;
+          it.need = _w;
+        }
+      });
+    });
+  } catch (e) {}
   console.log('[JW57PL] plates ready');
 })(window);
 
@@ -70368,6 +71404,12 @@ if (typeof module !== 'undefined' && module.exports) {
         '<div style="display:flex;flex-wrap:wrap;gap:4px" id="v57PrTitle"></div>' +
         '<div class="rec" id="v57PrRec"></div>' +
       '</div></div>' +
+      '<div id="v57PrEdit" style="display:flex;flex-direction:column;gap:6px;padding:10px 12px 0;">' +
+        '<input id="v57PrNickIn" type="text" maxlength="10" placeholder="닉네임" style="height:38px;padding:0 10px;border-radius:10px;border:2px solid #2a3b58;background:#0d1526;color:#fff;font-size:13px;font-weight:800">' +
+        '<input id="v57PrStatusIn" type="text" maxlength="40" placeholder="상태메시지" style="height:38px;padding:0 10px;border-radius:10px;border:2px solid #2a3b58;background:#0d1526;color:#fff;font-size:13px;font-weight:800">' +
+        '<input id="v57PrQuoteIn" type="text" maxlength="40" placeholder="1등 승리 멘트" style="height:38px;padding:0 10px;border-radius:10px;border:2px solid #2a3b58;background:#0d1526;color:#fff;font-size:13px;font-weight:800">' +
+        '<input id="v57PrFallIn" type="text" maxlength="24" placeholder="추락 대사" style="height:38px;padding:0 10px;border-radius:10px;border:2px solid #2a3b58;background:#0d1526;color:#fff;font-size:13px;font-weight:800">' +
+      '</div>' +
       '<div class="tabs">' +
         '<button type="button" class="tab on" data-v57pt="skin">🎨 스킨</button>' +
         '<button type="button" class="tab" data-v57pt="frame">🖼️ 테두리</button>' +
@@ -70376,6 +71418,27 @@ if (typeof module !== 'undefined' && module.exports) {
       '</div>' +
       '<div class="body" id="v57PrBody"></div></div>';
     doc.body.appendChild(m);
+    /* v5.27: 프로필 편집 (닉네임·상태·승리 멘트·추락 대사) — 예전 v43Profile의 편집 칸을 합친 화면에 그대로 둔다. */
+    (function () {
+      function bind(id, fn) { var el = $(id); if (el && !el.__v57w) { el.__v57w = 1; el.addEventListener('change', fn); } }
+      bind('v57PrNickIn', function () {
+        var v = String(($('v57PrNickIn') || {}).value || '').slice(0, 10) || '재우';
+        try { var S = V.st(); if (S) S.me.nick = v; } catch (e) {}
+        try { var inst = V.api().internals ? V.api().internals() : null; if (inst && inst.ident) inst.ident.nick = v; } catch (e) {}
+        try { var raw = V.lsGet('jw41_identity_v1', {}) || {}; raw.nick = v; V.lsSet('jw41_identity_v1', raw); } catch (e) {}
+        try { var inp = $('mpNick'); if (inp) { inp.value = v; inp.dispatchEvent(new Event('input', { bubbles: true })); } } catch (e) {}
+        paint();
+      });
+      bind('v57PrStatusIn', function () {
+        try { var el = $('frStatusMsg'); if (el) { el.value = $('v57PrStatusIn').value; el.dispatchEvent(new Event('input', { bubbles: true })); } } catch (e) {}
+      });
+      bind('v57PrQuoteIn', function () {
+        try { var el = $('frQuote'); if (el) { el.value = $('v57PrQuoteIn').value; el.dispatchEvent(new Event('input', { bubbles: true })); } } catch (e) {}
+      });
+      bind('v57PrFallIn', function () {
+        try { V.QOL.fallLine = String(($('v57PrFallIn') || {}).value || '').slice(0, 24); V.saveQol(); } catch (e) {}
+      });
+    })();
     m.addEventListener('click', function (e) {
       if (e.target === m) return close();
       var x = e.target.closest ? e.target.closest('[data-v57px]') : null;
@@ -70383,7 +71446,22 @@ if (typeof module !== 'undefined' && module.exports) {
       var tb = e.target.closest ? e.target.closest('[data-v57pt]') : null;
       if (tb) { TAB = tb.getAttribute('data-v57pt'); paint(); return; }
       var sk = e.target.closest ? e.target.closest('[data-v57sk]') : null;
-      if (sk) { try { V.api().setSkin(sk.getAttribute('data-v57sk')); } catch (er) {} paint(); try { root.JW57PLATE && JW57PLATE.apply(); } catch (er) {} return; }
+      if (sk) {
+        var _skid = sk.getAttribute('data-v57sk');
+        if (V.skinLocked && V.skinLocked(_skid)) { try { V.toast('🔒 잠긴 스킨', 'danger', '스토리 클리어로 해금됩니다', 2400); } catch (er) {} return; }
+        try { V.api().setSkin(_skid); } catch (er) {} paint(); try { root.JW57PLATE && JW57PLATE.apply(); } catch (er) {} return;
+      }
+      var _col = e.target.closest ? e.target.closest('[data-v57col]') : null;
+      if (_col) { try { V.api().setColor(_col.getAttribute('data-v57col')); } catch (er) {} paint(); return; }
+      var _dc = e.target.closest ? e.target.closest('[data-v57deco]') : null;
+      if (_dc) {
+        try {
+          var _G2 = (root.JW44 && root.JW44.G) || null;
+          if (_G2 && _G2.deco) { _G2.deco[_dc.getAttribute('data-v57deco')] = _dc.getAttribute('data-v57decoid'); if (_G2.saveDeco) _G2.saveDeco(); }
+        } catch (er) {}
+        paint();
+        return;
+      }
       var eq = e.target.closest ? e.target.closest('[data-v57pq]') : null;
       if (eq) {
         var kind = eq.getAttribute('data-v57kind');
@@ -70410,6 +71488,8 @@ if (typeof module !== 'undefined' && module.exports) {
       if (g) { g.clearRect(0, 0, cv.width, cv.height); if (sp) { g.imageSmoothingEnabled = false; try { g.drawImage(sp, 0, 0, cv.width, cv.height); } catch (e) {} } }
     }
     var nk = $('v57PrNick'); if (nk) nk.textContent = myNick();
+    var _ni = $('v57PrNickIn'); if (_ni && document.activeElement !== _ni) _ni.value = myNick();
+    var _fi = $('v57PrFallIn'); if (_fi && document.activeElement !== _fi) { try { _fi.value = (V.QOL && V.QOL.fallLine) || ''; } catch (e) {} }
     var tb = $('v57PrTitle'); if (tb) tb.innerHTML = titleBadge();
     var rc = $('v57PrRec');
     if (rc) rc.innerHTML = '최고 <b>' + bestM() + 'm</b> · 클리어 <b>' + ((prof().mapsCleared || []).length) + '</b>맵 · 완등 <b>' + (prof().clears || 0) + '</b>회';
@@ -70419,11 +71499,41 @@ if (typeof module !== 'undefined' && module.exports) {
       var skins = [];
       try { skins = V.api().skins() || []; } catch (e) {}
       var cur = ''; try { cur = V.api().meSkin(); } catch (e) {}
+      /* v5.27: 프로필에서는 보유중인 스킨만 보여준다 (칭호와 같은 규칙). 장착중인 스킨은 잠겨 있어도 보인다. */
+      skins = (skins || []).filter(function (s) { return s.id === cur || !(V.skinLocked && V.skinLocked(s.id)); });
       h += '<div class="skgrid">' + skins.map(function (s) {
         return '<button type="button" class="skcard' + (s.id === cur ? ' on' : '') + '" data-v57sk="' + esc(s.id) + '">' +
           '<canvas width="32" height="36" data-v57skcv="' + esc(s.id) + '"></canvas><b>' + (s.emoji || '') + ' ' + esc(s.name) + '</b></button>';
       }).join('') + '</div>';
       h += '<div class="note">스킨을 누르면 바로 적용됩니다 · 인게임·멀티·타이틀에 즉시 반영</div>';
+      /* v5.27: 스킨 꾸미기(색상·펫·모자·안경·등·꼬리·말풍선)를 같은 화면에 합친다. */
+      try {
+        var _cols = V.api().colors ? (V.api().colors() || []) : [];
+        var _curCol = V.api().meColor ? V.api().meColor() : '';
+        if (_cols.length) {
+          h += '<div class="note" style="margin-top:8px">🎨 색상</div><div style="display:flex;flex-wrap:wrap;gap:6px">' +
+            _cols.map(function (c) {
+              return '<button type="button" data-v57col="' + esc(c.id) + '" title="' + esc(c.name || c.id) + '" style="width:30px;height:30px;border-radius:9px;border:2px solid ' + (_curCol === c.id ? '#fbbf24' : '#334155') + ';background:' + esc(c.hex || '#38bdf8') + '"></button>';
+            }).join('') + '</div>';
+        }
+      } catch (e) {}
+      try {
+        var _G = (root.JW44 && root.JW44.G) || null;
+        var _SET = _G && _G.DECO_SET ? _G.DECO_SET : null;
+        var _DC = _G && _G.deco ? _G.deco : {};
+        if (_SET) {
+          var _kinds = [['pet', '🐾 펫', 'PETS'], ['hat', '👒 모자', 'HATS'], ['glasses', '🕶️ 안경', 'GLASSES'], ['back', '🦸 등(망토·날개)', 'BACK'], ['trail', '✨ 점프 꼬리 잔상', 'TRAIL'], ['bubble', '💬 말풍선 스타일', 'BUBBLES']];
+          _kinds.forEach(function (kd) {
+            var _list = _SET[kd[2]] || [];
+            var _curD = _DC[kd[0]];
+            if (!_list.length) return;
+            h += '<div class="note" style="margin-top:8px">' + kd[1] + '</div><div style="display:flex;flex-wrap:wrap;gap:6px">' +
+              _list.map(function (it) {
+                return '<button type="button" data-v57deco="' + kd[0] + '" data-v57decoid="' + esc(it.id) + '" style="padding:6px 9px;border-radius:10px;border:2px solid ' + (_curD === it.id ? '#fbbf24' : '#334155') + ';background:#162032;color:#e6f0ff;font-size:11px;font-weight:900">' + (it.emoji ? it.emoji + ' ' : '') + esc(it.name) + '</button>';
+              }).join('') + '</div>';
+          });
+        }
+      } catch (e) {}
     } else if (TAB === 'frame' || TAB === 'plate') {
       var P = PL();
       var list = P ? (TAB === 'frame' ? P.frames : P.plates) : [];
@@ -70446,7 +71556,9 @@ if (typeof module !== 'undefined' && module.exports) {
       var un = [];
       try { un = (V.api().unlockedTitles ? V.api().unlockedTitles() : titles).map(function (t) { return t.id; }); } catch (e) { un = []; }
       var curT = root.JW56T5 ? root.JW56T5.myTitleId() : 'auto';
-      titles.slice(0, 60).forEach(function (t) {
+      /* v5.27: 프로필 칭호는 보유중인 것만 보여준다 (도감은 그대로 전체 표시). 60개 제한도 없앤다. */
+      var ownedTitles = titles.filter(function (t) { return un.indexOf(t.id) >= 0; });
+      ownedTitles.forEach(function (t) {
         var has = un.indexOf(t.id) >= 0;
         var on = curT === t.id;
         var meta = {};
@@ -70460,7 +71572,8 @@ if (typeof module !== 'undefined' && module.exports) {
           (has ? '<button type="button"' + (on ? '' : ' class="pri"') + ' data-v57pq="' + esc(t.id) + '" data-v57kind="title">' + (on ? '착용중' : '장착') + '</button>'
                : '<button type="button" disabled style="opacity:.5">🔒 잠김</button>') + '</div>';
       });
-      if (!titles.length) h += '<div class="note">아직 표시할 칭호가 없어요.</div>';
+      if (!ownedTitles.length) h += '<div class="note">아직 보유한 칭호가 없어요 — 도감에서 조건을 확인해요</div>';
+      else h = '<div class="note">✅ 보유중(' + ownedTitles.length + ')</div>' + h;
     }
     body.innerHTML = h;
     /* 스킨 미니 아바타 */
@@ -71246,7 +72359,7 @@ if (typeof module !== 'undefined' && module.exports) {
     '  border-radius:13px !important;border:1px dashed rgba(96,165,250,.45) !important;background:rgba(23,37,64,.55) !important;',
     '  font-size:11.5px !important;justify-content:space-between !important;gap:8px !important;}',
     'html body #mpLobby #mpRoomPlayers .v50-slot-no{font-size:11.5px !important;font-weight:900 !important;color:#9ec5f7 !important;}',
-    'html body #mpLobby #mpRoomPlayers .v50-slot-b{min-height:32px !important;height:32px !important;padding:0 10px !important;',
+    'html body #mpLobby #mpRoomPlayers .v50-slot-b{flex:1 1 auto !important;justify-content:center !important;min-height:32px !important;height:32px !important;padding:0 10px !important;',
     '  font-size:11px !important;border-radius:999px !important;}',
 
     /* ── ⑥ 참가자 헤더(봇 +/- · 인원) ── */
@@ -72919,10 +74032,21 @@ if (typeof module !== 'undefined' && module.exports) {
     if (gh) gh.classList.add('wide');
     /* 순서 정리: 계속 → 고스트 → 주크박스 → 조작 → 집중숨김 → 칭호 (muse-v5-9: 랭킹/하이라이트·특수기능 제거) */
     var order = ['btnResume', 'v43GhostPause', 'v48juOpen', 'btnOpenSettingsPause', 'v44Dnd', 'v56TagRow'];
-    order.forEach(function (id) {
-      var e = $(id);
-      if (e && e.parentElement === g1) g1.appendChild(e);
-    });
+    /* v5.25: 이미 올바른 순서면 다시 붙이지 않는다 — 예전에는 일시정지 중 200ms마다 6개 버튼을 무가드로 re-append해서 레이아웃을 흔들었다. */
+    var _inOrder = true, _prevIdx = -1;
+    for (var _oi = 0; _oi < order.length; _oi++) {
+      var _oe = $(order[_oi]);
+      if (!_oe || _oe.parentElement !== g1) { _inOrder = false; break; }
+      var _oIdx = Array.prototype.indexOf.call(g1.children, _oe);
+      if (_oIdx <= _prevIdx) { _inOrder = false; break; }
+      _prevIdx = _oIdx;
+    }
+    if (!_inOrder) {
+      order.forEach(function (id) {
+        var e = $(id);
+        if (e && e.parentElement === g1) g1.appendChild(e);
+      });
+    }
   }
 
   /* ================================================================ ⑧ 친구창/채팅 보정 */
@@ -73410,8 +74534,10 @@ if (typeof module !== 'undefined' && module.exports) {
     for (var i = 0; i < list.length; i++) {
       var e = list[i];
       if (!e) continue;
-      var cs = getComputedStyle(e);
-      var hidden = cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0';
+      /* v5.25: hidden 클래스면 getComputedStyle 없이 바로 숨김 처리 — 예전에는 900ms마다 모달 12개 전부에 getComputedStyle(강제 스타일 재계산)을 돌렸다. */
+      var hidden;
+      if (e.classList.contains('hidden')) hidden = true;
+      else { var cs = getComputedStyle(e); hidden = cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0'; }
       /* v5.5: 숨은 모달에 박은 pointer-events:none을 모달이 다시 보이면 해제 (영구 먹통 버그) */
       if (hidden) { if (!e.__v51pe) { e.style.setProperty('pointer-events', 'none', 'important'); e.__v51pe = 1; } }
       else if (e.__v51pe) { e.style.removeProperty('pointer-events'); e.__v51pe = 0; }
@@ -73560,7 +74686,7 @@ if (typeof module !== 'undefined' && module.exports) {
 (function (root) {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
-  var SECS = ['ctrl', 'bgm', 'chat', 'qol', 'help', 'solo'];
+  var SECS = ['ctrl', 'fav', 'bgm', 'chat', 'qol', 'help', 'solo'];
 
   function paintDnd() {
     var b = $('v51HubDnd'); if (!b) return;
@@ -73615,6 +74741,7 @@ if (typeof module !== 'undefined' && module.exports) {
       b.classList.toggle('on', b.getAttribute('data-hubsec') === sec);
     });
     if (sec === 'qol') { try { root.V && V.renderQol && V.renderQol(); } catch (e) {} moveBodies(); }
+    if (sec === 'fav') { try { if (window.__v51FavPaint) window.__v51FavPaint(); } catch (e) {} }
     if (sec === 'bgm') embedJuke();
     if (sec === 'chat') paintDnd();
     if (sec === 'help') moveBodies();
@@ -73706,7 +74833,7 @@ if (typeof module !== 'undefined' && module.exports) {
     'html body #v43Wiz #v53ModeGrid .v53mm .tx > .cat{display:block !important;font-size:9px !important;line-height:1.25 !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;flex-shrink:0 !important;margin-top:2px !important;}',
     'html body #v43Wiz #v53MapGrid .v53m > .ds{font-size:9px !important;line-height:1.35 !important;height:auto !important;max-height:none !important;display:-webkit-box !important;-webkit-line-clamp:2 !important;-webkit-box-orient:vertical !important;overflow:hidden !important;}',
     'html body #mpLobby #mpRoomPlayers > .mps-row{grid-column:1 / -1 !important;}',
-    '@media (max-width:480px){html body #mpLobby .mps-slot .v50-slot-b{font-size:0 !important;padding:4px 7px !important;gap:0 !important;}}'
+    '@media (max-width:480px){html body #mpLobby .mps-slot .v50-slot-b{font-size:11px !important;padding:6px 10px !important;}}'
   ].join('\n');
   document.head.appendChild(st);
 })();
@@ -75177,21 +76304,24 @@ if (typeof module !== 'undefined' && module.exports) {
 })(window);
 /* ── 스토리 모드 v5.19 (미션 판정 + 보스전 + 인게임 표시) ─────────────────────────────────────────────
    진짜 데이터: assets/story-data.json (v1, 8챕터·64스테이지·64스킨·64맵·
-   신규 19맵·보스 64명·대사 448줄·미션 8종, lockPolicy lock_all_except_default_4)
+   신규 19맵·보스 64명·대사 448줄·미션 8종, lockPolicy lock_all_except_default_1)
    + story-lines.md (읽기용 대사표).
    저장 키(데이터 integration.saveKeys):
      jw64_story_v1 = { v:1, cleared:{'map:ID': stageIndex}, boss:{'map:ID': true} }
      jw64_char_v1  = { v:1, unlocked:{'skin:ID': stageIndex} }
    skin:/map: 접두어는 namespaceWarn(alien/pirate/dino/santa/mushroom 5쌍 id 겹침) 때문.
    규칙:
-   - 기본 4종(jaeu/cat/frog/robot)만 처음부터 열림. 나머지 60종은 스토리 클리어로 해금.
+   - 기본 4종(기본 재우 jaeu·고양이 cat·개구리 frog·로봇 robot)이 처음부터 열림.
+     나머지 60종은 스토리 클리어로 해금.
      기존 해금 스킨도 예외 없이 잠금 (구 숨김 스킨 조건은 스토리 해금으로 대체).
+     (v5.27: 방 확정안대로 기본 해금 4종 복구 — 초기 스테이지 1~4의 주인공과 같은 4종.)
    - 스테이지 N은 startUnlocked 이거나 N-1번 클리어 시 열림.
    - 스토리 판은 그 스테이지 주인공 스킨으로만 뛴다 (판 동안만 임시 해금).
      클리어하면 그 스킨이 정식 해금 + 다음 스테이지 개방.
    - 신규 19맵은 아직 엔진 맵이 없어 '준비 중' (배경 그림만 보여줌).
-   - 미션 판정(v5.19): 승리 시점에 검사 — 낙하·콤보·코인 수·점프 수·피격.
-     타임어택 제한 시간만 스테이지 target으로 맞춘다 (엔진 기본 120초 고정이라).
+   - 미션 판정(v5.19, v5.22 스테이지별 clearMode): 승리 시점에 검사 — 낙하·콤보·코인 수·점프 수·피격.
+     clearMode summit=정상만 오르면 클리어, mission=미션 완료만으로 판 중간 조기 클리어,
+     both=미션+정상 둘 다. 시간 제한·낙하·피격·점프 요구치는 스테이지마다 완화됨.
    - 보스전(v5.19): 전 스테이지 공통 최종 관문. 85% 높이 아레나에서 스폰,
      머리 밟기 1회당 HP 1 감소(스토리 hp 3~8). 보스 격파 전에는 정상 불가.
    - 승리 훅(v5.19 수정): __jwg에는 onReachVictory가 없어서 기존 훅은 동작
@@ -75204,10 +76334,10 @@ if (typeof module !== 'undefined' && module.exports) {
   if (!V) return;
   var $ = V.$, J = function () { return root.__jwg; }, W = function () { return root.__jwg; },
       MD = function () { return root.JWMode; }, MP = function () { return root.JWMap; };
-  var DATA_URLS = ['assets/story-data.json'];
+  var DATA_URLS = ['assets/story-data.json', 'muse-v5-9/assets/story-data.json'];
   var KEY_STORY = 'jw64_story_v1';
   var KEY_CHAR = 'jw64_char_v1';
-  var DEFAULT_SKINS = ['jaeu', 'cat', 'frog', 'robot'];
+  var DEFAULT_SKINS = ['jaeu', 'cat', 'frog', 'robot']; /* v5.27: 기본 해금 4종 (story-data counts.startUnlocked/defaultUnlockedSkins 와 일치) */
   var ENGINE_MAPS = ['default', 'dessert', 'site', 'space', 'bamboo', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano',
     'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji',
     'london', 'skycastle', 'pirate', 'carnival', 'mushroom', 'cyberpunk', 'olympus', 'lab', 'canyon', 'santa',
@@ -75308,6 +76438,8 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   function unlockedSkinCount() { return Object.keys(unlockedSkinSet()).length; }
   function isSkinUnlocked(id) {
+    /* v5.27: 개발자 계정에서는 모든 스킨이 해금된 것으로 본다. */
+    try { if (window.JWDEV && window.JWDEV.isDevAcct && window.JWDEV.isDevAcct()) return true; } catch (e) {}
     if (!id) return false;
     if (DEFAULT_SKINS.indexOf(id) >= 0) return true;
     if (charSave().unlocked['skin:' + id]) return true;
@@ -75320,6 +76452,8 @@ if (typeof module !== 'undefined' && module.exports) {
     return false;
   }
   function isStagePlayable(stage) {
+    /* v5.27: 개발자 계정에서는 모든 스테이지가 열린 것으로 본다. */
+    try { if (window.JWDEV && window.JWDEV.isDevAcct && window.JWDEV.isDevAcct()) return true; } catch (e) {}
     if (!stage) return false;
     if (stage.startUnlocked) return true;
     if (stage.index <= 1) return true;
@@ -75336,14 +76470,14 @@ if (typeof module !== 'undefined' && module.exports) {
     return ENGINE_MAPS.indexOf(mapId) >= 0;
   }
 
-  /* ---------------- 스킨 잠금 (기본 4종 외 전부 잠금) ---------------- */
+  /* ---------------- 스킨 잠금 (기본재우 외 전부 잠금) ---------------- */
   var __origSkinLocked = V.skinLocked;
   V.skinLocked = function (id) {
     try {
       if (id && id === STORY_RUN_SKIN) return false; /* 스토리 판 주인공은 판 동안만 열림 */
       if (DATA && STORY_SKIN_IDS[id]) return !isSkinUnlocked(id);
       if (!DATA) {
-        /* 데이터 로드 전: 엔진 스킨 목록에 있는 건 기본 4종 규칙으로 잠금 */
+        /* 데이터 로드 전: 엔진 스킨 목록에 있는 건 기본재우 규칙으로 잠금 */
         var list = null;
         try { list = V.api() && V.api().skins ? V.api().skins() : null; } catch (e) {}
         if (list) {
@@ -75388,6 +76522,56 @@ if (typeof module !== 'undefined' && module.exports) {
     renderStory();
     m.classList.remove('hidden');
     try { sfxMp3('dlg_tick', 0.4); } catch (e) {}
+  }
+  /* ---------- 패치 노트 (v5.22): assets/patch-notes.json 읽기 ---------- */
+  var patchNotesCache = null;
+  function openPatchNotes() {
+    var m = $('patchNotesModal'), list = $('patchNotesList');
+    if (!m || !list) return;
+    m.classList.remove('hidden');
+    list.innerHTML = '<div style="padding:14px;font-size:12px;font-weight:700;color:#9fb0cc">패치 노트를 불러오는 중…</div>';
+    var render = function (d) {
+      var es = (d && d.entries) || [];
+      if (!es.length) {
+        list.innerHTML = '<div style="padding:14px;font-size:12px;font-weight:700;color:#fca5a5">패치 노트를 불러오지 못했어요. 다시 열어보거나, 잠시 뒤에 다시 시도해 주세요.</div>';
+        return;
+      }
+      list.innerHTML = es.slice().reverse().map(function (e) {
+        var hs = (e.highlights || []).map(function (h) {
+          return '<li style="margin:2px 0 2px 14px;font-size:12px;line-height:1.55;color:#dbe7fb;list-style:disc">' + esc(h) + '</li>';
+        }).join('');
+        return '<div style="border:1px solid rgba(150,190,255,.22);border-radius:12px;padding:10px 12px;background:rgba(9,14,26,.55)">' +
+          '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:12px;font-weight:900;color:#fbbf24;background:rgba(251,191,36,.14);border:1px solid rgba(251,191,36,.4);border-radius:999px;padding:2px 8px">' + esc(e.version) + '</span>' +
+          '<span style="font-size:11px;font-weight:800;color:#9fb0cc">' + esc(e.date || '') + '</span></div>' +
+          '<div style="font-size:13px;font-weight:900;color:#f4f8ff;margin-top:6px;line-height:1.4">' + esc(e.title || '') + '</div>' +
+          (hs ? '<ul style="margin:6px 0 0;padding:0">' + hs + '</ul>' : '') + '</div>';
+      }).join('');
+    };
+    if (patchNotesCache) { render(patchNotesCache); return; }
+    try {
+      fetch('assets/patch-notes.json', { cache: 'no-cache' }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(function (d) {
+        patchNotesCache = d;
+        render(d);
+        var lb = $('patchNotesLatest');
+        if (lb && d.latest) lb.textContent = d.latest;
+      }).catch(function () { render(null); });
+    } catch (e) { render(null); }
+  }
+  function updatePatchNotesLabel() {
+    var lb = $('patchNotesLatest');
+    if (!lb || patchNotesCache) return;
+    try {
+      fetch('assets/patch-notes.json', { cache: 'no-cache' }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(function (d) {
+        patchNotesCache = d;
+        if (d.latest) lb.textContent = d.latest;
+      }).catch(function () {});
+    } catch (e) {}
   }
   function renderStory() {
     var tabs = $('storyChTabs'), list = $('storyStageList'), det = $('storyDetail'), rc = $('storyRecall');
@@ -75462,7 +76646,7 @@ if (typeof module !== 'undefined' && module.exports) {
       '<div class="v42-sub">' + st.index + '번 · ' + esc(st.title) + ' · ' + esc(st.diff) + ' · ' + st.total + '층</div></div>' +
       '<div class="v42-row"><span class="v42-lbl">🎯 미션</span><span style="font-size:11px;font-weight:700;color:#dbe7f7;text-align:right">' + esc(st.mission.label) + '</span></div>' +
       '<div class="v42-row"><span class="v42-lbl">' + esc(st.boss.emoji) + ' 보스</span><span style="font-size:11px;font-weight:700;color:#dbe7f7;text-align:right">' + esc(st.boss.name) + ' · 체력 ' + st.boss.hp + '</span></div>' +
-      '<div class="v42-row"><span class="v42-lbl">🧑 주인공</span><span style="font-size:11px;font-weight:700;color:#dbe7f7;text-align:right">' + esc(st.skinEmoji) + ' ' + esc(st.skinName) + ' · ' + (skinOpen ? '해금됨' : '클리어 시 해금') + '</span></div>' +
+      '<div class="v42-row"><span class="v42-lbl">🧑 주인공</span><span style="font-size:11px;font-weight:700;color:#dbe7f7;text-align:right">' + esc(st.skinEmoji) + ' ' + esc(st.skinName) + ' · ' + (skinOpen ? '해금됨' : '🔒 클리어 시 해금') + '</span></div>' +
       '<div style="font-size:11.5px;font-weight:700;line-height:1.6;color:#cbd5e1;background:#0b1222;border:2px solid #24304a;padding:8px">“' + esc((st.introLines && st.introLines[0]) || '') + '”</div>' +
       stateHtml +
       '<div style="display:flex;gap:6px">' +
@@ -75479,7 +76663,7 @@ if (typeof module !== 'undefined' && module.exports) {
      장면 = 스테이지 맵 배경 + 말하는 캐릭터 모습 + 대사(타자기) + 음성.
      배경: assets/maps/{mapId}.jpg (신규 19맵은 v2 16비트 픽셀아트).
      캐릭터: 게임에 이미 있는 스킨 이미지 재사용 (W().spriteFor → 4배 확대).
-     음성: assets/voices/s{stage 3자리}_t{턴 1~7}.mp3
+     음성: muse-v5-9/assets/voices/s{stage 3자리}_t{턴 1~7}.mp3
      턴 번호는 voice-index.json 순서 그대로: 1~3 인트로, 4~5 클리어, 6~7 보스. */
   var dlgStage = null, dlgAudio = null;
   var dlgVoicePre = null, dlgVoicePreUrl = ''; /* v5.20: 다음 줄 음성 미리 받아두기 */
@@ -75487,11 +76671,12 @@ if (typeof module !== 'undefined' && module.exports) {
   /* ---- 스토리 대사 장면 전용 BGM (v5.19) ----
      규칙(태겸 결정): 대사 장면에서는 메인 BGM 완전 일시정지(덕킹 아님) + 스토리 BGM만 재생.
      대사 끝나면 스토리 BGM 정지 + 메인 BGM 재개. 두 BGM이 겹쳐서 섞이는 일 없음.
-     파일: assets/audio/story_bgm.mp3 (28.003초 루프, Cmaj7-Am7-Fmaj7-G)
-     URL은 루트 기준 상대경로('assets/...') — 정식 루트에서는 base 없이 그대로 통한다. */
+     파일: muse-v5-9/assets/audio/story_bgm.mp3 (28.003초 루프, Cmaj7-Am7-Fmaj7-G)
+     URL은 dlgVoiceUrl과 같은 규칙: muse-v5-9/index.html의 <base href="../"> 덕분에
+     루트 기준 상대경로 'muse-v5-9/...' 가 그대로 통한다. */
   var storyBgm = null, storyBgmOn = false, storyBgmWasOn = true, storyBgmPrevFlag = true;
   var storyBgmFade = null, storyBgmFadeGen = 0;
-  var STORY_BGM_URL = 'assets/audio/story_bgm.mp3';
+  var STORY_BGM_URL = 'muse-v5-9/assets/audio/story_bgm.mp3';
   var STORY_BGM_VOL = 0.25; /* 대사 음성(volume 1, 발화 RMS -20.5~-12.9dBFS)보다 확실히 뒤:
     파일 RMS -18.0dBFS x 0.25 = 실효 -30.0dBFS → 가장 조용한 대사보다 9.5dB 아래.
     안전 밴드 0.20~0.30, 상한 0.30 (0.35는 가장 조용한 대사와 6.6dB밖에 안 벌어져서 제외). */
@@ -75574,7 +76759,7 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   function dlgVoiceUrl(stageIdx, turn) {
     var s = ('00' + stageIdx).slice(-3);
-    return 'assets/voices/s' + s + '_t' + turn + '.mp3';
+    return 'muse-v5-9/assets/voices/s' + s + '_t' + turn + '.mp3';
   }
   function dlgPlayVoice(url) {
     try {
@@ -75594,16 +76779,9 @@ if (typeof module !== 'undefined' && module.exports) {
   function dlgStopVoice() {
     try { if (dlgAudio) { dlgAudio.pause(); dlgAudio = null; } } catch (e) {}
   }
-  /* v5.20: 다음 줄 초상 URL 계산 (dlgPortrait와 같은 규칙, DOM은 안 건드림) */
-  function dlgPortraitUrlFor(line, st) {
-    try {
-      if (!st) return '';
-      if (line.kind === 'boss') return dlgBossPortraitUrl(st);
-      if (line.speaker === '재우') return dlgSkinPortraitUrl('jaeu');
-      return dlgSkinPortraitUrl(st.skinId);
-    } catch (e) { return ''; }
-  }
-  /* v5.20: 다음 줄 미리 받아두기 — 음성 MP3 + 초상. 다음 누르자마자 바로 나오게. */
+  /* v5.20: 다음 줄 미리 받아두기 — 음성 MP3 + 초상. 다음 누르자마자 바로 나오게.
+     v5.22: 초상은 비동기 워밍만 (동기 toDataURL 금지 — 아이패드에서 탭할 때
+     메인 스레드를 막아 글자가 ~7초 늦게 뜨던 원인). 파일 URL 보스 초상만 <img> 프리로드. */
   function dlgPrefetchNext() {
     try {
       if (!dlgLines || dlgIdx + 1 >= dlgLines.length) return;
@@ -75615,8 +76793,38 @@ if (typeof module !== 'undefined' && module.exports) {
         try { a.load(); } catch (e) {}
         dlgVoicePre = a; dlgVoicePreUrl = nx.audio;
       }
-      var u = dlgPortraitUrlFor(nx, dlgStage);
-      if (u && u.indexOf('data:') !== 0) { var im = new Image(); im.src = u; }
+      if (nx.kind === 'boss') {
+        var bu = dlgBossPortraitUrlCached(dlgStage);
+        if (bu && bu.indexOf('data:') !== 0) { var im = new Image(); im.src = bu; }
+        else dlgWarmBossPortrait(dlgStage);
+      } else {
+        var sid = (nx.speaker === '재우') ? 'jaeu' : (dlgStage ? dlgStage.skinId : '');
+        if (sid) dlgWarmSkinPortrait(sid);
+      }
+    } catch (e) {}
+  }
+  /* v5.22: 장면의 서로 다른 화자 초상을 차례로 백그라운드 워밍
+     (한 번에 몰아서 막지 않게 60ms 간격) — 탭할 때 캐시 히트 */
+  function dlgWarmScenePortraits(lines, st) {
+    try {
+      if (!lines || !st) return;
+      var seen = {};
+      var jobs = [];
+      lines.forEach(function (l) {
+        if (!l) return;
+        var k = (l.kind === 'boss') ? 'boss:' + st.mapId : 'skin:' + ((l.speaker === '재우') ? 'jaeu' : st.skinId);
+        if (seen[k]) return;
+        seen[k] = true;
+        jobs.push(l);
+      });
+      jobs.forEach(function (l, i) {
+        setTimeout(function () {
+          try {
+            if (l.kind === 'boss') dlgWarmBossPortrait(st);
+            else dlgWarmSkinPortrait((l.speaker === '재우') ? 'jaeu' : st.skinId);
+          } catch (e) {}
+        }, i * 60);
+      });
     } catch (e) {}
   }
   function dlgSetScene(st) {
@@ -75631,23 +76839,62 @@ if (typeof module !== 'undefined' && module.exports) {
     bg.src = url;
     setTimeout(function () { if (bg.complete && bg.naturalWidth) show(); }, 80);
   }
+  /* v5.22: 스킨 초상 data URL 캐시 — 화자/스킨별로 한 번만 계산해서 재사용.
+     아이패드 사파리는 toDataURL이 느려서 탭마다 다시 계산하면 메인 스레드가 막혀
+     타자기가 멈추고 초상도 늦게 뜸. 키에 플레이어 색상도 포함. */
+  var dlgSkinCache = {};
+  function dlgSkinCacheKey(skinId) {
+    try {
+      var api = V.api ? V.api() : null;
+      var col = (api && api.meColor && api.meColor()) || 'blue';
+      return skinId + ':' + col;
+    } catch (e) { return skinId + ':blue'; }
+  }
   function dlgSkinPortraitUrl(skinId) {
     try {
+      var key = dlgSkinCacheKey(skinId);
+      if (dlgSkinCache.hasOwnProperty(key)) return dlgSkinCache[key];
       /* v5.18: W()는 root.__jwg(코어 엔진, spriteFor 없음)를 돌려줘서 항상 ''이
          되어 이모지 폴백이 떴다. 스프라이트 API는 V.api()(= root.JWG)에 있다. */
       var api = V.api ? V.api() : null;
       if (!api || !api.spriteFor) return '';
       var col = (api.meColor && api.meColor()) || 'blue';
       var sp = api.spriteFor(col, 'idle1', skinId);
-      if (!sp || !sp.width) return '';
+      if (!sp || !sp.width) { dlgSkinCache[key] = ''; return ''; }
       var cv = document.createElement('canvas');
       var sc = 4;
       cv.width = sp.width * sc; cv.height = sp.height * sc;
       var g = cv.getContext('2d');
       g.imageSmoothingEnabled = false;
       g.drawImage(sp, 0, 0, cv.width, cv.height);
-      return cv.toDataURL('image/png');
+      var u = cv.toDataURL('image/png');
+      dlgSkinCache[key] = u;
+      return u;
     } catch (e) { return ''; }
+  }
+  /* v5.22: 캐시에 있는 초상 URL만 반환 — 없으면 null (탭 경로에서 동기 toDataURL 금지) */
+  function dlgSkinPortraitUrlCached(skinId) {
+    try {
+      var key = dlgSkinCacheKey(skinId);
+      return dlgSkinCache.hasOwnProperty(key) ? dlgSkinCache[key] : null;
+    } catch (e) { return null; }
+  }
+  /* v5.22: 스킨 초상을 백그라운드에서 미리 계산 — 같은 키 중복 계산은 콜백 큐로 합침 */
+  function dlgWarmSkinPortrait(skinId, done) {
+    try {
+      var key = dlgSkinCacheKey(skinId);
+      if (dlgSkinCache.hasOwnProperty(key)) { if (done) { try { done(dlgSkinCache[key]); } catch (e) {} } return; }
+      var q = dlgWarmSkinPortrait._q || (dlgWarmSkinPortrait._q = {});
+      if (q[key]) { if (done) q[key].push(done); return; }
+      q[key] = done ? [done] : [];
+      setTimeout(function () {
+        var u = '';
+        try { u = dlgSkinPortraitUrl(skinId); } catch (e) {}
+        var cbs = q[key] || [];
+        try { delete q[key]; } catch (e) {}
+        cbs.forEach(function (f) { try { f(u); } catch (e2) {} });
+      }, 0);
+    } catch (e) {}
   }
   var dlgBossCache = {};
   function dlgBossPortraitUrl(st) {
@@ -75661,6 +76908,9 @@ if (typeof module !== 'undefined' && module.exports) {
       var JB = root.JW48B;
       if (JB && JB.specOf && JB.art && ENGINE_MAPS.indexOf(st.mapId) >= 0) {
         var spec = JB.specOf(st.mapId);
+        /* v5.22: 호랑이·유령은 생성 이미지 파일을 그대로 쓴다 */
+        if (spec && spec.form === 'tiger') return 'assets/boss-tiger.png';
+        if (spec && spec.form === 'ghost') return 'assets/boss-ghost.png';
         if (spec && spec.form && JB.art[spec.form]) {
           if (dlgBossCache[spec.form]) return dlgBossCache[spec.form];
           var cv = document.createElement('canvas');
@@ -75678,6 +76928,33 @@ if (typeof module !== 'undefined' && module.exports) {
     } catch (e) {}
     return 'assets/boss-king.png';
   }
+  /* v5.22: 보스 초상 — 캐시/파일 URL만 반환. 384 캔버스 동기 인코딩은 탭 경로에서 금지 */
+  function dlgBossPortraitUrlCached(st) {
+    try {
+      if (!st) return null;
+      var JB = root.JW48B;
+      if (JB && JB.specOf && ENGINE_MAPS.indexOf(st.mapId) >= 0) {
+        var spec = JB.specOf(st.mapId);
+        if (spec && spec.form === 'tiger') return 'assets/boss-tiger.png';
+        if (spec && spec.form === 'ghost') return 'assets/boss-ghost.png';
+        if (spec && spec.form && dlgBossCache[spec.form]) return dlgBossCache[spec.form];
+        return null;
+      }
+      return dlgSkinPortraitUrlCached(st.skinId);
+    } catch (e) { return null; }
+  }
+  /* v5.22: 보스 초상을 백그라운드에서 미리 계산 — 계산이 끝나면 콜백에 URL 전달 */
+  function dlgWarmBossPortrait(st, done) {
+    try {
+      var u0 = dlgBossPortraitUrlCached(st);
+      if (u0) { if (done) { try { done(u0); } catch (e) {} } return; }
+      setTimeout(function () {
+        var u = '';
+        try { u = dlgBossPortraitUrl(st); } catch (e) {}
+        if (done) { try { done(u); } catch (e2) {} }
+      }, 0);
+    } catch (e) {}
+  }
   var dlgLastWho = '', dlgPortraitTimer = null;
   function dlgPortrait(line, st) {
     var chara = $('storyDlgChara'), boss = $('storyDlgBoss');
@@ -75690,24 +76967,37 @@ if (typeof module !== 'undefined' && module.exports) {
     if (who === dlgLastWho) return;
     dlgLastWho = who;
     var apply = function () {
-      chara.style.display = 'none'; boss.style.display = 'none';
       if (!st) return;
       /* 화자 초상은 전부 실제 게임 이미지로 표시한다 (이모지 금지):
          주인공 대사 → 그 캐릭터 스킨 스프라이트, 보스 대사 → 보스 아트. */
-      var url = null;
-      if (line.kind === 'boss') { url = dlgBossPortraitUrl(st); }
-      else if (line.speaker === '재우') { url = dlgSkinPortraitUrl('jaeu'); }
-      else { url = dlgSkinPortraitUrl(st.skinId); }
-      if (!url) url = 'assets/boss-king.png';
-      chara.src = url; chara.style.display = 'block';
-      var shown = chara;
-      /* 페이드인: 살짝 아래에서 떠오르며 등장 */
-      shown.style.opacity = '0';
-      shown.style.transform = 'translateX(-50%) translateY(12px)';
-      requestAnimationFrame(function () { requestAnimationFrame(function () {
-        shown.style.opacity = '1';
-        shown.style.transform = 'translateX(-50%) translateY(0)';
-      }); });
+      var myWho = who;
+      var show = function (url) {
+        if (myWho !== dlgLastWho) return; /* 이미 다음 줄로 넘어감 */
+        if (!url) url = 'assets/boss-king.png';
+        chara.style.display = 'none'; boss.style.display = 'none';
+        chara.src = url; chara.style.display = 'block';
+        var shown = chara;
+        /* 페이드인: 살짝 아래에서 떠오르며 등장 */
+        shown.style.opacity = '0';
+        shown.style.transform = 'translateX(-50%) translateY(12px)';
+        requestAnimationFrame(function () { requestAnimationFrame(function () {
+          shown.style.opacity = '1';
+          shown.style.transform = 'translateX(-50%) translateY(0)';
+        }); });
+      };
+      /* v5.22: 캐시에 있는 초상은 바로 표시. 없으면 이전 초상을 그대로 두고
+         백그라운드에서 계산한 뒤 지금 화자일 때만 교체 — 탭 경로에서 동기
+         toDataURL을 절대 하지 않아 타자기가 안 멈춤. */
+      if (line.kind === 'boss') {
+        var bu = dlgBossPortraitUrlCached(st);
+        if (bu) { show(bu); return; }
+        dlgWarmBossPortrait(st, show);
+        return;
+      }
+      var skinId = (line.speaker === '재우') ? 'jaeu' : st.skinId;
+      var su = dlgSkinPortraitUrlCached(skinId);
+      if (su) { show(su); return; }
+      dlgWarmSkinPortrait(skinId, show);
     };
     /* 이전 캐릭터 페이드아웃 후 교체 (빠른 탭에도 최신 것만 적용) */
     chara.style.opacity = '0'; boss.style.opacity = '0';
@@ -75798,9 +77088,6 @@ if (typeof module !== 'undefined' && module.exports) {
     var body = line.body || '';
     if (who) who.textContent = speaker;
     if (next) next.textContent = (dlgIdx === dlgLines.length - 1) ? '끝 ▶' : '다음 ▶';
-    dlgPortrait(line, dlgStage);
-    dlgPlayVoice(line.audio || '');
-    dlgSaveLine(line); /* v5.21: 본 대사를 회상 모드용으로 저장 */
     dlgFull = body;
     dlgTyping = true;
     if (txt) {
@@ -75846,6 +77133,11 @@ if (typeof module !== 'undefined' && module.exports) {
       dlgTimer = requestAnimationFrame(step);
     };
     dlgTimer = requestAnimationFrame(step);
+    /* v5.22: 타자기 rAF를 먼저 예약한 뒤에 초상/음성 작업을 돌린다 —
+       초상·음성 작업이 타자기 시작을 막지 않게. (초상은 캐시 우선 + 비동기 워밍) */
+    dlgPortrait(line, dlgStage);
+    dlgPlayVoice(line.audio || '');
+    dlgSaveLine(line); /* v5.21: 본 대사를 회상 모드용으로 저장 */
     /* 다음 줄 미리 받아두기 (음성 + 초상) — 다음 누르자마자 바로 나오게 */
     dlgPrefetchNext();
   }
@@ -75930,6 +77222,8 @@ if (typeof module !== 'undefined' && module.exports) {
     dlgLines = lines.slice(); dlgIdx = 0; dlgDone = onDone || null; dlgStage = st || null;
     dlgSetScene(st);
     dlgShow();
+    /* v5.22: 이 장면의 모든 화자 초상을 백그라운드에서 미리 계산 (탭할 때 캐시 히트) */
+    try { dlgWarmScenePortraits(lines, st); } catch (e) {}
     dlgTypeLine(dlgLines[0]);
   }
   function dlgLine(text, kind, turn) {
@@ -75970,6 +77264,8 @@ if (typeof module !== 'undefined' && module.exports) {
     var m = $('storyModal');
     if (m) m.classList.add('hidden');
     dlgHide();
+    /* v5.25: 대사창을 즉시 숨긴다 — dlgHide는 320ms 뒤에 숨기는데, 그 전에 게임이 시작돼서 대사창이 남은 채로 전환이 겹쳤다. */
+    var _sd = $('storyDlg'); if (_sd) _sd.classList.add('hidden');
     var b = document.getElementById('btnStartGame');
     if (b) {
       /* 스토리 시작은 위저드(맵·모드·규칙 고르기)를 거치지 않는다: 맵·모드가
@@ -76079,6 +77375,7 @@ if (typeof module !== 'undefined' && module.exports) {
   var __bossBlockT = 0;
   var __coinGateT = 0;
   V.storyDevSkip = false;
+  V.storyMissionClear = false; V.storyMissionClearRun = null; /* v5.22: 미션 완료 조기 클리어 1회용 플래그 */
 
   function resetStoryRunState() {
     SB = null;
@@ -76215,6 +77512,46 @@ if (typeof module !== 'undefined' && module.exports) {
     } catch (e) {}
     /* 보스 */
     try { storyBossTick(dt, st); } catch (e) {}
+    /* v5.22: 미션 완료 조기 클리어 — clearMode 'mission' 스테이지만 (코인/콤보/보스) */
+    try { storyMissionEarlyClear(st); } catch (e) {}
+  }
+
+  /* ---------------- 미션 완료 조기 클리어 (v5.22, 스테이지별) ----------------
+     clearMode가 'mission'인 스테이지에서만: 코인 수집·콤보 달성·보스 격파를
+     판 중간에 마치면 정상에 안 올라도 바로 클리어. 승리 훅(JWG.onReachVictory)을
+     직접 부르고, 게이트의 1회용 플래그가 보스 게이트를 우회해 통과시킨다.
+     'both'/'summit' 스테이지는 여기서 클리어하지 않는다. */
+  function storyMissionEarlyClear(st) {
+    var run = V.storyRun;
+    if (!run || run.done || run.failed) return;
+    var m = (st && st.mission) || {};
+    if (m.clearMode !== 'mission') return;
+    var done = false, why = '';
+    if (m.type === 'coins') {
+      var got = 0;
+      try { got = (V.G && V.G.coinsGot) || 0; } catch (e) {}
+      if (got >= (m.target || 1)) { done = true; why = '코인 ' + got + '개 수집!'; }
+    } else if (m.type === 'combo') {
+      var best = 0;
+      try { if (V.fever && typeof V.fever.best === 'number') best = V.fever.best; } catch (e) {}
+      if (ST && ST.maxCombo > best) best = ST.maxCombo;
+      if (best >= (m.target || 1)) { done = true; why = best + '콤보 달성!'; }
+    } else if (m.type === 'boss_clear') {
+      if (SB && SB.bossDead) { done = true; why = '보스 격파!'; }
+    }
+    if (!done) return;
+    try { V.storyMissionClear = true; V.storyMissionClearRun = run; } catch (e) {}
+    /* 보스는 격파 토스트가 이미 떴으니 중복 토스트 없이 클리어만 알림 */
+    if (m.type !== 'boss_clear') {
+      try { V.toast('🎉 미션 완료!', 'lucky', why + ' 스테이지 클리어!', 3000); } catch (e) {}
+    }
+    /* 틱 스택 밖에서 승리 처리 (재진입 방지용 짧은 지연) */
+    setTimeout(function () {
+      try {
+        if (V.storyRun !== run || run.done || run.failed) { V.storyMissionClear = false; V.storyMissionClearRun = null; return; }
+        if (root.JWG && root.JWG.onReachVictory) root.JWG.onReachVictory();
+      } catch (e) {}
+    }, 60);
   }
 
   /* ---------------- 미션 판정 (승리 시점) ---------------- */
@@ -76243,8 +77580,9 @@ if (typeof module !== 'undefined' && module.exports) {
     }
     if (m.type === 'no_damage') {
       var h = ST ? ST.hits : 0;
-      if (h <= 0) return { ok: true };
-      return { ok: false, msg: '❌ 미션 실패', sub: '피격 ' + h + '회 — 한 번도 안 맞고 깨야 해!', recoverable: false };
+      var lim = (typeof tgt === 'number') ? tgt : 0; /* v5.22: 데이터 target 사용 (1회까지 허용으로 완화) */
+      if (h <= lim) return { ok: true };
+      return { ok: false, msg: '❌ 미션 실패', sub: '피격 ' + h + '회 — ' + lim + '회 이하로 깨야 해!', recoverable: false };
     }
     if (m.type === 'coins') {
       var got = (G && G.coinsGot) || 0;
@@ -76274,6 +77612,13 @@ if (typeof module !== 'undefined' && module.exports) {
     } catch (e) {}
     var st = STAGE_BY_IDX[run.index];
     if (!st) return 'pass';
+    /* v5.22: 미션 완료 조기 클리어 (1회용 플래그) — 보스 게이트보다 먼저 통과 */
+    try {
+      if (V.storyMissionClear && V.storyMissionClearRun === run) {
+        V.storyMissionClear = false; V.storyMissionClearRun = null;
+        return 'pass';
+      }
+    } catch (e) {}
     /* 보스 게이트 (전 스테이지 공통 최종 관문) */
     try {
       if (!SB || !SB.boss) storyBossEnsure(st);
@@ -76282,11 +77627,16 @@ if (typeof module !== 'undefined' && module.exports) {
         return 'block';
       }
     } catch (e) {}
-    /* 미션 판정 */
+    /* 미션 판정 — 스테이지별 clearMode(v5.22):
+       summit = 정상만 오르면 클리어 (미션은 보너스, 판정 안 함),
+       mission/both = 정상에서 미션도 검사 (mission은 미완료 시 아래로 텔레포트해 재도전). */
+    var cm = (st.mission && st.mission.clearMode) || 'both';
+    if (cm === 'summit') return 'pass';
     var chk = null;
     try { chk = storyMissionCheck(st); } catch (e) { chk = { ok: true }; }
     if (chk && !chk.ok) {
-      try { V.toast(chk.msg || '❌ 미션 실패', 'danger', chk.sub || '', 3200); } catch (e) {}
+      var tmsg = (cm === 'mission') ? '🎯 미션을 마치면 클리어!' : (chk.msg || '❌ 미션 실패');
+      try { V.toast(tmsg, 'danger', chk.sub || '', 3200); } catch (e) {}
       if (chk.recoverable) {
         try { storyRetryTeleport(chk.retry || 'boss', st); } catch (e) {}
         return 'block';
@@ -76726,6 +78076,12 @@ if (typeof module !== 'undefined' && module.exports) {
       b.__storyBound = true;
       b.addEventListener('click', function () { openStory(); });
     }
+    var pn = document.getElementById('btnPatchNotes');
+    if (pn && !pn.__pnBound) {
+      pn.__pnBound = true;
+      pn.addEventListener('click', function () { openPatchNotes(); });
+    }
+    try { updatePatchNotesLabel(); } catch (e) {}
     var nx = document.getElementById('storyDlgNext');
     if (nx && !nx.__storyBound) {
       nx.__storyBound = true;
