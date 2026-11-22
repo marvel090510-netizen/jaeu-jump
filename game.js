@@ -68739,7 +68739,7 @@ if (typeof module !== 'undefined' && module.exports) {
    게임이 켜질 때 patch-notes.json을 캐시 없이 받아서 최신 버전과 지금 빌드를 비교한다. */
 (function (root) {
   'use strict';
-  var BUILD = 'v5.28';
+  var BUILD = 'v5.29';
   root.__JW_BUILD_VERSION = BUILD;
   function norm(v) { return String(v || '').replace(/-정식$/, '').trim(); }
   function titleVisible() { try { var t = document.getElementById('titleScreen'); return !!(t && !t.classList.contains('hidden')); } catch (e) { return false; } }
@@ -71514,6 +71514,8 @@ if (typeof module !== 'undefined' && module.exports) {
         '<button type="button" class="tab" data-v57pt="frame">🖼️ 테두리</button>' +
         '<button type="button" class="tab" data-v57pt="plate">🏷️ 이름표</button>' +
         '<button type="button" class="tab" data-v57pt="title">🏅 칭호</button>' +
+        '<button type="button" class="tab" data-v57pt="pet">🐾 펫</button>' +
+        '<button type="button" class="tab" data-v57pt="trail">✨ 잔상</button>' +
       '</div>' +
       '<div class="body" id="v57PrBody"></div></div>';
     doc.body.appendChild(m);
@@ -71594,6 +71596,12 @@ if (typeof module !== 'undefined' && module.exports) {
     if (rc) rc.innerHTML = '최고 <b>' + bestM() + 'm</b> · 클리어 <b>' + ((prof().mapsCleared || []).length) + '</b>맵 · 완등 <b>' + (prof().clears || 0) + '</b>회';
 
     var h = '';
+    /* v5.29: [🐾 펫] [✨ 잔상] 탭은 새 펫뽑기 모듈이 그린다 */
+    if (TAB === 'pet' || TAB === 'trail') {
+      try { if (root.JW529UI) { root.JW529UI.render(TAB, body); return; } } catch (e) {}
+      body.innerHTML = '<div class="note">펫·잔상 목록을 불러오는 중이에요</div>';
+      return;
+    }
     if (TAB === 'skin') {
       var skins = [];
       try { skins = V.api().skins() || []; } catch (e) {}
@@ -71621,7 +71629,8 @@ if (typeof module !== 'undefined' && module.exports) {
         var _SET = _G && _G.DECO_SET ? _G.DECO_SET : null;
         var _DC = _G && _G.deco ? _G.deco : {};
         if (_SET) {
-          var _kinds = [['pet', '🐾 펫', 'PETS'], ['hat', '👒 모자', 'HATS'], ['glasses', '🕶️ 안경', 'GLASSES'], ['back', '🦸 등(망토·날개)', 'BACK'], ['trail', '✨ 점프 꼬리 잔상', 'TRAIL'], ['bubble', '💬 말풍선 스타일', 'BUBBLES']];
+          /* v5.29: 펫·꼬리 잔상은 위 [🐾 펫] [✨ 잔상] 탭으로 옮겼다 */
+          var _kinds = [['hat', '👒 모자', 'HATS'], ['glasses', '🕶️ 안경', 'GLASSES'], ['back', '🦸 등(망토·날개)', 'BACK'], ['bubble', '💬 말풍선 스타일', 'BUBBLES']];
           _kinds.forEach(function (kd) {
             var _list = _SET[kd[2]] || [];
             var _curD = _DC[kd[0]];
@@ -78323,4 +78332,832 @@ if (typeof module !== 'undefined' && module.exports) {
   if (root.document) root.addEventListener('load', function () { try { boot(); } catch (e) {} });
 
   try { console.log('[story] v5.21 dlg-speed+rewind+recall+fade ready'); } catch (e) {}
+})(window);
+
+/* ==========================================================================
+   v5.29 : 🐾 펫 뽑기(가챠) + ✨ 꼬리 잔상 — 보상 해금형 꾸미기
+   --------------------------------------------------------------------------
+   · 펫: 12종 뽑기(일반60/희귀28/영웅10/전설2) + 4종 보상 전용 = 16종
+         중복 시 등급별 코인 환급 · 천장(10회 희귀+ / 30회 영웅+)
+         장착한 펫이 플레이어 뒤를 스프링으로 따라온다 (밸런스·판정 무영향)
+   · 꼬리 잔상: 12종 (기본 1 + 실제 기록으로 해금 11) — 파티클 풀 18개 고정
+   · 재화: 펫 코인 — 완등·최고층·스토리 첫 클리어·일일 접속으로 모인다
+   · UI: 내 프로필 [🐾 펫] [✨ 잔상] 탭 — 뽑기·확률표·보유 목록·장착
+   · 전부 캔버스 안에서만 그린다 (인게임 DOM 변이·렉 추가 없음)
+   ========================================================================== */
+(function (root) {
+  'use strict';
+  var V = root.JW43;
+  if (!V || !V.G) return;
+  if (root.JW529) return;
+  var G = V.G, doc = document;
+  var $ = function (id) { return doc.getElementById(id); };
+  function J() { try { return root.__jwg || null; } catch (e) { return null; } }
+  function api() { try { return V.api() || {}; } catch (e) { return {}; } }
+  function prof() { try { var i = api().internals ? api().internals() : null; return (i && i.prof) || {}; } catch (e) { return {}; } }
+  function stats() { try { return V.lsGet('jw43_stats_v1', {}) || {}; } catch (e) { return {}; } }
+  function storyCount() { try { var s = V.lsGet('jw64_story_v1', null); return (s && s.cleared) ? Object.keys(s.cleared).length : 0; } catch (e) { return 0; } }
+  function inPlay() { try { var j = J(); return !!(j && j.game && j.game.inPlay); } catch (e) { return false; } }
+  function esc(s) { return String(s == null ? '' : s).replace(/[<>&"]/g, function (c) { return c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '&' ? '&amp;' : '&quot;'; }); }
+  function toast(msg, sub) {
+    try { if (V.toast && !inPlay()) V.toast(msg, 'ok', sub || '', 2400); } catch (e) {}
+  }
+  function beep(f, d) { try { V.beep(f || 780, 0.05, 0.06, 'square', (f || 780) + 220); } catch (e) {} }
+
+  /* ================================================================
+     등급 · 펫 목록
+     ================================================================ */
+  var TIER = {
+    common: { name: '일반', rate: 60, col: '#9fb3cd', refund: 10 },
+    rare: { name: '희귀', rate: 28, col: '#38bdf8', refund: 15 },
+    hero: { name: '영웅', rate: 10, col: '#a78bfa', refund: 25 },
+    legend: { name: '전설', rate: 2, col: '#fbbf24', refund: 40 }
+  };
+  var PULL1 = 50, PULL5 = 225, START_COIN = 120, DAILY_COIN = 30;
+
+  /* 보상 전용 펫은 뽑기 풀에 들어가지 않는다 */
+  var PETS = [
+    /* ---- 뽑기: 일반 6 ---- */
+    { id: 'p_slime', name: '아기 슬라임', tier: 'common' },
+    { id: 'p_cloud', name: '구름 솜뭉치', tier: 'common' },
+    { id: 'p_chick', name: '아기 병아리', tier: 'common' },
+    { id: 'p_robot', name: '미니 로봇', tier: 'common' },
+    { id: 'p_acorn', name: '도토리 다람쥐', tier: 'common' },
+    { id: 'p_drop', name: '물방울 정령', tier: 'common' },
+    /* ---- 뽑기: 희귀 3 ---- */
+    { id: 'p_nyan', name: '구름 냥이', tier: 'rare' },
+    { id: 'p_fox', name: '불꽃 여우', tier: 'rare' },
+    { id: 'p_duck', name: '우주 오리', tier: 'rare' },
+    /* ---- 뽑기: 영웅 2 ---- */
+    { id: 'p_dragon', name: '꼬마 드래곤', tier: 'hero' },
+    { id: 'p_fairy', name: '별 요정', tier: 'hero' },
+    /* ---- 뽑기: 전설 1 ---- */
+    { id: 'p_toad', name: '황금 두꺼비', tier: 'legend' },
+    /* ---- 보상 전용 4 ---- */
+    { id: 'p_egg', name: '첫걸음 알', tier: 'rare', award: true, why: '첫 완등 1회', need: function () { return (prof().clears || 0) >= 1; }, prog: function () { return ((prof().clears || 0) >= 1 ? 1 : 0) + ' / 1회'; } },
+    { id: 'p_sprout', name: '새싹 정령', tier: 'hero', award: true, why: '누적 등반 500m', need: function () { return (stats().climbM || 0) >= 500; }, prog: function () { return Math.floor(stats().climbM || 0) + ' / 500m'; } },
+    { id: 'p_owl', name: '현자 올빼미', tier: 'hero', award: true, why: '스토리 8스테이지 클리어', need: function () { return storyCount() >= 8; }, prog: function () { return storyCount() + ' / 8 스테이지'; } },
+    { id: 'p_crown', name: '왕관 슬라임', tier: 'legend', award: true, why: '최고 50층 돌파', need: function () { return (stats().bestPlat || 0) >= 50; }, prog: function () { return (stats().bestPlat || 0) + ' / 50층'; } }
+  ];
+  var BY_ID = {};
+  PETS.forEach(function (p) { BY_ID[p.id] = p; });
+  function gachaOf(tier) { return PETS.filter(function (p) { return !p.award && p.tier === tier; }); }
+
+  /* ================================================================
+     꼬리 잔상 12종 (기본 1 + 기록 해금 11)
+     ================================================================ */
+  var TRAILS = [
+    { id: 't_cloud', name: '기본 구름 잔상', col: '#dbe7f8', why: '기본 지급', need: function () { return true; }, prog: function () { return '기본'; } },
+    { id: 't_rainbow', name: '무지개 빛줄기', col: '#f472b6', why: '맵 5개 클리어', need: function () { return (prof().mapsCleared || []).length >= 5; }, prog: function () { return (prof().mapsCleared || []).length + ' / 5 맵'; } },
+    { id: 't_star', name: '별가루', col: '#fde047', why: '맵 10개 클리어', need: function () { return (prof().mapsCleared || []).length >= 10; }, prog: function () { return (prof().mapsCleared || []).length + ' / 10 맵'; } },
+    { id: 't_fire', name: '불꽃 꼬리', col: '#fb923c', why: '완등 10회', need: function () { return (prof().clears || 0) >= 10; }, prog: function () { return (prof().clears || 0) + ' / 10회'; } },
+    { id: 't_blossom', name: '벚꽃 잎', col: '#f9a8d4', why: '최고 30층', need: function () { return (stats().bestPlat || 0) >= 30; }, prog: function () { return (stats().bestPlat || 0) + ' / 30층'; } },
+    { id: 't_pixel', name: '픽셀 잔상', col: '#67e8f9', why: '누적 등반 1,000m', need: function () { return (stats().climbM || 0) >= 1000; }, prog: function () { return Math.floor(stats().climbM || 0) + ' / 1,000m'; } },
+    { id: 't_bolt', name: '번개 스파크', col: '#a5f3fc', why: '최고 60층', need: function () { return (stats().bestPlat || 0) >= 60; }, prog: function () { return (stats().bestPlat || 0) + ' / 60층'; } },
+    { id: 't_aurora', name: '오로라 리본', col: '#6ee7b7', why: '스토리 8스테이지 클리어', need: function () { return storyCount() >= 8; }, prog: function () { return storyCount() + ' / 8 스테이지'; } },
+    { id: 't_bubble', name: '물방울', col: '#7dd3fc', why: '최고 연승 3', need: function () { return (prof().bestStreak || 0) >= 3; }, prog: function () { return (prof().bestStreak || 0) + ' / 3 연승'; } },
+    { id: 't_gold', name: '황금 가루', col: '#fbbf24', why: '최고 100층', need: function () { return (stats().bestPlat || 0) >= 100; }, prog: function () { return (stats().bestPlat || 0) + ' / 100층'; } },
+    { id: 't_mist', name: '유령 안개', col: '#c4b5fd', why: '누적 낙하 100m', need: function () { return (stats().fallM || 0) >= 100; }, prog: function () { return Math.floor(stats().fallM || 0) + ' / 100m'; } },
+    { id: 't_confetti', name: '색종이', col: '#f87171', why: 'PERFECT 콤보 10', need: function () { return (stats().maxCombo || 0) >= 10; }, prog: function () { return (stats().maxCombo || 0) + ' / 10 콤보'; } }
+  ];
+  var T_BY_ID = {};
+  TRAILS.forEach(function (t) { T_BY_ID[t.id] = t; });
+
+  /* ================================================================
+     저장
+     ================================================================ */
+  var KEY = 'jw529_pet_v1';
+  function blank() {
+    return { v: 1, coins: 0, owned: {}, equip: '', trail: 't_cloud', pityR: 0, pityH: 0, pulls: 0, base: null, day: '', lastPull: null, oddsOpen: false };
+  }
+  function load() {
+    var s = null;
+    try { s = V.lsGet(KEY, null); } catch (e) {}
+    if (!s || typeof s !== 'object') s = blank();
+    if (!s.owned || typeof s.owned !== 'object') s.owned = {};
+    if (typeof s.coins !== 'number' || !isFinite(s.coins)) s.coins = 0;
+    if (typeof s.trail !== 'string' || !T_BY_ID[s.trail]) s.trail = 't_cloud';
+    if (typeof s.equip !== 'string') s.equip = '';
+    if (typeof s.pityR !== 'number') s.pityR = 0;
+    if (typeof s.pityH !== 'number') s.pityH = 0;
+    if (typeof s.pulls !== 'number') s.pulls = 0;
+    return s;
+  }
+  var ST = load();
+  function save() { try { V.lsSet(KEY, ST); } catch (e) {} }
+
+  /* 첫 실행: 시작 코인 + 기존(v4.4) 장식 이관 */
+  (function boot() {
+    var fresh = false;
+    try { fresh = !V.lsGet(KEY, null); } catch (e) {}
+    if (fresh) {
+      ST = blank();
+      ST.coins = START_COIN;
+      ST.base = { clears: (prof().clears || 0), best: (stats().bestPlat || 0), story: storyCount() };
+    }
+    /* v4.4 장식(펫 dragon·cat·dog·ghost·star·robot / 잔상 fire·rainbow·star·bolt)을
+       새 시스템으로 이관한다 — 예전에 골라 둔 장식이 그냥 사라지지 않게.
+       (이미 있던 유저도 한 번은 이관되도록 매 실행에서 확인 — 중복 지급은 없다) */
+    var old = null;
+    try { old = (root.JW43 && V.lsGet('jw44_deco_v1', {})) || {}; } catch (e) { old = {}; }
+    var pmap = { dragon: 'p_dragon', cat: 'p_nyan', dog: 'p_fox', ghost: 'p_drop', star: 'p_fairy', robot: 'p_robot' };
+    var tmap = { fire: 't_fire', rainbow: 't_rainbow', star: 't_star', bolt: 't_bolt' };
+    var changed = fresh;
+    if (old && pmap[old.pet] && !ST.owned[pmap[old.pet]]) { ST.owned[pmap[old.pet]] = 1; changed = true; }
+    if (old && old.pet && pmap[old.pet] && !ST.equip) { ST.equip = pmap[old.pet]; changed = true; }
+    if (old && tmap[old.trail]) {
+      ST.grant = ST.grant || {};
+      if (!ST.grant[tmap[old.trail]]) { ST.grant[tmap[old.trail]] = 1; changed = true; }
+      if (!ST.trail || ST.trail === 't_cloud') { ST.trail = tmap[old.trail]; changed = true; }
+    }
+    if (old && ((old.pet && old.pet !== 'none') || (old.trail && old.trail !== 'none'))) {
+      /* 옛 그리기 경로는 끈다 (새 시스템이 그린다) */
+      try {
+        var G44 = (root.JW44 && root.JW44.G) || G;
+        if (G44 && G44.deco) { G44.deco.pet = 'none'; G44.deco.trail = 'none'; if (G44.saveDeco) G44.saveDeco(); }
+      } catch (e) {}
+      changed = true;
+    }
+    if (changed) save();
+    /* 일일 접속 보너스 */
+    try {
+      var d = new Date(), today = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+      if (ST.day !== today) {
+        var first = !ST.day;
+        ST.day = today;
+        if (!first) { ST.coins += DAILY_COIN; save(); setTimeout(function () { toast('🪙 펫 코인 +' + DAILY_COIN, '오늘 첫 접속 보너스'); }, 3200); }
+      }
+    } catch (e) {}
+  })();
+
+  /* ================================================================
+     뽑기
+     ================================================================ */
+  function rollTier() {
+    var r = Math.random() * 100;
+    if (r < 2) return 'legend';
+    if (r < 12) return 'hero';
+    if (r < 40) return 'rare';
+    return 'common';
+  }
+  function pickWithPity() {
+    /* 천장: 30회 영웅 이상 확정 / 10회 희귀 이상 확정 */
+    if (ST.pityH >= 29) return (Math.random() < 0.18) ? 'legend' : 'hero';
+    if (ST.pityR >= 9) {
+      var q = Math.random();
+      if (q < 0.06) return 'legend';
+      if (q < 0.30) return 'hero';
+      return 'rare';
+    }
+    return rollTier();
+  }
+  function pullOne() {
+    var tier = pickWithPity();
+    var pool = gachaOf(tier);
+    var pet = pool[Math.floor(Math.random() * pool.length)] || PETS[0];
+    var dup = !!ST.owned[pet.id];
+    var refund = 0;
+    if (dup) { refund = TIER[pet.tier].refund; ST.coins += refund; }
+    else ST.owned[pet.id] = 1;
+    ST.pulls++;
+    if (tier === 'rare' || tier === 'hero' || tier === 'legend') ST.pityR = 0; else ST.pityR++;
+    if (tier === 'hero' || tier === 'legend') ST.pityH = 0; else ST.pityH++;
+    return { id: pet.id, name: pet.name, tier: pet.tier, dup: dup, refund: refund };
+  }
+  function doPull(n) {
+    var cost = n === 5 ? PULL5 : PULL1 * n;
+    if (ST.coins < cost) {
+      try { V.toast('🪙 펫 코인이 부족해요', 'danger', '필요 ' + cost + ' · 보유 ' + ST.coins, 2600); } catch (e) {}
+      beep(320, 0.06); return;
+    }
+    ST.coins -= cost;
+    var out = [];
+    for (var i = 0; i < n; i++) out.push(pullOne());
+    ST.lastPull = out;
+    var best = out.filter(function (x) { return x.tier !== 'common'; }).length;
+    save();
+    beep(880, 0.05);
+    setTimeout(function () { try { V.beep(1180, 0.06, 0.07, 'square', 1480); } catch (e) {} }, 90);
+    if (best) toast('✨ ' + best + '종이 희귀 이상!', '프로필 🐾 펫에서 확인');
+    if (root.JW57PROF && root.JW57PROF.paint) { try { root.JW57PROF.paint(); } catch (e) {} }
+  }
+
+  /* ================================================================
+     보상 펫 자동 지급 · 코인 적립
+     ================================================================ */
+  function checkAwards() {
+    var got = [];
+    PETS.forEach(function (p) {
+      if (!p.award || ST.owned[p.id]) return;
+      var ok = false;
+      try { ok = !!p.need(); } catch (e) { ok = false; }
+      if (ok) { ST.owned[p.id] = 1; got.push(p.name); }
+    });
+    if (got.length) {
+      save();
+      toast('🐾 보상 펫 획득! ' + got.join(' · '), '내 프로필 🐾 펫에서 장착');
+    }
+    return got.length;
+  }
+  function tickEarn() {
+    var p = prof(), s = stats(), st = storyCount();
+    var c = Number(p.clears || 0) || 0, b = Number(s.bestPlat || 0) || 0;
+    if (!ST.base) { ST.base = { clears: c, best: b, story: st }; save(); }
+    var add = 0;
+    if (c > ST.base.clears) { add += (c - ST.base.clears) * 25; ST.base.clears = c; }
+    if (b > ST.base.best) { add += (b - ST.base.best) * 2; ST.base.best = b; }
+    if (st > ST.base.story) { add += (st - ST.base.story) * 40; ST.base.story = st; }
+    if (add) { ST.coins += add; save(); toast('🪙 펫 코인 +' + add, '기록 달성 보상'); }
+    if (checkAwards()) { try { if (root.JW57PROF && root.JW57PROF.paint) root.JW57PROF.paint(); } catch (e) {} }
+  }
+  setInterval(function () { try { tickEarn(); } catch (e) {} }, 1500);
+
+  /* ================================================================
+     펫 도트 그리기 (24×22 기준 · 발끝 중앙 원점)
+     ================================================================ */
+  function R(c, col, x, y, w, h) { c.fillStyle = col; c.fillRect(x, y, w, h); }
+  function eye(c, x, y, blink, pup) {
+    if (blink) { R(c, '#22304a', x, y + 1, 3, 1); return; }
+    R(c, '#ffffff', x, y, 3, 3);
+    R(c, pup || '#1a2b45', x + 1, y, 2, 3);
+  }
+  function cheeks(c, x1, x2, y, col) { R(c, col || 'rgba(248,113,113,.55)', x1, y, 2, 1); R(c, col || 'rgba(248,113,113,.55)', x2, y, 2, 1); }
+
+  function drawPet(c, id, t) {
+    var blink = (t % 4.3) < 0.13;
+    var w = Math.sin(t * 5) * 0.5;
+    switch (id) {
+      case 'p_slime': {
+        var m = '#5eea8b', d = '#2bb35c', l = '#b6ffd2';
+        R(c, d, -10, -6, 20, 6); R(c, m, -9, -11, 18, 6); R(c, m, -6, -14, 12, 4); R(c, m, -3, -16, 6, 3);
+        R(c, l, -6, -15, 3, 2); R(c, 'rgba(255,255,255,.35)', -7, -12, 3, 3);
+        eye(c, -5, -9, blink); eye(c, 2, -9, blink); R(c, '#1d3b2a', -1, -6, 3, 1);
+        break;
+      }
+      case 'p_cloud': {
+        var c1 = '#eef4ff', c2 = '#bccbe4';
+        R(c, c2, -10, -7, 20, 7); R(c, c1, -8, -11, 16, 5);
+        R(c, c1, -12, -9, 5, 6); R(c, c1, 7, -10, 5, 7); R(c, c1, -4, -14, 7, 4);
+        eye(c, -5, -8, blink); eye(c, 3, -8, blink); R(c, '#8fa3c4', -1, -5, 3, 1);
+        break;
+      }
+      case 'p_chick': {
+        var y1 = '#ffd93d', y2 = '#e0a800', o = '#ff8f43';
+        R(c, y2, -8, -6, 16, 6); R(c, y1, -8, -12, 16, 7); R(c, y1, -5, -15, 10, 4);
+        R(c, 'rgba(255,255,255,.45)', -6, -14, 3, 2);
+        eye(c, -5, -10, blink); eye(c, 2, -10, blink);
+        R(c, o, -2, -8, 5, 3); R(c, '#c2410c', -1, -7, 3, 1);
+        R(c, o, -7, -2, 2, 2); R(c, o, 5, -2, 2, 2);
+        break;
+      }
+      case 'p_robot': {
+        var s1 = '#9fb8d8', s2 = '#5b7290', cy = '#67e8f9';
+        R(c, s2, -9, -8, 18, 8); R(c, s1, -8, -13, 16, 6);
+        R(c, '#0d1728', -6, -12, 12, 6); R(c, cy, -4, -11, 3, 3); R(c, cy, 2, -11, 3, 3);
+        R(c, '#f87171', -1, -17, 2, 3); R(c, '#fbbf24', -2, -18, 4, 2);
+        R(c, s2, -12, -7, 3, 6); R(c, s2, 9, -7, 3, 6);
+        R(c, cy, -4, -4, 8, 1);
+        break;
+      }
+      case 'p_acorn': {
+        var br = '#b45309', br2 = '#7c3a12', cm = '#fde68a', pk = '#f9a8d4';
+        /* 꼬리 (뒤쪽으로 말린 큰 꼬리) */
+        R(c, br2, 6, -11, 4, 9); R(c, br, 8, -17, 6, 7); R(c, br, 5, -21, 5, 5); R(c, br2, 10, -19, 3, 3);
+        /* 몸통 */
+        R(c, br, -7, -10, 14, 9); R(c, br2, -7, -3, 14, 2); R(c, cm, -4, -8, 8, 6);
+        /* 머리 + 귀 */
+        R(c, br, -6, -16, 12, 7);
+        R(c, br, -7, -20, 3, 5); R(c, br, 4, -20, 3, 5);
+        R(c, pk, -6, -19, 1, 3); R(c, pk, 5, -19, 1, 3);
+        eye(c, -4, -14, blink); eye(c, 2, -14, blink);
+        R(c, '#3f2a17', -1, -9, 3, 2);
+        R(c, cm, -6, -2, 3, 2); R(c, cm, 3, -2, 3, 2);
+        break;
+      }
+      case 'p_drop': {
+        var b1 = '#60a5fa', b2 = '#2563eb', l2 = '#bfdbfe';
+        R(c, b2, -8, -6, 16, 6); R(c, b1, -7, -10, 14, 5); R(c, b1, -4, -15, 8, 6); R(c, b1, -2, -18, 4, 4);
+        R(c, l2, -5, -14, 3, 3); R(c, 'rgba(255,255,255,.5)', -6, -9, 3, 2);
+        eye(c, -4, -9, blink); eye(c, 2, -9, blink); R(c, b2, -1, -5, 3, 1);
+        break;
+      }
+      case 'p_nyan': {
+        var wt = '#f8fafc', gy = '#c7d2e2', pk = '#f9a8d4';
+        R(c, gy, -10, -8, 20, 4); R(c, wt, -10, -6, 20, 6);
+        R(c, wt, -8, -14, 16, 9);
+        R(c, pk, -8, -17, 4, 4); R(c, pk, 4, -17, 4, 4);
+        R(c, wt, -7, -16, 3, 3); R(c, wt, 4, -16, 3, 3);
+        eye(c, -5, -11, blink); eye(c, 2, -11, blink);
+        R(c, '#f472b6', -1, -8, 3, 2);
+        R(c, pk, -9, -12, 2, 1); R(c, pk, 7, -12, 2, 1);
+        R(c, gy, -7, -3, 4, 3); R(c, gy, 3, -3, 4, 3);
+        /* 꼬리 */
+        var wag = Math.round(Math.sin(t * 6) * 1.5);
+        R(c, gy, 9, -9 + wag, 4, 3); R(c, gy, 11, -12 + wag, 3, 4);
+        break;
+      }
+      case 'p_fox': {
+        var fx = '#fb923c', fx2 = '#ea580c', cm = '#fff7ed';
+        var fl = Math.round(Math.sin(t * 9) * 1.5);
+        R(c, fx2, -10, -7, 4, 7); R(c, fx, -12, -12 - fl, 5, 8); R(c, cm, -12, -14 - fl, 4, 3);
+        R(c, fx, -8, -9, 16, 9); R(c, fx, -7, -14, 14, 6);
+        R(c, fx, -8, -17, 4, 4); R(c, fx, 4, -17, 4, 4);
+        R(c, cm, 3, -8, 5, 6);
+        eye(c, -5, -11, blink); eye(c, 2, -11, blink);
+        R(c, '#3f2a17', -1, -7, 3, 2);
+        R(c, cm, -6, -2, 3, 2); R(c, cm, 3, -2, 3, 2);
+        break;
+      }
+      case 'p_duck': {
+        var pu = '#a78bfa', pu2 = '#7c3aed', om = '#fb923c', st = '#fde047';
+        R(c, pu2, -9, -7, 18, 7); R(c, pu, -9, -13, 18, 7); R(c, pu, -6, -16, 12, 4);
+        eye(c, -5, -12, blink); eye(c, 2, -12, blink);
+        R(c, om, -3, -9, 7, 3); R(c, '#c2410c', -2, -8, 5, 1);
+        /* 우주 헬멧 */
+        c.strokeStyle = 'rgba(186,230,253,.85)'; c.lineWidth = 1;
+        c.beginPath(); c.arc(0, -12, 13, Math.PI * 1.06, Math.PI * 1.94); c.stroke();
+        R(c, st, -2, -22, 3, 3); R(c, st, -6, -20, 2, 2); R(c, st, 5, -19, 2, 2);
+        R(c, om, -8, -2, 3, 2); R(c, om, 5, -2, 3, 2);
+        break;
+      }
+      case 'p_dragon': {
+        var dg = '#34d399', dg2 = '#059669', hz = '#fde047';
+        var wing = Math.round(Math.sin(t * 7) * 2);
+        R(c, 'rgba(167,243,208,.85)', -14, -14 - wing, 7, 9);
+        R(c, 'rgba(167,243,208,.85)', 7, -14 - wing, 7, 9);
+        R(c, dg2, -9, -8, 18, 8); R(c, dg, -8, -13, 16, 6); R(c, dg, -5, -16, 12, 4);
+        R(c, dg2, 7, -12, 8, 5); R(c, dg, 12, -14, 5, 5);
+        R(c, hz, -6, -19, 2, 3); R(c, hz, 3, -19, 2, 3);
+        eye(c, -5, -12, blink); eye(c, 2, -12, blink);
+        R(c, '#065f46', -2, -8, 5, 2);
+        R(c, 'rgba(255,255,255,.5)', 13, -13, 2, 1);
+        R(c, dg2, -9, -2, 3, 2); R(c, dg2, 6, -2, 3, 2);
+        break;
+      }
+      case 'p_fairy': {
+        var fg = '#fde047', fg2 = '#f59e0b', wg = 'rgba(196,181,253,.85)';
+        var wf = Math.sin(t * 10) * 1.5;
+        c.fillStyle = wg;
+        c.beginPath(); c.moveTo(-5, -13); c.lineTo(-15, -18 + wf); c.lineTo(-13, -7 + wf); c.lineTo(-5, -8); c.closePath(); c.fill();
+        c.beginPath(); c.moveTo(5, -13); c.lineTo(15, -18 - wf); c.lineTo(13, -7 - wf); c.lineTo(5, -8); c.closePath(); c.fill();
+        R(c, fg2, -4, -6, 8, 6); R(c, fg, -5, -11, 10, 5);
+        R(c, fg, -2, -15, 4, 5); R(c, fg2, -3, -18, 2, 3); R(c, fg2, 1, -18, 2, 3);
+        eye(c, -4, -10, blink); eye(c, 2, -10, blink);
+        R(c, 'rgba(255,255,255,.9)', -1, -7, 2, 1);
+        R(c, '#fde68a', -11, -3, 2, 2); R(c, '#fde68a', 9, -12, 2, 2);
+        break;
+      }
+      case 'p_toad': {
+        var tg = '#fbbf24', tg2 = '#b45309', cr = '#fde047';
+        /* 몸통 */
+        R(c, tg2, -12, -7, 24, 6); R(c, tg, -11, -12, 22, 6);
+        R(c, tg2, -11, -2, 5, 2); R(c, tg2, 6, -2, 5, 2);
+        /* 위로 솟은 눈두덩 */
+        c.fillStyle = tg; c.beginPath(); c.arc(-5, -14, 4, 0, 6.3); c.fill();
+        c.beginPath(); c.arc(5, -14, 4, 0, 6.3); c.fill();
+        c.fillStyle = '#fffbeb'; c.beginPath(); c.arc(-5, -14, 2.4, 0, 6.3); c.fill();
+        c.beginPath(); c.arc(5, -14, 2.4, 0, 6.3); c.fill();
+        c.fillStyle = blink ? '#b45309' : '#1f2937';
+        c.fillRect(-6, -14, 2, blink ? 1 : 3); c.fillRect(4, -14, 2, blink ? 1 : 3);
+        /* 입 */
+        R(c, '#78350f', -4, -7, 8, 2); R(c, '#fef3c7', -3, -8, 6, 1);
+        R(c, 'rgba(180,83,9,.45)', -9, -4, 2, 2); R(c, 'rgba(180,83,9,.45)', 7, -4, 2, 2);
+        /* 왕관 */
+        c.fillStyle = cr; c.beginPath(); c.moveTo(-5, -18); c.lineTo(-5, -22); c.lineTo(-2, -20); c.lineTo(0, -23); c.lineTo(2, -20); c.lineTo(5, -22); c.lineTo(5, -18); c.closePath(); c.fill();
+        R(c, '#f472b6', -1, -21, 2, 2);
+        break;
+      }
+      case 'p_egg': {
+        var e1 = '#fff7ed', e2 = '#e7d9c4', sp = '#a8a29e';
+        R(c, e2, -8, -6, 16, 6); R(c, e1, -8, -12, 16, 7); R(c, e1, -6, -16, 12, 5); R(c, e1, -3, -19, 6, 4);
+        R(c, sp, -5, -13, 2, 2); R(c, sp, 2, -10, 2, 2); R(c, sp, -2, -6, 2, 2); R(c, sp, 4, -15, 2, 2);
+        eye(c, -4, -11, blink); eye(c, 2, -11, blink);
+        break;
+      }
+      case 'p_sprout': {
+        var g1 = '#4ade80', g2 = '#15803d', so = '#a3e635';
+        R(c, g2, -7, -4, 14, 4);
+        R(c, g1, -8, -10, 16, 7); R(c, g1, -5, -14, 10, 5);
+        R(c, so, -2, -20, 2, 6); R(c, so, -6, -22, 5, 3); R(c, so, 2, -21, 5, 3);
+        eye(c, -5, -10, blink); eye(c, 2, -10, blink); R(c, '#14532d', -1, -7, 3, 1);
+        R(c, 'rgba(255,255,255,.4)', -6, -13, 3, 2);
+        break;
+      }
+      case 'p_owl': {
+        var o1 = '#8b5cf6', o2 = '#5b21b6', be = '#fbbf24', wt = '#ede9fe';
+        R(c, o2, -9, -7, 18, 7); R(c, o1, -9, -14, 18, 8);
+        R(c, o1, -9, -17, 4, 4); R(c, o1, 5, -17, 4, 4);
+        R(c, wt, -7, -12, 6, 6); R(c, wt, 1, -12, 6, 6);
+        eye(c, -6, -11, blink); eye(c, 2, -11, blink);
+        R(c, be, -2, -8, 4, 3);
+        R(c, o2, -8, -3, 3, 2); R(c, o2, 5, -3, 3, 2);
+        R(c, 'rgba(255,255,255,.25)', -7, -14, 3, 2);
+        break;
+      }
+      case 'p_crown': {
+        var k1 = '#fcd34d', k2 = '#b45309', kl = '#fffbeb';
+        R(c, k2, -10, -6, 20, 5); R(c, '#f59e0b', -10, -8, 20, 3);
+        R(c, k1, -9, -12, 18, 5); R(c, k1, -5, -16, 10, 5); R(c, k1, -2, -18, 4, 3);
+        R(c, kl, -6, -15, 3, 2); R(c, 'rgba(255,255,255,.35)', -7, -11, 4, 2);
+        eye(c, -5, -9, blink); eye(c, 2, -9, blink); R(c, '#78350f', -1, -6, 3, 1);
+        c.fillStyle = '#fde047'; c.beginPath(); c.moveTo(-6, -17); c.lineTo(-6, -22); c.lineTo(-3, -19); c.lineTo(0, -23); c.lineTo(3, -19); c.lineTo(6, -22); c.lineTo(6, -17); c.closePath(); c.fill();
+        R(c, '#f472b6', -1, -20, 2, 2);
+        break;
+      }
+      default: {
+        R(c, '#94a3b8', -7, -8, 14, 8); R(c, '#cbd5e1', -5, -12, 10, 5);
+        eye(c, -4, -9, blink); eye(c, 1, -9, blink);
+      }
+    }
+    /* 공통: 살짝 들썩이는 그림자 */
+    c.globalAlpha = 0.18; R(c, '#000000', -8, 1 + Math.round(w), 16, 2); c.globalAlpha = 1;
+  }
+
+  function drawPetSprite(c, id, t, scale) {
+    c.save();
+    c.imageSmoothingEnabled = false;
+    c.scale(scale || 1, scale || 1);
+    drawPet(c, id, t);
+    c.restore();
+  }
+
+  /* ================================================================
+     인게임: 펫 따라오기 + 꼬리 잔상 (캔버스 전용)
+     ================================================================ */
+  var PET = { id: '', x: 0, y: 0, vx: 0, vy: 0, t: 0, ready: false };
+  var POOL = [];
+  var trailT = 0;
+  var MAXP = 18;
+
+  function resetFx() { POOL.length = 0; PET.ready = false; }
+
+  function tickFx(dt) {
+    var j = J(); var pl = j && j.player, g = j && j.game;
+    if (!pl || !g || !g.inPlay) { resetFx(); return; }
+    var t = (g.time || 0);
+    /* ---- 펫 스프링 추적 ---- */
+    if (ST.equip && BY_ID[ST.equip]) {
+      if (PET.id !== ST.equip || !PET.ready) {
+        PET.id = ST.equip; PET.ready = true;
+        PET.x = pl.x - 30 * (pl.facing > 0 ? 1 : -1); PET.y = pl.y + 4; PET.vx = 0; PET.vy = 0;
+      }
+      PET.t += dt;
+      var back = pl.facing > 0 ? -1 : 1;
+      var tx = pl.x + back * (34 + Math.sin(PET.t * 1.3) * 4);
+      var ty = pl.y + 8 + Math.sin(PET.t * 3.1) * 3 + (pl.onGround ? 0 : -4);
+      PET.vx += (tx - PET.x) * 30 * dt; PET.vy += (ty - PET.y) * 30 * dt;
+      PET.vx *= 0.84; PET.vy *= 0.84;
+      PET.x += PET.vx * dt * 26; PET.y += PET.vy * dt * 26;
+      if (!isFinite(PET.x)) { PET.x = tx; PET.y = ty; PET.vx = 0; PET.vy = 0; }
+    } else { PET.ready = false; PET.id = ''; }
+    /* ---- 꼬리 잔상 파티클 ---- */
+    var tid = ST.trail;
+    if (tid && tid !== 'none' && T_BY_ID[tid]) {
+      var spd = Math.abs(pl.vx || 0) + Math.abs(pl.vy || 0);
+      trailT -= dt;
+      if (spd > 26 && trailT <= 0) {
+        trailT = spd > 320 ? 0.028 : 0.045;
+        if (POOL.length >= MAXP) POOL.shift();
+        POOL.push({
+          x: pl.x + 14 + (Math.random() * 6 - 3),
+          y: pl.y + 14 + (Math.random() * 8 - 4),
+          t: 0.46, life: 0.46, k: POOL.length
+        });
+      }
+    }
+    for (var i = POOL.length - 1; i >= 0; i--) {
+      POOL[i].t -= dt;
+      if (POOL[i].t <= 0) POOL.splice(i, 1);
+    }
+    if (POOL.length > MAXP) POOL.splice(0, POOL.length - MAXP);
+  }
+
+  function trailColor(tid, i) {
+    if (tid === 't_rainbow') return ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa'][i % 5];
+    if (tid === 't_confetti') return ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#f472b6'][i % 5];
+    if (tid === 't_aurora') return ['#6ee7b7', '#a78bfa', '#67e8f9'][i % 3];
+    return (T_BY_ID[tid] && T_BY_ID[tid].col) || '#dbe7f8';
+  }
+
+  function drawTrailFx(ctx, camY, lh) {
+    var tid = ST.trail;
+    if (!tid || tid === 'none' || !POOL.length) return;
+    for (var i = 0; i < POOL.length; i++) {
+      var p = POOL[i];
+      var a = Math.max(0, p.t / p.life);
+      var sy = p.y - camY, sx = p.x;
+      if (sy < -40 || sy > lh + 40) continue;
+      ctx.globalAlpha = a * 0.66;
+      var col = trailColor(tid, p.k + i);
+      if (tid === 't_star') {
+        ctx.fillStyle = col;
+        ctx.fillRect((sx | 0) - 1, (sy | 0) - 3, 2, 7);
+        ctx.fillRect((sx | 0) - 3, (sy | 0) - 1, 7, 2);
+      } else if (tid === 't_bolt') {
+        ctx.fillStyle = col;
+        ctx.fillRect((sx | 0) - 1, (sy | 0) - 3, 2, 5);
+        ctx.fillRect((sx | 0) + 1, (sy | 0) + 2, 2, 4);
+      } else if (tid === 't_fire') {
+        ctx.fillStyle = col;
+        ctx.fillRect((sx | 0) - 3, (sy | 0) - 3, 6, 6);
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect((sx | 0) - 1, (sy | 0) - 1, 3, 3);
+      } else if (tid === 't_blossom') {
+        ctx.fillStyle = col;
+        ctx.fillRect((sx | 0) - 2, (sy | 0) - 2, 3, 3);
+        ctx.fillRect((sx | 0) + 1, (sy | 0) + 1, 2, 2);
+      } else if (tid === 't_cloud' || tid === 't_mist') {
+        ctx.fillStyle = col;
+        ctx.fillRect((sx | 0) - 4, (sy | 0) - 2, 8, 5);
+        ctx.globalAlpha = a * 0.32;
+        ctx.fillRect((sx | 0) - 6, (sy | 0) - 4, 12, 9);
+      } else if (tid === 't_pixel') {
+        ctx.fillStyle = col;
+        ctx.fillRect((sx | 0) - 2, (sy | 0) - 2, 4, 4);
+      } else if (tid === 't_bubble') {
+        ctx.fillStyle = col;
+        ctx.fillRect((sx | 0) - 1, (sy | 0) - 3, 3, 7);
+        ctx.fillRect((sx | 0) - 3, (sy | 0) - 1, 7, 3);
+      } else if (tid === 't_gold') {
+        ctx.fillStyle = col;
+        ctx.fillRect((sx | 0) - 2, (sy | 0) - 2, 4, 4);
+        ctx.fillStyle = '#fffbeb';
+        ctx.fillRect((sx | 0), (sy | 0), 2, 2);
+      } else if (tid === 't_aurora') {
+        ctx.fillStyle = col;
+        ctx.fillRect((sx | 0) - 5, (sy | 0) - 5, 10, 11);
+      } else {
+        ctx.fillStyle = col;
+        ctx.fillRect((sx | 0) - 3, (sy | 0) - 3, 6, 6);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawFx(ctx, camY, lh) {
+    var j = J(); var g = j && j.game;
+    if (!g || !g.inPlay) return;
+    drawTrailFx(ctx, camY, lh);
+    if (PET.ready && PET.id && BY_ID[PET.id]) {
+      var sy = PET.y - camY;
+      if (sy > -60 && sy < lh + 60) {
+        var pl = j.player;
+        ctx.save();
+        ctx.translate(Math.round(PET.x), Math.round(sy));
+        ctx.scale(pl && pl.facing < 0 ? -1.4 : 1.4, 1.4);
+        drawPet(ctx, PET.id, g.time || 0);
+        ctx.restore();
+      }
+    }
+  }
+
+  /* 기존 v4.4 char 훅 뒤에 붙인다 */
+  try {
+    var _ct = G.charTick;
+    G.charTick = function (dt) {
+      try { if (_ct) _ct.apply(this, arguments); } catch (e) {};
+      try { tickFx(dt); } catch (e) {}
+    };
+    var _cd = G.charDraw;
+    G.charDraw = function (ctx, camY, lh) {
+      try { if (_cd) _cd.apply(this, arguments); } catch (e) {}
+      try { drawFx(ctx, camY, lh); } catch (e) {}
+    };
+  } catch (e) {}
+
+  /* ================================================================
+     UI — 프로필 [🐾 펫] [✨ 잔상]
+     ================================================================ */
+  function css() {
+    if ($('v529Css')) return;
+    var s = doc.createElement('style');
+    s.id = 'v529Css';
+    s.textContent = [
+      '#v57Prof .tabs{grid-template-columns:repeat(3,1fr) !important;}',
+      '.v529Top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 10px;border-radius:13px;background:linear-gradient(180deg,#16233d,#0d1728);border:2px solid #2a3d5e;}',
+      '.v529Top .coin{font-family:"Jua",sans-serif;font-size:17px;color:#fde047;flex:1 1 auto;}',
+      '.v529Top .coin i{font-style:normal;font-size:11px;color:#93a8c8;font-weight:800;margin-left:4px;}',
+      '.v529Btn{min-height:40px;padding:0 12px;border-radius:11px;font-size:12.5px;font-weight:900;white-space:nowrap;',
+      '  border:2px solid #33456a;background:linear-gradient(180deg,#243654,#162032);color:#e6f0ff;box-shadow:0 3px 0 #070c16;}',
+      '.v529Btn.pri{background:linear-gradient(180deg,#ffe79a,#f7b91f 60%,#dc9a0d);color:#6b4708;border-color:#5a3204;}',
+      '.v529Btn:disabled{opacity:.45;}',
+      '.v529Pity{font-size:11px;font-weight:800;color:#8fa3c4;line-height:1.5;}',
+      '.v529Pity b{color:#7dd3fc;}',
+      '.v529Strip{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}',
+      '.v529Res{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 3px;border-radius:11px;background:#0b1424;border:2px solid #22304a;}',
+      '.v529Res canvas{width:34px;height:34px;image-rendering:pixelated;}',
+      '.v529Res b{font-size:9.5px;font-weight:900;color:#eaf2ff;line-height:1.15;text-align:center;word-break:keep-all;}',
+      '.v529Res i{font-style:normal;font-size:8.5px;font-weight:900;color:#93a8c8;}',
+      '.v529Res.common{border-color:#41506b;} .v529Res.rare{border-color:#2563eb;background:linear-gradient(180deg,rgba(37,99,235,.22),#0b1424);}',
+      '.v529Res.hero{border-color:#7c3aed;background:linear-gradient(180deg,rgba(124,58,237,.25),#0b1424);}',
+      '.v529Res.legend{border-color:#f59e0b;background:linear-gradient(180deg,rgba(245,158,11,.28),#0b1424);box-shadow:0 0 0 1px rgba(253,224,71,.35) inset;}',
+      '.v529Grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}',
+      '.v529Card{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 4px;border-radius:12px;background:#0d1728;border:2px solid #22304a;color:#dbe7f8;}',
+      '.v529Card canvas{width:34px;height:34px;image-rendering:pixelated;}',
+      '.v529Card b{font-size:10px;font-weight:900;line-height:1.2;text-align:center;word-break:keep-all;color:#eaf2ff;}',
+      '.v529Card i{font-style:normal;font-size:9px;font-weight:900;color:#93a8c8;}',
+      '.v529Card.on{border-color:#38bdf8;background:linear-gradient(180deg,rgba(37,99,235,.25),rgba(13,23,40,.95));}',
+      '.v529Card.lock{opacity:.55;}',
+      '.v529Card.rare{border-color:#1d4ed8;} .v529Card.hero{border-color:#6d28d9;} .v529Card.legend{border-color:#b45309;}',
+      '.v529Odds{padding:9px 10px;border-radius:12px;background:#0b1424;border:2px solid #24344f;font-size:11px;font-weight:800;color:#c7d6ee;line-height:1.6;}',
+      '.v529Odds b{color:#fde047;} .v529Odds .t{color:#7dd3fc;}',
+      '.v529Row2{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:12px;background:#0d1728;border:2px solid #1e2b44;}',
+      '.v529Row2.on{border-color:#38bdf8;background:linear-gradient(180deg,rgba(37,99,235,.2),rgba(13,23,40,.95));}',
+      '.v529Row2.lock{opacity:.7;}',
+      '.v529Row2 canvas{width:42px;height:26px;image-rendering:pixelated;flex:0 0 auto;border-radius:6px;background:#070d18;}',
+      '.v529Row2 .tx{flex:1 1 auto;min-width:0;}',
+      '.v529Row2 .tx b{display:block;font-size:12px;font-weight:900;color:#eaf2ff;}',
+      '.v529Row2 .tx i{display:block;font-style:normal;font-size:10.5px;font-weight:800;color:#93a8c8;margin-top:2px;}',
+      '.v529Row2 .tx u{display:block;text-decoration:none;font-size:10.5px;font-weight:900;color:#fbbf24;margin-top:2px;}'
+    ].join('\n');
+    (doc.head || doc.documentElement).appendChild(s);
+  }
+
+  function coinStr(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+  function previewPet(cv, id, t) {
+    var c = cv.getContext('2d');
+    if (!c) return;
+    c.clearRect(0, 0, cv.width, cv.height);
+    c.save();
+    c.imageSmoothingEnabled = false;
+    c.translate(cv.width / 2, cv.height - 3);
+    c.scale(1.2, 1.2);
+    drawPet(c, id, t || 0);
+    c.restore();
+  }
+  function previewTrail(cv, id, t) {
+    var c = cv.getContext('2d');
+    if (!c) return;
+    c.clearRect(0, 0, cv.width, cv.height);
+    c.fillStyle = '#070d18'; c.fillRect(0, 0, cv.width, cv.height);
+    for (var i = 0; i < 6; i++) {
+      var a = 0.85 - i * 0.13;
+      c.globalAlpha = Math.max(0.12, a);
+      c.fillStyle = trailColor(id, i);
+      var x = 6 + i * 6, y = cv.height - 8 - Math.sin(i * 0.7 + (t || 0)) * 5;
+      if (id === 't_star' || id === 't_bubble') {
+        c.fillRect(x - 1, y - 2, 2, 5); c.fillRect(x - 2, y - 1, 5, 2);
+      } else if (id === 't_bolt') {
+        c.fillRect(x - 1, y - 3, 2, 4); c.fillRect(x + 1, y + 1, 2, 3);
+      } else {
+        c.fillRect(x - 2, y - 2, 4, 4);
+      }
+    }
+    c.globalAlpha = 1;
+  }
+
+  function petCardHtml(p, o) {
+    var on = ST.equip === p.id;
+    return '<button type="button" class="v529Card ' + p.tier + (on ? ' on' : '') + '" data-v529pet="' + esc(p.id) + '">' +
+      '<canvas data-v529cv="' + esc(p.id) + '" width="40" height="40"></canvas>' +
+      '<b>' + esc(p.name) + '</b><i>' + (TIER[p.tier] ? TIER[p.tier].name : '') + (on ? ' · 장착' : '') + '</i></button>';
+  }
+
+  function renderPet(body) {
+    css();
+    var h = '';
+    h += '<div class="v529Top"><div class="coin">🪙 ' + coinStr(ST.coins) + ' <i>펫 코인</i></div>' +
+      '<button type="button" class="v529Btn pri" data-v529act="pull1">🎲 1회 · ' + PULL1 + '</button>' +
+      '<button type="button" class="v529Btn pri" data-v529act="pull5">🎲 5회 · ' + PULL5 + '</button>' +
+      '<button type="button" class="v529Btn" data-v529act="odds">📊 확률표</button></div>';
+    if (ST.lastPull && ST.lastPull.length) {
+      h += '<div class="v529Strip">' + ST.lastPull.map(function (r) {
+        return '<div class="v529Res ' + r.tier + '"><canvas data-v529rv="' + esc(r.id) + '" width="36" height="36"></canvas>' +
+          '<b>' + esc(r.name) + '</b><i>' + (r.dup ? '중복 +' + r.refund : 'NEW') + '</i></div>';
+      }).join('') + '</div>';
+    }
+    h += '<div class="v529Pity">천장 <b>' + (10 - ST.pityR) + '회</b> 뒤 희귀 이상 확정 · <b>' + (30 - ST.pityH) + '회</b> 뒤 영웅 이상 확정 · 누적 <b>' + ST.pulls + '회</b></div>';
+    /* 장착 중 */
+    var eq = ST.equip && BY_ID[ST.equip] ? BY_ID[ST.equip] : null;
+    if (eq) {
+      h += '<div class="v529Row2 on"><canvas data-v529cv2="' + esc(eq.id) + '" width="46" height="36"></canvas>' +
+        '<div class="tx"><b>' + esc(eq.name) + ' · 장착 중</b><i>인게임에서 캐릭터 뒤를 따라다닙니다</i></div>' +
+        '<button type="button" class="v529Btn" data-v529act="unequip">해제</button></div>';
+    } else {
+      h += '<div class="note">아직 펫을 장착하지 않았어요 — 아래에서 골라 보세요</div>';
+    }
+    /* 보유 */
+    var owned = PETS.filter(function (p) { return ST.owned[p.id]; });
+    h += '<div class="note">🐾 보유 ' + owned.length + ' / ' + PETS.length + '종' + (owned.length ? ' · 누르면 바로 장착' : '') + '</div>';
+    if (owned.length) h += '<div class="v529Grid">' + owned.map(function (p) { return petCardHtml(p); }).join('') + '</div>';
+    /* 보상 전용 (미보유 포함 · 조건 진행도) */
+    var awards = PETS.filter(function (p) { return p.award; });
+    var todo = awards.filter(function (p) { return !ST.owned[p.id]; });
+    if (todo.length) {
+      h += '<div class="note">🎁 보상 전용 펫 — 조건을 달성하면 저절로 들어옵니다 (뽑기에는 안 나옴)</div>';
+      h += todo.map(function (p) {
+        var pg = ''; try { pg = p.prog(); } catch (e) {}
+        return '<div class="v529Row2 lock"><canvas data-v529cv3="' + esc(p.id) + '" width="46" height="36"></canvas>' +
+          '<div class="tx"><b>🔒 ' + esc(p.name) + '</b><i>' + esc(p.why) + '</i><u>' + esc(pg) + '</u></div></div>';
+      }).join('');
+    }
+    /* 확률표 */
+    if (ST.oddsOpen) {
+      h += '<div class="v529Odds">' +
+        '<b>📊 확률표</b> (뽑기 1회 ' + PULL1 + '코인 · 5회 ' + PULL5 + '코인)<br>' +
+        ['common', 'rare', 'hero', 'legend'].map(function (k) {
+          var list = gachaOf(k), per = (TIER[k].rate / list.length);
+          return '<span class="t">' + TIER[k].name + ' ' + TIER[k].rate + '%</span> — ' +
+            list.map(function (p) { return esc(p.name) + ' ' + (Math.round(per * 10) / 10) + '%'; }).join(' · ');
+        }).join('<br>') +
+        '<br><b>천장</b> — 희귀 이상 10회 확정 · 영웅 이상 30회 확정 (뽑을 때마다 게이지가 쌓이고, 확정이 나오면 0으로 돌아갑니다)' +
+        '<br><b>중복</b> — 이미 있는 펫이 나오면 등급별 코인 환급: 일반 ' + TIER.common.refund + ' · 희귀 ' + TIER.rare.refund + ' · 영웅 ' + TIER.hero.refund + ' · 전설 ' + TIER.legend.refund +
+        '<br><b>보상 전용 4종</b> — 뽑기에 나오지 않고, 조건 달성 시 자동 지급' +
+        '<br><span style="color:#93a8c8">펫은 꾸미기 전용입니다 — 속도·판정·밸런스에 영향이 없습니다.</span></div>';
+    }
+    h += '<div class="note">🪙 펫 코인 얻는 법 — 완등 1회 +25 · 새 최고층 1층당 +2 · 스토리 첫 클리어 +40 · 하루 첫 접속 +' + DAILY_COIN + '</div>';
+    body.innerHTML = h;
+    /* 미리보기 캔버스 그리기 */
+    var t = 0.7;
+    body.querySelectorAll('canvas[data-v529cv]').forEach(function (cv) { previewPet(cv, cv.getAttribute('data-v529cv'), t); });
+    body.querySelectorAll('canvas[data-v529cv2]').forEach(function (cv) { previewPet(cv, cv.getAttribute('data-v529cv2'), t); });
+    body.querySelectorAll('canvas[data-v529cv3]').forEach(function (cv) { cv.getContext('2d').globalAlpha = 0.45; previewPet(cv, cv.getAttribute('data-v529cv3'), t); });
+    body.querySelectorAll('canvas[data-v529rv]').forEach(function (cv) { previewPet(cv, cv.getAttribute('data-v529rv'), t); });
+  }
+
+  function hasTrail(tr) {
+    if (!tr) return false;
+    try { if (tr.need()) return true; } catch (e) {}
+    return !!(ST.grant && ST.grant[tr.id]);
+  }
+
+  function renderTrail(body) {
+    css();
+    var h = '';
+    h += '<div class="note">✨ 꼬리 잔상 ' + TRAILS.length + '종 — 점프·이동할 때 캐릭터 뒤로 파티클이 흐릅니다 (시야를 가리지 않게 가볍게)</div>';
+    h += TRAILS.map(function (tr) {
+      var has = hasTrail(tr);
+      var on = ST.trail === tr.id;
+      var pg = ''; try { pg = tr.prog(); } catch (e) {}
+      return '<div class="v529Row2' + (on ? ' on' : '') + (has ? '' : ' lock') + '">' +
+        '<canvas data-v529tv="' + esc(tr.id) + '" width="64" height="28"></canvas>' +
+        '<div class="tx"><b>' + esc(tr.name) + '</b><i>' + esc(tr.why) + '</i>' +
+        (on ? '<u>장착 중</u>' : (has ? '' : '<u>🔒 ' + esc(pg) + '</u>')) + '</div>' +
+        (has ? (on ? '<button type="button" class="v529Btn" disabled>착용중</button>'
+          : '<button type="button" class="v529Btn pri" data-v529act="trail" data-v529tid="' + esc(tr.id) + '">장착</button>')
+          : '<button type="button" class="v529Btn" disabled>잠김</button>') + '</div>';
+    }).join('');
+    h += '<div class="note">해금 조건은 실제 기록으로 판정됩니다 — 달성하면 이 목록에서 바로 열립니다.</div>';
+    body.innerHTML = h;
+    body.querySelectorAll('canvas[data-v529tv]').forEach(function (cv) { previewTrail(cv, cv.getAttribute('data-v529tv'), 0.4); });
+  }
+
+  function render(tab, body) {
+    if (!body) return;
+    try { ST = load(); } catch (e) {}
+    if (tab === 'trail') renderTrail(body); else renderPet(body);
+  }
+
+  /* 클릭 위임 (프로필 모달에 한 번만) */
+  function bind() {
+    var m = $('v57Prof');
+    if (!m || m.__v529bind) return;
+    m.__v529bind = 1;
+    m.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      var a = t.closest('[data-v529act]');
+      if (a) {
+        var act = a.getAttribute('data-v529act');
+        if (act === 'pull1') doPull(1);
+        else if (act === 'pull5') doPull(5);
+        else if (act === 'odds') { ST.oddsOpen = !ST.oddsOpen; save(); try { root.JW57PROF.paint(); } catch (er) {} }
+        else if (act === 'unequip') { ST.equip = ''; save(); beep(520); try { root.JW57PROF.paint(); } catch (er) {} }
+        else if (act === 'trail') {
+          var tid = a.getAttribute('data-v529tid');
+          var tr = T_BY_ID[tid];
+          var ok = hasTrail(tr);
+          if (ok) { ST.trail = tid; save(); beep(880); }
+          try { root.JW57PROF.paint(); } catch (er) {}
+        }
+        return;
+      }
+      var pc = t.closest('[data-v529pet]');
+      if (pc) {
+        var pid = pc.getAttribute('data-v529pet');
+        if (ST.owned[pid]) {
+          ST.equip = (ST.equip === pid) ? '' : pid; save(); beep(880);
+          try { root.JW57PROF.paint(); } catch (er) {}
+        }
+        return;
+      }
+    });
+  }
+  var bindT = setInterval(function () { try { if ($('v57Prof')) { bind(); if ($('v57Prof').__v529bind) clearInterval(bindT); } } catch (e) {} }, 600);
+
+  /* 탭 6개(2줄) 레이아웃은 프로필을 처음 열기 전에도 적용되어야 한다 */
+  try { css(); bind(); } catch (e) {}
+
+  root.JW529UI = { render: render };
+  root.JW529 = {
+    st: function () { return ST; }, pets: PETS, trails: TRAILS, tiers: TIER, pull: doPull,
+    equip: function (id) { if (BY_ID[id]) { ST.owned[id] = 1; ST.equip = id; save(); } },
+    setTrail: function (id) { if (T_BY_ID[id]) { ST.trail = id; save(); } },
+    coins: function (n) { ST.coins = Math.max(0, Math.round(n)); save(); },
+    resetFx: resetFx, pet: function () { return PET; }, pool: function () { return POOL; },
+    drawPet: drawPet, previewTrail: previewTrail,
+    version: 'v5.29'
+  };
+  try { console.log('[JW529] pet gacha + trail ready'); } catch (e) {}
 })(window);
