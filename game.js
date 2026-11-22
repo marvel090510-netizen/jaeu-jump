@@ -2036,7 +2036,7 @@ window.__jwRainbowGrad = function (ctx, nameW) {
           const shk = p.crumbleTimer > 0 ? (((Math.random() - 0.5) * 6) | 0) : 0;
           if (!(window.JWG && JWG.drawPlatform && JWG.drawPlatform(ctx, p, (p.x + shk) | 0, py, game))) drawPlatformTile(p, (p.x + shk) | 0, py);
           /* v5.10 (e): 안전 발판 라벨 — 노란 테두리/금색 표시가 안전 발판(추락해도 여기서부터)임을 알린다 */
-          if (p.safe && p.index > 1 && p.type !== 'summit') {
+          if (p.safe && p.index > 1 && p.type !== 'summit' && !(window.JWG && JWG.hideSafeLabel && JWG.hideSafeLabel())) {
             if (!_safeFontSet) { ctx.font = 'bold 9px "Galmuri11", monospace'; ctx.textAlign = 'center'; _safeFontSet = true; }
             ctx.fillStyle = 'rgba(5,3,10,.78)';
             ctx.fillRect(((p.x + p.w / 2 - 20) | 0), py - 15, 40, 11);
@@ -9140,6 +9140,10 @@ extends CanvasLayer
     drawBackground: (ctx, camY, logicalH, W, game) => (window.JWMap ? window.JWMap.drawBg(window.JWMap.current, ctx, camY, logicalH) : false),
     drawPlatform: (ctx, p, px, py) => (window.JWMap ? window.JWMap.drawPlat(window.JWMap.current, ctx, p, px, py) : false),
     hideCampfire: () => (window.JWMap ? window.JWMap.hideCampfire(window.JWMap.current) : false),
+    /* v5.29-r1: '🛟 안전' 라벨 숨김 (retro20 = 제미나이 2.0 원본에는 없는 표시) */
+    hideSafeLabel: () => {
+      try { return !!(window.JW51RETRO && window.JW51RETRO.noSafeLabel && window.JWMap && window.JWMap.current === 'retro20'); } catch (e) { return false; }
+    },
     zoneName: (y, z) => {
       const viaMap = window.JWMap ? window.JWMap.zoneName(window.JWMap.current, y) : null;
       return viaMap || z.name;
@@ -65056,32 +65060,56 @@ if (typeof module !== 'undefined' && module.exports) {
     3: ['#0369a1', '#082f49', '#bae6fd'], 4: ['#3b0764', '#1e1b4b', '#c084fc'],
     5: ['#312e81', '#1e1b4b', '#fde047'], 6: ['#1e293b', '#090d16', '#38bdf8']
   };
+  /* ------------------------------------------------------------------------
+     v5.29-r1 : 제미나이 2.0(/gemini/index.html) drawPlatformTile() 원문 이식
+     - 존별 암반색(rockCols) · 종류별 모양 · #번호 라벨 · 가시 · 회전 톱니 전부 원본 그대로
+     - 종류별 색 파생(v5.12 H안 kindColor)은 retro20 에서 쓰지 않는다
+     ------------------------------------------------------------------------ */
+  function v2rect(ctx, x, y, w, h, col) {
+    ctx.fillStyle = col;
+    ctx.fillRect(x | 0, y | 0, w | 0, h | 0);
+  }
   function paintV20(ctx, p, px, py) {
-    var w = p.w | 0, h = p.h | 0;
-    var z = V20ROCK[p.zoneId] || V20ROCK[1];
-    /* v5.12 H안: v2.0 맵도 존 색을 팔레트로 보고 종류 색을 파생 (모양·판정 불변) */
-    var kind = p.type || 'normal';
-    if (kind === 'normal' && p._glass) kind = 'glass';
-    if (p.art === 'syrup') kind = 'syrup';
-    var kc = kindColor(kind, { b: z[0], d: z[1], t: z[2], a: z[2] });
-    var kT = kc ? mix(kc, '#ffffff', 0.28) : null;
-    var kD = kc ? mix(kc, '#05070c', 0.35) : null;
+    var w = p.w | 0;
+    var h = p.h | 0;
+    var rockCols = {
+      1: ['#5c2d16', '#3b1d11', '#22c55e'],
+      2: ['#7c2d12', '#450a0a', '#f97316'],
+      3: ['#0369a1', '#082f49', '#bae6fd'],
+      4: ['#3b0764', '#1e1b4b', '#c084fc'],
+      5: ['#312e81', '#1e1b4b', '#fde047'],
+      6: ['#1e293b', '#090d16', '#38bdf8']
+    };
+    var zz = rockCols[p.zoneId] || rockCols[1];
+    var rMid = zz[0], rDark = zz[1], rTop = zz[2];
+    var R = v2rect;
+
+    /* Dark 2px Pixel Outline */
     R(ctx, px - 2, py - 2, w + 4, h + 4, '#080510');
     R(ctx, px + 6, py + h + 2, w - 12, 3, '#080510');
-    if (kind === 'ice') {
-      R(ctx, px, py, w, h, kc || z[0]); R(ctx, px + 2, py + 2, w - 4, h - 4, kT || mix(z[2], '#ffffff', 0.45));
-      R(ctx, px, py, w, 5, mix(kc || z[2], '#ffffff', 0.62));
-      for (var ix = 6; ix < w - 6; ix += 10) R(ctx, px + ix, py + h, 3, 5, mix(kc || z[2], '#ffffff', 0.36));
-    } else if (kind === 'crumble') {
-      R(ctx, px, py, w, h, kc || mix(z[1], '#ffab6b', 0.25)); R(ctx, px, py, w, 5, kT || mix(z[2], '#ffffff', 0.15));
+
+    if (p.type === 'ice') {
+      R(ctx, px, py, w, h, '#0284c7');
+      R(ctx, px + 2, py + 2, w - 4, h - 4, '#38bdf8');
+      R(ctx, px, py, w, 5, '#e0f2fe');
+      for (var ix = 6; ix < w - 6; ix += 10) {
+        R(ctx, px + ix, py + h, 3, 5, '#bae6fd');
+      }
+    } else if (p.type === 'crumble') {
+      R(ctx, px, py, w, h, '#78350f');
+      R(ctx, px, py, w, 5, '#f59e0b');
       R(ctx, px + (w >> 2), py + 2, 2, h - 4, '#080510');
       R(ctx, px + ((w * 3) >> 2), py + 3, 2, h - 5, '#080510');
-    } else if (kind === 'moving') {
-      R(ctx, px, py, w, h, kc ? mix(kc, '#05070c', 0.45) : z[1]); R(ctx, px, py, w, 5, kT || mix(z[2], '#ffffff', 0.45));
-      var fh = 4 + ((Math.floor(Date.now() / 150) % 3) * 2);
-      R(ctx, px + (w >> 1) - 5, py + h, 10, fh, kT || mix(z[2], '#ffffff', 0.45));
-    } else if (kind === 'summit') {
-      R(ctx, px, py, w, h, '#b45309'); R(ctx, px, py, w, 7, '#fef08a');
+    } else if (p.type === 'moving') {
+      R(ctx, px, py, w, h, '#1e1b4b');
+      R(ctx, px, py, w, 5, '#38bdf8');
+      var gt = 0;
+      try { gt = (root.__jwg && root.__jwg.game && root.__jwg.game.time) || 0; } catch (e) { gt = 0; }
+      var fh = 4 + (((gt * 15) | 0) % 3) * 2;
+      R(ctx, px + (w >> 1) - 5, py + h, 10, fh, '#38bdf8');
+    } else if (p.type === 'summit') {
+      R(ctx, px, py, w, h, '#b45309');
+      R(ctx, px, py, w, 7, '#fef08a');
       R(ctx, px + 24, py - 44, 10, 44, '#fde047');
       R(ctx, px + w - 34, py - 44, 10, 44, '#fde047');
       R(ctx, px + 16, py - 54, w - 32, 10, '#fbbf24');
@@ -65089,48 +65117,40 @@ if (typeof module !== 'undefined' && module.exports) {
       ctx.textAlign = 'center';
       ctx.fillStyle = '#fef08a';
       ctx.fillText('★ 별빛 최종 정상 (88F) ★', px + w / 2, py - 62);
-    } else if (kind === 'jelly') {
-      /* v5.11: 점프 패드 — 분홍 패드 + 스프링 */
-      R(ctx, px, py, w, h, kc || mix(z[2], '#ffffff', 0.20)); R(ctx, px + 2, py + 2, w - 4, h - 6, kT || z[0]);
-      R(ctx, px, py, w, 5, mix(kc || z[2], '#ffffff', 0.62));
-      R(ctx, px + 10, py - 6, 3, 6, '#ffffff'); R(ctx, px + w - 13, py - 6, 3, 6, '#ffffff');
-    } else if (kind === 'syrup') {
-      /* v5.11: 시럽 — 호박색 + 방울 */
-      R(ctx, px, py, w, h, kc || z[1]); R(ctx, px, py, w, 6, kT || mix(z[2], '#000000', 0.45));
-      R(ctx, px + 3, py + 2, w - 6, 3, mix(kc || z[2], '#ffffff', 0.45));
-      for (var sy2 = 12; sy2 < w - 10; sy2 += 22) { R(ctx, px + sy2, py + h, 4, 4, kD || mix(kc || z[2], '#000000', 0.25)); R(ctx, px + sy2 + 1, py + h + 3, 2, 2, mix(kc || z[1], '#05070c', 0.55)); }
-    } else if (kind === 'rotator') {
-      /* v5.11: 회전 — 원형 화살표 */
-      R(ctx, px, py, w, h, kc ? mix(kc, '#05070c', 0.30) : z[0]);
-      R(ctx, px + (w >> 1), py + 4, (w >> 1) - 2, h - 6, kc ? mix(kc, '#05070c', 0.12) : z[1]);
-      R(ctx, px, py, w, 6, kT || z[2]);
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(px + (w >> 1), py + (h >> 1), 5, 0, 6.2832); ctx.stroke();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.moveTo(px + (w >> 1), py + (h >> 1) - 9); ctx.lineTo(px + (w >> 1) + 4, py + (h >> 1) - 4); ctx.lineTo(px + (w >> 1) - 4, py + (h >> 1) - 4); ctx.closePath(); ctx.fill();
-    } else if (kind === 'glass') {
-      /* v5.11: 유리 — 다이아몬드 반짝임 */
-      R(ctx, px, py, w, h, kc ? mix(kc, '#05070c', 0.25) : z[0]);
-      R(ctx, px + (w >> 1), py + 4, (w >> 1) - 2, h - 6, kc ? mix(kc, '#05070c', 0.10) : z[1]);
-      R(ctx, px, py, w, 6, mix(kc || z[2], '#ffffff', 0.30));
-      ctx.fillStyle = 'rgba(255,255,255,.95)';
-      ctx.fillRect(px + (w >> 1) - 2, py + 4, 4, 4);
-      ctx.fillRect(px + (w >> 1) - 1, py + 2, 2, 8);
-    } else if (kind === 'abyss_floor') {
-      /* v5.11: 심연 바닥 — 물결 */
-      R(ctx, px, py, w, h, kc || z[1]); R(ctx, px, py, w, 5, mix(kc || z[2], '#ffffff', 0.30));
-      for (var ab2 = 6; ab2 < w - 6; ab2 += 14) { R(ctx, px + ab2, py + 2, 8, 2, mix(kc || z[2], '#ffffff', 0.45)); R(ctx, px + ab2 + 8, py + 3, 4, 1, mix(kc || z[2], '#000000', 0.25)); }
+      ctx.textAlign = 'left';
     } else {
-      R(ctx, px, py, w, h, z[0]);
-      R(ctx, px + (w >> 1), py + 4, (w >> 1) - 2, h - 6, z[1]);
-      R(ctx, px, py, w, 6, p.safe ? '#fbbf24' : z[2]);
+      R(ctx, px, py, w, h, rMid);
+      R(ctx, px + (w >> 1), py + 4, (w >> 1) - 2, h - 6, rDark);
+      R(ctx, px, py, w, 6, p.safe ? '#fbbf24' : rTop);
     }
+
+    if (p.index === 1 || p.index % 5 === 0) {
+      R(ctx, px + 4, py + 7, 34, 11, '#080510');
+      ctx.fillStyle = p.safe ? '#fde047' : '#93c5fd';
+      ctx.font = 'bold 10px "Galmuri11", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('#' + p.index, px + 6, py + 16);
+    }
+
     if (p.type === 'spike') {
-      var sx = px + (p.spikeOffsetX || 0);
-      for (var k = 0; k < (p.spikeW || 0); k += 8) {
-        R(ctx, sx + k + 1, py - 8, 6, 8, mix(kc || z[2], '#ffffff', 0.25));
-        R(ctx, sx + k + 2, py - 12, 4, 4, mix(kc || z[2], '#ffffff', 0.62));
+      var sx = px + p.spikeOffsetX;
+      for (var k = 0; k < p.spikeW; k += 8) {
+        R(ctx, sx + k + 1, py - 8, 6, 8, '#94a3b8');
+        R(ctx, sx + k + 2, py - 12, 4, 4, '#f43f5e');
       }
+    }
+
+    if (p.type === 'rotator') {
+      var ax = px + (w >> 1);
+      var ay = py + (h >> 1);
+      var cxx = (ax + Math.cos(p.angle) * p.rotRadius) | 0;
+      var cyy = (ay + Math.sin(p.angle) * p.rotRadius) | 0;
+      for (var s2 = 1; s2 <= 4; s2++) {
+        R(ctx, ax + (((cxx - ax) * s2) >> 2) - 2, ay + (((cyy - ay) * s2) >> 2) - 2, 4, 4, '#94a3b8');
+      }
+      R(ctx, cxx - 9, cyy - 9, 18, 18, '#080510');
+      R(ctx, cxx - 7, cyy - 7, 14, 14, '#e11d48');
+      R(ctx, cxx - 3, cyy - 3, 6, 6, '#fde047');
     }
     return true;
   }
@@ -65273,21 +65293,143 @@ if (typeof module !== 'undefined' && module.exports) {
   if (!V) return;
   if (root.JW51RETRO) return;
 
+  /* ------------------------------------------------------------------------
+     v5.29-r1 : retro20 = 제미나이 2.0(/gemini/index.html) buildPlatforms() 원문
+     - 좌표·폭·층수·종류·구역까지 원본과 완전히 같다 (88층 + 심연 4개)
+     - v5.10 난이도 지터(dy·w·stepX)는 다른 맵에만 적용되고 retro20 에는 없다
+     ------------------------------------------------------------------------ */
+  var V2TOTAL = 88, V2WORLD = 540, V2WALL = 42, V2ABYSS = 1480;
+  var V2ZONES = [
+    '6. 깊은 구름 계곡', '1. 초록 초원과 부유섬', '2. 붉은 협곡과 낙석 지대',
+    '3. 얼음 산맥과 빙벽', '4. 보라색 폭풍의 밤', '5. 별빛이 비치는 최종 정상'
+  ];
+  function v2hash(n) {
+    var x = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+    return x - Math.floor(x);
+  }
+  function v2zone(i) {
+    if (i <= 0) return 6;
+    return i <= 17 ? 1 : i <= 35 ? 2 : i <= 53 ? 3 : i <= 71 ? 4 : 5;
+  }
+  function v2Build(P, A) {
+    var ps = [], ab = [];
+    /* Below-Start Zone 6 Recovery Ledges & Updraft Floor */
+    ab.push({
+      index: 0, x: V2WALL, y: V2ABYSS, w: V2WORLD - V2WALL * 2, h: 34,
+      type: 'abyss_floor', zoneId: 6, baseX: V2WALL, baseY: V2ABYSS
+    });
+    [
+      { x: 95, y: 340, w: 135 },
+      { x: 295, y: 700, w: 135 },
+      { x: 110, y: 1060, w: 140 }
+    ].forEach(function (st, idx) {
+      ab.push({
+        index: -idx - 1, x: st.x, y: st.y, w: st.w, h: 22, type: 'normal', zoneId: 6,
+        baseX: st.x, baseY: st.y
+      });
+    });
+
+    var cy = 0;
+    var cx = V2WORLD / 2 - 80;
+
+    for (var i = 1; i <= V2TOTAL; i++) {
+      var zid = v2zone(i);
+      var prog = i / V2TOTAL;
+
+      if (i === 1) {
+        ps.push({
+          index: 1, x: V2WORLD / 2 - 125, y: 0, baseX: V2WORLD / 2 - 125, baseY: 0,
+          w: 250, h: 28, type: 'normal', zoneId: 1, safe: true,
+          crumbleTimer: 0, crumbled: false, respawnTimer: 0, angle: 0
+        });
+        continue;
+      }
+
+      if (i === V2TOTAL) {
+        cy -= 124;
+        ps.push({
+          index: V2TOTAL, x: V2WORLD / 2 - 130, y: cy, baseX: V2WORLD / 2 - 130, baseY: cy,
+          w: 260, h: 32, type: 'summit', zoneId: 5, safe: true,
+          crumbleTimer: 0, crumbled: false, respawnTimer: 0, angle: 0
+        });
+        continue;
+      }
+
+      var dy = Math.round(110 + prog * 32 + (i % 3) * 4);
+      cy -= dy;
+
+      var safe = (i % 8 === 0);
+      var w = safe ? 156 : Math.round(128 - prog * 36);
+
+      var dir = (i % 2 === 0) ? 1 : -1;
+      var stepX = 88 + Math.floor(v2hash(i * 31) * 64);
+      var nx = cx + dir * stepX;
+      var minX = V2WALL + 12;
+      var maxX = V2WORLD - V2WALL - w - 12;
+      if (nx < minX) nx = minX + 32 + (i % 3) * 18;
+      if (nx > maxX) nx = maxX - 32 - (i % 3) * 18;
+      cx = nx;
+
+      var type = 'normal';
+      if (!safe) {
+        var r = i % 9;
+        if (zid === 1) {
+          if (r === 4 || r === 7) type = 'moving';
+          else if (r === 6) type = 'spike';
+        } else if (zid === 2) {
+          if (r === 2 || r === 6) type = 'crumble';
+          else if (r === 4) type = 'spike';
+          else if (r === 7) type = 'rotator';
+          else if (r === 3) type = 'moving';
+        } else if (zid === 3) {
+          if (r === 2 || r === 5 || r === 8) type = 'ice';
+          else if (r === 4) type = 'moving';
+          else if (r === 6) type = 'spike';
+          else if (r === 7) type = 'rotator';
+        } else if (zid === 4) {
+          if (r === 2 || r === 6) type = 'moving';
+          else if (r === 3) type = 'crumble';
+          else if (r === 5) type = 'rotator';
+          else if (r === 7) type = 'spike';
+          else if (r === 4) type = 'ice';
+        } else if (zid === 5) {
+          if (r === 2 || r === 7) type = 'ice';
+          else if (r === 3 || r === 8) type = 'moving';
+          else if (r === 5) type = 'rotator';
+          else if (r === 6) type = 'crumble';
+          else if (r === 4) type = 'spike';
+        }
+      }
+
+      ps.push({
+        index: i, x: cx, y: cy, baseX: cx, baseY: cy, w: w, h: 22,
+        type: type, safe: safe, zoneId: zid,
+        moveRange: type === 'moving' ? (40 + (i % 3) * 12) : 0,
+        moveSpeed: type === 'moving' ? (1.2 + prog * 0.7) : 0,
+        movePhase: i * 1.1,
+        crumbleTimer: 0, crumbled: false, respawnTimer: 0,
+        spikeOffsetX: Math.floor(w * 0.5) - 12, spikeW: 24,
+        rotRadius: Math.round(w * 0.45 + 16),
+        rotSpeed: (i % 2 === 0 ? 1 : -1) * (1.7 + prog * 0.8),
+        angle: i * 0.8
+      });
+    }
+
+    if (P) { P.length = 0; for (var a1 = 0; a1 < ps.length; a1++) P.push(ps[a1]); }
+    if (A) { A.length = 0; for (var a2 = 0; a2 < ab.length; a2++) A.push(ab[a2]); }
+  }
+
   function patchBuild() {
     var M = root.JWMap;
     if (!M || typeof M.build !== 'function') return false;
-    if (root.__v51retroInstalled) return true;   /* 핑퐁 방지: 루트 플래그로 한 번만 설치 */
+    if (M.build.__v51retro2) return true;
     var o = M.build;
     var w = function (id, plats, ab) {
-      if (id === 'retro20') {
-        /* v2.0 클래식 맵은 엔진의 오리지널 생성기(buildPlatforms)가 만든다.
-           여기서 false 를 돌려주면 엔진이 88층 오리지널 맵을 생성한다. */
-        try { if (plats) plats.length = 0; if (ab) ab.length = 0; } catch (e) {}
-        return false;
-      }
+      if (id === 'retro20') { v2Build(plats, ab); return true; }
       return o.apply(this, arguments);
     };
     w.__v51retro = true;
+    w.__v51retro2 = true;
     M.build = w;
     root.__v51retroInstalled = true;
     return true;
@@ -65329,13 +65471,32 @@ if (typeof module !== 'undefined' && module.exports) {
     try { V2.MAPTOTAL = V2.MAPTOTAL || {}; V2.MAPTOTAL.retro20 = 88; } catch (e) {}
     try { var mm = root.JWMap && root.JWMap.byId ? root.JWMap.byId('retro20') : null; if (mm) mm.total = 88; } catch (e) {}
   }
+  /* v2.0 HUD 구역 판정: getZoneByY() 원문(130px 스케일) */
+  function patchZoneName() {
+    var M = root.JWMap;
+    if (!M || typeof M.zoneName !== 'function' || M.zoneName.__v51retro2) return;
+    var o = M.zoneName;
+    var w = function (id, y) {
+      var mid = id || (root.JWMap && root.JWMap.current) || 'default';
+      if (mid === 'retro20') {
+        if (y > 140) return V2ZONES[0];
+        var est = Math.max(1, Math.min(V2TOTAL, Math.round(1 + (-y) / 130)));
+        return V2ZONES[v2zone(est)];
+      }
+      return o.apply(this, arguments);
+    };
+    w.__v51retro2 = true;
+    M.zoneName = w;
+  }
   function boot() {
-    patchBuild(); patchCampfire(); patchAmbient(); patchTotal();
+    patchBuild(); patchCampfire(); patchAmbient(); patchTotal(); patchZoneName();
   }
   setInterval(function () { try { boot(); } catch (e) {} }, 400);
   setTimeout(boot, 90);
 
   root.JW51RETRO = {
+    /* v5.29-r1: retro20 은 원본 그대로 — v5.10 '🛟 안전' 라벨을 그리지 않는다 */
+    noSafeLabel: true,
     rebuild: function () {
       try {
         var M = root.JWMap;
