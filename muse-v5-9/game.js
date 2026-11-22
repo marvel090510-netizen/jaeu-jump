@@ -62468,6 +62468,8 @@ if (typeof module !== 'undefined' && module.exports) {
       '  background:linear-gradient(180deg,rgba(251,191,36,.16),rgba(251,191,36,.06));',
       '  border:1px solid rgba(251,191,36,.42);font-size:9.5px;font-weight:900;color:#fde68a;line-height:1.35;}',
       '#v530MgNote b{color:#fff7d6;}',
+      /* 작은 칩(방 설정·제안)에서는 자물쇠만 */
+      '.v48mset .v48m.v530lock::after,.mp-chip.v530lock::after{content:"🔒";font-size:8px;padding:0 3px;right:3px;top:3px;}',
       '#v53MgGrid{padding-top:9px !important;}',
       '#v48mset{padding-top:9px !important;}',
       /* 잠금 토스트 (자체 배너) */
@@ -80514,7 +80516,7 @@ if (typeof module !== 'undefined' && module.exports) {
     id: ID,
     name: '차징 점프: 하늘 탑',
     emoji: '⚡',
-    desc: '꾹 눌러 충전 → 손 떼면 점프 · 중앙 착지 PERFECT 콤보',
+    desc: '꾹 눌러 충전 → 손 떼면 점프 · 정중앙 PERFECT',
     unit: '점',
     record: { type: 'high', fmt: function (v) { return String(Math.round(v)) + '점'; } },
     create: create
