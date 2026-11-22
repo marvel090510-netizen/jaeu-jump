@@ -3,19 +3,37 @@
  "title": "성공하고싶은 재우 · 스토리 모드 64 스테이지",
  "generatedAt": "2026-11-21",
  "sourceOfTruth": "jaeu-jump-site/game.js (v5.15-r5, 읽기 전용 확인 · 코드 수정 없음)",
- "lockPolicy": "lock_all_except_default_1",
- "lockPolicyDesc": "스토리 모드·일반 모드·스킨 선택창 모두 기본재우만 열려 있고, 스토리 클리어로 해금",
+ "lockPolicy": "lock_all_except_default_4",
+ "lockPolicyDesc": "스토리 모드·일반 모드·스킨 선택창 모두 기본 4종(기본 재우·고양이·개구리·로봇)만 열려 있고, 나머지 60종은 스토리 클리어로 해금",
  "defaultUnlockedSkins": [
-  "jaeu"
+  "jaeu",
+  "cat",
+  "frog",
+  "robot"
  ],
  "defaultUnlockedSkinNames": [
   {
    "id": "jaeu",
    "name": "기본 재우",
    "emoji": "🧑"
+  },
+  {
+   "id": "cat",
+   "name": "고양이",
+   "emoji": "🐱"
+  },
+  {
+   "id": "frog",
+   "name": "개구리",
+   "emoji": "🐸"
+  },
+  {
+   "id": "robot",
+   "name": "로봇",
+   "emoji": "🤖"
   }
  ],
- "unlockRule": "스테이지 클리어 → 그 스테이지 주인공 캐릭터 해금 + 다음 스테이지 개방. 기본재우는 처음부터 보유. 고양이(2번)·개구리(3번)·로봇(4번)은 해당 스테이지 클리어 시 해금.",
+ "unlockRule": "스테이지 클리어 → 그 스테이지 주인공 캐릭터 해금 + 다음 스테이지 개방. 기본 4종(기본 재우·고양이·개구리·로봇)은 처음부터 보유. 5번(버섯) 이후 60종은 해당 스테이지 클리어 시 해금.",
  "chapters": [
   {
    "id": "ch0",

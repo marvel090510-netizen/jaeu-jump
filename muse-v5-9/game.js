@@ -11033,7 +11033,7 @@ extends CanvasLayer
       saveCfg(); paint();
     });
     cs.addEventListener('input', () => { CFG.chainMax = +cs.value; saveCfg(); });
-    /* v5.19-dev: 개발자 모드 PIN 해금 + ON/OFF 토글 (PIN은 문자열 '0209' 비교) */
+    /* v5.19-dev: 개발자 모드 PIN 해금 + ON/OFF 토글 (PIN 판정은 JWDEV.unlock의 해시 비교) */
     const dvB = $('v42CfgDev'), pinOk = $('v42DevPinOk'), pinInp = $('v42DevPin');
     if (dvB) dvB.addEventListener('click', () => {
       if (!window.JWDEV) return;
@@ -62937,7 +62937,7 @@ if (typeof module !== 'undefined' && module.exports) {
     joinBanner: true,
     statsPlus: true,
     dev: false,      /* v5.19-dev: 개발자 모드 ON/OFF (PIN 해금 뒤 토글) */
-    devUnlock: false /* v5.19-dev: PIN 0209 해금 여부 (영구) */
+    devUnlock: false /* v5.19-dev: 개발자 PIN 해금 여부 (영구) */
   };
   function load() {
     var o = {};
@@ -63254,7 +63254,8 @@ if (typeof module !== 'undefined' && module.exports) {
 
 
 /* ===== v5.19-dev : 개발자 모드 + 치트 명령어 (태겸 확정 스펙, 2026-11-21) =====
-   - 설정 → PIN '0209'(문자열 비교) 입력 시 해금. 해금·ON/OFF는 jw51_cfg_v1의
+   - 설정 → 개발자 PIN 입력 시 해금 (v5.27: 평문 대신 해시 비교 — 소스에 PIN이 남지 않는다).
+     해금·ON/OFF는 jw51_cfg_v1의
      JW51U.CFG.dev / .devUnlock에 저장 (DEF 화이트리스트 포함이라 와이프에도 유지).
    - 개발자 모드 ON일 때만 일시정지 메뉴(⏸) 안에 🛠️ 버튼이 뜨고, 누르면 명령 입력창.
    - 명령어(영어만, 슬래시 유무·대소문자 무관): /top /god /fly /skip /unlockall /bossskip.
@@ -63270,7 +63271,19 @@ if (typeof module !== 'undefined' && module.exports) {
   if (root.JWDEV) return;
   var doc = document;
 
-  var PIN = '0209'; /* 문자열 비교 — 숫자로 바꾸면 앞자리 0이 날아감 */
+  /* v5.27: PIN 평문 제거 — 소스 보기로 PIN이 바로 읽히지 않도록 salt를 섞은 FNV-1a 해시 두 번으로 비교한다.
+     (앞자리 0이 날아가지 않도록 입력은 항상 문자열로 다룬다. 동기 함수라 기존 unlock() 흐름 그대로.) */
+  var PIN_SALT = '#5.27|';
+  var PIN_HASH = 0x0ef722c2;
+  function fnv1a(str) {
+    var h = 0x811c9dc5, s = String(str);
+    for (var i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+    return h >>> 0;
+  }
+  function pinHash(str) { return fnv1a(String(fnv1a(PIN_SALT + String(str == null ? '' : str)))); }
   var KEY_CFG = 'jw51_cfg_v1';
   var KEY_STORY = 'jw64_story_v1';
   var KEY_CHAR = 'jw64_char_v1';
@@ -63692,7 +63705,7 @@ if (typeof module !== 'undefined' && module.exports) {
       return !!on;
     },
     unlock: function (pin) {
-      if (String(pin == null ? '' : pin).trim() !== PIN) return false;
+      if (pinHash(String(pin == null ? '' : pin).trim()) !== PIN_HASH) return false;
       var c = cfg();
       if (c) { c.devUnlock = true; c.dev = true; saveCfg(); }
       else {
@@ -76298,9 +76311,10 @@ if (typeof module !== 'undefined' && module.exports) {
      jw64_char_v1  = { v:1, unlocked:{'skin:ID': stageIndex} }
    skin:/map: 접두어는 namespaceWarn(alien/pirate/dino/santa/mushroom 5쌍 id 겹침) 때문.
    규칙:
-   - 기본재우(jaeu)만 처음부터 열림. 나머지 63종은 스토리 클리어로 해금.
+   - 기본 4종(기본 재우 jaeu·고양이 cat·개구리 frog·로봇 robot)이 처음부터 열림.
+     나머지 60종은 스토리 클리어로 해금.
      기존 해금 스킨도 예외 없이 잠금 (구 숨김 스킨 조건은 스토리 해금으로 대체).
-     고양이(2번)·개구리(3번)·로봇(4번)도 스테이지 클리어 보상 — 처음엔 잠김.
+     (v5.27: 방 확정안대로 기본 해금 4종 복구 — 초기 스테이지 1~4의 주인공과 같은 4종.)
    - 스테이지 N은 startUnlocked 이거나 N-1번 클리어 시 열림.
    - 스토리 판은 그 스테이지 주인공 스킨으로만 뛴다 (판 동안만 임시 해금).
      클리어하면 그 스킨이 정식 해금 + 다음 스테이지 개방.
@@ -76323,7 +76337,7 @@ if (typeof module !== 'undefined' && module.exports) {
   var DATA_URLS = ['assets/story-data.json', 'muse-v5-9/assets/story-data.json'];
   var KEY_STORY = 'jw64_story_v1';
   var KEY_CHAR = 'jw64_char_v1';
-  var DEFAULT_SKINS = ['jaeu'];
+  var DEFAULT_SKINS = ['jaeu', 'cat', 'frog', 'robot']; /* v5.27: 기본 해금 4종 (story-data counts.startUnlocked/defaultUnlockedSkins 와 일치) */
   var ENGINE_MAPS = ['default', 'dessert', 'site', 'space', 'bamboo', 'atlantis', 'arcade', 'arctic', 'mansion', 'volcano',
     'school', 'clock', 'kitchen', 'train', 'wuxia', 'rainbow', 'newyork', 'seoul', 'paris', 'egypt', 'fuji',
     'london', 'skycastle', 'pirate', 'carnival', 'mushroom', 'cyberpunk', 'olympus', 'lab', 'canyon', 'santa',
@@ -76486,7 +76500,7 @@ if (typeof module !== 'undefined' && module.exports) {
       var cur = api.meSkin();
       if (cur && V.skinLocked(cur)) {
         try { api.setSkin('jaeu'); } catch (e) {}
-        try { V.toast('🔒 스킨이 잠겼어요', 'chat', '스토리 모드 업데이트로 기본재우만 열려 있어요. 스테이지를 깨서 해금하세요!', 3400); } catch (e) {}
+        try { V.toast('🔒 스킨이 잠겼어요', 'chat', '스토리 모드 업데이트로 기본 4종만 열려 있어요. 스테이지를 깨서 해금하세요!', 3400); } catch (e) {}
       }
     } catch (e) {}
   }
