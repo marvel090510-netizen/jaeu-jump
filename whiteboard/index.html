@@ -246,6 +246,8 @@ body.focusUI #zoomctl{left:12px;}
 .bwin>header b{font-size:1rem;font-family:"Jua","Pretendard Variable",sans-serif;font-weight:400;}
 .bwin .bx{width:2rem;height:2rem;min-height:2rem;padding:0;border-radius:8px;}
 .bwin .bbody{overflow-y:auto;padding:.6rem;overscroll-behavior:contain;}
+.bwin.min .bbody{display:none;}
+.bwin.min>header{border-bottom:none;}
 #actTicker{font-size:.78rem;color:var(--sel);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:16rem;}
 .actline{color:var(--sel);font-weight:700;}
 /* piano touch feel */
@@ -1113,20 +1115,27 @@ function collapseSide(){ const sd=$("#side"); if(!sd||innerWidth>1200)return;
   if(innerWidth<=900)sd.classList.remove("open"); else { sd.style.display="none"; setTimeout(resize,30); }
   const bs=$("#btnSide"); if(bs)bs.classList.remove("on"); }
 function openBoardWin(id,title){ const old=bwins[id];
-  if(old){ const wasHidden=old.el.style.display==="none"; old.el.style.display="flex"; old.el.style.zIndex=++bwinZ; if(wasHidden)collapseSide(); return old.body; }
+  if(old){ const wasHidden=old.el.style.display==="none"; old.el.style.display="flex"; old.el.style.zIndex=++bwinZ;
+    const tb=old.el.querySelector("header b"); if(tb)tb.textContent=title;
+    if(old.el.classList.contains("min")){ old.el.classList.remove("min"); old.min=false; const mb=old.el.querySelector(".bmin"); if(mb){ mb.textContent="–"; mb.setAttribute("aria-label","창 접기"); } }
+    if(wasHidden)collapseSide(); return old.body; }
   const el=document.createElement("div"); el.className="bwin"; const n=Object.keys(bwins).length%4;
   el.style.left=(12+n*30)+"px"; el.style.top=(10+n*24)+"px"; el.style.zIndex=++bwinZ;
   if(id==="music")el.style.width="min(880px,97%)";
-  el.innerHTML=`<header><b>${title}</b><span style="flex:1"></span><button class="bx" aria-label="닫기">✕</button></header><div class="bbody"></div>`;
+  el.innerHTML=`<header><b>${title}</b><span style="flex:1"></span><button class="bx bmin" aria-label="창 접기" title="접기 / 펼치기">–</button><button class="bx bxclose" aria-label="닫기">✕</button></header><div class="bbody"></div>`;
   $("#boardWins").appendChild(el); const body=el.querySelector(".bbody");
-  el.querySelector(".bx").addEventListener("click",()=>{ el.style.display="none"; if(id==="music")stopSeq(true); });
+  const minBtn=el.querySelector(".bmin");
+  const setMin=m=>{ el.classList.toggle("min",m); minBtn.textContent=m?"▢":"–"; minBtn.setAttribute("aria-label",m?"창 펼치기":"창 접기"); if(bwins[id])bwins[id].min=m; };
+  minBtn.addEventListener("click",()=>setMin(!el.classList.contains("min")));
+  el.querySelector(".bxclose").addEventListener("click",()=>{ el.style.display="none"; if(id==="music")stopSeq(true); });
   const hd=el.querySelector("header");
+  hd.addEventListener("dblclick",e=>{ if(e.target.closest(".bx"))return; setMin(!el.classList.contains("min")); });
   hd.addEventListener("pointerdown",e=>{ if(e.target.closest(".bx"))return; el.style.zIndex=++bwinZ;
     const r=el.getBoundingClientRect(), wr=wrap.getBoundingClientRect(); const dx=e.clientX-r.left, dy=e.clientY-r.top;
     const mv=ev=>{ el.style.left=clamp(ev.clientX-wr.left-dx,-r.width+80,wr.width-60)+"px"; el.style.top=clamp(ev.clientY-wr.top-dy,0,wr.height-46)+"px"; };
     const up=()=>{ document.removeEventListener("pointermove",mv); document.removeEventListener("pointerup",up); };
     document.addEventListener("pointermove",mv); document.addEventListener("pointerup",up); });
-  bwins[id]={el,body}; collapseSide(); return body; }
+  bwins[id]={el,body,min:false}; collapseSide(); return body; }
 function boardWinOpen(id){ const w=bwins[id]; return !!(w&&w.el.style.display!=="none"); }
 function openWinRemote(win,arg){ if(win==="game")openGame(arg,true); else if(win==="widget")openWidget(arg,true); else if(win==="music")openMusicStudio(true); else if(win==="poll")ensurePollWin(); }
 function shareWin(win,arg){ broadcast({t:"openwin",win,arg}); }
@@ -2277,11 +2286,13 @@ function openQBank(b){ b.innerHTML=`<h3 style="margin-top:0">📚 문제은행</
         return type==="주관식"? {type:"주관식",q:m.q,answer:raw[1][raw[2]],why:raw[3],topic} : m; }); }
     qbState={qs,answers:Array(qs.length).fill(null),subj,unit:unitSel.value,topic,diff,graded:false,score:null};
     featSync("qb",qbState); qbRender(); }); }
-function qbShowResults(z){ if(!qbState)return; const {qs}=qbState;
+function qbShowResults(z){ if(!qbState)return; qbState=qbNorm(qbState); if(!qbState.answers)return; const {qs}=qbState;
   qs.forEach((q,i)=>{ const a=qbState.answers[i]; const ok=q.type==="주관식"? (a&&a.replace(/\s/g,"")===String(q.answer).replace(/\s/g,"")) : a===q.ans;
     const w=z.querySelector(`[data-qbwhy="${i}"]`); if(w)w.innerHTML=`<p class="hint" style="color:${ok?"var(--accent)":"var(--danger)"}">${ok?"✓ 정답!":"✗ 오답 — 정답: "+esc(q.type==="주관식"?q.answer:q.opts[q.ans])}<br>해설: ${esc(q.why)}</p>`; });
   const sc=z.querySelector("#qbScore"); if(sc&&qbState.score!==null&&qbState.score!==undefined)sc.textContent=`점수: ${qbState.score} / ${qs.length} — ${qbState.score===qs.length?"완벽해요! 🎉":qbState.score>=3?"잘했어요!":"해설을 보고 복습해요"}`; }
-function qbRender(){ const z=$("#qbOut"); if(!z||!qbState)return; const {qs,answers}=qbState;
+function qbRender(){ const z=$("#qbOut"); if(!z||!qbState)return; qbState=qbNorm(qbState); if(!Array.isArray(qbState.qs)||!qbState.answers)return;
+  const ae=document.activeElement; const focusI=ae&&z.contains(ae)&&ae.dataset&&ae.dataset.qba!==undefined?+ae.dataset.qba:-1; const focusV=focusI>=0?ae.value:null;
+  const {qs,answers}=qbState;
   z.innerHTML=qs.map((q,i)=>`<div class="acc" style="padding:.55rem .65rem"><b>${i+1}. [${q.type}] ${esc(q.q)}</b>
     ${q.type==="주관식"?`<input type="text" data-qba="${i}" class="wfull mt" placeholder="답을 쓰세요" value="${answers[i]??""}">`:
       `<div class="grid2 mt">${q.opts.map((o,j)=>`<button data-qb="${i}:${j}" class="${answers[i]===j?"on":""}">${o}</button>`).join("")}</div>`}
@@ -2289,6 +2300,7 @@ function qbRender(){ const z=$("#qbOut"); if(!z||!qbState)return; const {qs,answ
    `<div class="grid2"><button id="qbGrade">채점하기</button><button id="qbBoard">문제를 보드에 붙이기</button></div><div id="qbScore" class="mt" style="font-weight:800"></div>`;
   z.querySelectorAll("[data-qb]").forEach(btn=>btn.addEventListener("click",()=>{ const [i,j]=btn.dataset.qb.split(":").map(Number); qbState.answers[i]=j; featSync("qb",qbState); qbRender(); }));
   z.querySelectorAll("[data-qba]").forEach(inp=>inp.addEventListener("change",()=>{ qbState.answers[+inp.dataset.qba]=inp.value.trim(); featSync("qb",qbState); }));
+  if(focusI>=0){ const ni=z.querySelector(`[data-qba="${focusI}"]`); if(ni){ ni.value=focusV; ni.focus(); } }
   if(qbState.graded)qbShowResults(z);
   $("#qbGrade").addEventListener("click",()=>{ let score=0; qs.forEach((q,i)=>{ const a=qbState.answers[i]; const ok=q.type==="주관식"? (a&&a.replace(/\s/g,"")===String(q.answer).replace(/\s/g,"")) : a===q.ans; if(ok)score++; });
     qbState.graded=true; qbState.score=score; featSync("qb",qbState); qbShowResults(z); xp(score*5); broadcast({t:"toast",msg:`📚 문제은행 채점: ${score}/${qs.length}점`}); });
@@ -2318,9 +2330,10 @@ function renderPollRow(){ const r=$("#pollOpenRow"); if(!r)return;
   const b=$("#pollOpenBtn"); if(b)b.addEventListener("click",()=>ensurePollWin()); }
 function ensurePollWin(){ const body=openBoardWin("poll","🗳 투표"); if(!$("#pollZone"))body.innerHTML=`<div id="pollZone"></div>`; drawPoll(); return body; }
 function pollSyncData(){ return poll?{q:poll.q,opts:poll.opts,votes:poll.votes,voted:[...poll.voted],startedAt:poll.startedAt||Date.now()}:null; }
-function applyPoll(data){ if(!data)return; poll={q:data.q,opts:data.opts,votes:data.votes||data.opts.map(()=>0),voted:new Set(data.voted||[]),startedAt:data.startedAt||0};
-  if($("#pollZone"))drawPoll(); renderPollRow(); }
-function startPoll(q,opts){ poll={q,opts,votes:opts.map(()=>0),voted:new Set(),startedAt:Date.now()}; featSync("poll",pollSyncData()); ensurePollWin(); renderPollRow(); }
+function applyPoll(data){ if(!data)return; const prevStart=poll?poll.startedAt:0; poll={q:data.q,opts:data.opts,votes:data.votes||data.opts.map(()=>0),voted:new Set(data.voted||[]),startedAt:data.startedAt||0};
+  if($("#pollZone"))drawPoll(); else if(poll.startedAt&&poll.startedAt!==prevStart)ensurePollWin(); // 새 투표가 시작됐는데 창이 없으면 모두에게 투표 창을 열어 보여준다
+  renderPollRow(); }
+function startPoll(q,opts){ poll={q,opts,votes:opts.map(()=>0),voted:new Set(),startedAt:Date.now()}; featSync("poll",pollSyncData()); shareWin("poll"); ensurePollWin(); renderPollRow(); }
 function drawPoll(){ const z=$("#pollZone"); if(!z||!poll)return; const tot=poll.votes.reduce((s,v)=>s+v,0);
   z.innerHTML=`<div class="acc" style="padding:.55rem .65rem"><b>🗳 ${esc(poll.q)}</b>${poll.opts.map((o,i)=>`<div class="kv"><span>${esc(o)} — ${poll.votes[i]}표 (${tot?Math.round(poll.votes[i]/tot*100):0}%)</span><button data-vote="${i}">한 표</button></div>`).join("")}
    <div class="grid2 mt"><button id="pollBoard">결과를 차트로 보드에</button><button id="pollCsv">결과 CSV 받기</button></div></div>`;
@@ -3163,34 +3176,58 @@ function featSync(key,data){ if(featApplying)return; const ts=Date.now(); featSe
   if(fbRoom){ try{ const c=fbClean(data); if(c)fbRoom.child("feat/"+key).set({data:c,by:ME.id,ts}).catch(()=>{}); }catch(e){} } }
 function applyFeatRemote(key,data,from,ts){ if(!data||typeof FEAT_APPLIERS==="undefined")return; const ap=FEAT_APPLIERS[key]; if(!ap)return;
   featApplying=true; try{ ap(data,from); }catch(e){} featApplying=false; }
-/* 기능별 공유 상태 적용기 — Firebase feat / BroadcastChannel feat가 여기로 들어온다 */
+/* 문제은행 상태 정규화 — Firebase는 null 값을 저장하지 않아서, 답안 배열이 전부
+   빈칸(null)이면 상대 기기에는 answers가 통째로 사라진 채로 도착하고, 일부만
+   차 있으면 구멍 난 객체로 돌아온다. 그 상태로 그리면 오류가 나서 다른 사람
+   화면에는 문제가 아예 안 보였다. 받는 쪽에서 항상 길이 맞는 배열로 되돌린다. */
+function qbNorm(d){ if(!d||typeof d!=="object")return d;
+  if(d.qs&&!Array.isArray(d.qs)&&typeof d.qs==="object")d.qs=Object.keys(d.qs).sort((a,b)=>a-b).map(k=>d.qs[k]);
+  if(!Array.isArray(d.qs))return d;
+  d.qs.forEach(q=>{ if(q&&q.opts&&!Array.isArray(q.opts)&&typeof q.opts==="object")q.opts=Object.keys(q.opts).sort((a,b)=>a-b).map(k=>q.opts[k]); });
+  const src=d.answers||{}, out=new Array(d.qs.length);
+  for(let i=0;i<out.length;i++)out[i]=src[i]===undefined?null:src[i];
+  d.answers=out; if(d.graded===undefined)d.graded=false; if(d.score===undefined)d.score=null; return d; }
+/* 다른 게임 상태도 같은 이유로 빈 배열이 사라지거나 숫자 키 객체로 돌아올 수 있어,
+   받는 쪽에서 지정한 필드를 항상 배열로 되돌린다 (빙고 hits, 메모리 open/done 등). */
+function arrFix(d,keys){ if(!d||typeof d!=="object")return d; keys.forEach(k=>{ const v=d[k];
+  if(Array.isArray(v))return;
+  if(v&&typeof v==="object"){ const o=[]; Object.keys(v).forEach(i=>{ o[+i]=v[i]; }); for(let i=0;i<o.length;i++)if(o[i]===undefined)o[i]=null; d[k]=o; }
+  else d[k]=[]; }); return d; }
+function qbSig(d){ return d&&Array.isArray(d.qs)?(d.subj||"")+"|"+(d.unit||"")+"|"+(d.topic||"")+"|"+d.qs.map(q=>q.q).join("~"):""; }
+/* 기능별 공유 상태 적용기 — Firebase feat / BroadcastChannel feat가 여기로 들어온다.
+   원칙: 상태가 도착했는데 그 패널 창이 화면에 없으면(닫혔거나, 창 열기 알림을
+   놓쳤거나, 늦게 들어온 경우) 창을 자동으로 열어 방 전체가 같은 화면을 본다.
+   이미 다른 패널을 보고 있는 사람의 창은 함부로 빼앗지 않는다. */
 const FEAT_APPLIERS={
  poll:d=>applyPoll(d),
- timer:d=>{ timerState=Object.assign({},timerState,d); if($("#tmDisp"))timerRender(); else if(timerState.running)timerTickStart(); },
+ timer:d=>{ timerState=Object.assign({},timerState,d); if($("#tmDisp"))timerRender(); else { if(timerState.running)timerTickStart(); if(d.running&&!boardWinOpen("widget"))openWidget(timerState.mode==="뽀모도로"?"pomo":"timer",true); } },
  stop:d=>{ stopState=Object.assign({},stopState,d); if($("#swDisp"))stopRender(); },
  seq:d=>{ const wasPlaying=!!seqTimer;
    if(d.tracks){ tracks=d.tracks; bpm=d.bpm||bpm; stepsPerBar=d.stepsPerBar||16; seqBars=d.seqBars||1; swingVal=d.swing||0; if(d.chords)chords=d.chords; }
    else if(d.state){ bpm=d.bpm||bpm; tracks=defTracks(); d.state.forEach((r,ri)=>{ if(tracks[ri])tracks[ri].steps=r; }); }
    if($("#seqZone")){ buildSeq(); const bl=$("#msBpmLbl"); if(bl)bl.textContent=bpm; const be=$("#msBpm"); if(be)be.value=bpm; const cp=$("#chordProg"); if(cp)cp.textContent=chords.join(" → "); }
-   if(d.playing&&!wasPlaying)startSeq(d); else if(!d.playing&&wasPlaying)stopSeq(true); },
+   if(d.playing&&!wasPlaying){ startSeq(d); if(!boardWinOpen("music"))openMusicStudio(true); } else if(!d.playing&&wasPlaying)stopSeq(true); },
  inst:d=>{ const inst=INSTRUMENTS.find(i=>i.id===d.id); if(inst){ curInst=inst; const mc=$("#msCur"); if(mc)mc.textContent=inst.name; } },
- wc:d=>{ wcState=d; if($("#wcBody"))wcRender(); },
- aki:d=>{ akiState=d; if($("#akiBody"))akiRender(); },
- qb:d=>{ qbState=d; if($("#qbOut"))qbRender(); },
- ttt:d=>{ tttState=d; if($("#tttGrid"))renderTTT(); },
- c4:d=>{ c4State=d; if($("#c4Grid"))renderC4(); },
- bingo:d=>{ bingoState=d; if($("#bingoGrid"))renderBingo(); },
- mem:d=>{ memState=d; if($("#memGrid"))renderMemory(); },
+ wc:d=>{ wcState=arrFix(d,["round","next","history"]); if($("#wcPlay"))wcRender(); else if(!boardWinOpen("game")){ openGame("worldcup",true); wcRender(); } },
+ aki:d=>{ akiState=arrFix(d,["cands","asked"]); if($("#akiBody"))akiRender(); else if(!boardWinOpen("game"))openGame("akinator",true); },
+ qb:d=>{ const prev=qbState; d=qbNorm(d); if(!d||!Array.isArray(d.qs))return; qbState=d;
+   if($("#qbOut")){ qbRender(); return; }
+   // 문제은행 창이 없거나 다른 게임을 보고 있으면: 새 문제 세트이거나 채점이 끝났거나 창이 닫혀 있을 때 모두에게 문제은행 창을 열어 보여준다
+   if(qbSig(prev)!==qbSig(d)||(d.graded&&!(prev&&prev.graded))||!boardWinOpen("game"))openGame("qbank",true); },
+ ttt:d=>{ tttState=arrFix(d,["board"]); if($("#tttMsg"))renderTTT(); else if(!boardWinOpen("game"))openGame("ttt",true); },
+ c4:d=>{ c4State=arrFix(d,["grid","cols"]); if($("#c4Msg"))renderC4(); else if(!boardWinOpen("game"))openGame("c4",true); },
+ bingo:d=>{ bingoState=arrFix(d,["arr","hits"]); if($("#bgNew"))renderBingo(); else if(!boardWinOpen("game"))openGame("bingo",true); },
+ mem:d=>{ memState=arrFix(d,["deck","open","done"]); if($("#memMsg"))renderMemory(); else if(!boardWinOpen("game"))openGame("memory",true); },
  bb:d=>{ bbShared=d; if(typeof bb!=="undefined"&&bb&&bb.el)bbAdopt(); },
- score:d=>{ scoreBoard=d; if($("#scoreList"))openWidget("score",true); },
- calc:d=>{ lastCalc=d; const o=$("#calcOut"); if(o)o.textContent="= "+d.res; const inp=$("#calcIn"); if(inp&&document.activeElement!==inp)inp.value=d.expr; },
- unit:d=>{ lastUnit=d; if($("#uCat"))openWidget("unit",true); },
- dice:d=>{ lastDice=d; const o=$("#diceOut"); if(o)o.textContent=d.out; const mg=$("#diceMsg"); if(mg)mg.textContent=d.msg; },
- flash:d=>{ flashState=d; if($("#fcCard")&&flashShowFn)flashShowFn(); },
- quote:d=>{ quoteState=d; if($("#qOut"))openWidget("quote",true); },
+ score:d=>{ scoreBoard=d; if($("#scoreList")||!boardWinOpen("widget"))openWidget("score",true); },
+ calc:d=>{ lastCalc=d; const o=$("#calcOut"); if(o){ o.textContent="= "+d.res; const inp=$("#calcIn"); if(inp&&document.activeElement!==inp)inp.value=d.expr; } else if(!boardWinOpen("widget"))openWidget("calc",true); },
+ unit:d=>{ lastUnit=d; if($("#uCat")||!boardWinOpen("widget"))openWidget("unit",true); },
+ dice:d=>{ lastDice=d; const o=$("#diceOut"); if(o){ o.textContent=d.out; const mg=$("#diceMsg"); if(mg)mg.textContent=d.msg; } else if(!boardWinOpen("widget"))openWidget("dice",true); },
+ flash:d=>{ flashState=d; if($("#fcCard")&&flashShowFn)flashShowFn(); else if(!boardWinOpen("widget"))openWidget("flash",true); },
+ quote:d=>{ quoteState=d; if($("#qOut")||!boardWinOpen("widget"))openWidget("quote",true); },
  present:d=>{ if(d.on&&!state.presenting)startPresent(true); else if(!d.on&&state.presenting)endPresent(); },
- picker:d=>{ pickerState={names:d.names||"",text:d.text||"",result:d.result||null}; const o=$("#pkOut"); if(o)o.innerHTML=pickerRenderHTML(pickerState.result); const ta=$("#pkNames"); if(ta&&document.activeElement!==ta)ta.value=pickerState.names; },
- dday:d=>{ ddayState=d; if($("#ddDate"))openWidget("dday",true); }
+ picker:d=>{ pickerState={names:d.names||"",text:d.text||"",result:d.result||null}; const o=$("#pkOut"); if(o){ o.innerHTML=pickerRenderHTML(pickerState.result); const ta=$("#pkNames"); if(ta&&document.activeElement!==ta)ta.value=pickerState.names; } else if(!boardWinOpen("widget"))openWidget("picker",true); },
+ dday:d=>{ ddayState=d; if($("#ddDate")||!boardWinOpen("widget"))openWidget("dday",true); }
 };
 function onSync(m){ if(!m||m.from===ME.id)return;
   if(m._eid){ if(seenEventIds.has(m._eid))return; seenEventIds.add(m._eid);
