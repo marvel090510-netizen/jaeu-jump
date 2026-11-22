@@ -86,6 +86,18 @@ canvas.layer{position:absolute;inset:0;width:100%;height:100%;display:block;}
 .mediaObj video,.mediaObj iframe{width:100%;height:100%;border:0;display:block;}
 .mediaObj.audioM{background:var(--panel);display:flex;align-items:center;padding:6px;}
 .mediaObj.audioM audio{width:100%;}
+/* 미디어 조작 모드: 평소에는 보드 그리기/이동이 우선이라 미디어가 클릭을 받지 않지만,
+   조작 모드가 켜진 객체는 레이어를 캔버스 위로 올려 iframe/컨트롤을 직접 누를 수 있게 한다 */
+#mediaLayer.live{z-index:7;}
+.mediaObj.live{pointer-events:auto;border-color:#e03131;box-shadow:0 0 0 3px rgba(224,49,49,.35),var(--shadow);}
+.mediaObj .ytPlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+.mediaObj .ytPlay span{width:62px;height:62px;border-radius:50%;background:rgba(224,49,49,.93);color:#fff;font-size:25px;display:flex;align-items:center;justify-content:center;padding-left:5px;box-shadow:0 4px 18px rgba(0,0,0,.45);}
+.mediaObj.live .ytPlay{display:none;}
+#mediaBar{position:absolute;left:50%;transform:translateX(-50%);top:10px;z-index:43;display:flex;gap:.45rem;align-items:center;background:var(--panel);border:1.5px solid #e03131;border-radius:999px;padding:.28rem .35rem .28rem .8rem;box-shadow:var(--shadow);font-weight:700;font-size:.86rem;max-width:94%;}
+#mediaBar[hidden]{display:none;}
+#followBar:not([hidden])~#mediaBar{top:56px;}
+#mediaBar .fl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#mediaBar button{border-radius:999px;padding:.2rem .7rem;min-height:1.9rem;flex:none;}
 #remoteCursors{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
 .rcursor{position:absolute;transform:translate(-2px,-2px);transition:left .07s linear,top .07s linear;will-change:left,top;}
 .rcursor .nm{font-size:11px;font-weight:700;color:#fff;padding:1px 6px;border-radius:0 8px 8px 8px;margin-left:12px;white-space:nowrap;}
@@ -327,6 +339,7 @@ body.focusUI #zoomctl{left:12px;}
         <button id="zoomHome" title="원점" style="width:auto;padding:0 .5rem;">원점</button>
       </div>
       <div id="followBar" hidden><span class="fl" id="followLbl">따라가는 중</span><button id="followStop">해제</button></div>
+      <div id="mediaBar" hidden><span class="fl" id="mediaLbl">미디어</span><button id="mediaPlay">▶ 재생·조작</button><button id="mediaOpen" hidden>유튜브에서 열기</button><button id="mediaStop" hidden>조작 종료</button></div>
       <div id="framebar"></div>
       <div id="minimap" title="미니맵 — 누르면 이동"><canvas id="mmCv" width="344" height="236"></canvas></div>
       <div id="textEditor"><textarea id="textArea" rows="2"></textarea></div>
@@ -649,20 +662,43 @@ let laserPos=null;
 
 /* ---------------- media (DOM) layer sync ---------------- */
 const mediaEls=new Map();
+let liveMediaId=null; // 조작 모드가 켜진 미디어 객체 id (이 기기에서만 유효한 UI 상태라 동기화하지 않음)
 function syncMediaLayer(){ const layer=$("#mediaLayer");
+  if(liveMediaId&&!objects.find(o=>o.id===liveMediaId)) liveMediaId=null;
+  layer.classList.toggle("live",!!liveMediaId);
   const seen=new Set();
   for(const o of objects){ if(o.type!=="dom"&&o.type!=="audio") continue; seen.add(o.id);
     let el=mediaEls.get(o.id);
     if(!el){ el=buildMediaEl(o); mediaEls.set(o.id,el); layer.appendChild(el); }
+    el.classList.toggle("live",o.id===liveMediaId);
     const s=w2s(o.x,o.y); el.style.left=s.x+"px"; el.style.top=s.y+"px"; el.style.width=(o.w*cam.z)+"px"; el.style.height=(o.h*cam.z)+"px"; }
-  for(const [id,el] of mediaEls){ if(!seen.has(id)){ el.remove(); mediaEls.delete(id); } } }
+  for(const [id,el] of mediaEls){ if(!seen.has(id)){ el.remove(); mediaEls.delete(id); } }
+  updateMediaBar(); }
+function setLiveMedia(id){ if(liveMediaId===id){ syncMediaLayer(); return; }
+  liveMediaId=id; mediaBarKey="__force"; syncMediaLayer();
+  if(id) toast("🎬 조작 모드를 켰어요 — 영상에서 재생 버튼을 눌러보세요. 끝나면 보드의 빈 곳을 누르거나 '조작 종료'를 눌러요"); }
+let mediaBarKey="", mediaBarTarget=null;
+function updateMediaBar(){ const bar=$("#mediaBar"); if(!bar)return;
+  const liveObj=liveMediaId?byId(liveMediaId):null;
+  const sel=selected.size===1?byId([...selected][0]):null;
+  const target=liveObj||((sel&&(sel.type==="dom"||sel.type==="audio"))?sel:null);
+  const key=liveObj?("L"+liveObj.id):target?("S"+target.id):"";
+  if(key===mediaBarKey)return; mediaBarKey=key; mediaBarTarget=target;
+  if(!target){ bar.hidden=true; return; }
+  bar.hidden=false;
+  const name=target.kind==="youtube"?"유튜브 영상":target.kind==="video"?"동영상":target.kind==="spotify"?"스포티파이":target.kind==="map"?"지도":target.kind==="web"?"웹 페이지":target.kind==="screen"?"화면 공유":target.kind==="cam"?"화상":target.type==="audio"?"음성 메모":"미디어";
+  $("#mediaLbl").textContent=liveObj?("🎬 "+name+" 조작 중 — 재생·볼륨을 직접 눌러보세요"):(name+" 선택됨 — 두 번 눌러도 조작할 수 있어요");
+  $("#mediaPlay").hidden=!!liveObj;
+  $("#mediaStop").hidden=!liveObj;
+  const op=$("#mediaOpen"), isYt=target.kind==="youtube"&&!!target.ytid;
+  op.hidden=!isYt; if(isYt)op.dataset.yt=target.ytid; }
 function buildMediaEl(o){ const d=document.createElement("div"); d.className="mediaObj"+(o.type==="audio"?" audioM":"");
   if(o.type==="audio"){ d.innerHTML=`<span class="tag">🎙 음성 메모</span><audio controls src="${esc(o.src)}"></audio>`; return d; }
   if(o.kind==="video"){ d.innerHTML=`<span class="tag">▶ 동영상</span><video src="${esc(o.src)}" controls playsinline></video>`; }
   else if(o.kind==="screen"){ d.innerHTML=`<span class="tag">● LIVE 화면 공유 — ${esc(o.owner||"나")}</span>`; const v=document.createElement("video"); v.autoplay=true; v.muted=true; v.playsInline=true; if(o.stream) v.srcObject=o.stream; d.appendChild(v); o._video=v; }
   else if(o.kind==="cam"){ d.innerHTML=`<span class="tag">📷 화상 — ${esc(o.owner||"나")}</span>`; const v=document.createElement("video"); v.autoplay=true; v.muted=true; v.playsInline=true; if(o.stream) v.srcObject=o.stream; d.appendChild(v); o._video=v; }
-  else if(o.kind==="youtube"){ d.innerHTML=`<span class="tag">YouTube</span><iframe src="https://www.youtube.com/embed/${esc(o.ytid)}" allow="autoplay; encrypted-media" allowfullscreen></iframe>`; }
-  else if(o.kind==="spotify"){ d.innerHTML=`<span class="tag">Spotify</span><iframe src="https://open.spotify.com/embed/${esc(o.sp||"playlist/37i9dQZF1DXcBWIGoYBM5M")}" allow="encrypted-media" allowfullscreen></iframe>`; }
+  else if(o.kind==="youtube"){ d.innerHTML=`<span class="tag">YouTube · 두 번 누르면 재생</span><iframe src="https://www.youtube.com/embed/${esc(o.ytid)}?rel=0&playsinline=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" title="YouTube 동영상 플레이어" allowfullscreen></iframe><div class="ytPlay"><span>▶</span></div>`; }
+  else if(o.kind==="spotify"){ d.innerHTML=`<span class="tag">Spotify · 두 번 누르면 재생</span><iframe src="https://open.spotify.com/embed/${esc(o.sp||"playlist/37i9dQZF1DXcBWIGoYBM5M")}" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture" allowfullscreen></iframe>`; }
   else if(o.kind==="map"){ d.innerHTML=`<span class="tag">지도</span><iframe src="https://www.openstreetmap.org/export/embed.html?bbox=${esc(o.bbox||"126.92%2C37.52%2C127.02%2C37.58")}&layer=${o.sat?"cyclemap":"mapnik"}"></iframe>`; }
   else if(o.kind==="web"){ d.innerHTML=`<span class="tag">웹</span><iframe src="${esc(o.src)}"></iframe>`; }
   return d; }
@@ -900,6 +936,7 @@ cv.addEventListener("pointerdown",e=>{ try{ cv.setPointerCapture(e.pointerId); }
   if(pointers.size>2||pinchSuppress||palm) return; // 세 번째 손가락, 핀치 뒤 남은 손가락, 손바닥으로는 그리지 않음
   const myEntry=pointers.get(e.pointerId); if(myEntry)myEntry.owner=true; // 이 포인터가 시작하는 동작은 이 포인터가 뗄 때만 확정
   hideTextEditor(true);
+  if(liveMediaId) setLiveMedia(null); // 미디어 조작 중 보드를 누르면 조작 모드를 끄고 원래 그리기로 돌아간다
   if(state.myRole==="viewer"&&state.tool!=="hand"&&state.tool!=="select"&&state.tool!=="laser"){ toast("보기 전용 권한이에요 — 그릴 수 없어요"); return; }
   if(e.buttons===4||state.tool==="hand"||spaceDown){ panning={sx,sy,cam:{...cam}}; cv.style.cursor="grabbing"; return; }
   // 펜 배럴 버튼(지우개 버튼) → 일시 지우개
@@ -1068,7 +1105,8 @@ function hideTextEditor(commit){ const ed=$("#textEditor"); if(ed.style.display=
     else if(val){ addObject({type:"text",x:editingCtx.w.x,y:editingCtx.w.y,text:val,size:state.fontSize,color:state.color,font:state.font,bold:state.bold,italic:state.italic,align:state.align,opacity:state.opacity}); } }
   ed.style.display="none"; editingCtx=null; }
 cv.addEventListener("dblclick",e=>{ const {sx,sy}=evPos(e); const w=s2w(sx,sy); const o=hitObj(w);
-  if(o&&(o.type==="text"||o.type==="sticky")){ const b=objBBox(o); openTextEditor({x:b.x,y:b.y},"edit",o); editingCtx={kind:o.type,obj:o,w:{x:b.x,y:b.y}}; } });
+  if(o&&(o.type==="text"||o.type==="sticky")){ const b=objBBox(o); openTextEditor({x:b.x,y:b.y},"edit",o); editingCtx={kind:o.type,obj:o,w:{x:b.x,y:b.y}}; }
+  else if(o&&(o.type==="dom"||o.type==="audio")){ selectOnly([o.id]); setLiveMedia(o.id); } });
 
 /* ---------------- laser ---------------- */
 function drawLaserDot(sx,sy,mine){ const fx=$("#laserFx"); let d=fx.querySelector(mine?".laserDot.mine":".laserDot");
@@ -2458,7 +2496,7 @@ function renderEmbeds(){ const z=$("#embedZone"); if(!z)return; const c=s2w(W/2,
    <div id="devOut" class="mt"></div>`;
   const on=(id,fn)=>{ const e=z.querySelector(id); if(e)e.addEventListener("click",fn); };
   on("#embGo",()=>{ const u=$("#embUrl").value.trim(); if(!u)return; addLinkOrEmbed(u); });
-  on("#embYt",()=>{ const u=$("#embUrl").value.trim(); const m=u.match(/(?:v=|youtu\.be\/|shorts\/)([\w-]{6,})/); if(m){ const c2=s2w(W/2,H/2); addObject({type:"dom",kind:"youtube",ytid:m[1],x:c2.x-240,y:c2.y-150,w:480,h:290,opacity:1}); } else toast("유튜브 주소(URL)를 위 칸에 붙여넣어 주세요"); });
+  on("#embYt",()=>{ const id=ytIdFrom($("#embUrl").value); if(id){ const c2=s2w(W/2,H/2); addObject({type:"dom",kind:"youtube",ytid:id,x:c2.x-240,y:c2.y-150,w:480,h:290,opacity:1}); toast("유튜브 영상을 넣었어요 — 보드에서 두 번 누르면 재생할 수 있어요"); } else toast("유튜브 주소(URL)를 위 칸에 붙여넣어 주세요"); });
   on("#embSp",()=>{ const c2=s2w(W/2,H/2); addObject({type:"dom",kind:"spotify",x:c2.x-190,y:c2.y-60,w:380,h:120,opacity:1}); toast("스포티파이 플레이어를 넣었어요"); });
   on("#embMap",()=>{ const c2=s2w(W/2,H/2); addObject({type:"dom",kind:"map",x:c2.x-230,y:c2.y-160,w:460,h:320,opacity:1}); });
   on("#embMapSat",()=>{ const c2=s2w(W/2,H/2); addObject({type:"dom",kind:"map",sat:1,x:c2.x-230,y:c2.y-160,w:460,h:320,opacity:1}); toast("위성/지형 레이어 지도를 넣었어요"); });
@@ -2486,8 +2524,16 @@ function renderEmbeds(){ const z=$("#embedZone"); if(!z)return; const c=s2w(W/2,
   on("#devGit",()=>{ const c2=s2w(W/2,H/2); const nodes=[["main 시작",0,0],["기능 A",1,-60],["기능 B",1,60],["병합",2,0],["배포",3,0]]; let prev=null;
     const made=nodes.map(([t,dx,dy])=>{ const o=addObject({type:"shape",shape:"ellipse",x:c2.x+dx*150,y:c2.y+dy,w:110,h:52,label:t,color:"#5b6a7a",fill:"#eef4fb",sw:2.5,opacity:1,dash:"solid"},true); if(prev)addObject({type:"connector",from:prev,to:o.id,color:"#8fa1b3",w:2.5},true); prev=o.id; return o; }); pushHistory(); dirty(); toast("Git 그래프를 그렸어요"); });
 }
-function addLinkOrEmbed(u){ const c=s2w(W/2,H/2); const yt=u.match(/(?:v=|youtu\.be\/|shorts\/)([\w-]{6,})/);
-  if(yt){ addObject({type:"dom",kind:"youtube",ytid:yt[1],x:c.x-240,y:c.y-150,w:480,h:290,opacity:1}); return; }
+/* 유튜브 주소에서 영상 ID(11자)만 뽑는다 — watch(파라미터 순서 무관)·youtu.be·shorts·live·embed·
+   음악/모바일 주소와 ID만 붙여넣은 경우까지 처리. 예전 정규식은 v=/youtu.be/shorts만 돼서
+   라이브·임베드 주소는 영상이 안 붙거나 엉뚱한 ID가 들어갔다. */
+function ytIdFrom(u){ if(!u)return null; u=String(u).trim();
+  let m=u.match(/(?:youtube\.com\/(?:embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([\w-]{11})/); if(m)return m[1];
+  m=u.match(/[?&]v=([\w-]{11})/); if(m)return m[1];
+  m=u.match(/^[\w-]{11}$/); if(m)return u;
+  return null; }
+function addLinkOrEmbed(u){ const c=s2w(W/2,H/2); const yid=ytIdFrom(u);
+  if(yid){ addObject({type:"dom",kind:"youtube",ytid:yid,x:c.x-240,y:c.y-150,w:480,h:290,opacity:1}); toast("유튜브 영상을 넣었어요 — 보드에서 두 번 누르면 재생할 수 있어요"); return; }
   let host=u; try{ host=new URL(u).hostname; }catch(e){}
   addObject({type:"link",x:c.x-150,y:c.y-70,w:300,h:130,url:u,title:host+" 링크",opacity:1}); toast("링크 카드를 붙였어요"); }
 
@@ -3165,6 +3211,9 @@ function stopFollow(reason){ if(!state.followId)return; state.followId=null; fol
   else if(reason==="left")toast("따라가던 참여자가 나가서 따라가기를 해제했어요");
   else if(reason!=="silent")toast("따라가기를 해제했어요"); }
 $("#followStop").addEventListener("click",()=>stopFollow());
+$("#mediaPlay").addEventListener("click",()=>{ if(mediaBarTarget) setLiveMedia(mediaBarTarget.id); });
+$("#mediaStop").addEventListener("click",()=>setLiveMedia(null));
+$("#mediaOpen").addEventListener("click",e=>{ const id=e.currentTarget.dataset.yt; if(id)window.open("https://www.youtube.com/watch?v="+id,"_blank"); });
 function broadcastCursor(w,laser){ broadcast({t:"cursor",x:w.x,y:w.y,name:myName(),color:ME.color,laser:!!laser,tool:state.tool}); }
 /* ---------------- 기능 상태 실시간 공유 (feat) ----------------
    게임·위젯·문제은행·월드컵·시퀀서 같은 "기능"의 상태를 방 코드별
@@ -3370,7 +3419,7 @@ $("#boardTitle").addEventListener("change",()=>{ logAct("보드 제목 변경");
 document.addEventListener("keydown",e=>{ const tag=document.activeElement.tagName; const typing=tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT";
   if(e.key===" "&&!typing){ spaceDown=true; }
   if(typing)return;
-  if(e.key==="Escape"){ if(state.presenting)endPresent(); document.body.classList.remove("focusUI"); closeModal(); return; }
+  if(e.key==="Escape"){ if(liveMediaId)setLiveMedia(null); if(state.presenting)endPresent(); document.body.classList.remove("focusUI"); closeModal(); return; }
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){ e.preventDefault(); e.shiftKey?redo():undo(); return; }
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="y"){ e.preventDefault(); redo(); return; }
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){ e.preventDefault(); downloadText("whiteboard.json",JSON.stringify({title:$("#boardTitle").value,objects:objects.map(stripObj)})); toast("보드 파일을 저장했어요"); return; }
