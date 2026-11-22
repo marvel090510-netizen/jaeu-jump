@@ -77382,18 +77382,23 @@ if (typeof module !== 'undefined' && module.exports) {
     var st = STAGE_BY_IDX[run.index];
     if (!st) return;
     run.done = true;
+    /* v5.28: 이 클리어로 '새로' 열리는 스킨인지 — 클리어 기록을 쓰기 전에 판단해야 한다.
+       (isCleared 기반 파생 해금 규칙 때문에, 기록을 먼저 쓰면 방금 깬 스테이지의 스킨이 이미 열린 것으로 보인다) */
+    var hadSkin = st.unlockSkin ? isSkinUnlocked(st.unlockSkin) : true;
     var sv = storySave();
     sv.cleared['map:' + st.mapId] = st.index;
     if (st.boss) sv.boss['map:' + st.mapId] = true;
     lsSet(KEY_STORY, sv);
     var unlockedSkin = null;
     if (st.unlockSkin) {
+      /* v5.28: 기본 4종(재우·고양이·개구리·로봇)은 이미 열려 있으니 '방금 얻은 스킨'으로 치지 않는다
+         (기록은 그대로 남긴다 — 예전에는 기본 스킨 스테이지에서도 '해금!' 알림·장착 버튼이 떴다) */
       var cv = charSave();
       if (!cv.unlocked['skin:' + st.unlockSkin]) {
         cv.unlocked['skin:' + st.unlockSkin] = st.index;
         lsSet(KEY_CHAR, cv);
-        unlockedSkin = st.unlockSkin;
       }
+      if (!hadSkin) unlockedSkin = st.unlockSkin;
     }
     sfxMp3('unlock', 0.9);
     run.cleared = true;
