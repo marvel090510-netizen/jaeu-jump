@@ -85,9 +85,40 @@
   })();
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <script id="jw531tab">
+  (function () {
+    if (window.__JW531TAB) return; window.__JW531TAB = 1;
+    var root = document.documentElement, tm = 0;
+    function pick() {
+      try {
+        var w = window.innerWidth || root.clientWidth || 0;
+        var sw = (window.screen && screen.width) || 0, sh = (window.screen && screen.height) || 0;
+        var minSide = Math.min(sw || w, sh || (window.innerHeight || 0));
+        var u = navigator.userAgent || '';
+        var iPad = /iPad/i.test(u) || (/Macintosh/i.test(u) && (navigator.maxTouchPoints || 0) > 1);
+        var androidTab = /Android/i.test(u) && !/Mobile/i.test(u);
+        var coarse = false;
+        try { coarse = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches); } catch (e) {}
+        var realTablet = iPad || androidTab || (coarse && minSide >= 600);
+        /* 600px 이상이면 무조건 태블릿 2단. 태블릿 기기는 창이 조금 좁아도(520px+) 2단 유지.
+           360~480px 스마트폰은 예전 폰 1단 그대로. */
+        var isTab = (w >= 600) || (realTablet && w >= 520);
+        if (isTab) { root.classList.add('v531-tab'); root.classList.remove('v531-phone'); }
+        else { root.classList.add('v531-phone'); root.classList.remove('v531-tab'); }
+        window.__V531_TAB = isTab;
+      } catch (e) {}
+    }
+    pick();
+    function again() { try { clearTimeout(tm); tm = setTimeout(pick, 120); } catch (e) {} }
+    window.addEventListener('resize', again);
+    window.addEventListener('orientationchange', again);
+    try { window.visualViewport && visualViewport.addEventListener('resize', again); } catch (e) {}
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', pick);
+  })();
+  </script>
   <title>성공하고싶은 재우 - 한 번 더, 정상까지!</title>
     <link rel="stylesheet" href="muse-v5-9/tw.css?v=519tw">
-  <script src="muse-v5-9/game.js?v=531tw3" defer></script>
+  <script src="muse-v5-9/game.js?v=531tw4" defer></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
   <style>
     * {
@@ -407,6 +438,93 @@ html body canvas {
 html body #titleScreen {
   padding-bottom: max(12px, env(safe-area-inset-bottom)) !important;
 }
+</style>
+<style id="v531tab-css">
+/* ==========================================================================
+   v5.31-r3 : 삼성 패드도 아이패드처럼 — 태블릿 2단 레이아웃 통일
+   - 폭 760/768px 미만으로 떨어지는 안드로이드 태블릿에서도 왼쪽 타이틀 + 오른쪽 '지금 고른 맵'
+   - 폰(1단)에서는 지도 패널을 완전히 접는다. (예전에는 폰에서도 display:flex !important라
+     타이틀 아래에 지도 카드가 세로로 붙어 화면을 밀고, 좁은 폭에서 렌더러가 죽기까지 했다)
+   ========================================================================== */
+/* --- 태블릿: 아이패드와 같은 좌우 2단 --- */
+html.v531-tab #titleScreen { flex-direction: row !important; align-items: stretch !important; overflow: hidden !important; }
+html.v531-tab #titleBgImg { display: none !important; }
+html.v531-tab #titleScreen .tright { display: none !important; }
+html.v531-tab #titleScreen > div.relative.z-10 {
+  width: clamp(340px, 52vw, 472px) !important;
+  max-width: 560px !important;
+  margin: 0 !important;
+  min-height: 100% !important;
+  justify-content: space-between !important;
+  border-bottom: 0 !important;
+  border-right: 4px solid #3b82f6 !important;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 18px calc(env(safe-area-inset-bottom, 0px) + 20px) !important;
+  gap: 10px !important;
+  /* 태블릿은 왼쪽 패널만 스크롤 — 오른쪽 '지금 고른 맵'은 제자리에 둔다.
+     (height:100dvh + overflow 조합은 일부 크롬 계열에서 렌더러가 죽어서 max-height만 쓴다) */
+  max-height: 100dvh !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  overscroll-behavior: contain !important;
+}
+html.v531-tab #titleScreen #v43SideArt {
+  display: flex !important;
+  position: absolute !important;
+  left: auto !important; right: 0 !important; top: 0 !important; bottom: 0 !important;
+  width: calc(100% - clamp(340px, 52vw, 472px)) !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 16px) !important;
+  z-index: 6 !important;
+  pointer-events: auto !important;
+}
+html.v531-tab #titleScreen #v43SideArt .sa-card {
+  width: 100% !important; max-width: 420px !important; height: auto !important;
+  max-height: calc(100dvh - 44px) !important;
+}
+html.v531-tab #titleScreen #v43SideArt #v43SideMap,
+html.v531-tab #titleScreen #v43SideArt #v50SideMapImg { max-height: 44dvh !important; }
+/* 패드에서는 폰용 축소 규칙을 되돌려 아이패드와 같은 크기로 */
+html.v531-tab #titleScreen #titlePortraitImg { width: 64px !important; height: 64px !important; }
+html.v531-tab #titleScreen #titleBestHeight { font-size: 22px !important; }
+html.v531-tab #titleScreen #btnStartGame,
+html.v531-tab #titleScreen #btnMultiplayer { min-height: 80px !important; }
+/* v50에서 버튼 내부를 아이콘+제목(19px)으로 바꿔서 태블릿 폭에서는 글자가 넘쳤다 → 패드용 크기로 */
+html.v531-tab #titleScreen .v50-b-tx b { font-size: 17px !important; }
+html.v531-tab #titleScreen #v43Cover { max-height: none !important; aspect-ratio: 16 / 8.4 !important; }
+html.v531-tab #titleScreen #v43TitleRow button { height: 74px !important; font-size: 10.5px !important; }
+html.v531-tab #titleScreen #v43TitleRow button span:first-child { font-size: 22px !important; }
+/* 좁은 태블릿(600~759px): 왼쪽 패널이 340px대라 두 카드 버튼 글자가 넘치지 않게 한 단계 줄임 */
+@media (max-width: 759px) {
+  html.v531-tab #titleScreen .v50-b-tx b { font-size: 15px !important; }
+  html.v531-tab #titleScreen .v50-b-tx i { font-size: 9.5px !important; }
+  html.v531-tab #titleScreen .v50-b-ico { width: 32px !important; height: 32px !important; border-radius: 10px !important; }
+  html.v531-tab #titleScreen .v50-b-ico img { width: 25px !important; height: 25px !important; }
+  html.v531-tab #titleScreen #btnStartGame,
+  html.v531-tab #titleScreen #btnMultiplayer { padding: 10px 9px !important; gap: 7px !important; }
+  html.v531-tab #titleScreen .grid.grid-cols-2 > button { min-width: 0 !important; }
+}
+/* 좁은 태블릿: 오른쪽 맵 카드 글자가 줄바꿈으로 산만해지지 않게 */
+@media (max-width: 719px) {
+  html.v531-tab #titleScreen #v43SideArt .sa-card { padding: 12px !important; }
+  html.v531-tab #titleScreen #v43SideArt #v43SideName { font-size: 16px !important; }
+  html.v531-tab #titleScreen #v43SideArt #v43SideSub { font-size: 10.5px !important; }
+  html.v531-tab #titleScreen #v43SideArt .sa-h { font-size: 10.5px !important; }
+  html.v531-tab #titleScreen #v43SideArt .sa-hint { font-size: 10px !important; }
+}
+/* 아주 좁은 태블릿(520~599px, 창을 줄인 패드): 오른쪽 카드를 더 컴팩트하게 */
+@media (max-width: 599px) {
+  html.v531-tab #titleScreen #v43SideArt .sa-card { padding: 10px !important; }
+  html.v531-tab #titleScreen #v43SideArt #v43SideName { font-size: 14px !important; margin-top: 8px !important; }
+  html.v531-tab #titleScreen #v43SideArt #v43SideSub { display: none !important; }
+  html.v531-tab #titleScreen #v43SideArt .sa-h { font-size: 10px !important; }
+  html.v531-tab #titleScreen #v43SideArt .sa-rec { margin-top: 8px !important; padding-top: 8px !important; gap: 10px !important; }
+  html.v531-tab #titleScreen #v43SideArt .sa-rec b { font-size: 17px !important; }
+}
+/* --- 폰: 1단 유지 + 지도 패널 접기 (터치·스크롤을 밀던 원인 제거) --- */
+html.v531-phone #titleScreen { flex-direction: column !important; }
+html.v531-phone #titleScreen #v43SideArt { display: none !important; }
 </style>
 </head>
 <body class="relative w-full h-full overflow-hidden select-none">

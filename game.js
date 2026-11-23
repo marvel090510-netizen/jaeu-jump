@@ -41724,7 +41724,7 @@ extends CanvasLayer
     if (!col) return;
     if (col.getAttribute('data-v50b') !== '1') {
       col.setAttribute('data-v50b', '1');
-      col.style.setProperty('justify-content', 'center', 'important');
+      col.style.setProperty('justify-content', titleColJustify(col, false), 'important');
       col.style.setProperty('gap', '14px', 'important');
     }
   }
@@ -42274,7 +42274,8 @@ extends CanvasLayer
       '}',
       /* --- 폰 타이틀 한 화면 (v5.22): 759px 이하에서 배너·프로필·버튼·간격 축소 —
          스토리 모드·하단 메뉴까지 스크롤 없이 보이게. 맵 패널은 건드리지 않음. --- */
-      '@media (max-width:759px){',
+      /* v5.31-r3: 이 블록은 폰(≤599px) 전용. 태블릿(600px+)은 v531-tab 2단 규칙을 쓴다. */
+      '@media (max-width:599px){',
       '  #titleScreen > div.relative.z-10{padding:calc(env(safe-area-inset-top,0px) + 6px) 12px 10px !important;gap:6px !important;}',
       '  #titleScreen .inline-flex.items-center.gap-2{margin-bottom:6px !important;padding:4px 10px !important;}',
       '  #titleScreen #v43Cover{max-height:120px !important;}',
@@ -42616,13 +42617,22 @@ extends CanvasLayer
   /* ======================================================================
      5d. 아이패드 좌우 밸런스: 왼쪽 컬럼을 화면 높이에 고르게 채운다
      ====================================================================== */
+  /* v5.31-r3: 내용이 화면보다 길면 center/space-evenly는 위아래를 잘라 먹는다.
+     (삼성 패드처럼 왼쪽 패널이 짧은 화면에서 커버·상단 칩이 위로 사라지던 문제)
+     넘칠 때는 위에서부터 쌓고, 패널만 스크롤한다. */
+  function titleColJustify(col, wide) {
+    try {
+      if (col && col.scrollHeight > col.clientHeight + 2) return 'flex-start';
+    } catch (e) {}
+    return wide ? 'space-evenly' : 'center';
+  }
   function titleFill() {
     var t = $('titleScreen');
     if (!t || t.classList.contains('hidden')) return;
     var col = t.querySelector(':scope > div.relative.z-10');
     if (!col) return;
     var wide = root.innerWidth >= 760 && root.innerHeight >= 780;
-    var want = wide ? 'space-evenly' : 'center';
+    var want = titleColJustify(col, wide);
     if (col.style.getPropertyValue('justify-content') !== want) {
       col.style.setProperty('justify-content', want, 'important');
       col.style.setProperty('gap', wide ? '6px' : '14px', 'important');
@@ -68876,7 +68886,7 @@ if (typeof module !== 'undefined' && module.exports) {
       /* v5.31-r1: 태블릿에서는 내용이 한 화면을 넘어 왼쪽 패널이 스크롤된다. 손가락 스크롤이
          확실하게 먹도록 pan-y를 명시한다(버튼 탭은 그대로 동작). */
       '#titleScreen > div.relative.z-10{-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;}',
-      '@media (max-width:759px){',
+      '@media (max-width:599px){',
       '  #titleScreen.tf1 #v43Cover{max-height:80px !important;}',
       '  #titleScreen.tf1 > div.relative.z-10 > div:first-child > p:nth-of-type(2){display:none !important;}',
       '  #titleScreen.tf1 h1{font-size:24px !important;}',
@@ -69223,7 +69233,7 @@ if (typeof module !== 'undefined' && module.exports) {
    게임이 켜질 때 patch-notes.json을 캐시 없이 받아서 최신 버전과 지금 빌드를 비교한다. */
 (function (root) {
   'use strict';
-  var BUILD = 'v5.31-r2';
+  var BUILD = 'v5.31-r3';
   root.__JW_BUILD_VERSION = BUILD;
   function norm(v) { return String(v || '').replace(/-정식$/, '').trim(); }
   function titleVisible() { try { var t = document.getElementById('titleScreen'); return !!(t && !t.classList.contains('hidden')); } catch (e) { return false; } }
