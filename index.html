@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
-<head><!-- muse-v5-5: v5.4 기반 전체 버그 수정 (싱글/멀티/일반) --><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="성공하고싶은 재우"><meta name="theme-color" content="#0b1024"><link rel="manifest" href="./manifest.json"><meta property="og:image" content="https://marvel090510-netizen.github.io/jaeu-jump/cover.jpg"><meta property="og:title" content="성공하고싶은 재우 - 한 번 더, 정상까지!"><meta property="og:description" content="Jump King 스타일 16비트 세로 등반 게임 · 맵 21종 · 모드 15종"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
-  <meta charset="UTF-8" />
+<head><meta charset="UTF-8" /><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><!-- muse-v5-5: v5.4 기반 전체 버그 수정 (싱글/멀티/일반) --><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="성공하고싶은 재우"><meta name="theme-color" content="#0b1024"><link rel="manifest" href="./manifest.json"><meta property="og:image" content="https://marvel090510-netizen.github.io/jaeu-jump/cover.jpg"><meta property="og:title" content="성공하고싶은 재우 - 한 번 더, 정상까지!"><meta property="og:description" content="Jump King 스타일 16비트 세로 등반 게임 · 맵 21종 · 모드 15종"><meta property="og:type" content="website"><meta name="twitter:card" content="summary_large_image">
 <script id="jw51wipe">/* v5.1-final 1회 초기화 (__v51wipe) */
 (function(){try{
   if(localStorage.getItem('jw51_wipe_v1')==='1')return;
@@ -64,11 +63,31 @@
       var m = (r && (r.message || String(r))) || '';
       if (m) show(m);
     });
+    window.__jwerrshow = show;   /* v5.31-r2: 부팅 감시기가 같은 배너를 쓸 수 있게 공개 */
+  })();
+  </script>
+  <!-- v5.31-r2: 부팅 감시기 — 12초가 지나도 게임 스크립트가 시작되지 않으면(느린 네트워크·파싱 지연·
+       조용한 실패) 화면이 '아무것도 안 눌리는' 상태로 남지 않도록 하단에 안내와 [다시 시도]를 띄운다. -->
+  <script id="jw532boot">
+  (function () {
+    if (window.__JWBOOTWATCH) return; window.__JWBOOTWATCH = 1;
+    var t0 = Date.now(), told = 0;
+    function tick() {
+      try {
+        if (window.__JW_BUILD_VERSION) { return; }              /* 정상 부팅 완료 */
+        var el = Date.now() - t0;
+        if (el < 12000 || told >= 3) return;
+        if (document.readyState === 'loading') return;
+        told++;
+        if (window.__jwerrshow) window.__jwerrshow('게임 코드가 아직 시작되지 않았어요 — 잠시 뒤 [다시 시도]를 눌러 주세요 (' + Math.round(el / 1000) + '초)');
+      } catch (e) {}
+    }
+    setInterval(tick, 1500);
   })();
   </script>
   <title>성공하고싶은 재우 - 한 번 더, 정상까지!</title>
     <link rel="stylesheet" href="tw.css?v=527tw">
-  <script src="game.js?v=531tw2" defer></script>
+  <script src="game.js?v=531tw3" defer></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
   <style>
     * {
@@ -86,7 +105,9 @@
       background-color: #06040d;
       font-family: 'Galmuri11', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
       color: #f8fafc;
-      touch-action: none;
+      /* v5.31-r2: html/body에 touch-action:none을 두면 안드로이드 크롬에서 타이틀·모달 스크롤까지
+         막히는 기기가 있다. 캔버스와 조작 버튼에만 none을 두고, 문서는 manipulation으로 둔다. */
+      touch-action: manipulation;
     }
     .pixelated {
       image-rendering: -moz-crisp-edges;

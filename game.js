@@ -104,7 +104,9 @@
     if (!s.el.isConnected) return;
     lastSynth = Date.now();
     synthNow = true;                       /* 이 click은 중복 차단 대상이 아니다 */
+    try { root.__JWTP_SYNTH = true; } catch (err) {}
     try { s.el.click(); } catch (err) {}
+    try { root.__JWTP_SYNTH = false; } catch (err) {}
     synthNow = false;
   }
   function onCancel() { start = null; }
@@ -60247,6 +60249,8 @@ if (typeof module !== 'undefined' && module.exports) {
      - 사용자가 직접 누른 클릭(isTrusted)과, 이미 열린 메뉴를 닫는 클릭은 그대로 통과 */
   doc.addEventListener('click', function (e) {
     if (e.isTrusted) return;
+    /* v5.31-r2: 탭 안전망(__JWTAP)이 만든 click은 사용자가 누른 것과 같다 — 막지 않는다 */
+    if (root.__JWTP_SYNTH) return;
     if (!locked()) return;
     var t = e.target;
     if (!t || !t.closest) return;
@@ -68846,7 +68850,21 @@ if (typeof module !== 'undefined' && module.exports) {
      거절해도 2초 뒤 프롬프트가 다시 떠서 화면을 영구히 덮었다 → 이번 세션에서 답했으면 다시 묻지 않는다. */
   var answered = false;
   var retryTimer = null;
-  var NO_EXPIRE_MS = 24 * 60 * 60 * 1000; /* 거절은 24시간 뒤 다시 물어봄 */
+  var NO_EXPIRE_MS = 7 * 24 * 60 * 60 * 1000; /* v5.31-r2: 거절은 7일 뒤 다시 물어봄(24시간은 너무 잦았다) */
+
+  /* v5.31-r2: 저장소(localStorage)가 막힌 기기에서도 답이 기억되도록 쿠키도 같이 쓴다. */
+  function cookieSet(k, v) {
+    try {
+      var ms = (v === 'yes') ? (365 * 24 * 3600 * 1000) : NO_EXPIRE_MS;
+      document.cookie = k + '=' + encodeURIComponent(v) + ';path=/;max-age=' + Math.floor(ms / 1000) + ';SameSite=Lax';
+    } catch (e) {}
+  }
+  function cookieGet(k) {
+    try {
+      var m = document.cookie.match(new RegExp('(?:^|; )' + k + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : '';
+    } catch (e) { return ''; }
+  }
 
   /* ---------- CSS (타이틀만) ---------- */
   function injectCss() {
@@ -68874,7 +68892,20 @@ if (typeof module !== 'undefined' && module.exports) {
       '#v523FsNo{background:#1e293b;border:3px solid #475569;color:#e2e8f0;font-weight:900;border-radius:12px;padding:10px 14px;font-size:14px;cursor:pointer;flex:1;}',
       '#v523FsTitleBtn{margin-left:auto;padding:2px 6px;font-size:12px;font-weight:900;color:#bfdbfe;background:#1e3a5f;border:1px solid #60a5fa;border-radius:8px;cursor:pointer;white-space:nowrap;flex:0 0 auto;}',
       /* v5.25: 프롬프트를 로딩 베일(z-99999)보다 위에 — 예전에는 베일 뒤에 가려져서 느린 기기에서 안 보이는 것처럼 보였다. */
-      '#v523FsPrompt{z-index:100000 !important;}'
+      '#v523FsPrompt{z-index:100000 !important;}',
+      /* v5.31-r2 (삼성 패드 '화면 전체 터치 먹통' 핵심 수정)
+         이 안내 창은 .v42-modal 이라 화면 전체를 덮고 pointer-events:auto 였다. 배경은 46% 정도만
+         어둡게(밝은 글래스 톤) 보이기 때문에 뒤의 타이틀이 멀쩡해 보이는데, 그 위를 누르면 전부 이 창이
+         먹고 아무 일도 일어나지 않았다 — 태블릿처럼 창이 화면 가운데 작게 떠 있으면 '터치가 아예 안 됨'으로
+         느끼게 된다. 이제 (1) 화면을 덮지 않는 위쪽 띠로 내리고 (2) 창은 터치를 통과시키고 카드만 받는다. */
+      '#v523FsPrompt{position:fixed !important;left:0 !important;right:0 !important;top:0 !important;bottom:auto !important;',
+      '  z-index:100000 !important;display:flex !important;align-items:flex-start !important;justify-content:center !important;',
+      '  padding:calc(env(safe-area-inset-top,0px) + 56px) 10px 0 !important;max-height:none !important;',
+      '  overflow:visible !important;pointer-events:none !important;background:transparent !important;',
+      '  -webkit-backdrop-filter:none !important;backdrop-filter:none !important;}',
+      '#v523FsPrompt>.v42-card{pointer-events:auto !important;margin:0 auto !important;max-width:min(94vw,26rem) !important;',
+      '  box-shadow:0 14px 40px rgba(0,0,0,.55) !important;}',
+      '#v523FsPass{display:block;margin-top:6px;font-size:11px;font-weight:700;color:#93c5fd;opacity:.9;}'
     ].join('\n');
     doc.head.appendChild(s);
   }
@@ -68889,8 +68920,10 @@ if (typeof module !== 'undefined' && module.exports) {
     } catch (e) {}
   }
   function choice() {
+    var v = '';
+    try { v = localStorage.getItem(KEY) || ''; } catch (e) { v = ''; }
+    if (!v) v = cookieGet(KEY);            /* v5.31-r2: 스토리지가 막힌 기기는 쿠키로 기억 */
     try {
-      var v = localStorage.getItem(KEY) || '';
       if (!v) return '';
       if (v === 'yes') return 'yes';
       if (v.indexOf('no:') === 0) {
@@ -68902,10 +68935,12 @@ if (typeof module !== 'undefined' && module.exports) {
     } catch (e) { return ''; }
   }
   function saveChoice(v) {
+    var val = (v === 'no') ? ('no:' + Date.now()) : v;
     try {
-      if (v === 'no') localStorage.setItem(KEY, 'no:' + Date.now());
+      if (v === 'no') localStorage.setItem(KEY, val);
       else localStorage.setItem(KEY, v);
     } catch (e) {}
+    cookieSet(KEY, val);                   /* v5.31-r2 */
   }
 
   /* ---------- 기기 판별 / 전체화면 ---------- */
@@ -68995,6 +69030,7 @@ if (typeof module !== 'undefined' && module.exports) {
           '<button type="button" id="v523FsYes">전체화면으로 보기</button>' +
           '<button type="button" id="v523FsNo">그냥 보기</button>' +
         '</div>' +
+        '<span id="v523FsPass">바깥을 눌러도 닫혀요 · 타이틀은 그대로 쓸 수 있어요</span>' +
       '</div>';
     doc.body.appendChild(m);
     var yes = $('v523FsYes'), no = $('v523FsNo');
@@ -69049,6 +69085,19 @@ if (typeof module !== 'undefined' && module.exports) {
   function stopRetry() {
     if (retryTimer) { clearInterval(retryTimer); retryTimer = null; }
   }
+  /* v5.31-r2: 창 바깥(카드 밖)을 누르면 이 창은 닫고, 그 탭은 원래 누르려던 타이틀 버튼에 그대로 전달된다.
+     카드가 pointer-events:auto 로 터치를 받으므로 '창이 떠 있는데 화면 전체가 죽는' 상태가 없어진다. */
+  function onOutsidePress(e) {
+    if (!promptOpen) return;
+    var t = e && e.target;
+    if (!t || t.nodeType !== 1) return;
+    try { if (t.closest('#v523FsPrompt')) return; } catch (er) { return; }
+    answered = true;
+    try { saveChoice('no'); } catch (er) {}
+    hidePrompt();
+  }
+  try { doc.addEventListener('pointerdown', onOutsidePress, true); } catch (e) {}
+  try { doc.addEventListener('touchstart', onOutsidePress, { capture: true, passive: true }); } catch (e) {}
   function onAccept() {
     answered = true;
     saveChoice('yes');
@@ -69174,7 +69223,7 @@ if (typeof module !== 'undefined' && module.exports) {
    게임이 켜질 때 patch-notes.json을 캐시 없이 받아서 최신 버전과 지금 빌드를 비교한다. */
 (function (root) {
   'use strict';
-  var BUILD = 'v5.31-r1';
+  var BUILD = 'v5.31-r2';
   root.__JW_BUILD_VERSION = BUILD;
   function norm(v) { return String(v || '').replace(/-정식$/, '').trim(); }
   function titleVisible() { try { var t = document.getElementById('titleScreen'); return !!(t && !t.classList.contains('hidden')); } catch (e) { return false; } }
