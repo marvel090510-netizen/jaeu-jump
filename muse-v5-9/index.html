@@ -17,10 +17,58 @@
   window.__JW51WIPE=rm.length;
 }catch(e){}})();
 </script>
+  <!-- v5.31-r1: 실행 오류를 화면에 보여주는 안전망.
+       예전에는 시작 단계에서 예외가 나도 조용히 삼켜져서 '버튼만 안 먹는' 것처럼 보였고
+       원인을 알 길이 없었다. 이제 오류 문구가 하단에 뜨고 '다시 시도'로 바로 재시작할 수 있다.
+       (정상 동작에는 아무 영향 없음 — 오류가 있을 때만 나타난다) -->
+  <script id="jw531err">
+  (function () {
+    if (window.__JWERRBANNER) return; window.__JWERRBANNER = 1;
+    var shown = 0;
+    function show(msg) {
+      try {
+        if (shown++ > 3) return;
+        var b = document.getElementById('jwErrBar');
+        if (!b) {
+          b = document.createElement('div');
+          b.id = 'jwErrBar';
+          b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483600;display:flex;gap:8px;align-items:center;background:#3f1d1d;border-top:2px solid #ef4444;color:#fecaca;font:900 12px/1.35 system-ui,-apple-system,sans-serif;padding:8px 10px;';
+          var sp = document.createElement('span');
+          sp.id = 'jwErrMsg';
+          sp.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+          var go = document.createElement('button');
+          go.type = 'button'; go.textContent = '다시 시도';
+          go.style.cssText = 'background:#fca5a5;color:#450a0a;border:2px solid #7f1d1d;border-radius:8px;padding:6px 10px;font-weight:900;white-space:nowrap;';
+          go.addEventListener('click', function () { try { location.reload(); } catch (e) {} });
+          var x = document.createElement('button');
+          x.type = 'button'; x.textContent = '✕'; x.setAttribute('aria-label', '닫기');
+          x.style.cssText = 'background:#1f2937;color:#e5e7eb;border:2px solid #4b5563;border-radius:8px;padding:6px 9px;font-weight:900;';
+          x.addEventListener('click', function () { try { b.parentNode.removeChild(b); } catch (e) {} });
+          b.appendChild(sp); b.appendChild(go); b.appendChild(x);
+          (document.body || document.documentElement).appendChild(b);
+        }
+        document.getElementById('jwErrMsg').textContent = '⚠️ 실행 오류: ' + msg;
+        try { sessionStorage.setItem('jw_last_err', msg); } catch (e) {}
+      } catch (e) {}
+    }
+    window.addEventListener('error', function (ev) {
+      if (!ev) return;
+      var m = ev.message || '';
+      if (!m) return;                       /* 이미지·스크립트 로드 실패는 제외 (message 없음) */
+      if (/Script error/i.test(m)) m = '외부 스크립트 오류';
+      show(m);
+    }, true);
+    window.addEventListener('unhandledrejection', function (ev) {
+      var r = ev && ev.reason;
+      var m = (r && (r.message || String(r))) || '';
+      if (m) show(m);
+    });
+  })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>성공하고싶은 재우 - 한 번 더, 정상까지!</title>
     <link rel="stylesheet" href="muse-v5-9/tw.css?v=519tw">
-  <script src="muse-v5-9/game.js?v=531tw1" defer></script>
+  <script src="muse-v5-9/game.js?v=531tw2" defer></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css">
   <style>
     * {

@@ -5,6 +5,123 @@
    - VERSION = '4.8' (멀티 호환) — 절대 변경 금지
    ========================================================================== */
 
+/* ===== v5.31-r1 (삼성 패드 크롬 버튼 무반응 핫픽스): 캔버스 2D 컨텍스트 안전망 =====
+   실기기(안드로이드 태블릿 크롬)에서 canvas.getContext('2d')가 null을 돌려주는 경우가 있다
+   (GPU 프로세스 재시작·캔버스 메모리 압박·저사양 기기의 컨텍스트 제한). 이 게임은 시작하자마자
+   픽셀 자산을 캔버스로 굽기 때문에, 그 순간 null이 오면 top-level TypeError로 스크립트 전체가
+   죽어 BUILD 표시도 안 되고 타이틀 버튼 리스너도 하나도 안 붙는다 — 화면은 그대로인데
+   모든 버튼이 먹통이 되는 정확한 증상이다. 그래서 'null이면 그리기만 무시하는 컨텍스트'로 대신해
+   어떤 기기에서도 스크립트가 끝까지 실행되게 만든다. (정상 기기 동작은 완전히 동일) */
+(function () {
+  try {
+    var proto = window.HTMLCanvasElement && HTMLCanvasElement.prototype;
+    if (!proto || !proto.getContext || proto.getContext.__jwSafe) return;
+    var noop = null;
+    function makeNoop() {
+      if (noop) return noop;
+      var no = function () {};
+      noop = {
+        canvas: null, imageSmoothingEnabled: false, fillStyle: '#000000', strokeStyle: '#000000',
+        globalAlpha: 1, globalCompositeOperation: 'source-over', lineWidth: 1, lineCap: 'butt',
+        lineJoin: 'miter', miterLimit: 10, font: '10px sans-serif', textAlign: 'left',
+        textBaseline: 'alphabetic', shadowBlur: 0, shadowColor: 'rgba(0,0,0,0)',
+        shadowOffsetX: 0, shadowOffsetY: 0, filter: 'none', direction: 'ltr',
+        fillRect: no, strokeRect: no, clearRect: no, fillText: no, strokeText: no,
+        beginPath: no, closePath: no, moveTo: no, lineTo: no, arc: no, arcTo: no, rect: no,
+        ellipse: no, fill: no, stroke: no, clip: no, save: no, restore: no, translate: no,
+        rotate: no, scale: no, transform: no, setTransform: no, resetTransform: no,
+        drawImage: no, putImageData: no, quadraticCurveTo: no, bezierCurveTo: no,
+        setLineDash: no, getLineDash: function () { return []; },
+        createLinearGradient: function () { return { addColorStop: no }; },
+        createRadialGradient: function () { return { addColorStop: no }; },
+        createConicGradient: function () { return { addColorStop: no }; },
+        createPattern: function () { return null; },
+        measureText: function (t) { return { width: String(t == null ? '' : t).length * 6 }; },
+        getImageData: function (x, y, w, h) {
+          var W = Math.max(1, w | 0), H = Math.max(1, h | 0);
+          try { return new ImageData(W, H); } catch (e) { return { data: new Uint8ClampedArray(W * H * 4), width: W, height: H }; }
+        },
+        isPointInPath: function () { return false; },
+        isPointInStroke: function () { return false; }
+      };
+      return noop;
+    }
+    var orig = proto.getContext;
+    var wrapped = function (type) {
+      var ctx = null;
+      try { ctx = orig.apply(this, arguments); } catch (e) { ctx = null; }
+      if (!ctx) { try { ctx = makeNoop(); ctx.canvas = this; } catch (e2) { ctx = makeNoop(); } }
+      return ctx;
+    };
+    wrapped.__jwSafe = 1;
+    proto.getContext = wrapped;
+  } catch (e) {}
+})();
+
+/* ===== v5.31-r1: 태블릿 터치 '탭이 안 먹는' 안전망 =====
+   안드로이드 크롬(태블릿)은 손가락이 누르는 동안 20px 정도만 미끄러져도 그 제스처를 '스크롤'로
+   판단해 click 이벤트를 아예 만들지 않는다(이번 조사에서 재현: 12px까지는 클릭 발생, 20px는 미발생).
+   손가락이 큰 태블릿을 한 손으로 들고 누를 때 흔히 나오는 움직임이라, 이것이 '버튼이 안 먹는다'의
+   실제 원인 중 하나다. → 짧은 시간 안에 조금만 움직인 터치는 우리가 직접 click으로 바꿔준다.
+   (스크롤 의도인 경우 = 22px 초과 또는 1.2초 초과 → 건드리지 않고 그대로 스크롤)
+   합성 click 직후 브라우저가 보내는 중복 click은 capture 단계에서 삼켜서 두 번 실행되지 않게 한다. */
+(function (root) {
+  'use strict';
+  if (root.__JWTAP) return; root.__JWTAP = 1;
+  var doc = root.document;
+  if (!doc) return;
+  var SEL = 'button, [role="button"], a[href], .mp-chip, .v43-srow, .v42-srow, .v44-btn, .v44-fr, .v44-colbtn, .v44-skinbtn, .v53chip, .v51pin, .touch-btn, [data-map], [data-mode], [data-skin], [data-frame], [data-pieces], [data-cer], [data-ctab], [data-v44nav], [data-sq]';
+  var MAX_MOVE = 22, MAX_MS = 1200, OK_MOVE = 8;
+  var start = null, lastSynth = 0, synthNow = false;
+
+  function pick(t) {
+    if (!t || !t.closest) return null;
+    var el = t.closest(SEL);
+    if (!el) return null;
+    if (el.disabled || el.getAttribute('aria-disabled') === 'true') return null;
+    if (el.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""]')) return null;
+    return el;
+  }
+  function onStart(e) {
+    start = null;
+    if (!e.touches || e.touches.length !== 1) return;
+    var t = e.touches[0];
+    var el = pick(e.target);
+    if (!el) return;
+    start = { x: t.clientX, y: t.clientY, at: Date.now(), el: el };
+  }
+  function onEnd(e) {
+    var s = start; start = null;
+    if (!s) return;
+    if (e.touches && e.touches.length > 0) return;
+    var t = (e.changedTouches && e.changedTouches[0]) || null;
+    if (!t) return;
+    var dx = Math.abs(t.clientX - s.x), dy = Math.abs(t.clientY - s.y);
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > MAX_MOVE || (Date.now() - s.at) > MAX_MS) return;   /* 진짜 스크롤·롱프레스 */
+    if (dist <= OK_MOVE) return;                                   /* 브라우저가 알아서 click을 만든다 */
+    /* 9~22px: 크롬이 스크롤로 오인해 click을 취소할 수 있는 구간 → 우리가 click을 만든다 */
+    if (!s.el.isConnected) return;
+    lastSynth = Date.now();
+    synthNow = true;                       /* 이 click은 중복 차단 대상이 아니다 */
+    try { s.el.click(); } catch (err) {}
+    synthNow = false;
+  }
+  function onCancel() { start = null; }
+
+  doc.addEventListener('touchstart', onStart, { capture: true, passive: true });
+  doc.addEventListener('touchend', onEnd, { capture: true, passive: true });
+  doc.addEventListener('touchcancel', onCancel, { capture: true, passive: true });
+  /* 합성 click 직후 따라오는 브라우저의 중복 click만 삼킷다 (합성 click은 통과) */
+  doc.addEventListener('click', function (e) {
+    if (synthNow) return;
+    if (Date.now() - lastSynth < 700) {
+      lastSynth = 0;
+      try { e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation(); } catch (err) {}
+    }
+  }, true);
+})(window);
+
 /* ===== v5.24 PERF: 화면 그라데이션 캐시 (전수 렉 조사) =====
    매 프레임 createLinearGradient + 전체화면 fill은 모바일 GPU에서 가장 큰 래스터 비용이자
    GC 유발 할당. 4px짜리 캔버스에 한 번 구워두고 매 프레임 drawImage로 붙인다.
@@ -2375,11 +2492,27 @@ extends CanvasLayer
       };
 
       function init() {
-        try {
-          loadStorage();
-          generateAllPixelAssets();
-          buildPlatforms();
+        /* v5.31-r1: 예전에는 자산 생성·월드 생성·DOM 채우기·버튼 바인딩이 전부 하나의 try 안에 있었다.
+           그래서 한 단계에서 예외가 나면(안드로이드 태블릿에서 캔버스/메모리 문제로 실제 발생)
+           뒤따르는 버튼 리스너가 전부 사라져 '화면은 뜨는데 버튼이 하나도 안 먹는' 상태가 됐다.
+           이제 단계별로 격리한다 — 무엇이 실패해도 나머지, 특히 버튼은 반드시 살아남는다. */
+        try { loadStorage(); } catch (err) { console.error('Storage Error:', err); }
+        try { generateAllPixelAssets(); } catch (err) { console.error('Asset Error:', err); }
+        try { buildPlatforms(); } catch (err) { console.error('World Error:', err); }
 
+        /* 핵심 버튼은 자산보다 먼저 묶는다 (아래 바인딩 블록이 실패해도 도전 시작은 동작) */
+        try {
+          var _coreStart = document.getElementById('btnStartGame');
+          if (_coreStart && !_coreStart.__jwCore) { _coreStart.__jwCore = 1; _coreStart.addEventListener('click', startGameNow); }
+          var _coreQuick = document.getElementById('btnQuickPlayToggle');
+          if (_coreQuick && !_coreQuick.__jwCore) {
+            _coreQuick.__jwCore = 1;
+            _coreQuick.addEventListener('click', function () { if (game.inPlay) returnToTitle(); else startGameNow(); });
+          }
+          window.__JWCORE = { start: startGameNow, title: returnToTitle };
+        } catch (err) { console.error('Core Bind Error:', err); }
+
+        try {
           // Populate DOM Images
           document.getElementById('titleBgImg').src = ASSETS.titleBgUrl;
           document.getElementById('titlePortraitImg').src = ASSETS.portraits['결의'];
@@ -2406,17 +2539,16 @@ extends CanvasLayer
             heartsEl.appendChild(im);
           }
 
-          returnToTitle();
-          applyTouchLayout();
+        } catch (err) { console.error('Init DOM Error:', err); }
 
+        try { returnToTitle(); } catch (err) { console.error('Title Error:', err); }
+        try { applyTouchLayout(); } catch (err) { console.error('Touch Layout Error:', err); }
+
+        try {
           // Foolproof Start Button Binding (Click + PointerDown + Keyboard Space/Enter)
+          /* v5.31-r1: 도전 시작·바로 플레이는 init 맨 앞에서 이미 바인딩했다 (중복 실행 방지) */
           const startBtn = document.getElementById('btnStartGame');
-          startBtn.addEventListener('click', startGameNow);
-
-          document.getElementById('btnQuickPlayToggle').addEventListener('click', () => {
-            if (game.inPlay) returnToTitle();
-            else startGameNow();
-          });
+          if (startBtn && !startBtn.__jwCore) startBtn.addEventListener('click', startGameNow);
 
           document.getElementById('btnQuickOriginTest').addEventListener('click', () => {
             if (!game.inPlay) startGameNow();
@@ -68710,6 +68842,9 @@ if (typeof module !== 'undefined' && module.exports) {
   var KEY = 'jw_fs_prompt_v3';
   var OLD_KEY = 'jw_fs_prompt_v2';
   var promptOpen = false;
+  /* v5.31-r1: 저장소가 막힌 기기(쿠키/스토리지 차단)에서는 choice()가 계속 빈 값이라
+     거절해도 2초 뒤 프롬프트가 다시 떠서 화면을 영구히 덮었다 → 이번 세션에서 답했으면 다시 묻지 않는다. */
+  var answered = false;
   var retryTimer = null;
   var NO_EXPIRE_MS = 24 * 60 * 60 * 1000; /* 거절은 24시간 뒤 다시 물어봄 */
 
@@ -68719,7 +68854,10 @@ if (typeof module !== 'undefined' && module.exports) {
     var s = doc.createElement('style');
     s.id = 'v523TitleCss';
     s.textContent = [
-      '#titleScreen{height:100dvh;max-height:100dvh;}',
+      '#titleScreen{height:100dvh;max-height:100dvh;overscroll-behavior:contain;}',
+      /* v5.31-r1: 태블릿에서는 내용이 한 화면을 넘어 왼쪽 패널이 스크롤된다. 손가락 스크롤이
+         확실하게 먹도록 pan-y를 명시한다(버튼 탭은 그대로 동작). */
+      '#titleScreen > div.relative.z-10{-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;}',
       '@media (max-width:759px){',
       '  #titleScreen.tf1 #v43Cover{max-height:80px !important;}',
       '  #titleScreen.tf1 > div.relative.z-10 > div:first-child > p:nth-of-type(2){display:none !important;}',
@@ -68848,7 +68986,10 @@ if (typeof module !== 'undefined' && module.exports) {
     m.className = 'v42-modal hidden';
     m.innerHTML =
       '<div class="v42-card" style="max-width:22rem;text-align:center">' +
-        '<div class="v42-t">⛶ 전체화면 하시겠습니까?</div>' +
+        '<div class="v42-t" style="display:flex;align-items:center;justify-content:center;gap:6px">' +
+          '<span>⛶ 전체화면 하시겠습니까?</span>' +
+          '<button type="button" class="v523FsX" aria-label="닫기" title="닫기" style="margin-left:2px;width:26px;height:26px;line-height:1;border-radius:8px;border:1.5px solid #475569;background:#1e293b;color:#e2e8f0;font-weight:900;font-size:13px;cursor:pointer;flex:0 0 auto;">✕</button>' +
+        '</div>' +
         '<div class="v42-sub" style="margin-top:6px">전체화면으로 보면 타이틀이 한 화면에 다 보여요.<br>나중에 설정에서도 바꿀 수 있어요.</div>' +
         '<div style="display:flex;gap:8px;margin-top:14px">' +
           '<button type="button" id="v523FsYes">전체화면으로 보기</button>' +
@@ -68859,10 +69000,18 @@ if (typeof module !== 'undefined' && module.exports) {
     var yes = $('v523FsYes'), no = $('v523FsNo');
     if (yes) yes.addEventListener('click', onAccept);
     if (no) no.addEventListener('click', onDecline);
+    /* v5.31-r1: 이 프롬프트가 전체 화면을 덮고 있어서, 기기에서 답을 못 하면 타이틀 버튼이
+       전부 안 먹는 것처럼 보였다. 이제 바깥(어두운 배경)을 탭하거나 ✕를 누르면 닫힌다. */
+    m.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t) return;
+      if (t.closest && t.closest('.v523FsX')) { e.preventDefault(); answered = true; try { saveChoice('no'); } catch (er) {} hidePrompt(); return; }
+      if (t === m) { answered = true; try { saveChoice('no'); } catch (er) {} hidePrompt(); }
+    });
     return m;
   }
   function showPrompt() {
-    if (promptOpen || choice()) return;
+    if (promptOpen || answered || choice()) return;
     var ts = $('titleScreen');
     if (!ts || ts.classList.contains('hidden')) return;
     try {
@@ -68885,12 +69034,12 @@ if (typeof module !== 'undefined' && module.exports) {
   function tryPrompt() {
     fitTitle();
     showPrompt();
-    if (!promptOpen && !choice()) startRetry();
+    if (!promptOpen && !answered && !choice()) startRetry();
   }
   function startRetry() {
     if (retryTimer) return;
     retryTimer = setInterval(function () {
-      if (promptOpen || choice()) { stopRetry(); return; }
+      if (promptOpen || answered || choice()) { stopRetry(); return; }
       var ts = $('titleScreen');
       if (!ts || ts.classList.contains('hidden')) { stopRetry(); return; }
       showPrompt();
@@ -68901,6 +69050,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (retryTimer) { clearInterval(retryTimer); retryTimer = null; }
   }
   function onAccept() {
+    answered = true;
     saveChoice('yes');
     hidePrompt();
     if (fsSupported()) {
@@ -68913,6 +69063,7 @@ if (typeof module !== 'undefined' && module.exports) {
     }
   }
   function onDecline() {
+    answered = true;
     saveChoice('no');
     hidePrompt();
     fitTitle();
@@ -69023,7 +69174,7 @@ if (typeof module !== 'undefined' && module.exports) {
    게임이 켜질 때 patch-notes.json을 캐시 없이 받아서 최신 버전과 지금 빌드를 비교한다. */
 (function (root) {
   'use strict';
-  var BUILD = 'v5.31';
+  var BUILD = 'v5.31-r1';
   root.__JW_BUILD_VERSION = BUILD;
   function norm(v) { return String(v || '').replace(/-정식$/, '').trim(); }
   function titleVisible() { try { var t = document.getElementById('titleScreen'); return !!(t && !t.classList.contains('hidden')); } catch (e) { return false; } }
